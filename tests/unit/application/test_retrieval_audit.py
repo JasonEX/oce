@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.domain.services.retrieval import RetrievalPipeline
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.metrics import RetrievalAudit, RetrievalMetricRecord
 
 from tests.unit.application.fakes import FakeEmbedder, FakeSearchStore
@@ -45,7 +45,7 @@ class TestPipelineAuditFill:
     async def test_stages_and_scope_filled(self):
         audit = RetrievalAudit()
         await _pipeline([_hit()]).search(
-            "main entry", frozenset({"h1", "h2"}), audit=audit
+            "main entry", SearchScope(frozenset({"h1", "h2"})), audit=audit
         )
 
         # 无 intent 分类器/改写器 → 只跑核心阶段；stage() 应填充这些键
@@ -53,7 +53,7 @@ class TestPipelineAuditFill:
         assert "select" in audit.stages
         assert all(v >= 0 for v in audit.stages.values())
         assert audit.scope_size == 2
-        assert audit.intent is None
+        assert audit.intent == "feature"
         assert audit.path_boosted is False
 
     async def test_audit_none_is_zero_overhead(self):
@@ -66,7 +66,7 @@ class TestHandlerReporting:
     async def test_reports_source_and_hit_count(self):
         handler, sink = _handler([_hit()], retrieval_audit_enabled=True)
         await handler.handle(
-            SearchQuery("main entry", frozenset({"h1"}), source="overview")
+            SearchQuery("main entry", SearchScope(frozenset({"h1"})), source="overview")
         )
 
         assert len(sink.retrieval) == 1
@@ -78,7 +78,9 @@ class TestHandlerReporting:
 
     async def test_empty_return_recorded_as_zero(self):
         handler, sink = _handler([], retrieval_audit_enabled=True)
-        result = await handler.handle(SearchQuery("main entry", frozenset({"h1"})))
+        result = await handler.handle(
+            SearchQuery("main entry", SearchScope(frozenset({"h1"})))
+        )
 
         assert result.hits == []
         assert len(sink.retrieval) == 1
@@ -98,8 +100,9 @@ class TestHandlerReporting:
         off_handler, off_sink = _handler(
             [_hit()], retrieval_audit_enabled=True, store_query_text=False
         )
-        await on_handler.handle(SearchQuery("secret query", frozenset({"h1"})))
-        await off_handler.handle(SearchQuery("secret query", frozenset({"h1"})))
+        scope = SearchScope(frozenset({"h1"}))
+        await on_handler.handle(SearchQuery("secret query", scope))
+        await off_handler.handle(SearchQuery("secret query", scope))
 
         assert on_sink.retrieval[0].query_text == "secret query"
         assert off_sink.retrieval[0].query_text is None  # 默认不留存原文

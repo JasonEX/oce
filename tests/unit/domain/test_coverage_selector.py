@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from oce.domain.services.search import SearchHit
 from oce.domain.services.selector.coverage_selector import CoverageSelector
+from oce.domain.services.selector.protocols import SelectionMode
 
 
-def _hit(path: str, start: int, end: int, score: float, content: str = "code") -> SearchHit:
+def _hit(
+    path: str, start: int, end: int, score: float, content: str = "code"
+) -> SearchHit:
     return SearchHit(
         blob_name=path,
         path=path,
@@ -29,6 +32,27 @@ async def test_prefers_cross_file_coverage_before_second_chunk():
         ("src/a.py", 1),
         ("src/b.py", 1),
         ("src/a.py", 20),
+    ]
+
+
+async def test_focused_mode_preserves_relevance_before_cross_file_coverage():
+    selector = CoverageSelector(
+        max_per_path=2,
+        focused_max_per_path=4,
+        max_chars=10_000,
+    )
+    hits = [
+        _hit("src/a.py", 1, 10, 0.9),
+        _hit("src/a.py", 20, 30, 0.8),
+        _hit("src/b.py", 1, 10, 0.7),
+    ]
+
+    selected = await selector.select(hits, 3, mode=SelectionMode.FOCUSED)
+
+    assert [(hit.path, hit.start_line) for hit in selected] == [
+        ("src/a.py", 1),
+        ("src/a.py", 20),
+        ("src/b.py", 1),
     ]
 
 

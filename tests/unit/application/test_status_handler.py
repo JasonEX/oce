@@ -129,7 +129,8 @@ class TestResolveScopeQueryHandler:
         result = await ResolveScopeQueryHandler(factory).handle(
             ResolveScopeQuery(added_blobs=("a", "b"), deleted_blobs=("b",))
         )
-        assert result.blob_names == frozenset({"a"})
+        assert result.scope.blob_names == frozenset({"a"})
+        assert result.scope.chain_id is None
 
     async def test_malformed_token_raises_invalid(self, repos):
         factory, _, _ = repos
@@ -156,7 +157,11 @@ class TestResolveScopeQueryHandler:
                 deleted_blobs=("b",),
             )
         )
-        assert result.blob_names == frozenset({"a", "c"})
+        assert result.scope.blob_names == frozenset({"a", "c"})
+        assert result.scope.chain_id == chain.chain_id
+        assert result.scope.chain_version == chain.version
+        assert result.scope.added_blob_names == frozenset({"c"})
+        assert result.scope.deleted_blob_names == frozenset({"b"})
 
     async def test_empty_chain_is_empty_scope_not_error(self, repos):
         # 有效但成员为空的 checkpoint → 空工作集（空结果），不算全库检索
@@ -165,4 +170,4 @@ class TestResolveScopeQueryHandler:
         result = await ResolveScopeQueryHandler(factory).handle(
             ResolveScopeQuery(checkpoint_id=chain.get_checkpoint_token())
         )
-        assert result.blob_names == frozenset()
+        assert result.scope.blob_names == frozenset()

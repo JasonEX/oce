@@ -20,7 +20,7 @@ class DatabaseSettings(BaseSettings):
 
     url: str = Field(
         default="postgresql+asyncpg://oce:oce@localhost:5432/oce",
-        description="数据库连接 URL"
+        description="数据库连接 URL",
     )
     pool_size: int = Field(default=5, ge=1, le=100, description="连接池大小")
     max_overflow: int = Field(default=5, ge=0, le=100, description="连接池溢出上限")
@@ -63,8 +63,12 @@ class MilvusSettings(BaseSettings):
 
     # HNSW 参数
     hnsw_m: int = Field(default=16, ge=4, le=64, description="HNSW M 参数")
-    hnsw_ef_construction: int = Field(default=256, ge=8, le=512, description="HNSW efConstruction")
-    hnsw_ef_search: int = Field(default=64, ge=8, le=2048, description="HNSW ef（搜索时）")
+    hnsw_ef_construction: int = Field(
+        default=256, ge=8, le=512, description="HNSW efConstruction"
+    )
+    hnsw_ef_search: int = Field(
+        default=64, ge=8, le=2048, description="HNSW ef（搜索时）"
+    )
 
 
 class EmbeddingSettings(BaseSettings):
@@ -91,8 +95,12 @@ class EmbeddingSettings(BaseSettings):
         ge=1,
         description="单请求 input 数组总字符预算",
     )
-    max_input_chars: int = Field(default=8_000, ge=1, description="单条模型输入字符上限")
-    input_overlap_chars: int = Field(default=400, ge=0, description="长输入分段重叠字符数")
+    max_input_chars: int = Field(
+        default=8_000, ge=1, description="单条模型输入字符上限"
+    )
+    input_overlap_chars: int = Field(
+        default=400, ge=0, description="长输入分段重叠字符数"
+    )
     max_concurrency: int = Field(default=4, ge=1, le=32, description="最大请求并发")
     timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
     proxy: str | None = Field(default=None, description="可选 HTTP 代理")
@@ -112,12 +120,16 @@ class RerankSettings(BaseSettings):
         extra="ignore",
     )
 
-    enabled: bool = Field(default=False, description="是否启用 API 重排（已被 LLM 重排取代，默认关）")
+    enabled: bool = Field(
+        default=False, description="是否启用 API 重排（已被 LLM 重排取代，默认关）"
+    )
     endpoint: str = Field(
         default="https://api.siliconflow.cn/v1/rerank",
         description="Rerank 端点",
     )
-    api_key: SecretStr | None = Field(default=None, description="空值时复用 embedding key")
+    api_key: SecretStr | None = Field(
+        default=None, description="空值时复用 embedding key"
+    )
     model: str = Field(default="Qwen/Qwen3-Reranker-0.6B", description="重排模型")
     top_n: int = Field(default=10, ge=1, le=100, description="重排返回数")
     min_score: float = Field(default=0.05, ge=0.0, le=1.0, description="最低重排分")
@@ -138,7 +150,9 @@ class LLMSettings(BaseSettings):
         extra="ignore",
     )
 
-    rerank_enabled: bool = Field(default=True, description="是否启用 LLM 语义重排（默认主重排层）")
+    rerank_enabled: bool = Field(
+        default=True, description="是否允许对低置信度或复杂查询按需执行 LLM 语义重排"
+    )
     model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="LLM 模型")
     api_key: SecretStr = Field(default="", description="LLM API Key")
     base_url: str = Field(
@@ -146,7 +160,9 @@ class LLMSettings(BaseSettings):
         description="LLM API Base URL",
     )
     proxy: str | None = Field(default=None, description="LLM API HTTP 代理")
-    max_candidates: int = Field(default=50, ge=10, le=100, description="LLM 重排最大候选数")
+    max_candidates: int = Field(
+        default=50, ge=10, le=100, description="LLM 重排最大候选数"
+    )
     output_top_k: int = Field(default=10, ge=1, le=50, description="LLM 重排输出数")
     # 实测 chunk 中位长度约 1560 字符，99% 超过 400；截断过短会让 LLM 只看到片段开头
     snippet_chars: int = Field(
@@ -182,14 +198,11 @@ class RetrievalSettings(BaseSettings):
     rrf_k: int = Field(default=60, ge=1, description="多查询结果融合平滑常数")
 
     # 置信度门槛
-    confidence_floor: float = Field(default=0.0, ge=0.0, le=1.0, description="最终置信度门槛")
+    confidence_floor: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="最终置信度门槛"
+    )
 
     # 精确标识符召回
-    exact_max_scope_blobs: int = Field(
-        default=2_000,
-        ge=0,
-        description="SQL 精确标识符召回允许的最大 blob scope；0 表示禁用",
-    )
     exact_timeout_seconds: float = Field(
         default=2.0,
         gt=0.0,
@@ -197,25 +210,53 @@ class RetrievalSettings(BaseSettings):
     )
 
     # 仓库级多意图召回
-    query_decomposition_enabled: bool = Field(default=True, description="是否分解多句检索请求")
-    query_max_queries: int = Field(default=4, ge=1, le=8, description="原查询和子查询总数上限")
+    query_decomposition_enabled: bool = Field(
+        default=True, description="是否分解多句检索请求"
+    )
+    query_max_queries: int = Field(
+        default=4, ge=1, le=8, description="原查询和子查询总数上限"
+    )
     query_min_facet_chars: int = Field(default=8, ge=1, description="子查询最少字符数")
-    query_facet_weight: float = Field(default=0.75, gt=0.0, le=1.0, description="子查询融合权重")
-    per_query_top_k: int = Field(default=20, ge=1, le=100, description="单查询模式下覆盖 default_top_k")
+    query_facet_weight: float = Field(
+        default=0.75, gt=0.0, le=1.0, description="子查询融合权重"
+    )
+    per_query_top_k: int = Field(
+        default=20, ge=1, le=100, description="单查询模式下覆盖 default_top_k"
+    )
 
     # 上下文剪枝与覆盖度（字符预算为硬限制，final_select_k 为软上限）
-    max_chunks_per_path: int = Field(default=2, ge=1, le=20, description="单文件最多返回片段数")
-    max_context_chars: int = Field(default=32_000, ge=1, description="返回代码总字符预算（硬限制）")
-    overlap_threshold: float = Field(default=0.6, ge=0.0, le=1.0, description="同文件片段重叠抑制阈值")
+    max_chunks_per_path: int = Field(
+        default=2, ge=1, le=20, description="单文件最多返回片段数"
+    )
+    focused_max_chunks_per_path: int = Field(
+        default=4,
+        ge=1,
+        le=20,
+        description="focused 模式单文件最多返回片段数",
+    )
+    max_context_chars: int = Field(
+        default=32_000, ge=1, description="返回代码总字符预算（硬限制）"
+    )
+    overlap_threshold: float = Field(
+        default=0.6, ge=0.0, le=1.0, description="同文件片段重叠抑制阈值"
+    )
 
     # Query rewrite (LLM-based query expansion for better recall)
     # 默认关闭：仅跨语言文件名等特殊场景有明显增益，通用检索收益有限
-    query_rewrite_enabled: bool = Field(default=False, description="是否启用 LLM 查询改写")
-    query_rewrite_model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="查询改写使用的 LLM 模型")
-    query_rewrite_num: int = Field(default=3, ge=1, le=5, description="生成改写查询的数量")
+    query_rewrite_enabled: bool = Field(
+        default=False, description="是否启用 LLM 查询改写"
+    )
+    query_rewrite_model: str = Field(
+        default="Qwen/Qwen2.5-7B-Instruct", description="查询改写使用的 LLM 模型"
+    )
+    query_rewrite_num: int = Field(
+        default=3, ge=1, le=5, description="生成改写查询的数量"
+    )
 
     # Path index (独立路径索引用于文件名查询)
-    path_index_enabled: bool = Field(default=True, description="是否启用路径索引（文件名查询增强）")
+    path_index_enabled: bool = Field(
+        default=True, description="是否启用路径索引（文件名查询增强）"
+    )
     # 路径分数与内容分数同为 COSINE 量纲，加权相加而非替换，避免挤掉正确 chunk
     path_boost_weight: float = Field(
         default=0.5, ge=0.0, le=2.0, description="路径索引命中对同文件 chunk 的加权系数"
@@ -268,10 +309,18 @@ class LogSettings(BaseSettings):
     )
 
     file_enabled: bool = Field(default=False, description="是否启用日志落盘")
-    file_path: str | None = Field(default=None, description="日志文件路径（None 时自动推断）")
-    rotation: str = Field(default="100 MB", description="轮转策略：'1 day' 按天 / '100 MB' 按大小")
-    retention: str = Field(default="30 days", description="保留时长：'30 days' / '10 files'")
-    format_json: bool = Field(default=False, description="是否使用 JSON 格式（便于日志采集）")
+    file_path: str | None = Field(
+        default=None, description="日志文件路径（None 时自动推断）"
+    )
+    rotation: str = Field(
+        default="100 MB", description="轮转策略：'1 day' 按天 / '100 MB' 按大小"
+    )
+    retention: str = Field(
+        default="30 days", description="保留时长：'30 days' / '10 files'"
+    )
+    format_json: bool = Field(
+        default=False, description="是否使用 JSON 格式（便于日志采集）"
+    )
     level: str = Field(default="INFO", description="日志级别（WARNING/INFO/DEBUG）")
 
 
@@ -344,6 +393,7 @@ class Settings(BaseSettings):
     worker: WorkerSettings = Field(default_factory=WorkerSettings)
     log: LogSettings = Field(default_factory=LogSettings)
     monitoring: MonitoringSettings = Field(default_factory=MonitoringSettings)
+
 
 @lru_cache
 def get_settings() -> Settings:

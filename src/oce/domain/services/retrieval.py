@@ -23,17 +23,23 @@ from oce.domain.services.embedder import Embedder
 from oce.domain.services.llm.intent import IntentClassifier
 from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.query_classifier import (
-    QueryIntent as HeuristicQueryIntent,
+    QueryIntent,
     classify_query_intent,
     extract_code_identifiers,
     should_use_path_index,
 )
 from oce.domain.services.query_planner import HeuristicQueryPlanner, QueryPlanner
 from oce.domain.services.reranker import NoopReranker, Reranker
-from oce.domain.services.retrieval_strategy import get_strategy
-from oce.domain.services.search import ExactSearchStore, SearchHit, SearchStore, search_hit_key
+from oce.domain.services.retrieval_strategy import get_strategy, should_use_llm_rerank
+from oce.domain.services.search import (
+    ExactSearchStore,
+    SearchHit,
+    SearchScope,
+    SearchStore,
+    search_hit_key,
+)
 from oce.domain.services.selector.coverage_selector import CoverageSelector
-from oce.domain.services.selector.protocols import Selector
+from oce.domain.services.selector.protocols import SelectionMode, Selector
 from oce.shared.config import get_settings
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
@@ -120,7 +126,9 @@ class RetrievalPipeline:
         self.store = store
         self.reranker = reranker or NoopReranker()
         self.llm_reranker = llm_reranker  # Optional LLM-based semantic reranker
-        self.query_rewriter = query_rewriter  # Optional query rewriter for better recall
+        self.query_rewriter = (
+            query_rewriter  # Optional query rewriter for better recall
+        )
         self.path_store = path_store  # Optional path index for filename queries
         self.exact_store = exact_store
         self.priority_factor = priority_factor or source_priority_factor
@@ -136,6 +144,7 @@ class RetrievalPipeline:
         )
         self.selector = selector or CoverageSelector(
             max_per_path=self.settings.max_chunks_per_path,
+            focused_max_per_path=self.settings.focused_max_chunks_per_path,
             max_chars=self.settings.max_context_chars,
             overlap_threshold=self.settings.overlap_threshold,
         )
@@ -143,7 +152,7 @@ class RetrievalPipeline:
     async def search(
         self,
         query: str,
-        allowed_blob_names: frozenset[str] | None = None,
+        scope: SearchScope | None = None,
         *,
         audit: RetrievalAudit | None = None,
     ) -> list[SearchHit]:
@@ -151,12 +160,11 @@ class RetrievalPipeline:
 
         Args:
             query: 查询文本
-            allowed_blob_names: 允许搜索的 blob 名称集合
-                - None: 搜索所有 blobs（不过滤）
-                - 空集合: 没有可搜索的 blobs（返回空结果）
+            scope: 已解析的工作集；None 仅供内部测试使用，表示不过滤。
             audit: 可选的阶段耗时收集容器；为 None 时不打点、零开销。
         """
         stage = audit.stage if audit is not None else _noop_stage
+        allowed_blob_names = scope.blob_names if scope is not None else None
         if audit is not None:
             audit.scope_size = (
                 len(allowed_blob_names) if allowed_blob_names is not None else None
@@ -166,32 +174,26 @@ class RetrievalPipeline:
         if allowed_blob_names is not None and len(allowed_blob_names) == 0:
             return []
 
-        # 意图驱动的策略选择
-        strategy = None
-        detected_intent = None
+        # 廉价规则始终给出完整路由；可选 LLM classifier 只覆盖这个结果。
+        detected_intent = classify_query_intent(query)
         if self.intent_classifier is not None:
             try:
                 with stage("intent"):
                     detected_intent = await self.intent_classifier.classify(query)
             except Exception as exc:
-                heuristic_intent = classify_query_intent(query)
-                detected_intent = heuristic_intent
                 logger.warning(
                     "Intent classification failed: {}; using heuristic intent {}",
                     type(exc).__name__,
-                    heuristic_intent.value,
+                    detected_intent.value,
                 )
-            strategy = get_strategy(detected_intent)
-            logger.debug(
-                "Query intent: {}, strategy: {}", detected_intent.value, strategy
-            )
-        if audit is not None and detected_intent is not None:
+        strategy = get_strategy(detected_intent)
+        logger.debug("Query intent: {}, strategy: {}", detected_intent.value, strategy)
+        if audit is not None:
             audit.intent = detected_intent.value
 
         # 路径索引增强：根据意图或启发式判断
-        use_path_index = (
-            (strategy and strategy.enable_path_index)
-            or (self.path_store and should_use_path_index(query))
+        use_path_index = strategy.enable_path_index or (
+            self.path_store and should_use_path_index(query)
         )
         if use_path_index and self.path_store:
             if audit is not None:
@@ -199,25 +201,15 @@ class RetrievalPipeline:
             return await self._search_with_path_boost(
                 query,
                 allowed_blob_names,
-                enable_query_rewrite=(
-                    strategy.enable_query_rewrite
-                    if strategy is not None
-                    else self.query_rewriter is not None
-                ),
-                enable_llm_rerank=(
-                    strategy.enable_llm_rerank
-                    if strategy is not None
-                    else self.llm_reranker is not None
-                ),
+                intent=detected_intent,
+                enable_query_rewrite=strategy.enable_query_rewrite,
+                selection_mode=strategy.selection_mode,
                 audit=audit,
             )
 
         # Query rewrite: 根据意图决定是否启用
         queries_to_search = [query]
-        use_query_rewrite = (
-            (strategy and strategy.enable_query_rewrite)
-            or (strategy is None and self.query_rewriter is not None)
-        )
+        use_query_rewrite = strategy.enable_query_rewrite
         if use_query_rewrite and self.query_rewriter is not None:
             with stage("rewrite"):
                 rewritten_queries = await self.query_rewriter.rewrite(query)
@@ -242,7 +234,7 @@ class RetrievalPipeline:
                 all_result_lists.extend(result_lists)
 
         with stage("exact"):
-            exact_hits = await self._recall_exact(query, allowed_blob_names)
+            exact_hits = await self._recall_exact(query, scope)
         if not all_result_lists and not exact_hits:
             return []
 
@@ -253,19 +245,24 @@ class RetrievalPipeline:
             hits = await self.reranker.rerank(query, hits)
         hits = self._apply_source_priority(hits)
 
-        # LLM-based semantic rerank: 根据意图决定是否启用
-        use_llm_rerank = (
-            (strategy and strategy.enable_llm_rerank)
-            or (strategy is None and self.llm_reranker is not None)
-        )
-        if use_llm_rerank:
+        exact_confidence = max((hit.score for hit in exact_hits), default=None)
+        candidate_scores = [hit.score * self.priority_factor(hit.path) for hit in hits]
+        if self.llm_reranker is not None and should_use_llm_rerank(
+            detected_intent,
+            candidate_scores,
+            exact_confidence=exact_confidence,
+        ):
             with stage("llm_rerank"):
                 hits = await self._llm_rerank_hits(query, hits)
         hits = self._promote_symbol_endpoints(query, hits)
 
         with stage("select"):
             hits = self._apply_confidence_floor(hits)
-            selected = await self.selector.select(hits, self.settings.final_select_k)
+            selected = await self.selector.select(
+                hits,
+                self.settings.final_select_k,
+                mode=strategy.selection_mode,
+            )
         return selected
 
     async def _llm_rerank_hits(
@@ -322,21 +319,9 @@ class RetrievalPipeline:
     async def _recall_exact(
         self,
         query: str,
-        allowed_blob_names: frozenset[str] | None,
+        scope: SearchScope | None,
     ) -> list[SearchHit]:
-        if self.exact_store is None:
-            return []
-        scope_limit = self.settings.exact_max_scope_blobs
-        if (
-            allowed_blob_names is None
-            or scope_limit == 0
-            or len(allowed_blob_names) > scope_limit
-        ):
-            logger.debug(
-                "Skipping SQL exact recall for scope size {} (limit {})",
-                len(allowed_blob_names) if allowed_blob_names is not None else "unbounded",
-                scope_limit,
-            )
+        if self.exact_store is None or scope is None or not scope.blob_names:
             return []
         identifiers = extract_code_identifiers(query)
         if not identifiers:
@@ -344,13 +329,13 @@ class RetrievalPipeline:
         try:
             return await self.exact_store.search_exact(
                 identifiers=identifiers,
-                allowed_blob_names=(
-                    sorted(allowed_blob_names) if allowed_blob_names is not None else None
-                ),
+                scope=scope,
                 top_k=self.settings.default_top_k,
             )
         except Exception as exc:
-            logger.warning("Exact identifier recall failed; using semantic candidates: {}", exc)
+            logger.warning(
+                "Exact identifier recall failed; using semantic candidates: {}", exc
+            )
             return []
 
     def _merge_exact_hits(
@@ -359,10 +344,7 @@ class RetrievalPipeline:
         exact_hits: list[SearchHit],
         semantic_hits: list[SearchHit],
     ) -> list[SearchHit]:
-        if (
-            classify_query_intent(query) == HeuristicQueryIntent.CALL_CHAIN
-            and semantic_hits
-        ):
+        if classify_query_intent(query) == QueryIntent.CALL_CHAIN and semantic_hits:
             semantic_keys = {search_hit_key(hit) for hit in semantic_hits}
             exact_only = [
                 hit for hit in exact_hits if search_hit_key(hit) not in semantic_keys
@@ -406,7 +388,7 @@ class RetrievalPipeline:
         hits: list[SearchHit],
     ) -> list[SearchHit]:
         """符号定位时，框架 endpoint 定义稳定优先于同名内部实现。"""
-        if classify_query_intent(query) != HeuristicQueryIntent.SYMBOL:
+        if classify_query_intent(query) != QueryIntent.SYMBOL:
             return hits
         location_markers = (
             "实现位置",
@@ -439,7 +421,9 @@ class RetrievalPipeline:
         ]
         return sorted(
             hits,
-            key=lambda hit: any(pattern.search(hit.content) for pattern in endpoint_patterns),
+            key=lambda hit: any(
+                pattern.search(hit.content) for pattern in endpoint_patterns
+            ),
             reverse=True,
         )
 
@@ -498,14 +482,14 @@ class RetrievalPipeline:
         floor = self.settings.confidence_floor
         return [h for h in hits if h.score * factor(h.path) >= floor]
 
-
     async def _search_with_path_boost(
         self,
         query: str,
         allowed_blob_names: frozenset[str] | None = None,
         *,
+        intent: QueryIntent,
         enable_query_rewrite: bool,
-        enable_llm_rerank: bool,
+        selection_mode: SelectionMode,
         audit: RetrievalAudit | None = None,
     ) -> list[SearchHit]:
         """
@@ -544,7 +528,10 @@ class RetrievalPipeline:
                         top_k=20,
                     )
                     for r in path_results:
-                        if r.blob_name not in path_scores or r.score > path_scores[r.blob_name]:
+                        if (
+                            r.blob_name not in path_scores
+                            or r.score > path_scores[r.blob_name]
+                        ):
                             path_scores[r.blob_name] = r.score
                 logger.info(f"Path index returned {len(path_scores)} results")
             except Exception as exc:
@@ -590,15 +577,28 @@ class RetrievalPipeline:
             hits = await self.reranker.rerank(query, hits)
         # 路径类查询使用文档中立的优先级因子（不降权 .rst/.md/.txt）
         # 避免「版本变更历史文件在哪里」被 .rst 文档降权压出 Top-10
-        hits = self._apply_source_priority(hits, priority_factor=path_query_priority_factor)
+        hits = self._apply_source_priority(
+            hits, priority_factor=path_query_priority_factor
+        )
 
-        if enable_llm_rerank:
+        path_confidence = max(path_scores.values(), default=None)
+        if self.llm_reranker is not None and should_use_llm_rerank(
+            intent,
+            [hit.score for hit in hits],
+            path_confidence=path_confidence,
+        ):
             with stage("llm_rerank"):
                 hits = await self._llm_rerank_hits(query, hits)
 
         with stage("select"):
-            hits = self._apply_confidence_floor(hits, priority_factor=path_query_priority_factor)
-            selected = await self.selector.select(hits, self.settings.final_select_k)
+            hits = self._apply_confidence_floor(
+                hits, priority_factor=path_query_priority_factor
+            )
+            selected = await self.selector.select(
+                hits,
+                self.settings.final_select_k,
+                mode=selection_mode,
+            )
         return selected
 
     async def _merge_path_and_content(
@@ -651,7 +651,11 @@ class RetrievalPipeline:
 
         # 使用一个虚拟查询来获取这些 blob 的内容
         # 这里我们需要直接访问数据库，因为 SearchStore 不提供按 blob_name 查询的接口
-        from oce.infrastructure.persistence.models import BlobChunkModel, BlobModel, ChunkModel
+        from oce.infrastructure.persistence.models import (
+            BlobChunkModel,
+            BlobModel,
+            ChunkModel,
+        )
         from oce.shared.database.session import async_session_factory
         from sqlalchemy import select
 
@@ -668,8 +672,13 @@ class RetrievalPipeline:
                             BlobModel.blob_name,
                             BlobModel.path,
                         )
-                        .join(BlobChunkModel, BlobChunkModel.content_hash == ChunkModel.content_hash)
-                        .join(BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name)
+                        .join(
+                            BlobChunkModel,
+                            BlobChunkModel.content_hash == ChunkModel.content_hash,
+                        )
+                        .join(
+                            BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name
+                        )
                         .where(BlobModel.blob_name == blob_name)
                         .order_by(BlobChunkModel.start_line)
                         .limit(1)
@@ -687,7 +696,9 @@ class RetrievalPipeline:
                                 start_line=row.start_line,
                                 end_line=row.end_line,
                                 content=row.content,
-                                score=path_scores.get(blob_name, 0.9),  # 使用路径索引的分数
+                                score=path_scores.get(
+                                    blob_name, 0.9
+                                ),  # 使用路径索引的分数
                             )
                         )
         except Exception as exc:

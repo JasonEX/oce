@@ -16,7 +16,7 @@ from oce.application.queries.status import (
     ResolveScopeResult,
 )
 from oce.application.service import BlobUpload, RetrievalApplication, compute_blob_name
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchScope
 
 
 class SpyCommandBus:
@@ -37,7 +37,7 @@ class SpyQueryBus:
     async def ask(self, query):
         self.queries.append(query)
         if isinstance(query, ResolveScopeQuery):
-            return ResolveScopeResult(frozenset({"blob-a"}))
+            return ResolveScopeResult(SearchScope(frozenset({"blob-a"})))
         if isinstance(query, SearchQuery):
             return SimpleNamespace(
                 hits=[
@@ -77,9 +77,9 @@ async def test_retrieve_with_empty_scope_requests_empty_search():
         async def ask(self, query):
             self.queries.append(query)
             if isinstance(query, ResolveScopeQuery):
-                return ResolveScopeResult(frozenset())
+                return ResolveScopeResult(SearchScope(frozenset()))
             if isinstance(query, SearchQuery):
-                assert query.allowed_blob_names == frozenset()
+                assert query.scope == SearchScope(frozenset())
                 return SimpleNamespace(hits=[])
             raise AssertionError(f"Unexpected query: {query!r}")
 

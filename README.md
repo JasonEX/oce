@@ -6,7 +6,7 @@
 
 **Self-hosted, ACE-compatible code retrieval for AI coding agents.**
 
-Hybrid dense + exact + path recall · cAST-aware chunking · LLM reranking · coverage-aware selection
+Hybrid dense + exact + path recall · cAST-aware chunking · adaptive reranking · task-aware selection
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -23,8 +23,8 @@ Hybrid dense + exact + path recall · cAST-aware chunking · LLM reranking · co
 
 OpenContextEngine is a self-hosted, ACE-compatible code retrieval service. It indexes
 source files with cAST-aware chunking, stores metadata in PostgreSQL or SQLite, performs
-dense vector retrieval in Milvus 3.0, and reranks results with an LLM before
-coverage-aware selection.
+dense vector retrieval in Milvus 3.0, and conditionally reranks ambiguous results before
+task-aware context selection.
 
 It ships two deployment modes: a zero-dependency **personal mode** (SQLite + embedded
 Milvus Lite, background worker disabled) for a single machine, and a **service mode**
@@ -46,7 +46,7 @@ machines need to share one index.
 
 - **Hybrid retrieval** — concurrent dense semantic recall (Milvus 3.0), exact identifier lookup (`symbol_occurrences`), and an independent path index, fused with weighted rank fusion.
 - **cAST-aware chunking** — tree-sitter parsing splits source along semantic boundaries instead of blind line windows.
-- **LLM reranking + coverage-aware selection** — base rerank, optional LLM rerank, then greedy bin-packing that prioritizes repository coverage, suppresses overlapping spans, caps chunks per path, and respects a hard character budget.
+- **Adaptive reranking + task-aware selection** — confident exact/path or clearly separated dense results skip the optional LLM call; ambiguous and structurally complex results escalate. Focused symbol/path queries preserve relevance order, while broader queries prioritize repository coverage under overlap and character budgets.
 - **Two deployment modes** — zero-dependency personal mode (SQLite + embedded Milvus Lite) for a single machine, or service mode (PostgreSQL + Milvus 3.0 + Redis) for shared, higher-throughput use.
 - **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
 - **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
@@ -212,15 +212,18 @@ decomposed into one complete query plus bounded facet queries. Each query recall
 candidates independently; results are fused with weighted rank fusion (configurable via
 `RETRIEVAL_RRF_K`) before reranking. Single-query mode uses `RETRIEVAL_DEFAULT_TOP_K`;
 multi-query mode uses `RETRIEVAL_PER_QUERY_TOP_K` per query to control candidate pool
-size. Final selection applies a greedy bin-packing strategy that prioritizes repository
-coverage (two-pass: first ensures each file has representation, second fills remaining
-budget), suppresses overlapping spans within files, caps chunks per path, and respects a
-hard character budget. Disable decomposition with `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false`
-to revert to classic single-query Top-K behavior.
+size. Optional LLM reranking is uncertainty-gated: confident exact symbol hits, confident
+path hits, and clearly separated simple candidates skip the call; ambiguous candidates and
+call-chain/overview/compound queries escalate. Final selection uses focused mode for symbol
+and path lookups, preserving relevance order with a higher per-path cap, and coverage mode
+for broader queries, first representing different files before filling remaining budget.
+Both modes suppress overlapping spans and enforce the same hard character budget. Disable
+decomposition with `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` to revert to classic
+single-query recall.
 
-Exact identifier recall is bounded by `RETRIEVAL_EXACT_MAX_SCOPE_BLOBS` (default 2000).
-Larger working sets continue through dense and path retrieval but skip the SQL exact stage;
-raising the limit trades additional database work for a larger exact-recall scope.
+Exact identifier recall joins checkpoint membership directly, so large workspaces keep exact
+recall without expanding every member into one SQL `IN (...)` clause. Added-only scopes and
+unusually large request deltas use bounded batches; timeout still falls back to dense retrieval.
 The symbol index recognizes supported definition and endpoint patterns; it is not a call,
 reference, or implementation graph. Use native text search or an LSP for those relations.
 
@@ -387,16 +390,17 @@ stores dense vectors and the path index.
 ### Retrieval pipeline
 
 `RetrievalPipeline.search` (`domain/services/retrieval.py`) runs intent-aware stages:
-optional classification and query rewrite, concurrent dense + exact recall, weighted rank
-fusion, base rerank, optional LLM rerank, and coverage-aware final selection.
+heuristic routing with optional LLM intent override and query rewrite, concurrent dense +
+exact recall, weighted rank fusion, base rerank, uncertainty-gated LLM rerank, and task-aware
+final selection.
 
 ```mermaid
 flowchart TB
-    Q["query + allowed_blob_names"]
-    Q --> Intent["Intent classification (optional)<br/>→ pick retrieval strategy"]
+    Q["query + SearchScope"]
+    Q --> Intent["heuristic intent<br/>optional LLM override"]
     Intent --> PathCheck{"Path-boost branch?<br/>intent or filename heuristic"}
 
-    PathCheck -->|yes| PathBoost["_search_with_path_boost<br/>path recall + rewrite + LLM rerank"]
+    PathCheck -->|yes| PathBoost["_search_with_path_boost<br/>path recall + optional rewrite"]
     PathCheck -->|no| Rewrite["Query rewrite (optional)<br/>query_planner.plan splits sub-queries"]
 
     Rewrite --> Recall
@@ -411,10 +415,12 @@ flowchart TB
     Fuse --> Merge["_merge_exact_hits"]
     Merge --> Rerank["reranker.rerank (base)"]
     Rerank --> Source["_apply_source_priority"]
-    Source --> LLMRerank["_llm_rerank_hits<br/>LLM rerank (optional)"]
+    Source --> Gate{"ambiguous or complex?"}
+    Gate -->|yes| LLMRerank["_llm_rerank_hits<br/>LLM rerank"]
+    Gate -->|no| Promote
     LLMRerank --> Promote["_promote_symbol_endpoints"]
     Promote --> Floor["_apply_confidence_floor"]
-    Floor --> Select["selector.select<br/>coverage / top-k"]
+    Floor --> Select["selector.select<br/>focused / coverage"]
 
     PathBoost --> Select
     Select --> Out["final hits (fused score desc)"]

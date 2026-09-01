@@ -8,7 +8,10 @@ from functools import lru_cache
 from loguru import logger
 
 from oce.application.bus import CommandBus, QueryBus
-from oce.application.commands.checkpoint import CheckpointCommand, CheckpointCommandHandler
+from oce.application.commands.checkpoint import (
+    CheckpointCommand,
+    CheckpointCommandHandler,
+)
 from oce.application.commands.credentials import (
     ReloadEmbeddingCredentialsCommand,
     ReloadEmbeddingCredentialsCommandHandler,
@@ -143,7 +146,6 @@ class Container:
         self.search_store = Milvus3SearchStore(settings.milvus)
         self.symbol_search_store = SymbolSearchStore(
             async_session_factory,
-            max_scope_blobs=settings.retrieval.exact_max_scope_blobs,
             timeout_seconds=settings.retrieval.exact_timeout_seconds,
         )
 
@@ -180,6 +182,7 @@ class Container:
             )
             llm_clients.append(rerank_llm)
             from oce.domain.services.llm.reranker import LLMReranker
+
             self.llm_reranker = LLMReranker(
                 client=rerank_llm,
                 model=settings.llm.model,
@@ -200,6 +203,7 @@ class Container:
             )
             llm_clients.append(rewrite_llm)
             from oce.domain.services.llm.rewriter import QueryRewriter
+
             self.query_rewriter = QueryRewriter(
                 client=rewrite_llm,
                 model=settings.retrieval.query_rewrite_model,
@@ -218,6 +222,7 @@ class Container:
             )
             llm_clients.append(intent_llm)
             from oce.domain.services.llm.intent import IntentClassifier
+
             self.intent_classifier = IntentClassifier(
                 llm_client=intent_llm,
                 model=settings.llm.model,
@@ -266,6 +271,7 @@ class Container:
         self.worker = None
         if settings.worker.enabled:
             import redis.asyncio as redis
+
             redis_client = redis.from_url(
                 settings.redis.url,
                 decode_responses=True,
@@ -404,7 +410,9 @@ class Container:
         )
         query_bus.register(FindMissingQuery, FindMissingQueryHandler(self._uow_factory))
         query_bus.register(BlobStatusQuery, BlobStatusQueryHandler(self._uow_factory))
-        query_bus.register(ResolveScopeQuery, ResolveScopeQueryHandler(self._uow_factory))
+        query_bus.register(
+            ResolveScopeQuery, ResolveScopeQueryHandler(self._uow_factory)
+        )
         query_bus.register(
             MonitoringStatsQuery,
             MonitoringStatsQueryHandler(

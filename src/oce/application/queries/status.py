@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from oce.application.messages import Query
 from oce.application.uow import UnitOfWorkFactory
 from oce.domain.chain.chain import Chain
+from oce.domain.services.search import SearchScope
 from oce.shared.errors import (
     InvalidCheckpointTokenError,
     NeedsResetError,
@@ -87,7 +88,7 @@ class ResolveScopeQuery(Query):
 
 @dataclass(frozen=True)
 class ResolveScopeResult:
-    blob_names: frozenset[str]
+    scope: SearchScope
 
 
 class ResolveScopeQueryHandler:
@@ -103,17 +104,31 @@ class ResolveScopeQueryHandler:
         空集表示工作集为空，检索返回空结果而非全库。
         """
         base: set[str] = set()
+        chain_id: str | None = None
+        chain_version: int | None = None
         if query.checkpoint_id:
             parsed = Chain.parse_checkpoint_token(query.checkpoint_id)
             if parsed is None:
                 raise InvalidCheckpointTokenError(query.checkpoint_id)
             chain_id = parsed[0]
             async with self._uow_factory() as uow:
-                if not await uow.chains.exists(chain_id):
+                chain = await uow.chains.get(chain_id)
+                if chain is None:
                     raise NeedsResetError("checkpoint 链不存在（服务端状态丢失）")
-                base = await uow.chains.get_members(chain_id)
+                base = set(chain.members)
+                chain_version = chain.version
         elif not query.added_blobs:
             # 无 checkpoint 也无 added_blobs（deleted 不足以构成声明）→ 拒绝全库检索
             raise ScopeRequiredError()
-        scope = (base | set(query.added_blobs)) - set(query.deleted_blobs)
-        return ResolveScopeResult(frozenset(scope))
+        added = frozenset(query.added_blobs)
+        deleted = frozenset(query.deleted_blobs)
+        blob_names = frozenset((base | set(added)) - set(deleted))
+        return ResolveScopeResult(
+            SearchScope(
+                blob_names=blob_names,
+                chain_id=chain_id,
+                chain_version=chain_version,
+                added_blob_names=added,
+                deleted_blob_names=deleted,
+            )
+        )

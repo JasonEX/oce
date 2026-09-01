@@ -12,7 +12,7 @@ import pytest
 
 from oce.domain.services.llm.intent import QueryIntent
 from oce.domain.services.retrieval import RetrievalPipeline, source_priority_factor
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 
 
@@ -26,8 +26,15 @@ class FakeSearchStore:
         self.queries: list[str] = []
         self.hits_by_query: dict[str, list[SearchHit]] = {}
 
-    async def search(self, *, query, query_vector, allowed_blob_names=None,
-                     top_k=50, vector_threshold=0.1):
+    async def search(
+        self,
+        *,
+        query,
+        query_vector,
+        allowed_blob_names=None,
+        top_k=50,
+        vector_threshold=0.1,
+    ):
         self.last_query = query
         self.last_vector = query_vector
         self.queries.append(query)
@@ -67,11 +74,11 @@ class FakeExactSearchStore:
         self.hits = hits or []
         self.error = error
         self.identifiers: tuple[str, ...] = ()
-        self.allowed_blob_names = None
+        self.scope: SearchScope | None = None
 
-    async def search_exact(self, *, identifiers, allowed_blob_names=None, top_k=50):
+    async def search_exact(self, *, identifiers, scope, top_k=50):
         self.identifiers = tuple(identifiers)
-        self.allowed_blob_names = allowed_blob_names
+        self.scope = scope
         if self.error is not None:
             raise self.error
         return list(self.hits[:top_k])
@@ -79,6 +86,10 @@ class FakeExactSearchStore:
 
 def _hit(path: str, score: float) -> SearchHit:
     return SearchHit(blob_name="x" * 64, path=path, content="code", score=score)
+
+
+def _scope(*blob_names: str) -> SearchScope:
+    return SearchScope(frozenset(blob_names))
 
 
 def _settings(**kwargs) -> RetrievalSettings:
@@ -133,7 +144,7 @@ class TestRetrievalPipeline:
     async def test_main_readme_not_penalized(self):
         hits = [
             _hit("src/core.py", 0.8),
-            _hit("README.md", 0.75),   # 主 README 显式不降权
+            _hit("README.md", 0.75),  # 主 README 显式不降权
         ]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
@@ -146,7 +157,7 @@ class TestRetrievalPipeline:
     async def test_confidence_floor_filters_weak_hits(self):
         hits = [
             _hit("src/a.py", 0.9),
-            _hit("src/b.py", 0.1),   # 低于 floor
+            _hit("src/b.py", 0.1),  # 低于 floor
         ]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
@@ -173,7 +184,7 @@ class TestRetrievalPipeline:
             store=store,
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
-        await pipe.search("q", allowed_blob_names={"aaa", "bbb"})
+        await pipe.search("q", _scope("aaa", "bbb"))
         assert set(store.last_query == "q" and store.last_vector)  # 触发赋值
         assert store.last_query == "q"
 
@@ -186,7 +197,7 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
-        results = await pipe.search("q", allowed_blob_names=set())
+        results = await pipe.search("q", _scope())
 
         assert results == []
         assert embedder.queries == []
@@ -210,22 +221,55 @@ class TestRetrievalPipeline:
 
     async def test_llm_rerank_order_is_not_overwritten_by_retrieval_scores(self):
         class ReverseLLMReranker:
+            def __init__(self):
+                self.calls = 0
+
             async def rerank(self, query, candidates, top_k=None):
+                self.calls += 1
                 return list(reversed(candidates))
 
+        llm_reranker = ReverseLLMReranker()
         hits = [_hit("src/high.py", 0.9), _hit("docs/answer.md", 0.8)]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            llm_reranker=ReverseLLMReranker(),
+            llm_reranker=llm_reranker,
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
-        results = await pipe.search("q")
+        results = await pipe.search("Explain the system architecture")
 
+        assert llm_reranker.calls == 1
         assert [result.path for result in results] == [
             "docs/answer.md",
             "src/high.py",
+        ]
+
+    async def test_llm_rerank_skipped_for_clear_dense_winner(self):
+        class RecordingLLMReranker:
+            def __init__(self):
+                self.calls = 0
+
+            async def rerank(self, query, candidates, top_k=None):
+                self.calls += 1
+                return candidates
+
+        llm_reranker = RecordingLLMReranker()
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(
+                [_hit("src/winner.py", 0.95), _hit("src/other.py", 0.60)]
+            ),
+            llm_reranker=llm_reranker,
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("find retry behavior")
+
+        assert llm_reranker.calls == 0
+        assert [result.path for result in results] == [
+            "src/winner.py",
+            "src/other.py",
         ]
 
     async def test_symbol_intent_does_not_use_path_index(self):
@@ -278,48 +322,48 @@ class TestRetrievalPipeline:
         )
 
         results = await pipe.search(
-            "`copilot_get_models` 的实现文件是？", frozenset({"a" * 64})
+            "`copilot_get_models` 的实现文件是？", _scope("a" * 64)
         )
 
         assert exact_store.identifiers == ("copilot_get_models",)
-        assert exact_store.allowed_blob_names == ["a" * 64]
+        assert exact_store.scope == _scope("a" * 64)
         assert results[0].path == "src-tauri/src/commands/copilot.rs"
 
     async def test_exact_identifier_failure_falls_back_to_semantic_results(self):
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/fallback.py", 0.9)]),
-            exact_store=FakeExactSearchStore(error=RuntimeError("database unavailable")),
+            exact_store=FakeExactSearchStore(
+                error=RuntimeError("database unavailable")
+            ),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
-        results = await pipe.search(
-            "`target_symbol` 在哪里？", frozenset({"a" * 64})
-        )
+        results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
 
         assert [result.path for result in results] == ["src/fallback.py"]
 
-    async def test_exact_identifier_skips_unbounded_and_large_scopes(self):
+    async def test_exact_identifier_requires_scope_but_accepts_large_scopes(self):
         exact_store = FakeExactSearchStore([_hit("src/exact.py", 1.0)])
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
             exact_store=exact_store,
-            settings=_settings(
-                confidence_floor=0.0,
-                final_select_k=10,
-                exact_max_scope_blobs=2,
-            ),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
         unbounded = await pipe.search("`target_symbol` 在哪里？")
-        oversized = await pipe.search(
-            "`target_symbol` 在哪里？", frozenset({"a", "b", "c"})
+        large_scope = await pipe.search(
+            "`target_symbol` 在哪里？",
+            SearchScope(frozenset(str(index) for index in range(2_001))),
         )
 
         assert [hit.path for hit in unbounded] == ["src/semantic.py"]
-        assert [hit.path for hit in oversized] == ["src/semantic.py"]
-        assert exact_store.identifiers == ()
+        assert [hit.path for hit in large_scope] == [
+            "src/exact.py",
+            "src/semantic.py",
+        ]
+        assert exact_store.identifiers == ("target_symbol",)
 
     def test_call_chain_exact_candidates_fill_window_without_overwriting_scores(self):
         class WindowedLLMReranker:
@@ -362,9 +406,13 @@ class TestRetrievalPipeline:
         )
         assert exact_position < WindowedLLMReranker.max_candidates
 
-    async def test_symbol_location_promotes_endpoint_after_llm_rerank(self):
+    async def test_confident_exact_symbol_skips_llm_and_promotes_endpoint(self):
         class HelperFirstLLMReranker:
+            def __init__(self):
+                self.calls = 0
+
             async def rerank(self, query, candidates, top_k=None):
+                self.calls += 1
                 return sorted(
                     candidates,
                     key=lambda item: "services" in item["path"],
@@ -383,19 +431,21 @@ class TestRetrievalPipeline:
             content="pub fn delete_profile() {}",
             score=0.95,
         )
+        llm_reranker = HelperFirstLLMReranker()
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(),
             exact_store=FakeExactSearchStore([endpoint, helper]),
-            llm_reranker=HelperFirstLLMReranker(),
+            llm_reranker=llm_reranker,
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
         results = await pipe.search(
             "`delete_profile` 函数的实现位置？",
-            frozenset({endpoint.blob_name, helper.blob_name}),
+            _scope(endpoint.blob_name, helper.blob_name),
         )
 
+        assert llm_reranker.calls == 0
         assert [result.path for result in results] == [endpoint.path, helper.path]
 
     async def test_multi_facet_query_recalls_and_fuses_each_facet(self):
@@ -444,6 +494,4 @@ class TestRetrievalPipeline:
 
         await pipe.search("First repository concern. Second repository concern.")
 
-        assert store.queries == [
-            "First repository concern. Second repository concern."
-        ]
+        assert store.queries == ["First repository concern. Second repository concern."]

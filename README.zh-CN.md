@@ -6,7 +6,7 @@
 
 **自托管、ACE 兼容的代码检索服务，为 AI 编码代理提供精准上下文。**
 
-dense + exact + path 混合召回 · cAST 语义切块 · LLM 重排 · 覆盖度感知选择
+dense + exact + path 混合召回 · cAST 语义切块 · 按需重排 · 任务感知选择
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -22,8 +22,8 @@ dense + exact + path 混合召回 · cAST 语义切块 · LLM 重排 · 覆盖�
 </div>
 
 OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 cAST 语义切块索引源码，
-把元数据存入 PostgreSQL 或 SQLite，在 Milvus 3.0 中做 dense 向量检索，并在覆盖度感知的
-最终选择之前用 LLM 对结果重排。
+把元数据存入 PostgreSQL 或 SQLite，在 Milvus 3.0 中做 dense 向量检索，只对歧义结果按需
+调用 LLM 重排，再按任务类型选择上下文。
 
 它提供两种部署模式：零依赖的**个人模式**（SQLite + 内嵌 Milvus Lite，后台 worker 关闭），
 面向单机；以及**服务模式**（PostgreSQL + Milvus 3.0 + Redis），面向共享、更高吞吐的部署。
@@ -43,7 +43,7 @@ OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 
 
 - **混合检索** —— 并发的 dense 语义召回（Milvus 3.0）、exact 精确标识符查找（`symbol_occurrences`）与独立路径索引，用加权 rank fusion 融合。
 - **cAST 语义切块** —— 基于 tree-sitter 沿语义边界切分源码，而非机械的行窗口。
-- **LLM 重排 + 覆盖度感知选择** —— 基础重排、可选 LLM 重排，再用贪心 bin-packing 优先保证仓库覆盖度、抑制重叠片段、限制每路径 chunk 数，并遵守硬字符预算。
+- **按需重排 + 任务感知选择** —— 高置信 exact/path 命中或分差明显的 dense 结果跳过可选 LLM 调用，歧义或结构复杂的结果才升级；symbol/path 查询保持 relevance 顺序，宽泛查询优先仓库覆盖度，并统一遵守重叠和字符预算。
 - **两种部署模式** —— 零依赖个人模式（SQLite + 内嵌 Milvus Lite）面向单机；服务模式（PostgreSQL + Milvus 3.0 + Redis）面向共享与更高吞吐。
 - **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
 - **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
@@ -189,13 +189,15 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 包含多个明确句子或列表项的仓库级请求，会被分解成一个完整查询加若干有界 facet 查询。每个
 查询独立召回候选；结果用加权 rank fusion（`RETRIEVAL_RRF_K` 可调）融合后再重排。单查询
 模式用 `RETRIEVAL_DEFAULT_TOP_K`，多查询模式每个查询用 `RETRIEVAL_PER_QUERY_TOP_K` 控制
-候选池大小。最终选择采用贪心 bin-packing 策略，优先保证仓库覆盖度（两遍：先确保每个文件
-都有代表，再用剩余预算补齐），抑制文件内重叠片段，限制每个路径的 chunk 数，并遵守硬字符
-预算。设 `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询 Top-K。
+候选池大小。可选 LLM 重排由不确定性触发：高置信 exact symbol、path 命中和分差明显的简单
+候选会跳过调用；歧义候选及 call-chain/overview/compound 查询才升级。最终选择对 symbol/path
+查询使用 focused 模式，按相关性顺序允许同文件提供更多片段；其他查询使用 coverage 模式，先
+覆盖不同文件再填充剩余预算。两种模式都抑制文件内重叠片段并遵守硬字符预算。设
+`RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询召回。
 
-精确标识符召回受 `RETRIEVAL_EXACT_MAX_SCOPE_BLOBS` 限制（默认 2000）。更大的 working set
-仍会执行 dense 和 path 检索，但跳过 SQL exact 阶段；调高上限会扩大精确召回范围，同时增加
-数据库开销。
+精确标识符召回直接关联 checkpoint 成员关系，大型工作集不会关闭 exact recall，也不会把全部
+成员展开为一个 SQL `IN (...)`。仅 added 组成的 scope 与异常大的请求增量会使用固定批次查询；
+超时仍回退 dense 检索。
 symbol index 只识别已支持的定义和 endpoint 模式，不是 call/reference/implementation graph；
 需要这些结构关系时应使用原生文本搜索或 LSP。
 
@@ -353,17 +355,17 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval.py`）按意图分阶段执行：可选的意图
-分类与查询改写、并发的 dense + exact 召回、加权 rank fusion、基础重排与可选的 LLM 重排，
-最后做覆盖度感知的选择。
+`RetrievalPipeline.search`（`domain/services/retrieval.py`）按意图分阶段执行：启发式路由与
+可选 LLM 意图覆盖/查询改写、并发的 dense + exact 召回、加权 rank fusion、基础重排、按
+不确定性触发的 LLM 重排，以及 focused/coverage 任务感知选择。
 
 ```mermaid
 flowchart TB
-    Q["查询：query + allowed_blob_names"]
-    Q --> Intent["意图分类（可选）<br/>→ 选择检索策略"]
+    Q["查询：query + SearchScope"]
+    Q --> Intent["启发式意图<br/>可选 LLM 覆盖"]
     Intent --> PathCheck{"路径增强分支？<br/>意图或文件名启发式"}
 
-    PathCheck -->|是| PathBoost["_search_with_path_boost<br/>路径召回 + 查询改写 + LLM 重排"]
+    PathCheck -->|是| PathBoost["_search_with_path_boost<br/>路径召回 + 可选查询改写"]
     PathCheck -->|否| Rewrite["查询改写（可选）<br/>query_planner.plan 拆分子查询"]
 
     Rewrite --> Recall
@@ -378,10 +380,12 @@ flowchart TB
     Fuse --> Merge["_merge_exact_hits 合并精确命中"]
     Merge --> Rerank["reranker.rerank 基础重排"]
     Rerank --> Source["_apply_source_priority 来源优先级"]
-    Source --> LLMRerank["_llm_rerank_hits<br/>LLM 重排（可选）"]
+    Source --> Gate{"结果歧义或查询复杂？"}
+    Gate -->|是| LLMRerank["_llm_rerank_hits<br/>LLM 重排"]
+    Gate -->|否| Promote
     LLMRerank --> Promote["_promote_symbol_endpoints 符号端点提升"]
     Promote --> Floor["_apply_confidence_floor 置信度下限"]
-    Floor --> Select["selector.select<br/>coverage / top-k 覆盖选择"]
+    Floor --> Select["selector.select<br/>focused / coverage"]
 
     PathBoost --> Select
     Select --> Out["最终命中（按融合分降序）"]

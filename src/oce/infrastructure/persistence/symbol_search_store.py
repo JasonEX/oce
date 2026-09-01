@@ -4,17 +4,25 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable, Sequence
+from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import and_, case, exists, or_, select
+from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchScope
 from oce.infrastructure.persistence.models import (
-    BlobChunkModel,
     BlobModel,
+    ChainMemberModel,
+    ChainModel,
     ChunkModel,
     SymbolOccurrenceModel,
 )
+
+
+_SCOPE_BATCH_SIZE = 500
+_RELATIONAL_DELTA_LIMIT = 500
 
 
 class SymbolSearchStore:
@@ -23,116 +31,161 @@ class SymbolSearchStore:
     def __init__(
         self,
         session_factory: Callable[[], AsyncSession],
-        max_scope_blobs: int = 2_000,
         timeout_seconds: float = 2.0,
     ) -> None:
         self._session_factory = session_factory
-        self._max_scope_blobs = max_scope_blobs
         self._timeout_seconds = timeout_seconds
 
     async def search_exact(
         self,
         *,
         identifiers: Sequence[str],
-        allowed_blob_names: Sequence[str] | None = None,
+        scope: SearchScope,
         top_k: int = 50,
     ) -> list[SearchHit]:
-        """查询标识符出现位置。
-
-        Args:
-            identifiers: 标识符列表（函数名、类名等）
-            allowed_blob_names: 允许的 blob 名称列表（scope 过滤）
-            top_k: 最大返回数量
-
-        Returns:
-            SearchHit 列表，按 kind 优先级排序（endpoint > definition）
-        """
+        """查询工作集内的标识符，按 endpoint > definition 排序。"""
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
-        if not identifiers or top_k <= 0:
+        if not identifiers or top_k <= 0 or not scope.blob_names:
             return []
-
-        # 前置检查：scope 必须合理
-        if allowed_blob_names is not None and self._max_scope_blobs > 0:
-            if len(allowed_blob_names) > self._max_scope_blobs:
-                return []
 
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
-                    return await self._query_symbols(
-                        session=session,
-                        identifiers=identifiers,
-                        allowed_blob_names=frozenset(allowed_blob_names) if allowed_blob_names else None,
-                        top_k=top_k,
-                    )
+                    rows = await self._query_scope(session, identifiers, scope, top_k)
         except TimeoutError:
             return []
+        return self._rows_to_hits(rows, top_k)
 
-    async def _query_symbols(
+    async def _query_scope(
         self,
         session: AsyncSession,
         identifiers: Sequence[str],
-        allowed_blob_names: frozenset[str] | None,
+        scope: SearchScope,
         top_k: int,
-    ) -> list[SearchHit]:
-        """执行实际查询。"""
-        # 构建查询：从 symbol_occurrences 开始
+    ) -> list[Row[Any]]:
+        delta_size = len(scope.added_blob_names) + len(scope.deleted_blob_names)
+        if (
+            scope.chain_id is not None
+            and scope.chain_version is not None
+            and delta_size <= _RELATIONAL_DELTA_LIMIT
+        ):
+            rows = await self._query_relational_scope(
+                session, identifiers, scope, top_k
+            )
+            current_version = await session.scalar(
+                select(ChainModel.version).where(ChainModel.chain_id == scope.chain_id)
+            )
+            if current_version == scope.chain_version:
+                return rows
+
+        # Added-only scopes and unusually large request deltas use bounded
+        # statements.  This is also the consistency fallback if a checkpoint
+        # changes between scope resolution and exact recall.
+        rows: list[Row[Any]] = []
+        names = sorted(scope.blob_names)
+        for offset in range(0, len(names), _SCOPE_BATCH_SIZE):
+            batch = names[offset : offset + _SCOPE_BATCH_SIZE]
+            rows.extend(
+                await self._query_rows(
+                    session,
+                    identifiers,
+                    SymbolOccurrenceModel.blob_name.in_(batch),
+                    top_k,
+                )
+            )
+        return rows
+
+    async def _query_relational_scope(
+        self,
+        session: AsyncSession,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        top_k: int,
+    ) -> list[Row[Any]]:
+        member_exists = exists(
+            select(1)
+            .select_from(ChainMemberModel)
+            .join(ChainModel, ChainModel.chain_id == ChainMemberModel.chain_id)
+            .where(
+                ChainMemberModel.chain_id == scope.chain_id,
+                ChainModel.version == scope.chain_version,
+                ChainMemberModel.blob_name == SymbolOccurrenceModel.blob_name,
+            )
+        )
+        membership = member_exists
+        if scope.added_blob_names:
+            membership = or_(
+                membership,
+                SymbolOccurrenceModel.blob_name.in_(scope.added_blob_names),
+            )
+        if scope.deleted_blob_names:
+            membership = and_(
+                membership,
+                SymbolOccurrenceModel.blob_name.not_in(scope.deleted_blob_names),
+            )
+        return await self._query_rows(session, identifiers, membership, top_k)
+
+    async def _query_rows(
+        self,
+        session: AsyncSession,
+        identifiers: Sequence[str],
+        scope_predicate: ColumnElement[bool],
+        top_k: int,
+    ) -> list[Row[Any]]:
+        kind_priority = case(
+            (SymbolOccurrenceModel.kind == "endpoint", 3),
+            (SymbolOccurrenceModel.kind == "definition", 2),
+            else_=1,
+        )
         stmt = (
             select(
                 SymbolOccurrenceModel.content_hash,
-                SymbolOccurrenceModel.identifier,
                 SymbolOccurrenceModel.kind,
                 SymbolOccurrenceModel.blob_name,
                 BlobModel.path,
                 ChunkModel.content,
-                BlobChunkModel.start_line,
-                BlobChunkModel.end_line,
+                SymbolOccurrenceModel.start_line,
+                SymbolOccurrenceModel.end_line,
             )
-            .join(ChunkModel, SymbolOccurrenceModel.content_hash == ChunkModel.content_hash)
-            .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
             .join(
-                BlobChunkModel,
-                (BlobChunkModel.content_hash == SymbolOccurrenceModel.content_hash)
-                & (BlobChunkModel.blob_name == SymbolOccurrenceModel.blob_name),
+                ChunkModel,
+                SymbolOccurrenceModel.content_hash == ChunkModel.content_hash,
             )
-            .where(SymbolOccurrenceModel.identifier.in_(identifiers))
+            .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
+            .where(
+                SymbolOccurrenceModel.identifier.in_(identifiers),
+                BlobModel.status == "ready",
+                scope_predicate,
+            )
+            .order_by(
+                kind_priority.desc(),
+                BlobModel.path,
+                SymbolOccurrenceModel.start_line,
+            )
+            .limit(max(top_k * 20, top_k))
         )
+        return list((await session.execute(stmt)).all())
 
-        # Scope 过滤
-        if allowed_blob_names:
-            stmt = stmt.where(SymbolOccurrenceModel.blob_name.in_(allowed_blob_names))
-
-        stmt = stmt.limit(max(top_k * 20, top_k))
-
-        result = await session.execute(stmt)
-        rows = result.all()
-
-        # 构建 SearchHit 并排序
-        hits = []
-        seen_hashes = set()
-
-        for content_hash, identifier, kind, blob_name, path, content, start_line, end_line in rows:
-            if content_hash in seen_hashes:
+    def _rows_to_hits(self, rows: Sequence[Row[Any]], top_k: int) -> list[SearchHit]:
+        hits: list[SearchHit] = []
+        seen: set[tuple[str, str, int, int]] = set()
+        for row in rows:
+            key = (row.blob_name, row.content_hash, row.start_line, row.end_line)
+            if key in seen:
                 continue
-            seen_hashes.add(content_hash)
-
-            # 按 kind 分配分数
-            score = self._score_by_kind(kind)
-
+            seen.add(key)
             hits.append(
                 SearchHit(
-                    blob_name=blob_name,
-                    path=path,
-                    content=content,
-                    score=score,
-                    content_hash=content_hash,
-                    start_line=start_line,
-                    end_line=end_line,
+                    blob_name=row.blob_name,
+                    path=row.path,
+                    content=row.content,
+                    score=self._score_by_kind(row.kind),
+                    content_hash=row.content_hash,
+                    start_line=row.start_line,
+                    end_line=row.end_line,
                 )
             )
-
-        # 按分数降序排序，取 top_k
-        hits.sort(key=lambda h: h.score, reverse=True)
+        hits.sort(key=lambda hit: (-hit.score, hit.path, hit.start_line))
         return hits[:top_k]
 
     @staticmethod
@@ -140,7 +193,6 @@ class SymbolSearchStore:
         """按 kind 分配优先级分数。"""
         if kind == "endpoint":
             return 1.0
-        elif kind == "definition":
+        if kind == "definition":
             return 0.95
-        else:
-            return 0.85
+        return 0.85

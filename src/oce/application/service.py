@@ -135,7 +135,7 @@ class RetrievalApplication:
         deleted = tuple(deleted_blobs or ())
         scope = await self._prepare_scope(checkpoint_id, added, deleted)
         result = await self._queries.ask(
-            SearchQuery(information_request, scope.blob_names, source="retrieval")
+            SearchQuery(information_request, scope.scope, source="retrieval")
         )
         elapsed_ms = int((time.perf_counter() - started) * 1000)
         return RetrievalResult(
@@ -195,9 +195,7 @@ class RetrievalApplication:
     async def requeue_stale(
         self, *, stale_hours: int = 24, limit: int = 100
     ) -> RequeueStaleResult:
-        return await self._commands.execute(
-            RequeueStaleCommand(stale_hours, limit)
-        )
+        return await self._commands.execute(RequeueStaleCommand(stale_hours, limit))
 
     async def run_gc(
         self, *, ttl_days: int = 30, dry_run: bool = True, limit: int = 1000

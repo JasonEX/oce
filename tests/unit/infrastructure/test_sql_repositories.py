@@ -1,21 +1,25 @@
 """Verify SQL repositories against an in-memory SQLite database."""
 
 import pytest
-from datetime import datetime, timezone
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk, ChunkRef
+from oce.domain.services.search import SearchScope
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
-from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
-from oce.infrastructure.persistence.sql_exact_search_store import SqlExactSearchStore
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
+from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
+from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from tests.conftest import make_sha256
 
 
 @pytest.fixture
 async def sqlite_session():
     """创建 SQLite 内存数据库 session"""
-    from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+    from sqlalchemy.ext.asyncio import (
+        create_async_engine,
+        AsyncSession,
+        async_sessionmaker,
+    )
     from oce.infrastructure.persistence.models import (
         BlobModel,
         ChunkModel,
@@ -52,7 +56,9 @@ async def sqlite_session():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    async_session_factory = async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     async with async_session_factory() as session:
         yield session
@@ -134,86 +140,157 @@ async def test_chunk_repository_crud(sqlite_session):
     assert loaded.content == "print('hello')"
 
 
-@pytest.mark.asyncio
-async def test_exact_search_store_prefers_definitions_and_honors_scope(sqlite_session):
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
+async def _save_symbol_blobs(sqlite_session, specs):
     blob_repo = SqlBlobRepository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
-    definition = Chunk(
-        make_sha256("definition"),
-        "src/commands/copilot.rs",
-        "#[tauri::command]\npub async fn copilot_get_models() {}",
-        10,
-        11,
-    )
-    reference = Chunk(
-        make_sha256("reference"),
-        "src/api/copilot.ts",
-        'invoke("copilot_get_models")',
-        20,
-        20,
-    )
-    outside = Chunk(
-        make_sha256("outside"),
-        "vendor/copilot.rs",
-        "pub fn copilot_get_models() {}",
-        1,
-        1,
-    )
-    helper = Chunk(
-        make_sha256("helper"),
-        "src/config/copilot.rs",
-        "pub async fn copilot_get_models() {}",
-        30,
-        30,
-    )
-    await chunk_repo.save_many([definition, reference, outside, helper])
-    names = [
-        make_sha256(value)
-        for value in ("definition", "reference", "outside", "helper")
+    chunks = [
+        Chunk(make_sha256(label), path, content, start_line, end_line)
+        for label, path, content, start_line, end_line in specs
     ]
+    names = [make_sha256(f"blob-{label}") for label, *_ in specs]
+    await chunk_repo.save_many(chunks)
     await blob_repo.save_many(
         [
-            Blob(names[0], definition.path, BlobStatus.READY, chunks=[definition.to_ref()]),
-            Blob(names[1], reference.path, BlobStatus.READY, chunks=[reference.to_ref()]),
-            Blob(names[2], outside.path, BlobStatus.READY, chunks=[outside.to_ref()]),
-            Blob(names[3], helper.path, BlobStatus.READY, chunks=[helper.to_ref()]),
+            Blob(name, chunk.path, BlobStatus.READY, chunks=[chunk.to_ref()])
+            for name, chunk in zip(names, chunks, strict=True)
         ]
     )
+    await sqlite_session.commit()
+    return names, chunks
+
+
+@pytest.mark.asyncio
+async def test_symbol_search_uses_chain_membership_and_request_deltas(sqlite_session):
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    names, chunks = await _save_symbol_blobs(
+        sqlite_session,
+        [
+            (
+                "definition",
+                "src/commands/copilot.rs",
+                "#[tauri::command]\npub async fn copilot_get_models() {}",
+                10,
+                11,
+            ),
+            (
+                "deleted",
+                "src/deleted/copilot.rs",
+                "#[tauri::command]\npub async fn copilot_get_models() {}",
+                20,
+                21,
+            ),
+            (
+                "added",
+                "src/config/copilot.rs",
+                "pub async fn copilot_get_models() {}",
+                30,
+                30,
+            ),
+            (
+                "outside",
+                "vendor/copilot.rs",
+                "pub fn copilot_get_models() {}",
+                1,
+                1,
+            ),
+        ],
+    )
+    chain = await SqlChainRepository(sqlite_session).create([names[0], names[1]])
     await sqlite_session.commit()
     factory = async_sessionmaker(
         sqlite_session.bind, class_=AsyncSession, expire_on_commit=False
     )
-    store = SqlExactSearchStore(factory)
+    store = SymbolSearchStore(factory)
 
     hits = await store.search_exact(
         identifiers=["copilot_get_models"],
-        allowed_blob_names=[names[0], names[1], names[3]],
+        scope=SearchScope(
+            blob_names=frozenset({names[0], names[2]}),
+            chain_id=chain.chain_id,
+            chain_version=chain.version,
+            added_blob_names=frozenset({names[2]}),
+            deleted_blob_names=frozenset({names[1]}),
+        ),
         top_k=10,
     )
 
-    assert [hit.path for hit in hits] == [definition.path, helper.path, reference.path]
+    assert [hit.path for hit in hits] == [chunks[0].path, chunks[2].path]
 
 
 @pytest.mark.asyncio
-async def test_exact_search_store_skips_unbounded_and_large_scopes(sqlite_session):
+async def test_symbol_search_keeps_exact_recall_for_large_checkpoint(sqlite_session):
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+    names, chunks = await _save_symbol_blobs(
+        sqlite_session,
+        [
+            (
+                "target",
+                "src/target.py",
+                "def target_symbol(): pass",
+                1,
+                1,
+            )
+        ],
+    )
+    members = [
+        names[0],
+        *(make_sha256(f"member-{index}") for index in range(2_000)),
+    ]
+    chain = await SqlChainRepository(sqlite_session).create(members)
+    await sqlite_session.commit()
     factory = async_sessionmaker(
         sqlite_session.bind, class_=AsyncSession, expire_on_commit=False
     )
-    store = SqlExactSearchStore(factory, max_scope_blobs=2)
+    store = SymbolSearchStore(factory)
 
-    unbounded = await store.search_exact(identifiers=["target"], top_k=10)
-    oversized = await store.search_exact(
-        identifiers=["target"],
-        allowed_blob_names=[make_sha256(str(index)) for index in range(3)],
+    hits = await store.search_exact(
+        identifiers=["target_symbol"],
+        scope=SearchScope(
+            blob_names=frozenset(members),
+            chain_id=chain.chain_id,
+            chain_version=chain.version,
+        ),
         top_k=10,
     )
 
-    assert unbounded == []
-    assert oversized == []
+    assert [hit.path for hit in hits] == [chunks[0].path]
+
+    stale_relation_hits = await store.search_exact(
+        identifiers=["target_symbol"],
+        scope=SearchScope(
+            blob_names=frozenset(members),
+            chain_id=chain.chain_id,
+            chain_version=chain.version + 1,
+        ),
+        top_k=10,
+    )
+    assert [hit.path for hit in stale_relation_hits] == [chunks[0].path]
+
+
+@pytest.mark.asyncio
+async def test_symbol_search_batches_large_added_only_scope(sqlite_session):
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+    names, chunks = await _save_symbol_blobs(
+        sqlite_session,
+        [("target", "src/target.py", "def target_symbol(): pass", 1, 1)],
+    )
+    scope_names = frozenset(
+        [names[0], *(make_sha256(f"added-{index}") for index in range(1_200))]
+    )
+    factory = async_sessionmaker(
+        sqlite_session.bind, class_=AsyncSession, expire_on_commit=False
+    )
+
+    hits = await SymbolSearchStore(factory).search_exact(
+        identifiers=["target_symbol"],
+        scope=SearchScope(blob_names=scope_names, added_blob_names=scope_names),
+        top_k=10,
+    )
+
+    assert [hit.path for hit in hits] == [chunks[0].path]
 
 
 @pytest.mark.asyncio
@@ -289,7 +366,11 @@ async def test_batch_operations(sqlite_session):
             blob_name=make_sha256(f"blob{i}"),
             path=f"src/file{i}.py",
             status=BlobStatus.PENDING,
-            chunks=[ChunkRef(content_hash=make_sha256(f"chunk{i}"), start_line=i, end_line=i)],
+            chunks=[
+                ChunkRef(
+                    content_hash=make_sha256(f"chunk{i}"), start_line=i, end_line=i
+                )
+            ],
         )
         for i in range(1, 4)
     ]

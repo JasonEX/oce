@@ -10,7 +10,7 @@ from time import perf_counter
 
 from oce.application.messages import Query
 from oce.domain.services.retrieval import RetrievalPipeline
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.metrics import (
     MetricsSink,
     NoopMetricsSink,
@@ -24,7 +24,7 @@ class SearchQuery(Query):
     """检索查询"""
 
     query: str
-    allowed_blob_names: frozenset[str] | None = None
+    scope: SearchScope | None = None
     source: str = "retrieval"
 
 
@@ -57,14 +57,12 @@ class SearchQueryHandler:
 
     async def handle(self, query: SearchQuery) -> SearchResult:
         if not self.retrieval_audit_enabled:
-            hits = await self.pipeline.search(query.query, query.allowed_blob_names)
+            hits = await self.pipeline.search(query.query, query.scope)
             return SearchResult(hits=hits)
 
         audit = RetrievalAudit()
         started = perf_counter()
-        hits = await self.pipeline.search(
-            query.query, query.allowed_blob_names, audit=audit
-        )
+        hits = await self.pipeline.search(query.query, query.scope, audit=audit)
         total_ms = int((perf_counter() - started) * 1000)
         self.metrics.record_retrieval(
             RetrievalMetricRecord(

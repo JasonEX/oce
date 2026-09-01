@@ -24,6 +24,24 @@ class SearchHit:
     end_line: int = 1
 
 
+@dataclass(frozen=True)
+class SearchScope:
+    """One resolved workspace scope shared by every retrieval backend.
+
+    ``blob_names`` is the authoritative materialized scope used by Milvus.  When
+    the scope came from a checkpoint, the chain metadata lets SQL stores apply
+    the same scope as a relation instead of expanding every member into an
+    ``IN`` clause.  Request deltas remain explicit because they have not been
+    committed to the checkpoint yet.
+    """
+
+    blob_names: frozenset[str]
+    chain_id: str | None = None
+    chain_version: int | None = None
+    added_blob_names: frozenset[str] = frozenset()
+    deleted_blob_names: frozenset[str] = frozenset()
+
+
 def search_hit_key(hit: SearchHit) -> tuple[str, str, int, int, str]:
     """Identify one source occurrence, including legacy hits without a hash."""
     return (
@@ -61,7 +79,7 @@ class ExactSearchStore(Protocol):
         self,
         *,
         identifiers: Sequence[str],
-        allowed_blob_names: Sequence[str] | None = None,
+        scope: SearchScope,
         top_k: int = 50,
     ) -> list[SearchHit]: ...
 

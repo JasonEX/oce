@@ -17,6 +17,8 @@
 - **config**: default intent classification off and keep all optional LLM calls off in newly generated personal configurations
 - **compose**: keep the Milvus data port internal to the service network
 - **retrieval**: use one canonical intent model and remove strategy options not connected to the pipeline
+- **retrieval**: preserve exact identifier recall for large checkpoints through relational or bounded-batch scope filtering
+- **retrieval**: gate LLM reranking by uncertainty and select focused or coverage context by query intent
 
 ## [0.2.0] - 2026-08-30
 
