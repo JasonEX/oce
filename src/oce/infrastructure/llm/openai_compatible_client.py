@@ -98,7 +98,6 @@ class OpenAICompatibleLLMClient:
         client_kwargs: dict = {"timeout": self.timeout}
         if self.proxy:
             client_kwargs["proxy"] = self.proxy
-            client_kwargs["verify"] = False
 
         # 输入按 prompt 估算，输出按固定余量记账
         estimated = (
@@ -148,15 +147,13 @@ class OpenAICompatibleLLMClient:
                         )
                         await asyncio.sleep(_RETRY_BACKOFF_SECONDS)
                         continue
-                    logger.error(
-                        f"LLM API error: {e.response.status_code} {e.response.text}"
-                    )
+                    logger.error("LLM API error: status={}", e.response.status_code)
                     raise
-                except httpx.TimeoutException as e:
-                    logger.error(f"LLM API timeout after {self.timeout}s: {e}")
+                except httpx.TimeoutException:
+                    logger.error("LLM API timeout after {}s", self.timeout)
                     raise
                 except Exception as e:
-                    logger.error(f"LLM client error: {type(e).__name__}: {e}")
+                    logger.error("LLM client error: {}", type(e).__name__)
                     raise
 
         raise RuntimeError("LLM chat exhausted retries without a response")

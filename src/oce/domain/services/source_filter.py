@@ -104,16 +104,41 @@ IGNORED_FILE_SUFFIXES = (
     ".db",
 )
 
+SENSITIVE_DIRECTORY_NAMES = frozenset({".aws", ".ssh"})
+SENSITIVE_FILE_NAMES = frozenset(
+    {
+        ".git-credentials",
+        ".netrc",
+        ".npmrc",
+        ".pypirc",
+        "id_ed25519",
+        "id_rsa",
+    }
+)
+SENSITIVE_FILE_SUFFIXES = (".pem", ".key", ".p12", ".pfx")
+SAFE_ENV_SUFFIXES = (".example", ".sample", ".template")
+
 
 def is_ignored_source_path(path: str) -> bool:
     """Return whether a path is dependency, generated, or non-source content."""
     normalized = path.replace("\\", "/").casefold()
     parts = tuple(part for part in normalized.split("/") if part)
+    filename = parts[-1] if parts else ""
     if any(
         part in IGNORED_DIRECTORY_NAMES
         or part.endswith((".egg-info", "-retrieval-eval"))
         for part in parts[:-1]
     ):
+        return True
+    if any(part in SENSITIVE_DIRECTORY_NAMES for part in parts[:-1]):
+        return True
+    if filename in SENSITIVE_FILE_NAMES:
+        return True
+    if filename == ".env" or (
+        filename.startswith(".env.") and not filename.endswith(SAFE_ENV_SUFFIXES)
+    ):
+        return True
+    if filename.endswith(SENSITIVE_FILE_SUFFIXES):
         return True
     return normalized.endswith(IGNORED_FILE_SUFFIXES)
 

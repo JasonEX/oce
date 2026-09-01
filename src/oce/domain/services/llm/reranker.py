@@ -61,7 +61,12 @@ class LLMReranker:
 
         top_k = top_k or self.output_top_k
 
-        logger.info(f"LLM rerank called: query='{query}', candidates={len(candidates)}, top_k={top_k}")
+        logger.info(
+            "LLM rerank called: query_chars={}, candidates={}, top_k={}",
+            len(query),
+            len(candidates),
+            top_k,
+        )
 
         # 限制候选数量（控制成本和 token 长度）
         candidates_subset = candidates[: self.max_candidates]
@@ -83,7 +88,10 @@ class LLMReranker:
             return reranked_results[:top_k]
 
         except Exception as e:
-            logger.warning(f"LLM rerank failed: {e}, falling back to original order")
+            logger.warning(
+                "LLM rerank failed: {}; falling back to original order",
+                type(e).__name__,
+            )
             return candidates[:top_k]
 
     def _format_candidate(self, index: int, candidate: dict) -> str:
@@ -153,9 +161,7 @@ class LLMReranker:
         order = order[:top_k]
 
         if not order:
-            logger.warning(
-                f"LLM returned no valid indices. Raw response: {response[:200]}"
-            )
+            logger.warning("LLM returned no valid rerank indices")
             return list(range(min(top_k, len(candidates))))
 
         return order

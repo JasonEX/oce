@@ -23,6 +23,7 @@ from oce.infrastructure.llm.openai_compatible_client import (
 )
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import LLMSettings
+from oce.shared.errors import ServiceNotReadyError
 
 # OpenAICompatibleLLMClient 的默认超时；env 回落分支无 DB timeout_seconds 时沿用。
 _DEFAULT_LLM_TIMEOUT = 120.0
@@ -110,8 +111,13 @@ class CredentialConfiguredLLMClient:
                 credential_id=credential.id,
             )
 
+        fallback_key = fb.api_key.get_secret_value() if fb.api_key else ""
+        if not fallback_key:
+            raise ServiceNotReadyError(
+                f"No active {self._kind} credential or LLM_API_KEY is configured"
+            )
         return LLMRuntimeConfig(
-            api_key=fb.api_key.get_secret_value() if fb.api_key else "",
+            api_key=fallback_key,
             base_url=fb.base_url,
             model=None,
             proxy=fb.proxy,

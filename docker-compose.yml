@@ -92,8 +92,6 @@ services:
       MINIO_ADDRESS: minio:9000
     volumes:
       - milvus_data:/var/lib/milvus
-    ports:
-      - "${MILVUS_PORT:-19530}:19530"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 15s

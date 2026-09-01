@@ -2,12 +2,27 @@
 
 import pytest
 
+from oce.domain.services.llm.intent import IntentClassifier
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
     extract_code_identifiers,
     should_use_path_index,
 )
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [("S", QueryIntent.SYMBOL), ("P", QueryIntent.PATH)],
+)
+async def test_llm_classifier_returns_canonical_intent(label, expected):
+    class FakeLLM:
+        async def chat(self, **kwargs):
+            return label
+
+    classifier = IntentClassifier(FakeLLM(), "test-model")
+
+    assert await classifier.classify("query") == expected
 
 
 def test_extract_code_identifiers_preserves_explicit_anchors():

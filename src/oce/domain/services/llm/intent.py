@@ -12,22 +12,9 @@
 
 from __future__ import annotations
 
-from enum import Enum
-
 from oce.domain.services.llm.client import LLMClient
 from oce.domain.services.llm.prompts import INTENT_SYSTEM_PROMPT, INTENT_USER_TEMPLATE
-
-
-class QueryIntent(str, Enum):
-    """查询意图枚举"""
-    
-    SYMBOL = "S"          # 符号定义
-    CALL_CHAIN = "C"      # 调用链
-    REFERENCE = "R"       # 引用位置
-    PATH = "P"            # 文件路径
-    FEATURE = "F"         # 功能实现
-    OVERVIEW = "O"        # 架构概览
-    COMPOUND = "M"        # 复合查询
+from oce.domain.services.query_classifier import QueryIntent
 
 
 # Label 映射

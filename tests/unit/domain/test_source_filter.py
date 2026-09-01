@@ -27,6 +27,16 @@ def test_keeps_text_configuration_formats():
     assert not is_ignored_source_path("test/fixtures/prompt-snapshots/result.json")
 
 
+def test_rejects_common_secret_files_without_hiding_templates_or_source():
+    assert is_ignored_source_path(".env")
+    assert is_ignored_source_path("deploy/.env.production")
+    assert is_ignored_source_path("certs/private.pem")
+    assert is_ignored_source_path(".ssh/config")
+    assert not is_ignored_source_path(".env.example")
+    assert not is_ignored_source_path("config/.env.production.example")
+    assert not is_ignored_source_path("src/credentials.py")
+
+
 def test_ignores_data_and_visual_asset_formats():
     assert is_ignored_source_path("data/events.jsonl")
     assert is_ignored_source_path("data/events.csv")

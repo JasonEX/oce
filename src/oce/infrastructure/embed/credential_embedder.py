@@ -28,7 +28,14 @@ class EmbeddingRuntimeConfig:
     max_concurrency: int
     timeout_seconds: float
     proxy: str | None
+    query_instruction: str
     credential_id: int = 0
+
+
+@dataclass(frozen=True)
+class PreparedEmbeddingReload:
+    delegate: OpenAIEmbedder
+    config: EmbeddingRuntimeConfig
 
 
 class CredentialConfiguredEmbedder:
@@ -47,6 +54,7 @@ class CredentialConfiguredEmbedder:
         self._expected_dimensions = expected_dimensions
         self._on_usage = on_usage
         self._delegate: OpenAIEmbedder | None = None
+        self._config: EmbeddingRuntimeConfig | None = None
         self._lock = asyncio.Lock()
         self._active_calls: dict[OpenAIEmbedder, int] = {}
         self._retired: set[OpenAIEmbedder] = set()
@@ -70,6 +78,7 @@ class CredentialConfiguredEmbedder:
             if self._delegate is None:
                 config = await self._resolve_config()
                 self._delegate = self._build_delegate(config)
+                self._config = config
             delegate = self._delegate
             self._active_calls[delegate] = self._active_calls.get(delegate, 0) + 1
             return delegate
@@ -101,6 +110,7 @@ class CredentialConfiguredEmbedder:
             max_concurrency=config.max_concurrency,
             timeout=config.timeout_seconds,
             proxy=config.proxy,
+            query_instruction=config.query_instruction,
             credential_id=config.credential_id,
             on_usage=self._on_usage,
         )
@@ -150,6 +160,7 @@ class CredentialConfiguredEmbedder:
                 max_concurrency=self._fallback.max_concurrency,
                 timeout_seconds=self._fallback.timeout_seconds,
                 proxy=self._fallback.proxy,
+                query_instruction=self._fallback.query_instruction,
             )
         else:
             fb = self._fallback
@@ -186,6 +197,7 @@ class CredentialConfiguredEmbedder:
                 max_concurrency=fb.max_concurrency,
                 timeout_seconds=float(credential.timeout_seconds),
                 proxy=fb.proxy,
+                query_instruction=fb.query_instruction,
                 credential_id=credential.id,
             )
 
@@ -201,6 +213,7 @@ class CredentialConfiguredEmbedder:
             if self._delegate is not None:
                 delegates.add(self._delegate)
             self._delegate = None
+            self._config = None
             self._retired.clear()
         await asyncio.gather(*(delegate.close() for delegate in delegates))
 
@@ -208,14 +221,42 @@ class CredentialConfiguredEmbedder:
         replacement = await self.prepare_reload()
         return await self.activate_prepared(replacement)
 
-    async def prepare_reload(self) -> OpenAIEmbedder:
-        return self._build_delegate(await self._resolve_config())
+    @staticmethod
+    def _indexed_vector_config(config: EmbeddingRuntimeConfig) -> tuple[object, ...]:
+        endpoint = config.endpoint.rstrip("/")
+        if endpoint.endswith("/embeddings"):
+            endpoint = endpoint[: -len("/embeddings")]
+        return (
+            endpoint,
+            config.model,
+            config.dimensions,
+            config.max_input_chars,
+            config.input_overlap_chars,
+        )
 
-    async def activate_prepared(self, replacement: OpenAIEmbedder) -> int:
+    def _ensure_reload_compatible(self, config: EmbeddingRuntimeConfig) -> None:
+        if self._config is None:
+            return
+        if self._indexed_vector_config(config) != self._indexed_vector_config(
+            self._config
+        ):
+            raise ServiceNotReadyError(
+                "Embedding model or document preprocessing changed; rebuild from clean "
+                "metadata and vector storage, then resync clients before reloading"
+            )
+
+    async def prepare_reload(self) -> PreparedEmbeddingReload:
+        config = await self._resolve_config()
+        async with self._lock:
+            self._ensure_reload_compatible(config)
+        return PreparedEmbeddingReload(self._build_delegate(config), config)
+
+    async def activate_prepared(self, replacement: PreparedEmbeddingReload) -> int:
         close_previous: OpenAIEmbedder | None = None
         async with self._lock:
             previous = self._delegate
-            self._delegate = replacement
+            self._delegate = replacement.delegate
+            self._config = replacement.config
             if previous is not None:
                 if self._active_calls.get(previous, 0):
                     self._retired.add(previous)
@@ -225,5 +266,5 @@ class CredentialConfiguredEmbedder:
             await close_previous.close()
         return 1
 
-    async def discard_prepared(self, replacement: OpenAIEmbedder) -> None:
-        await replacement.close()
+    async def discard_prepared(self, replacement: PreparedEmbeddingReload) -> None:
+        await replacement.delegate.close()

@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
 
+import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from oce.shared.database.session import Base
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import EmbeddingSettings
+from oce.shared.errors import ServiceNotReadyError
 
 
 async def _runtime():
@@ -58,6 +61,7 @@ async def test_environment_settings_are_used_without_active_credential():
         api_key="fallback-key",
         max_batch_size=7,
         max_batch_chars=31_000,
+        query_instruction="Represent this query: ",
     )
     embedder = CredentialConfiguredEmbedder(
         sessions,
@@ -70,6 +74,48 @@ async def test_environment_settings_are_used_without_active_credential():
     assert config.api_key == "fallback-key"
     assert config.max_batch_size == 7
     assert config.max_batch_chars == 31_000
+    assert config.query_instruction == "Represent this query: "
+    delegate = embedder._build_delegate(config)
+    assert delegate._query_instruction == "Represent this query: "
+    await delegate.close()
+    await engine.dispose()
+
+
+async def test_reload_allows_key_rotation_but_rejects_vector_semantic_changes():
+    engine, sessions = await _runtime()
+    embedder = CredentialConfiguredEmbedder(
+        sessions,
+        EmbeddingSettings(api_key="fallback-key"),
+        expected_dimensions=1024,
+    )
+    current = await embedder._resolve_config()
+    embedder._config = current
+
+    class Delegate:
+        async def close(self):
+            pass
+
+    embedder._build_delegate = lambda _config: Delegate()
+
+    rotated = replace(current, api_key="rotated-key", timeout_seconds=45.0)
+
+    async def resolve_rotated():
+        return rotated
+
+    embedder._resolve_config = resolve_rotated
+    prepared = await embedder.prepare_reload()
+    assert prepared.config.api_key == "rotated-key"
+    await embedder.discard_prepared(prepared)
+
+    changed_model = replace(current, model="different-model")
+
+    async def resolve_changed_model():
+        return changed_model
+
+    embedder._resolve_config = resolve_changed_model
+    with pytest.raises(ServiceNotReadyError, match="clean metadata and vector storage"):
+        await embedder.prepare_reload()
+
     await engine.dispose()
 
 

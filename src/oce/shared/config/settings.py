@@ -125,11 +125,10 @@ class RerankSettings(BaseSettings):
 
 
 class LLMSettings(BaseSettings):
-    """共享 LLM 客户端配置。
+    """LLM 功能共享的环境变量 fallback 配置。
 
-    被三个功能共用同一个 OpenAI 兼容 client：LLM 语义重排（rerank_enabled）、
-    查询改写（RetrievalSettings.query_rewrite_enabled）、意图分类
-    （RetrievalSettings.intent_classification_enabled）。三者任一开启即初始化。
+    LLM 语义重排、查询改写和意图分类分别按 kind 构造客户端；未配置对应
+    model_credentials 行时，共同回落到这里的 LLM_* 设置。
     """
 
     model_config = SettingsConfigDict(
@@ -223,7 +222,10 @@ class RetrievalSettings(BaseSettings):
     )
 
     # Intent classification (意图分类驱动的检索策略)
-    intent_classification_enabled: bool = Field(default=True, description="是否启用查询意图分类（LLM-based）")
+    intent_classification_enabled: bool = Field(
+        default=False,
+        description="是否启用查询意图分类（LLM-based）",
+    )
 
 
 class RedisSettings(BaseSettings):

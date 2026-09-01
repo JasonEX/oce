@@ -94,21 +94,18 @@ EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 ```
 
-推荐再配置一个 OpenAI 兼容的轻量 LLM，用于意图识别和语义精排。模型名和 endpoint 请以
-你使用的供应商为准，例如 `qwen3.7-flash`；追求速度时也可以选择供应商提供的更快模型：
+嵌入会把准入后的源码块发送到配置的 endpoint；可选 LLM 功能还会发送检索 query 和候选源码
+片段。私有代码只应使用获准接收这些数据的端点，优先选择本地或内网服务。
+
+新生成的个人模式配置默认关闭可选 LLM 调用。如需意图识别和语义精排，请配置一个允许接收
+代码片段的 OpenAI 兼容轻量 LLM，并显式开启这两项功能：
 
 ```dotenv
 LLM_API_KEY=你的 LLM 服务密钥
 LLM_BASE_URL=https://provider.example.com/v1
 LLM_MODEL=qwen3.7-flash
-RERANK_ENABLED=false
-```
-
-如果暂时不配置 LLM，请同时关闭 LLM 重排和意图分类：
-
-```dotenv
-LLM_RERANK_ENABLED=false
-RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=false
+LLM_RERANK_ENABLED=true
+RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=true
 ```
 
 然后启动服务：
@@ -146,8 +143,9 @@ Copy-Item .env.example .env
 docker compose up -d
 ```
 
-根目录的 `docker-compose.yml` 会一起启动 OCE、PostgreSQL、Redis 和 Milvus 依赖，应用容器
-启动时自动执行迁移。服务模式务必把 `API_KEY` 和 `ADMIN_API_KEY` 换成强随机值，并在 `.env`
+根目录的 `docker-compose.yml` 会一起启动 OCE、PostgreSQL、Redis 和 Milvus 依赖；只向宿主机
+发布 OCE API，Milvus 保留在 Compose 内部网络。应用容器启动时自动执行迁移。服务模式务必
+把 `API_KEY` 和 `ADMIN_API_KEY` 换成强随机值，并在 `.env`
 中设置 Compose 使用的 `POSTGRES_PASSWORD`、`REDIS_PASSWORD`；不要把真实密钥提交到仓库。
 开发环境若只想启动依赖、在宿主机运行应用，可使用 `docker-compose.dev.yml`，但要先把
 `.env` 中的 `DB_URL`、`REDIS_URL` 改为该文件映射到宿主机的端口，再执行
@@ -178,7 +176,10 @@ admin key 只保存在浏览器本地存储中，不要写入 URL、仓库或日
 `query_rewrite`、`intent`）解析凭据：取 status=active 中 `priority` 数字最小的一行。某个
 kind 没有匹配的启用行时，对应客户端回退到各自的环境变量（`EMBED_*`、`RERANK_*`、`LLM_*`；
 重排还会复用嵌入 key）。通过 `/admin/credentials` API 管理这些行，再调
-`POST /admin/credentials/reload` 即可在不重启服务的情况下热重载所有客户端。
+`POST /admin/credentials/reload` 可在不重启服务的情况下热重载运行凭据。嵌入 API key、凭据
+超时和凭据批量限制可原位更新；更换嵌入 endpoint、模型、维度或文档输入窗口前，必须准备
+干净的元数据与向量存储，再让客户端完整重同步。当前 embedder 已激活时，不兼容的热重载会
+被拒绝。升级版本若改变了切块或索引行为，也按同样方式重建。
 
 SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`max_batch_size` 和
 `max_batch_chars` 是每个凭据可覆盖的 provider 默认值。超过 `max_input_chars` 的输入会在
@@ -192,9 +193,16 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 都有代表，再用剩余预算补齐），抑制文件内重叠片段，限制每个路径的 chunk 数，并遵守硬字符
 预算。设 `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询 Top-K。
 
-上传准入会在切块前拒绝依赖/构建/缓存目录、含 NUL 的文件，以及 SVG、媒体、压缩包、压缩
-打包产物、source map、lock 文件等非源码产物。被跳过的路径会作为空的 ready blob 持久化，
-避免客户端反复重传。项目清单和测试固件有显式豁免。
+精确标识符召回受 `RETRIEVAL_EXACT_MAX_SCOPE_BLOBS` 限制（默认 2000）。更大的 working set
+仍会执行 dense 和 path 检索，但跳过 SQL exact 阶段；调高上限会扩大精确召回范围，同时增加
+数据库开销。
+symbol index 只识别已支持的定义和 endpoint 模式，不是 call/reference/implementation graph；
+需要这些结构关系时应使用原生文本搜索或 LSP。
+
+上传准入会在切块前拒绝依赖/构建/缓存目录、`.env`、私钥、SSH/AWS 凭据目录、含 NUL 的文件，
+以及 SVG、媒体、压缩包、压缩打包产物、source map、lock 文件等非源码产物；`.env.example`
+等安全模板仍可索引。被跳过的路径会作为空的 ready blob 持久化，避免客户端反复重传。
+项目清单和测试固件有显式豁免。
 
 ## 客户端与 MCP
 

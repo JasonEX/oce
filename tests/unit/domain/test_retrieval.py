@@ -243,6 +243,22 @@ class TestRetrievalPipeline:
         assert path_store.queries == 0
         assert [result.path for result in results] == ["src/commands/provider.rs"]
 
+    async def test_intent_failure_falls_back_without_aborting_retrieval(self):
+        class FailingIntentClassifier:
+            async def classify(self, query: str) -> QueryIntent:
+                raise RuntimeError("intent service unavailable")
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/core.py", 0.9)]),
+            intent_classifier=FailingIntentClassifier(),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("how is authentication implemented")
+
+        assert [result.path for result in results] == ["src/core.py"]
+
     async def test_exact_identifier_candidates_join_semantic_reranking(self):
         exact_store = FakeExactSearchStore(
             [

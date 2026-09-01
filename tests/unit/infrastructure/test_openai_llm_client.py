@@ -89,3 +89,23 @@ async def test_chat_without_callback_is_inert(monkeypatch):
     assert await client.chat(
         [{"role": "user", "content": "hi"}], model="test-llm"
     ) == "hi"
+
+
+@pytest.mark.asyncio
+async def test_proxy_does_not_disable_tls_verification(monkeypatch):
+    captured: dict[str, object] = {}
+    payload = {"choices": [{"message": {"content": "hi"}}]}
+
+    def factory(**kwargs):
+        captured.update(kwargs)
+        return _FakeAsyncClient(payload, **kwargs)
+
+    monkeypatch.setattr(llm_mod.httpx, "AsyncClient", factory)
+    client = OpenAICompatibleLLMClient(
+        api_key="sk",
+        proxy="http://proxy.test:8080",
+    )
+
+    assert await client.chat([{"role": "user", "content": "hi"}]) == "hi"
+    assert captured["proxy"] == "http://proxy.test:8080"
+    assert "verify" not in captured

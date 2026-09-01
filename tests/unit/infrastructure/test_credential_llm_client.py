@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from oce.infrastructure.llm.credential_llm_client import CredentialConfiguredLLMClient
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import LLMSettings
 from oce.shared.database.session import Base
+from oce.shared.errors import ServiceNotReadyError
 
 
 async def _runtime():
@@ -78,6 +80,21 @@ async def test_falls_back_to_env_without_credential():
     assert config.model is None
     assert config.tpm_limit == 12_345
     assert config.credential_id == 0
+    await engine.dispose()
+
+
+async def test_missing_database_and_environment_credential_fails_locally():
+    engine, sessions = await _runtime()
+    client = CredentialConfiguredLLMClient(
+        "intent",
+        sessions,
+        LLMSettings(api_key=""),
+        fallback_model="env-model",
+    )
+
+    with pytest.raises(ServiceNotReadyError, match="No active intent credential"):
+        await client._resolve_config()
+
     await engine.dispose()
 
 

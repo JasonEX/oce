@@ -99,22 +99,20 @@ EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 ```
 
-For better intent classification and semantic reranking, configure an OpenAI-compatible
-lightweight LLM. Use the model and endpoint provided by your vendor; for example,
-`qwen3.7-flash` or another low-latency model:
+Embedding sends admitted source chunks to the configured endpoint. Optional LLM
+features send retrieval queries and candidate snippets as well. For private code, use
+only endpoints approved to receive that data, preferably local or internal services.
+
+The generated personal configuration keeps optional LLM calls disabled. To enable intent
+classification and semantic reranking, configure an OpenAI-compatible lightweight LLM
+that is permitted to receive code snippets, then turn on the two features:
 
 ```dotenv
 LLM_API_KEY=your_llm_service_key
 LLM_BASE_URL=https://provider.example.com/v1
 LLM_MODEL=qwen3.7-flash
-RERANK_ENABLED=false
-```
-
-If you do not want to configure an LLM yet, disable both LLM features:
-
-```dotenv
-LLM_RERANK_ENABLED=false
-RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=false
+LLM_RERANK_ENABLED=true
+RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=true
 ```
 
 Then start the service:
@@ -157,8 +155,9 @@ docker compose up -d
 ```
 
 The root `docker-compose.yml` starts OCE, PostgreSQL, Redis, and the Milvus dependencies;
-the application container runs database migrations on startup. In service mode, replace
-`API_KEY` and `ADMIN_API_KEY` with strong random values and set the
+only the OCE API is published to the host, while Milvus remains on the internal Compose
+network. The application container runs database migrations on startup. In service mode,
+replace `API_KEY` and `ADMIN_API_KEY` with strong random values and set the
 `POSTGRES_PASSWORD` and `REDIS_PASSWORD` values used by Compose. Never commit real
 credentials. For development setups that start only the dependencies and run the app on
 the host, use `docker-compose.dev.yml`; update `DB_URL` and `REDIS_URL` to its published
@@ -195,7 +194,12 @@ Model clients resolve credentials from the single `model_credentials` table by `
 lowest `priority` number wins. When no active row matches a kind, that client falls back
 to its environment variables (`EMBED_*`, `RERANK_*`, `LLM_*`; rerank also reuses the
 embedding key). Manage these rows through the `/admin/credentials` API, then call
-`POST /admin/credentials/reload` to hot-reload every client without restarting the service.
+`POST /admin/credentials/reload` to hot-reload runtime credentials without restarting the
+service. Embedding API keys, credential timeouts, and credential batching limits can be
+reloaded in place. Changing the embedding endpoint, model, dimensions, or document input
+window requires clean metadata and vector storage followed by a full client resync; an
+incompatible hot reload is rejected once the current embedder is active. Rebuild the same
+way after an upgrade that changes chunking or indexing behavior.
 
 SiliconFlow accepts at most 32,000 characters across one embedding request's `input`
 array. `max_batch_size` and `max_batch_chars` are provider defaults that each credential
@@ -214,10 +218,18 @@ budget), suppresses overlapping spans within files, caps chunks per path, and re
 hard character budget. Disable decomposition with `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false`
 to revert to classic single-query Top-K behavior.
 
-Upload admission rejects dependency/build/cache directories, NUL-containing files, and
+Exact identifier recall is bounded by `RETRIEVAL_EXACT_MAX_SCOPE_BLOBS` (default 2000).
+Larger working sets continue through dense and path retrieval but skip the SQL exact stage;
+raising the limit trades additional database work for a larger exact-recall scope.
+The symbol index recognizes supported definition and endpoint patterns; it is not a call,
+reference, or implementation graph. Use native text search or an LSP for those relations.
+
+Upload admission rejects dependency/build/cache directories, common secret files such as
+`.env`, private keys, and SSH/AWS credential directories, NUL-containing files, and
 non-source artifacts such as SVG, media, archives, minified bundles, source maps, and lock
-files before chunking. Skipped paths are persisted as empty ready blobs so clients do not
-re-upload them indefinitely. Project manifests and test fixtures have explicit exemptions.
+files before chunking. Safe templates such as `.env.example` remain indexable. Skipped
+paths are persisted as empty ready blobs so clients do not re-upload them indefinitely.
+Project manifests and test fixtures have explicit exemptions.
 
 ## Client and MCP
 

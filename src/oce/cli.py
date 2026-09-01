@@ -52,6 +52,7 @@ API_KEY=sk-opencontextengine
 
 # ==================== 必填 ====================
 # 嵌入服务 API 密钥（个人模式唯一必填项；缺失则无法建索引 / 检索）
+# 工作区源码片段会发送到该服务；私有代码请使用获准的内网或本地端点。
 EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 
 # ==================== 嵌入服务（按需调整）====================
@@ -63,7 +64,10 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # EMBED_DIMENSIONS=1024
 
 # ==================== 可选：LLM 增强 ====================
-# 重排 / 意图分类默认开启；可在 model_credentials 表按 kind 配置，未配置则用下面的 fallback。
+# 个人模式默认关闭可选 LLM 调用；配置受信任的 LLM 后可按需开启。
+# 开启后，检索 query 和候选源码片段会发送到该 LLM。
+LLM_RERANK_ENABLED=false
+RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=false
 # LLM_API_KEY=your_llm_api_key_here
 # LLM_BASE_URL=https://openrouter.ai/api/v1
 # LLM_MODEL=inclusionai/ling-3.0-flash-fin:free

@@ -62,7 +62,7 @@ class QueryRewriter:
         if not query or not query.strip():
             return [query]
 
-        logger.info(f"Query rewrite: original='{query}'")
+        logger.info("Query rewrite called: query_chars={}", len(query))
 
         try:
             rewritten_queries = await self._llm_rewrite(query)
@@ -71,11 +71,14 @@ class QueryRewriter:
             if query not in rewritten_queries:
                 rewritten_queries.insert(0, query)
             
-            logger.info(f"Query rewrite: generated {len(rewritten_queries)} queries: {rewritten_queries}")
+            logger.info("Query rewrite generated {} queries", len(rewritten_queries))
             return rewritten_queries
 
         except Exception as e:
-            logger.warning(f"Query rewrite failed: {e}, using original query only")
+            logger.warning(
+                "Query rewrite failed: {}; using original query only",
+                type(e).__name__,
+            )
             return [query]
 
     def _is_valid_rewrite(self, candidate: str) -> bool:
@@ -130,9 +133,9 @@ class QueryRewriter:
         rewritten_queries = rewritten_queries[: self.num_rewrites]
 
         if rejected:
-            logger.warning(f"Query rewrite dropped {len(rejected)} invalid lines: {rejected}")
+            logger.warning("Query rewrite dropped {} invalid lines", len(rejected))
 
         if not rewritten_queries:
-            logger.warning(f"LLM returned no valid queries. Raw response: {response[:200]}")
+            logger.warning("LLM returned no valid rewritten queries")
 
         return rewritten_queries

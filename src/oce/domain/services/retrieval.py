@@ -15,7 +15,7 @@ import asyncio
 import re
 from contextlib import contextmanager
 from dataclasses import replace
-from typing import Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator
 
 from loguru import logger
 
@@ -37,6 +37,9 @@ from oce.domain.services.selector.protocols import Selector
 from oce.shared.config import get_settings
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
+
+if TYPE_CHECKING:
+    from oce.domain.services.llm.rewriter import QueryRewriter
 
 # LLM reranker (optional)
 try:
@@ -167,10 +170,21 @@ class RetrievalPipeline:
         strategy = None
         detected_intent = None
         if self.intent_classifier is not None:
-            with stage("intent"):
-                detected_intent = await self.intent_classifier.classify(query)
+            try:
+                with stage("intent"):
+                    detected_intent = await self.intent_classifier.classify(query)
+            except Exception as exc:
+                heuristic_intent = classify_query_intent(query)
+                detected_intent = heuristic_intent
+                logger.warning(
+                    "Intent classification failed: {}; using heuristic intent {}",
+                    type(exc).__name__,
+                    heuristic_intent.value,
+                )
             strategy = get_strategy(detected_intent)
-            logger.debug(f"Query intent: {detected_intent.value}, strategy: {strategy}")
+            logger.debug(
+                "Query intent: {}, strategy: {}", detected_intent.value, strategy
+            )
         if audit is not None and detected_intent is not None:
             audit.intent = detected_intent.value
 
@@ -501,7 +515,7 @@ class RetrievalPipeline:
         合并：路径命中的文件若已有内容命中则加权提分，不替换，否则会把真正含目标
         符号的 chunk 挤掉（回填的文件首个 chunk 通常只是 use / import 语句）。
         """
-        logger.info(f"Path-boosted search for query: {query}")
+        logger.info("Path-boosted search: query_chars={}", len(query))
         stage = audit.stage if audit is not None else _noop_stage
 
         # 0. 查询改写变体（路径索引与内容索引共用，解决中文查询 vs 英文文件名）
@@ -512,8 +526,8 @@ class RetrievalPipeline:
                     rewritten_queries = await self.query_rewriter.rewrite(query)
                     if rewritten_queries:
                         queries_to_search = rewritten_queries
-                except Exception as e:
-                    logger.warning(f"Query rewrite failed: {e}")
+                except Exception as exc:
+                    logger.warning("Query rewrite failed: {}", type(exc).__name__)
 
         # 1. 路径索引检索：原查询 + 改写变体分别检索，每个 blob 取最高路径分。
         #    中文查询（如「版本变更历史记录文件在哪里」）直接 embedding 常匹配不到
@@ -533,8 +547,11 @@ class RetrievalPipeline:
                         if r.blob_name not in path_scores or r.score > path_scores[r.blob_name]:
                             path_scores[r.blob_name] = r.score
                 logger.info(f"Path index returned {len(path_scores)} results")
-            except Exception as e:
-                logger.warning(f"Path index search failed: {e}, falling back to content-only")
+            except Exception as exc:
+                logger.warning(
+                    "Path index search failed: {}; falling back to content-only",
+                    type(exc).__name__,
+                )
 
         # 2. 内容索引检索（常规流程，但减少 top_k）
         content_hits = []
@@ -556,8 +573,8 @@ class RetrievalPipeline:
 
                 if all_result_lists:
                     content_hits = self._fuse(all_result_lists)
-            except Exception as e:
-                logger.warning(f"Content search failed: {e}")
+            except Exception as exc:
+                logger.warning("Content search failed: {}", type(exc).__name__)
 
         # 3. 融合：路径分数作为文件级加权，排序仍在 chunk 粒度上进行
         with stage("fuse"):
@@ -673,7 +690,7 @@ class RetrievalPipeline:
                                 score=path_scores.get(blob_name, 0.9),  # 使用路径索引的分数
                             )
                         )
-        except Exception as e:
-            logger.error(f"Failed to fetch content for paths: {e}")
+        except Exception as exc:
+            logger.error("Failed to fetch content for paths: {}", type(exc).__name__)
 
         return hits

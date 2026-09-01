@@ -3,6 +3,21 @@
 本项目版本遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 变更条目由 `scripts/generate_changelog.py` 生成。
 
+## [Unreleased]
+
+### Fixed
+
+- **admission**: reject common environment, key, and credential files before indexing
+- **embedding**: apply query instructions in the credential-backed client and reject incompatible hot reloads
+- **llm**: preserve TLS verification through proxies, keep source queries out of logs, and degrade intent failures to heuristic routing
+- **llm**: fail locally when an enabled LLM feature has no usable credential
+
+### Changed
+
+- **config**: default intent classification off and keep all optional LLM calls off in newly generated personal configurations
+- **compose**: keep the Milvus data port internal to the service network
+- **retrieval**: use one canonical intent model and remove strategy options not connected to the pipeline
+
 ## [0.2.0] - 2026-08-30
 
 ### Added
