@@ -202,12 +202,14 @@ incompatible hot reload is rejected.
 
 On the first use of an empty index, OCE persists a secret-free SHA-256 profile covering the
 resolved embedding endpoint hash, model, dimensions, query instruction hash, document
-window, chunker mode/config/version, index schema, symbol extraction, and path-document
-versions. Every startup compares the active configuration with that profile before workers
-start. A mismatch—or legacy index data without a profile—fails closed and leaves the old
-data untouched. Select a new data directory (or new database and Milvus collection names),
-then fully resync clients. The service never silently combines old vectors with a new model
-or reuses old chunks after chunking behavior changes.
+window, Milvus endpoint/collection identity, path-index mode, dense metric, chunker
+mode/config/version, index schema, symbol extraction, and path-document versions. Every
+startup compares the active configuration with that profile before workers start. A
+mismatch—or legacy index data without a profile—fails closed and leaves the old data
+untouched. Select a new data directory (or new database and Milvus collection names), then
+fully resync clients. The service never silently combines old vectors with a new model,
+connects ready metadata to a different vector collection, or reuses old chunks after
+chunking behavior changes.
 
 SiliconFlow accepts at most 32,000 characters across one embedding request's `input`
 array. `max_batch_size` and `max_batch_chars` are provider defaults that each credential

@@ -2,8 +2,13 @@
 
 import pytest
 
-from oce.application.index_lifecycle import IndexLifecycleManager
-from oce.shared.config.settings import ChunkingSettings, Settings
+from oce.application.index_lifecycle import IndexLifecycleManager, build_index_profile
+from oce.shared.config.settings import (
+    ChunkingSettings,
+    MilvusSettings,
+    RetrievalSettings,
+    Settings,
+)
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_profile import (
     EmbeddingIndexProfile,
@@ -84,6 +89,63 @@ async def test_embedding_or_chunking_change_is_rejected_without_overwrite():
         )
 
     assert store.stored == original
+
+
+@pytest.mark.parametrize(
+    ("settings", "changed_field"),
+    [
+        (
+            Settings(milvus=MilvusSettings(endpoint="http://other-milvus:19530")),
+            "vector_store_endpoint_hash",
+        ),
+        (
+            Settings(milvus=MilvusSettings(collection_name="other_chunks")),
+            "dense_collection_name",
+        ),
+        (
+            Settings(milvus=MilvusSettings(dense_metric_type="IP")),
+            "dense_metric_type",
+        ),
+        (
+            Settings(retrieval=RetrievalSettings(path_index_enabled=False)),
+            "path_index_enabled",
+        ),
+        (
+            Settings(milvus=MilvusSettings(path_collection_name="other_paths")),
+            "path_collection_name",
+        ),
+    ],
+)
+async def test_vector_store_identity_change_is_rejected(settings, changed_field):
+    store = Store()
+    await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())
+
+    with pytest.raises(ServiceNotReadyError, match=changed_field):
+        await IndexLifecycleManager(store, settings).ensure_compatible(_embedding())
+
+
+def test_vector_store_identity_normalizes_equivalent_settings(tmp_path):
+    local_store = tmp_path / "vectors.db"
+    first = build_index_profile(
+        Settings(
+            milvus=MilvusSettings(endpoint=str(local_store), path_collection_name="a"),
+            retrieval=RetrievalSettings(path_index_enabled=False),
+        ),
+        _embedding(),
+    )
+    second = build_index_profile(
+        Settings(
+            milvus=MilvusSettings(
+                endpoint=str(local_store.resolve()),
+                path_collection_name="b",
+            ),
+            retrieval=RetrievalSettings(path_index_enabled=False),
+        ),
+        _embedding(),
+    )
+
+    assert first.fingerprint == second.fingerprint
+    assert first.path_collection_name is None
 
 
 async def test_legacy_index_without_profile_fails_closed():

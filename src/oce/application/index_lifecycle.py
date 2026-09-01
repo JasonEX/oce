@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from typing import Any
 
 from oce.shared.config.settings import Settings
@@ -27,8 +28,23 @@ def build_index_profile(
     embedding: EmbeddingIndexProfile,
 ) -> IndexProfile:
     chunking = settings.chunking
+    milvus = settings.milvus
+    endpoint = milvus.endpoint.strip()
+    if "://" in endpoint:
+        endpoint = endpoint.rstrip("/")
+    else:
+        endpoint = str(Path(endpoint).expanduser().resolve())
     return IndexProfile(
         schema_version=INDEX_SCHEMA_VERSION,
+        vector_store_endpoint_hash=profile_value_hash(endpoint),
+        dense_collection_name=milvus.collection_name,
+        dense_metric_type=milvus.dense_metric_type.upper(),
+        path_index_enabled=settings.retrieval.path_index_enabled,
+        path_collection_name=(
+            milvus.path_collection_name
+            if settings.retrieval.path_index_enabled
+            else None
+        ),
         chunker_version=CHUNKER_VERSION,
         semantic_chunking_enabled=chunking.semantic_enabled,
         semantic_max_chunk_chars=chunking.semantic_max_chunk_chars,

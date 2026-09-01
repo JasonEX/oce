@@ -47,6 +47,11 @@ class EmbeddingIndexProfile:
 @dataclass(frozen=True)
 class IndexProfile:
     schema_version: int
+    vector_store_endpoint_hash: str
+    dense_collection_name: str
+    dense_metric_type: str
+    path_index_enabled: bool
+    path_collection_name: str | None
     chunker_version: int
     semantic_chunking_enabled: bool
     semantic_max_chunk_chars: int

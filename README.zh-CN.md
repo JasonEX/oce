@@ -182,11 +182,12 @@ kind 没有匹配的启用行时，对应客户端回退到各自的环境变量
 
 空索引第一次使用时，OCE 会持久化一份不含密钥的 SHA-256 profile，覆盖解析后的 embedding
 endpoint 哈希、模型、维度、query instruction 哈希、文档窗口，以及 chunker 模式/配置/版本、
-索引 schema、symbol extraction 和 path-document 版本。每次启动都会在 worker 运行前将当前
-配置与该 profile 比对。配置不匹配，或旧索引已有数据却没有 profile 时，服务会 fail closed，
-且不会改动旧数据。此时应改用新的 data directory（服务模式则使用新的数据库和 Milvus
-collection 名称），再让客户端完整重同步。OCE 不会再把旧向量与新模型静默混用，也不会在
-切块行为变化后继续复用旧 chunks。
+Milvus endpoint/collection 标识、path index 模式、dense metric、索引 schema、symbol
+extraction 和 path-document 版本。每次启动都会在 worker 运行前将当前配置与该 profile
+比对。配置不匹配，或旧索引已有数据却没有 profile 时，服务会 fail closed，且不会改动旧
+数据。此时应改用新的 data directory（服务模式则使用新的数据库和 Milvus collection
+名称），再让客户端完整重同步。OCE 不会再把旧向量与新模型静默混用、让 ready 元数据连接
+到另一套向量 collection，也不会在切块行为变化后继续复用旧 chunks。
 
 SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`max_batch_size` 和
 `max_batch_chars` 是每个凭据可覆盖的 provider 默认值。超过 `max_input_chars` 的输入会在
