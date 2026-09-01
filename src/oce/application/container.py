@@ -411,7 +411,13 @@ class Container:
         )
         command_bus.register(
             ResetQueueCommand,
-            ResetQueueCommandHandler(self._uow_factory, self.queue),
+            ResetQueueCommandHandler(
+                self._uow_factory,
+                self.queue,
+                worker_running=lambda: (
+                    self.worker is not None and self.worker.is_running
+                ),
+            ),
         )
 
         credential_admin_store = SqlCredentialAdminStore(async_session_factory)

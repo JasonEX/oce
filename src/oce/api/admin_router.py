@@ -31,10 +31,9 @@ from oce.api.schemas import (
     RetrievalRuntimeProfileResponse,
     TokenKindStatsResponse,
 )
-from oce.application.container import get_container
 from oce.application.service import RetrievalApplication
 from oce.auth import verify_admin_key
-from oce.shared.errors import CredentialConflictError
+from oce.shared.errors import CredentialConflictError, QueueBusyError
 from oce.shared.model_credentials import (
     CredentialCreate,
     CredentialDuplicate,
@@ -138,17 +137,6 @@ async def reload_credentials(
     )
 
 
-def worker_is_running() -> bool:
-    """reset 前置判断：worker 在跑时禁止重置（边清边投会打架）。
-
-    容器未装配时视为未运行；用 FastAPI 依赖注入以便测试覆盖。
-    """
-    if get_container.cache_info().currsize == 0:
-        return False
-    worker = get_container().worker
-    return worker is not None and worker.is_running
-
-
 @admin_router.get("/queue", response_model=QueueStatusResponse)
 async def queue_status(
     application: RetrievalApplication = Depends(get_application),
@@ -166,14 +154,14 @@ async def queue_status(
 async def reset_queue(
     request: QueueResetRequest,
     application: RetrievalApplication = Depends(get_application),
-    running: bool = Depends(worker_is_running),
 ) -> QueueResetResponse:
-    if running:
-        raise HTTPException(
-            status_code=409,
-            detail="worker is running; stop it before resetting the queue",
+    try:
+        result = await application.reset_queue(
+            mode=request.mode,
+            requeue=request.requeue,
         )
-    result = await application.reset_queue(mode=request.mode, requeue=request.requeue)
+    except QueueBusyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return QueueResetResponse(
         removed=result.removed,
         requeued=result.requeued,

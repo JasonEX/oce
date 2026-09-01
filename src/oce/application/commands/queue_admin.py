@@ -14,11 +14,12 @@ worker 取到只能白跑；更糟的是 pending 哨兵里的残留会让同名 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
+from typing import Callable, Literal
 
 from oce.application.messages import Command
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
+from oce.shared.errors import QueueBusyError
 
 
 @dataclass(frozen=True)
@@ -47,11 +48,15 @@ class ResetQueueCommandHandler:
         self,
         uow_factory: UnitOfWorkFactory,
         queue: Queue | None = None,
+        worker_running: Callable[[], bool] | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._queue = queue
+        self._worker_running = worker_running or (lambda: False)
 
     async def handle(self, command: ResetQueueCommand) -> ResetQueueResult:
+        if self._worker_running():
+            raise QueueBusyError()
         if self._queue is None:
             return ResetQueueResult(0, 0, 0, 0)
 

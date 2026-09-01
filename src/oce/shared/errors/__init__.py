@@ -64,6 +64,14 @@ class CredentialConflictError(ApplicationError):
         )
 
 
+class QueueBusyError(ApplicationError):
+    def __init__(self) -> None:
+        super().__init__(
+            "worker is running; stop it before resetting the queue",
+            code="QUEUE_BUSY",
+        )
+
+
 class ScopeRequiredError(ApplicationError):
     """检索请求未声明工作集：必须提供 checkpoint_id 或 added_blobs。
 
