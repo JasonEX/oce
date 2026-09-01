@@ -1,5 +1,7 @@
 """Verify SQL repositories against an in-memory SQLite database."""
 
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from oce.domain.blob.blob import Blob, BlobStatus
@@ -118,6 +120,37 @@ async def test_blob_repository_crud(sqlite_session):
 
     deleted = await repo.get(blob.blob_name)
     assert deleted is None
+
+
+@pytest.mark.asyncio
+async def test_expired_blob_remains_while_referenced_by_chain(sqlite_session):
+    blob_repo = _blob_repository(sqlite_session)
+    chain_repo = SqlChainRepository(sqlite_session)
+    expired_at = datetime.now(timezone.utc) - timedelta(days=31)
+    referenced = Blob(
+        blob_name=make_sha256("referenced"),
+        path="src/referenced.py",
+        status=BlobStatus.READY,
+        last_seen=expired_at,
+    )
+    orphan = Blob(
+        blob_name=make_sha256("orphan"),
+        path="src/orphan.py",
+        status=BlobStatus.READY,
+        last_seen=expired_at,
+    )
+    await blob_repo.save_many([referenced, orphan])
+    chain = await chain_repo.create([referenced.blob_name])
+    await sqlite_session.commit()
+
+    assert await blob_repo.find_expired(30) == [orphan.blob_name]
+
+    await chain_repo.delete(chain.chain_id)
+    await sqlite_session.commit()
+    assert set(await blob_repo.find_expired(30)) == {
+        referenced.blob_name,
+        orphan.blob_name,
+    }
 
 
 @pytest.mark.asyncio

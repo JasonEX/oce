@@ -2,8 +2,10 @@
 
 删除口径：
 - 过期 chain：updated_at 早于 now - ttl_days，删除只移除 checkpoint 分组，不动 blob。
-- 过期 blob：last_seen 早于 now - ttl_days 且不在 queue 的 inflight 集合内，经
-  DeleteBlobsCommand 连带清 DB/向量/路径。inflight 项跳过，避免删正在嵌入的 blob。
+- 过期 blob：last_seen 早于 now - ttl_days、不被任何 chain 引用，且不在
+  queue 的 inflight 集合内，经 DeleteBlobsCommand 连带清 DB/向量/路径。
+  本轮才删除的过期 chain 所引用的 blob 延后到下轮 GC，保证有效 chain 永远不
+  会指向已删索引。inflight 项同样跳过，避免删正在嵌入的 blob。
 
 dry_run=True（默认）只统计不删；dry_run=False 才真正执行删除。
 """

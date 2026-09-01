@@ -16,6 +16,7 @@ from oce.domain.services.symbols import SymbolProvider
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
+    ChainMemberModel,
     ChunkModel,
     SymbolOccurrenceModel,
 )
@@ -164,9 +165,15 @@ class SqlBlobRepository(BlobRepository):
 
     async def find_expired(self, ttl_days: int, batch_size: int = 1000) -> list[str]:
         threshold = datetime.now(timezone.utc) - timedelta(days=ttl_days)
+        referenced = select(ChainMemberModel.chain_id).where(
+            ChainMemberModel.blob_name == BlobModel.blob_name
+        )
         rows = await self.session.execute(
             select(BlobModel.blob_name)
-            .where(BlobModel.last_seen < threshold)
+            .where(
+                BlobModel.last_seen < threshold,
+                ~referenced.exists(),
+            )
             .limit(batch_size)
         )
         return list(rows.scalars())
