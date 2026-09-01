@@ -129,6 +129,47 @@ class MonitoringStatsResponse(BaseModel):
     resource: ResourceSnapshotResponse | None = None
 
 
+class MetadataIndexStatsResponse(BaseModel):
+    blobs_total: int = 0
+    blobs_ready: int = 0
+    blobs_pending: int = 0
+    blobs_error: int = 0
+    chunks_total: int = 0
+    chunks_embedded: int = 0
+    blob_chunk_links: int = 0
+    symbol_occurrences: int = 0
+    chains: int = 0
+    chain_members: int = 0
+    staging_blobs: int = 0
+
+
+class IndexStoreStatsResponse(BaseModel):
+    enabled: bool
+    available: bool
+    collection_name: str | None = None
+    exists: bool | None = None
+    entities: int | None = None
+    error_type: str | None = None
+
+
+class QueryCacheStatsResponse(BaseModel):
+    enabled: bool
+    entries: int
+    max_entries: int
+    ttl_seconds: float
+    hits: int = 0
+    misses: int = 0
+    evictions: int = 0
+    invalidations: int = 0
+
+
+class IndexStatsResponse(BaseModel):
+    metadata: MetadataIndexStatsResponse
+    dense: IndexStoreStatsResponse
+    path: IndexStoreStatsResponse
+    query_cache: QueryCacheStatsResponse
+
+
 # 凭据用途：embed/rerank 走 REST（/v1/embeddings、/v1/rerank）；后三类走 chat。
 CredentialKind = Literal[
     "embed", "rerank", "llm_rerank", "query_rewrite", "intent"

@@ -71,3 +71,33 @@ async def test_combined_reload_keeps_both_delegates_when_prepare_fails():
     assert embedder.activated is False
     assert embedder.discarded is True
     assert reranker.activated is False
+
+
+async def test_combined_reload_clears_query_cache_after_embedding_activation():
+    class Runtime:
+        async def prepare_reload(self):
+            return object()
+
+        async def activate_prepared(self, _replacement):
+            return 1
+
+        async def discard_prepared(self, _replacement):
+            raise AssertionError("successful reload must not discard")
+
+    class Cache:
+        def __init__(self) -> None:
+            self.clears = 0
+
+        async def clear_query_cache(self):
+            self.clears += 1
+
+    cache = Cache()
+
+    result = await _CredentialRuntime(
+        Runtime(),
+        Runtime(),
+        query_cache=cache,
+    ).reload()
+
+    assert result == 1
+    assert cache.clears == 1

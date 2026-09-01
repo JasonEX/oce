@@ -108,6 +108,17 @@ class EmbeddingSettings(BaseSettings):
         default="",
         description="Query-side instruction（添加到 query 前，为空则不添加）",
     )
+    query_cache_max_entries: int = Field(
+        default=256,
+        ge=0,
+        le=10_000,
+        description="进程内 query vector LRU 容量；0 禁用",
+    )
+    query_cache_ttl_seconds: float = Field(
+        default=600.0,
+        ge=0,
+        description="query vector 缓存 TTL 秒数；0 禁用",
+    )
 
 
 class RerankSettings(BaseSettings):

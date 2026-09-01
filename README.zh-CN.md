@@ -272,6 +272,7 @@ MCP 配置文件。
 | `POST` | `/admin/queue/requeue-stale` | 重新入队滞留的在飞 blob |
 | `POST` | `/admin/gc` | 回收过期的 chain 与 blob |
 | `GET` | `/admin/stats` | 调用 / token / 检索 / 资源指标 |
+| `GET` | `/admin/index-stats` | 元数据、dense/path 索引与 query cache 状态 |
 
 示例：
 

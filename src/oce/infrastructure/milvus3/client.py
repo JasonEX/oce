@@ -258,6 +258,14 @@ class Milvus3Client:
         logger.info("Deleted {} vectors for blob {}", deleted, blob_name)
         return deleted
 
+    async def read_collection_stats(self) -> tuple[bool, int]:
+        """Read collection cardinality without creating or loading an index."""
+        collection_name = self.settings.collection_name
+        if not await self._call("has_collection", collection_name):
+            return False, 0
+        stats = await self._call("get_collection_stats", collection_name)
+        return True, int(stats.get("row_count", 0))
+
     async def close(self):
         """关闭客户端连接"""
         await self._call("close")

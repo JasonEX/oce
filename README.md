@@ -304,6 +304,7 @@ put it in a URL.
 | `POST` | `/admin/queue/requeue-stale` | Requeue stale inflight blobs |
 | `POST` | `/admin/gc` | Garbage-collect expired chains and blobs |
 | `GET` | `/admin/stats` | Call / token / retrieval / resource metrics |
+| `GET` | `/admin/index-stats` | Metadata, dense/path index, and query-cache state |
 
 Example:
 

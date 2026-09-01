@@ -14,10 +14,14 @@ from oce.api.schemas import (
     CredentialUpdateRequest,
     GcRequest,
     GcResponse,
+    IndexStatsResponse,
+    IndexStoreStatsResponse,
+    MetadataIndexStatsResponse,
     MonitoringStatsResponse,
     QueueResetRequest,
     QueueResetResponse,
     QueueStatusResponse,
+    QueryCacheStatsResponse,
     ReloadCredentialsResponse,
     RequeueStaleRequest,
     RequeueStaleResponse,
@@ -251,5 +255,30 @@ async def admin_stats(
             )
             if stats.resource is not None
             else None
+        ),
+    )
+
+
+@admin_router.get("/index-stats", response_model=IndexStatsResponse)
+async def admin_index_stats(
+    application: RetrievalApplication = Depends(get_application),
+) -> IndexStatsResponse:
+    stats = await application.index_stats()
+    return IndexStatsResponse(
+        metadata=MetadataIndexStatsResponse.model_validate(
+            stats.metadata,
+            from_attributes=True,
+        ),
+        dense=IndexStoreStatsResponse.model_validate(
+            stats.dense,
+            from_attributes=True,
+        ),
+        path=IndexStoreStatsResponse.model_validate(
+            stats.path,
+            from_attributes=True,
+        ),
+        query_cache=QueryCacheStatsResponse.model_validate(
+            stats.query_cache,
+            from_attributes=True,
         ),
     )

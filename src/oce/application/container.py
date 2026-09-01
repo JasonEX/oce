@@ -51,6 +51,7 @@ from oce.application.queries.queue import (
     QueueStatusQuery,
     QueueStatusQueryHandler,
 )
+from oce.application.queries.index_stats import IndexStatsQuery, IndexStatsQueryHandler
 from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.application.queries.stats import (
     MonitoringStatsQuery,
@@ -69,12 +70,16 @@ from oce.application.factories.chunker import build_chunker
 from oce.application.worker import EmbedWorker
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
+from oce.infrastructure.embed.query_cache import QueryCachingEmbedder
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
 from oce.infrastructure.llm.credential_llm_client import CredentialConfiguredLLMClient
 from oce.infrastructure.milvus3 import Milvus3SearchStore
 from oce.infrastructure.milvus3.path_index import PathIndexClient
 from oce.infrastructure.persistence.credential_admin_store import (
     SqlCredentialAdminStore,
+)
+from oce.infrastructure.persistence.index_stats_reader import (
+    SqlMetadataIndexStatsReader,
 )
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
@@ -94,10 +99,11 @@ from oce.shared.metrics import NoopMetricsSink, TokenUsageRecord
 
 
 class _CredentialRuntime:
-    def __init__(self, embedder, reranker, llm_clients=()) -> None:
+    def __init__(self, embedder, reranker, llm_clients=(), query_cache=None) -> None:
         self._embedder = embedder
         self._reranker = reranker
         self._llm_clients = [client for client in llm_clients if client is not None]
+        self._query_cache = query_cache
 
     async def reload(self) -> int:
         embedding_replacement = await self._embedder.prepare_reload()
@@ -111,6 +117,8 @@ class _CredentialRuntime:
         except Exception:
             await self._reranker.discard_prepared(rerank_replacement)
             raise
+        if self._query_cache is not None:
+            await self._query_cache.clear_query_cache()
         await self._reranker.activate_prepared(rerank_replacement)
         # LLM 客户端无预备/激活两阶段（reload 仅原子替换 delegate）；旁路容错，
         # 单个刷新失败不回滚已激活的 embedder/reranker，只记日志。
@@ -138,11 +146,16 @@ class Container:
             if settings.embedding.api_key is not None
             else None
         )
-        self.embedder = CredentialConfiguredEmbedder(
+        self.embedding_runtime = CredentialConfiguredEmbedder(
             async_session_factory,
             settings.embedding,
             expected_dimensions=settings.milvus.dense_dim,
             on_usage=token_usage_cb,
+        )
+        self.embedder = QueryCachingEmbedder(
+            self.embedding_runtime,
+            max_entries=settings.embedding.query_cache_max_entries,
+            ttl_seconds=settings.embedding.query_cache_ttl_seconds,
         )
         self.search_store = Milvus3SearchStore(settings.milvus)
         self.symbol_search_store = SymbolSearchStore(
@@ -231,7 +244,10 @@ class Container:
             logger.info("Intent classifier enabled (kind=intent)")
 
         credential_runtime = _CredentialRuntime(
-            self.embedder, self.reranker, llm_clients
+            self.embedding_runtime,
+            self.reranker,
+            llm_clients,
+            query_cache=self.embedder,
         )
 
         self.chunker = build_chunker()
@@ -422,6 +438,15 @@ class Container:
             MonitoringStatsQuery,
             MonitoringStatsQueryHandler(
                 SqlMonitoringStatsReader(async_session_factory)
+            ),
+        )
+        query_bus.register(
+            IndexStatsQuery,
+            IndexStatsQueryHandler(
+                SqlMetadataIndexStatsReader(async_session_factory),
+                self.search_store,
+                self.path_index,
+                self.embedder,
             ),
         )
         query_bus.register(

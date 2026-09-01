@@ -32,6 +32,7 @@ from oce.application.credential_admin import (
     UpdateCredentialCommand,
 )
 from oce.application.queries.queue import QueueStatusQuery, QueueStatusResult
+from oce.application.queries.index_stats import IndexStatsQuery
 from oce.application.queries.search import SearchQuery
 from oce.application.queries.stats import MonitoringStatsQuery
 from oce.application.queries.status import (
@@ -45,6 +46,7 @@ from oce.application.queries.status import (
 from oce.domain.services.formatter import format_retrieval
 from oce.domain.services.search import SearchHit
 from oce.shared.metrics_read import MonitoringStats
+from oce.shared.index_stats import IndexStats
 
 
 def compute_blob_name(path: str, content: str) -> str:
@@ -183,6 +185,9 @@ class RetrievalApplication:
 
     async def monitoring_stats(self, *, window_hours: int = 24) -> MonitoringStats:
         return await self._queries.ask(MonitoringStatsQuery(window_hours))
+
+    async def index_stats(self) -> IndexStats:
+        return await self._queries.ask(IndexStatsQuery())
 
     async def queue_status(self) -> QueueStatusResult:
         return await self._queries.ask(QueueStatusQuery())

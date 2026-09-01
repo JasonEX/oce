@@ -12,6 +12,7 @@ from typing import Any, Sequence
 
 from oce.domain.services.search import SearchHit
 from oce.shared.config.settings import MilvusSettings
+from oce.shared.index_stats import IndexStoreStats
 
 from .client import Milvus3Client
 
@@ -95,6 +96,16 @@ class Milvus3SearchStore:
         await self._ensure_initialized()
         for blob_name in blob_names:
             await self.client.delete_by_blob(blob_name)
+
+    async def index_stats(self) -> IndexStoreStats:
+        exists, entities = await self.client.read_collection_stats()
+        return IndexStoreStats(
+            enabled=True,
+            available=True,
+            collection_name=self.milvus_settings.collection_name,
+            exists=exists,
+            entities=entities,
+        )
 
     async def close(self):
         """关闭客户端连接"""

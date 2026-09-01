@@ -13,8 +13,9 @@ from pymilvus import (
     connections,
 )
 
-from oce.domain.services.path_search import PathSearchResult, PathSearchStore
+from oce.domain.services.path_search import PathSearchResult
 from oce.shared.config.settings import MilvusSettings
+from oce.shared.index_stats import IndexStoreStats
 
 
 class PathIndexClient:
@@ -214,12 +215,19 @@ class PathIndexClient:
         self.collection.delete(expr)
         logger.info(f"Deleted path documents for {len(blob_names)} blobs")
 
-    async def get_stats(self) -> dict[str, Any]:
-        """获取索引统计信息"""
-        await self.initialize()
-        
-        stats = self.collection.num_entities
-        return {
-            "collection_name": self.collection_name,
-            "total_paths": stats,
-        }
+    async def index_stats(self) -> IndexStoreStats:
+        """Report an initialized path index without creating it from a GET."""
+        if self.collection is None:
+            return IndexStoreStats(
+                enabled=True,
+                available=False,
+                collection_name=self.collection_name,
+                error_type="NotInitialized",
+            )
+        return IndexStoreStats(
+            enabled=True,
+            available=True,
+            collection_name=self.collection_name,
+            exists=True,
+            entities=int(self.collection.num_entities),
+        )

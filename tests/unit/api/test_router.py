@@ -24,6 +24,12 @@ from oce.shared.metrics_read import (
     RetrievalStats,
     TokenKindStats,
 )
+from oce.shared.index_stats import (
+    IndexStats,
+    IndexStoreStats,
+    MetadataIndexStats,
+    QueryCacheStats,
+)
 
 
 class StubApplication:
@@ -76,6 +82,33 @@ class StubApplication:
             resource=ResourceSnapshot(
                 ts=None, mem_rss_bytes=1, mem_percent=2.0, cpu_percent=3.0,
                 disk_free_bytes=4, disk_total_bytes=5, disk_data_bytes=6,
+            ),
+        )
+
+    async def index_stats(self):
+        return IndexStats(
+            metadata=MetadataIndexStats(
+                blobs_total=5,
+                blobs_ready=4,
+                blobs_pending=1,
+                chunks_total=12,
+                chunks_embedded=10,
+                symbol_occurrences=7,
+            ),
+            dense=IndexStoreStats(True, True, "oce_chunks", True, 10),
+            path=IndexStoreStats(
+                True,
+                False,
+                "oce_paths",
+                error_type="NotInitialized",
+            ),
+            query_cache=QueryCacheStats(
+                True,
+                2,
+                256,
+                600.0,
+                hits=3,
+                misses=1,
             ),
         )
 
@@ -317,3 +350,22 @@ async def test_admin_stats_requires_auth():
     async with httpx.AsyncClient(transport=_transport(), base_url="http://test") as client:
         response = await client.get("/admin/stats")
     assert response.status_code == 401
+
+
+async def test_admin_index_stats_contract_and_auth():
+    async with httpx.AsyncClient(
+        transport=_transport(), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/admin/index-stats",
+            headers={"Authorization": "Bearer sk-dev"},
+        )
+        unauthorized = await client.get("/admin/index-stats")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["metadata"]["blobs_ready"] == 4
+    assert body["dense"]["entities"] == 10
+    assert body["path"]["error_type"] == "NotInitialized"
+    assert body["query_cache"]["hits"] == 3
+    assert unauthorized.status_code == 401

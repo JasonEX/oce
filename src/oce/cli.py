@@ -62,6 +62,9 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 # 向量维度（必须与模型输出维度一致）
 # EMBED_DIMENSIONS=1024
+# Query vector 进程内 LRU（只存 query 哈希与向量；0 表示禁用）
+# EMBED_QUERY_CACHE_MAX_ENTRIES=256
+# EMBED_QUERY_CACHE_TTL_SECONDS=600
 
 # ==================== 可选：LLM 增强 ====================
 # 个人模式默认关闭可选 LLM 调用；配置受信任的 LLM 后可按需开启。
