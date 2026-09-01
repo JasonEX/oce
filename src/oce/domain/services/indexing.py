@@ -15,7 +15,7 @@ from typing import Sequence
 from loguru import logger
 
 from oce.domain.blob.blob import Blob, BlobStatus
-from oce.domain.chunk import Chunker, is_meaningful
+from oce.domain.chunk import Chunker
 from oce.domain.chunk.lang import detect_language
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.path_document_builder import (
