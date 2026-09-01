@@ -51,7 +51,7 @@ machines need to share one index.
 - **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
 - **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
 - **Operational admin API + monitoring** — an admin-key-scoped surface manages model credentials, the embedding queue, and garbage collection, while a bypass metrics pipeline records call/token/resource stats and per-stage retrieval audits.
-- **[Reproducible evaluation harness](https://github.com/oce-ai/oce-benchmark)** — an HTTP-only benchmark suite scores retrieval quality with Top-1 + nDCG@10 against real repositories.
+- **[Reproducible evaluation harness](https://github.com/oce-ai/oce-client/tree/master/benchmarks)** — the real client sync/retrieval path runs 50 reviewed queries on pinned repositories and records quality, latency, returned context, optional model cost, failures, and separately supplied agent outcomes.
 
 <details>
 <summary><strong>Table of contents</strong></summary>

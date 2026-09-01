@@ -48,7 +48,7 @@ OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 
 - **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
 - **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
 - **运维 admin API + 监控** —— 独立 admin key 的接口面管理模型凭据、嵌入队列与垃圾回收；旁路 metrics 管线记录调用/token/资源指标与检索各阶段审计。
-- **[可复现的评测框架](https://github.com/oce-ai/oce-benchmark)** —— 纯 HTTP 的基准套件，用 Top-1 + nDCG@10 在真实仓库上衡量检索质量。
+- **[可复现的评测框架](https://github.com/oce-ai/oce-client/tree/master/benchmarks)** —— 复用真实 client 同步与检索链路，在固定仓库版本上运行 50 条审阅过的查询，并记录质量、延迟、返回上下文、可选模型成本、失败样本和独立提供的 agent 任务结果。
 
 <details>
 <summary><strong>目录</strong></summary>
