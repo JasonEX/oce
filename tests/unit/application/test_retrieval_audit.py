@@ -5,6 +5,7 @@ from __future__ import annotations
 from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
+from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit, RetrievalMetricRecord
 
 from tests.unit.application.fakes import FakeEmbedder, FakeSearchStore
@@ -32,7 +33,11 @@ def _hit() -> SearchHit:
 
 
 def _pipeline(hits: list[SearchHit]) -> RetrievalPipeline:
-    return RetrievalPipeline(embedder=FakeEmbedder(), store=FakeSearchStore(hits=hits))
+    return RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits=hits),
+        settings=RetrievalSettings(),
+    )
 
 
 def _handler(hits, **kwargs) -> tuple[SearchQueryHandler, RecordingSink]:

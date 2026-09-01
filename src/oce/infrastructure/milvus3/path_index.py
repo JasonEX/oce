@@ -1,4 +1,4 @@
-"""路径索引 - 专用于文件名查询的向量索引"""
+"""Milvus-backed semantic path index."""
 
 from __future__ import annotations
 
@@ -6,156 +6,131 @@ import asyncio
 from typing import Any
 
 from loguru import logger
-from pymilvus import (
-    Collection,
-    CollectionSchema,
-    DataType,
-    FieldSchema,
-    connections,
-)
+from pymilvus import AsyncMilvusClient, MilvusClient
+from pymilvus.client.types import LoadState
 
 from oce.domain.services.path_search import PathSearchResult
 from oce.shared.config.settings import MilvusSettings
 from oce.shared.index_stats import IndexStoreStats
 
 from .client import validate_blob_name
+from .schema import create_path_collection_schema
 
 
 class PathIndexClient:
-    """路径索引客户端 - 只存储路径信息的轻量索引"""
+    """Own the path collection and expose non-blocking search operations."""
 
-    def __init__(self, settings: MilvusSettings):
-        self.collection = None
+    def __init__(self, settings: MilvusSettings) -> None:
         self.settings = settings
         self.collection_name = settings.path_collection_name
-        self.dense_dim = settings.dense_dim  # 从配置读取维度
+        self.dense_dim = settings.dense_dim
+        self._local = not settings.endpoint.startswith(("http://", "https://"))
+        client_type = MilvusClient if self._local else AsyncMilvusClient
+        self._client = client_type(uri=settings.endpoint, token=settings.token)
+        self._initialize_lock = asyncio.Lock()
         self._initialized = False
+        self._closed = False
+
+    async def _call(self, method_name: str, *args, **kwargs):
+        """Use native async I/O remotely and a worker thread for Milvus Lite."""
+        if self._closed and method_name != "close":
+            raise RuntimeError("Path index client is closed")
+        method = getattr(self._client, method_name)
+        if self._local:
+            return await asyncio.to_thread(method, *args, **kwargs)
+        return await method(*args, **kwargs)
 
     async def initialize(self) -> None:
-        """初始化连接和集合"""
+        """Create or load the collection exactly once per client lifecycle."""
+        if self._closed:
+            raise RuntimeError("Path index client is closed")
         if self._initialized:
             return
+        async with self._initialize_lock:
+            if self._closed:
+                raise RuntimeError("Path index client is closed")
+            if self._initialized:
+                return
+            await self._ensure_collection()
+            self._initialized = True
+            logger.info(
+                "PathIndexClient initialized, collection: {}", self.collection_name
+            )
 
-        # 连接 Milvus
-        connections.connect(
-            alias="default",
-            uri=self.settings.endpoint,
-            token=self.settings.token,
+    async def _ensure_collection(self) -> None:
+        if not await self._call("has_collection", self.collection_name):
+            await self._call(
+                "create_collection",
+                collection_name=self.collection_name,
+                schema=create_path_collection_schema(self.dense_dim),
+            )
+        await self._ensure_vector_index()
+        state = await self._call("get_load_state", self.collection_name)
+        load_state = state.get("state") if isinstance(state, dict) else state
+        if load_state != LoadState.Loaded:
+            await self._call("load_collection", self.collection_name)
+
+    async def _ensure_vector_index(self) -> None:
+        indexes = await self._call(
+            "list_indexes",
+            self.collection_name,
+            field_name="path_vector",
         )
+        if indexes:
+            return
+        try:
+            await self._call(
+                "create_index",
+                collection_name=self.collection_name,
+                index_params=self._build_index_params(),
+            )
+        except Exception as exc:
+            if not self._local:
+                raise RuntimeError(
+                    f"Failed to create Milvus path index for {self.collection_name}"
+                ) from exc
+            logger.warning("Milvus Lite did not create the path index: {}", exc)
 
-        # 创建或加载集合
-        if not self._collection_exists():
-            self._create_collection()
-
-        self.collection = Collection(self.collection_name)
-        self.collection.load()
-
-        self._initialized = True
-        logger.info(f"PathIndexClient initialized, collection: {self.collection_name}")
-
-    def _collection_exists(self) -> bool:
-        """检查集合是否存在"""
-        from pymilvus import utility
-
-        return utility.has_collection(self.collection_name)
-
-    def _create_collection(self) -> None:
-        """创建路径索引集合"""
-        fields = [
-            FieldSchema(
-                name="path_id",
-                dtype=DataType.VARCHAR,
-                max_length=512,
-                is_primary=True,
-                description="path_{blob_name}",
-            ),
-            FieldSchema(
-                name="blob_name",
-                dtype=DataType.VARCHAR,
-                max_length=64,
-                description="Blob identifier for filtering",
-            ),
-            FieldSchema(
-                name="path",
-                dtype=DataType.VARCHAR,
-                max_length=512,
-                description="Original file path",
-            ),
-            FieldSchema(
-                name="path_document",
-                dtype=DataType.VARCHAR,
-                max_length=2048,
-                description="Rich semantic path document",
-            ),
-            FieldSchema(
-                name="path_vector",
-                dtype=DataType.FLOAT_VECTOR,
-                dim=self.dense_dim,  # 使用配置的维度
-                description="Path document embedding",
-            ),
-        ]
-
-        schema = CollectionSchema(
-            fields=fields,
-            description="Path-only index for filename queries",
+    def _build_index_params(self):
+        index_params = self._client.prepare_index_params()
+        index_params.add_index(
+            field_name="path_vector",
+            index_type=self.settings.dense_index_type,
+            metric_type=self.settings.dense_metric_type,
+            params={
+                "M": self.settings.hnsw_m,
+                "efConstruction": self.settings.hnsw_ef_construction,
+            },
         )
-
-        collection = Collection(name=self.collection_name, schema=schema)
-
-        # 创建 HNSW 索引
-        index_params = {
-            "index_type": "HNSW",
-            "metric_type": "COSINE",
-            "params": {"M": 16, "efConstruction": 256},
-        }
-        collection.create_index(field_name="path_vector", index_params=index_params)
-
-        logger.info(f"Created path index collection: {self.collection_name}")
+        return index_params
 
     async def insert(self, path_docs: list[dict[str, Any]]) -> dict[str, Any]:
-        """
-        插入路径文档
-
-        Args:
-            path_docs: 路径文档列表，每个包含:
-                - path_id: str (e.g., "path_{blob_name}")
-                - blob_name: str
-                - path: str
-                - path_document: str
-                - path_vector: list[float]
-
-        Returns:
-            插入结果统计
-        """
+        """Upsert path documents in bounded batches."""
         if not path_docs:
             return {"inserted": 0}
-
         await self.initialize()
+        data = [
+            {
+                "path_id": doc["path_id"],
+                "blob_name": doc["blob_name"],
+                "path": doc["path"],
+                "path_document": doc["path_document"],
+                "path_vector": doc["path_vector"],
+            }
+            for doc in path_docs
+        ]
 
-        # 准备数据
-        data = []
-        for doc in path_docs:
-            data.append(
-                {
-                    "path_id": doc["path_id"],
-                    "blob_name": doc["blob_name"],
-                    "path": doc["path"],
-                    "path_document": doc["path_document"],
-                    "path_vector": doc["path_vector"],
-                }
-            )
-
-        # 分批 upsert：单次请求受 Milvus gRPC 消息体上限约束，整仓上万条向量必须切片
-        batch_size = 1000
         count = 0
+        batch_size = 1000
         for start in range(0, len(data), batch_size):
-            chunk = data[start : start + batch_size]
-            result = self.collection.upsert(chunk)
-            count += (
-                result.upsert_count if hasattr(result, "upsert_count") else len(chunk)
+            batch = data[start : start + batch_size]
+            result = await self._call(
+                "upsert",
+                collection_name=self.collection_name,
+                data=batch,
             )
-
-        logger.info(f"Upserted {count} path documents")
+            count += result.get("upsert_count", result.get("insert_count", len(batch)))
+        logger.info("Upserted {} path documents", count)
         return {"inserted": count}
 
     async def search_paths(
@@ -164,100 +139,103 @@ class PathIndexClient:
         allowed_blob_names: list[str] | None = None,
         top_k: int = 20,
     ) -> list[PathSearchResult]:
-        """
-        搜索路径索引（实现 PathSearchStore Protocol）
-
-        Args:
-            query_vector: 查询向量
-            allowed_blob_names: 允许的 blob 过滤
-            top_k: 返回结果数
-
-        Returns:
-            路径搜索结果列表
-        """
+        """Search semantic path documents within the resolved workspace scope."""
         validated_blob_names = (
             [validate_blob_name(name) for name in allowed_blob_names]
             if allowed_blob_names
             else None
         )
         await self.initialize()
-
-        # 构建过滤表达式
-        filter_expr = None
+        filter_expr = ""
         if validated_blob_names:
             blob_list = ", ".join(f'"{name}"' for name in validated_blob_names)
             filter_expr = f"blob_name in [{blob_list}]"
 
-        # 执行搜索
-        search_params = {
-            "metric_type": "COSINE",
-            "params": {"ef": max(64, top_k * 2)},
-        }
-
-        results = self.collection.search(
+        results = await self._call(
+            "search",
+            collection_name=self.collection_name,
             data=[query_vector],
             anns_field="path_vector",
-            param=search_params,
+            search_params={
+                "metric_type": self.settings.dense_metric_type,
+                "params": {"ef": max(self.settings.hnsw_ef_search, top_k * 2)},
+            },
             limit=top_k,
-            expr=filter_expr,
+            filter=filter_expr,
             output_fields=["blob_name", "path"],
         )
 
-        # 转换为 PathSearchResult
-        hits = []
-        if results and len(results) > 0:
+        hits: list[PathSearchResult] = []
+        if results:
             for result in results[0]:
+                entity = (
+                    result.get("entity", result)
+                    if isinstance(result, dict)
+                    else result.entity
+                )
+                score = (
+                    result.get("distance", result.get("score", 0.0))
+                    if isinstance(result, dict)
+                    else result.distance
+                )
                 hits.append(
                     PathSearchResult(
-                        path=result.entity.get("path"),
-                        blob_name=result.entity.get("blob_name"),
-                        score=float(result.score),
+                        path=entity.get("path"),
+                        blob_name=entity.get("blob_name"),
+                        score=float(score),
                     )
                 )
-
-        logger.debug(f"Path index search returned {len(hits)} results")
+        logger.debug("Path index search returned {} results", len(hits))
         return hits
 
     async def delete_by_blob_names(self, blob_names: list[str]) -> None:
-        """删除指定 blob 的路径文档"""
+        """Delete path documents for validated blob identifiers."""
         validated_blob_names = [validate_blob_name(name) for name in blob_names]
         await self.initialize()
-
-        # 嵌套 f-string 复用引号在 Python <3.12 解析器下报错，先拼好列表字面量再整体格式化。
         quoted = ", ".join(f'"{name}"' for name in validated_blob_names)
-        expr = f"blob_name in [{quoted}]"
-        self.collection.delete(expr)
-        logger.info(f"Deleted path documents for {len(validated_blob_names)} blobs")
+        await self._call(
+            "delete",
+            collection_name=self.collection_name,
+            filter=f"blob_name in [{quoted}]",
+        )
+        logger.info("Deleted path documents for {} blobs", len(validated_blob_names))
+
+    async def _read_collection_stats(self) -> tuple[bool, int]:
+        if not await self._call("has_collection", self.collection_name):
+            return False, 0
+        stats = await self._call("get_collection_stats", self.collection_name)
+        return True, int(stats.get("row_count", 0))
 
     async def index_stats(self) -> IndexStoreStats:
-        """Report an initialized path index without creating it from a GET."""
-        if self.collection is None:
+        """Report initialized state without creating or loading a collection."""
+        if not self._initialized:
             return IndexStoreStats(
                 enabled=True,
                 available=False,
                 collection_name=self.collection_name,
                 error_type="NotInitialized",
             )
+        exists, entities = await self._read_collection_stats()
         return IndexStoreStats(
             enabled=True,
             available=True,
             collection_name=self.collection_name,
-            exists=True,
-            entities=int(self.collection.num_entities),
+            exists=exists,
+            entities=entities,
         )
 
     async def has_index_data(self) -> bool:
         """Probe existing rows without creating or loading the collection."""
-        if self.collection is not None:
-            return int(self.collection.num_entities) > 0
-        return await asyncio.to_thread(self._has_existing_data)
+        exists, entities = await self._read_collection_stats()
+        return exists and entities > 0
 
-    def _has_existing_data(self) -> bool:
-        connections.connect(
-            alias="default",
-            uri=self.settings.endpoint,
-            token=self.settings.token,
-        )
-        if not self._collection_exists():
-            return False
-        return int(Collection(self.collection_name).num_entities) > 0
+    async def close(self) -> None:
+        """Move the instance-owned client into its terminal closed state."""
+        if self._closed:
+            return
+        async with self._initialize_lock:
+            if self._closed:
+                return
+            await self._call("close")
+            self._initialized = False
+            self._closed = True

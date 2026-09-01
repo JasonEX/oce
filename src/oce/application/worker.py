@@ -41,6 +41,7 @@ class EmbedWorker:
         embedder: Embedder,
         vector_index: VectorIndex,
         path_store: PathSearchStore | None = None,
+        embedding_enabled: bool,
         concurrency: int = 2,
         max_retries: int = 3,
     ) -> None:
@@ -50,6 +51,7 @@ class EmbedWorker:
         self._embedder = embedder
         self._vector_index = vector_index
         self._path_store = path_store
+        self._embedding_enabled = embedding_enabled
         self._concurrency = max(1, concurrency)
         self._max_retries = max_retries
         self._running = False
@@ -95,6 +97,7 @@ class EmbedWorker:
             blob_repo=uow.blobs,
             chunk_repo=uow.chunks,
             path_store=self._path_store,
+            embedding_enabled=self._embedding_enabled,
         )
 
     async def _loop(self, worker_id: int) -> None:

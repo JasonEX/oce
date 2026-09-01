@@ -62,6 +62,7 @@ async def _run_failure(max_retries: int):
         chunker=RecursiveChunker(),
         embedder=FailingEmbedder(),
         vector_index=FakeSearchStore(),
+        embedding_enabled=True,
         max_retries=max_retries,
     )
     queue.worker = worker

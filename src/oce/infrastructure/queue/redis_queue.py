@@ -45,6 +45,10 @@ class RedisQueue:
         self._processing = f"{name}:processing"
         self._pending = f"{name}:pending"   # 在飞哨兵 SET（去重防幽灵消息）
 
+    async def close(self) -> None:
+        """Release the Redis connection pool owned by this queue."""
+        await self._redis.aclose()
+
     async def enqueue(self, blob_name: str) -> None:
         """投递待处理 blob：在飞 SET 去重，幽灵消息防御。
 

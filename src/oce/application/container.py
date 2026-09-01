@@ -169,13 +169,9 @@ class Container:
         self.path_index = None
         self.path_content_store = None
         if settings.retrieval.path_index_enabled:
-            try:
-                self.path_index = PathIndexClient(settings.milvus)
-                self.path_content_store = SqlPathContentStore(async_session_factory)
-                logger.info("Path index enabled for filename queries")
-            except Exception as e:
-                logger.warning("Failed to initialize path index: {}", e)
-                self.path_index = None
+            self.path_index = PathIndexClient(settings.milvus)
+            self.path_content_store = SqlPathContentStore(async_session_factory)
+            logger.info("Path index enabled for filename queries")
 
         artifact_probes = [self.search_store]
         if self.path_index is not None:
@@ -360,6 +356,7 @@ class Container:
                 embedder=self.embedder,
                 vector_index=self.search_store,
                 path_store=self.path_index,
+                embedding_enabled=settings.embedding.enabled,
                 concurrency=worker_concurrency,
                 max_retries=settings.worker.max_retries,
             )
@@ -394,6 +391,7 @@ class Container:
                 self.search_store,
                 path_store=self.path_index,
                 blob_batch_size=32,
+                embedding_enabled=settings.embedding.enabled,
             ),
         )
         delete_blobs_handler = DeleteBlobsCommandHandler(
@@ -583,8 +581,12 @@ class Container:
             await self.monitoring_cleaner.stop()
         await self.metrics.stop()
         await self.search_store.close()
+        if self.path_index is not None:
+            await self.path_index.close()
         await self.embedder.close()
         await self.reranker.close()
+        if self.queue is not None:
+            await self.queue.close()
 
 
 @lru_cache

@@ -47,6 +47,7 @@ class IndexingPipeline:
         event_bus: EventBus | None = None,
         embed_batch_size: int = 64,
         path_store: PathSearchStore | None = None,
+        embedding_enabled: bool = True,
     ) -> None:
         if embed_batch_size < 1:
             raise ValueError("embed_batch_size must be positive")
@@ -58,6 +59,7 @@ class IndexingPipeline:
         self.event_bus = event_bus
         self.embed_batch_size = embed_batch_size
         self.path_store = path_store
+        self._embedding_enabled = embedding_enabled
 
     async def ingest(self, blob_name: str, path: str, content: str) -> int:
         """轻量入库:只写元数据,切块推给 worker。立刻返回 0。
@@ -128,8 +130,6 @@ class IndexingPipeline:
         如果嵌入开关关闭(EMBED_ENABLED=false),则只完成切块、保持 pending 且保留
         staging(绝不置 ready);待开关恢复、blob 重新入队后再补嵌。
         """
-        from oce.shared.config import get_settings
-
         blobs = await self.blob_repo.find_pending(blob_names)
         if not blobs:
             return 0
@@ -161,8 +161,7 @@ class IndexingPipeline:
                     continue
 
         # 检查嵌入开关
-        settings = get_settings()
-        if not settings.embedding.enabled:
+        if not self._embedding_enabled:
             # 嵌入关闭：切块已在第一阶段落库，但没有任何向量。此处保持 pending 且保留
             # staging，绝不 mark_ready —— READY 必须意味着“可被检索”。
             #

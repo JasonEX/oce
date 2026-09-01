@@ -1,8 +1,10 @@
 """Dense index stats are read-only and report Milvus cardinality."""
 
+import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
+from pymilvus.client.types import LoadState
 
 from oce.infrastructure.milvus3 import Milvus3Client, Milvus3SearchStore
 from oce.infrastructure.milvus3.path_index import PathIndexClient
@@ -56,7 +58,8 @@ async def test_dense_data_probe_uses_collection_cardinality(mock_client_class):
     assert await store.has_index_data() is True
 
 
-async def test_uninitialized_path_stats_do_not_create_collection():
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_uninitialized_path_stats_do_not_create_collection(client_class):
     settings = MilvusSettings(
         endpoint="http://localhost:19530",
         path_collection_name="test_paths",
@@ -69,24 +72,27 @@ async def test_uninitialized_path_stats_do_not_create_collection():
     assert stats.available is False
     assert stats.collection_name == "test_paths"
     assert stats.error_type == "NotInitialized"
-    assert client.collection is None
+    assert client._initialized is False
+    client_class.return_value.create_collection.assert_not_called()
+    client_class.return_value.load_collection.assert_not_called()
 
 
-@patch("oce.infrastructure.milvus3.path_index.Collection")
-@patch("oce.infrastructure.milvus3.path_index.connections.connect")
-async def test_path_data_probe_does_not_create_collection(connect, collection):
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_path_data_probe_does_not_create_collection(client_class):
+    milvus = client_class.return_value
+    milvus.has_collection = AsyncMock(return_value=True)
+    milvus.get_collection_stats = AsyncMock(return_value={"row_count": "2"})
     client = PathIndexClient(
         MilvusSettings(
             endpoint="http://localhost:19530",
             path_collection_name="test_paths",
         )
     )
-    client._collection_exists = Mock(return_value=True)
-    collection.return_value.num_entities = 2
-
     assert await client.has_index_data() is True
-    connect.assert_called_once()
-    collection.assert_called_once_with("test_paths")
+    milvus.has_collection.assert_awaited_once_with("test_paths")
+    milvus.get_collection_stats.assert_awaited_once_with("test_paths")
+    milvus.create_collection.assert_not_called()
+    milvus.load_collection.assert_not_called()
 
 
 async def test_path_filters_reject_non_sha256_values_before_connecting():
@@ -105,18 +111,20 @@ async def test_path_filters_reject_non_sha256_values_before_connecting():
     with pytest.raises(ValueError, match="SHA256"):
         await client.delete_by_blob_names(['x" or true'])
 
-    assert client.collection is None
+    assert client._initialized is False
 
 
-async def test_path_filters_use_validated_blob_names():
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_path_filters_use_validated_blob_names(client_class):
+    milvus = client_class.return_value
+    milvus.search = AsyncMock(return_value=[])
+    milvus.delete = AsyncMock(return_value={})
     client = PathIndexClient(
         MilvusSettings(
             endpoint="http://localhost:19530",
             path_collection_name="test_paths",
         )
     )
-    client.collection = Mock()
-    client.collection.search.return_value = []
     client._initialized = True
     blob_name = "a" * 64
 
@@ -126,7 +134,103 @@ async def test_path_filters_use_validated_blob_names():
     )
     await client.delete_by_blob_names([blob_name])
 
-    assert client.collection.search.call_args.kwargs["expr"] == (
+    assert milvus.search.await_args.kwargs["filter"] == (
         f'blob_name in ["{blob_name}"]'
     )
-    client.collection.delete.assert_called_once_with(f'blob_name in ["{blob_name}"]')
+    assert milvus.delete.await_args.kwargs["filter"] == (
+        f'blob_name in ["{blob_name}"]'
+    )
+
+
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_concurrent_path_initialization_runs_once(_client_class):
+    client = PathIndexClient(MilvusSettings())
+    client._ensure_collection = AsyncMock()
+
+    await asyncio.gather(client.initialize(), client.initialize())
+
+    client._ensure_collection.assert_awaited_once_with()
+    assert client._initialized is True
+
+
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_existing_path_collection_is_loaded_without_recreation(client_class):
+    milvus = client_class.return_value
+    milvus.has_collection = AsyncMock(return_value=True)
+    milvus.list_indexes = AsyncMock(return_value=["path_vector"])
+    milvus.get_load_state = AsyncMock(return_value={"state": LoadState.NotLoad})
+    milvus.load_collection = AsyncMock()
+    client = PathIndexClient(MilvusSettings())
+
+    await client.initialize()
+
+    milvus.load_collection.assert_awaited_once_with(client.collection_name)
+    milvus.create_collection.assert_not_called()
+    milvus.create_index.assert_not_called()
+
+
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_missing_path_collection_creates_schema_and_index(client_class):
+    milvus = client_class.return_value
+    milvus.has_collection = AsyncMock(return_value=False)
+    milvus.create_collection = AsyncMock()
+    milvus.list_indexes = AsyncMock(return_value=[])
+    milvus.create_index = AsyncMock()
+    milvus.get_load_state = AsyncMock(return_value={"state": LoadState.NotLoad})
+    milvus.load_collection = AsyncMock()
+    index_params = Mock()
+    milvus.prepare_index_params.return_value = index_params
+    client = PathIndexClient(MilvusSettings())
+
+    await client.initialize()
+
+    assert milvus.create_collection.await_args.kwargs["collection_name"] == (
+        client.collection_name
+    )
+    index_params.add_index.assert_called_once()
+    milvus.create_index.assert_awaited_once_with(
+        collection_name=client.collection_name,
+        index_params=index_params,
+    )
+    milvus.load_collection.assert_awaited_once_with(client.collection_name)
+
+
+@patch("oce.infrastructure.milvus3.path_index.AsyncMilvusClient")
+async def test_path_close_releases_owned_connection(client_class):
+    milvus = client_class.return_value
+    milvus.close = AsyncMock()
+    client = PathIndexClient(MilvusSettings())
+    client._initialized = True
+
+    await client.close()
+
+    milvus.close.assert_awaited_once_with()
+    assert client._initialized is False
+    assert client._closed is True
+
+    await client.close()
+    milvus.close.assert_awaited_once_with()
+    with pytest.raises(RuntimeError, match="closed"):
+        await client.initialize()
+
+
+@patch("oce.infrastructure.milvus3.path_index.MilvusClient")
+async def test_local_path_search_offloads_sync_client(client_class):
+    milvus = client_class.return_value
+    milvus.search.return_value = []
+    client = PathIndexClient(MilvusSettings(endpoint="/tmp/oce-path-test.db"))
+    client._initialized = True
+    blob_name = "a" * 64
+
+    with patch(
+        "oce.infrastructure.milvus3.path_index.asyncio.to_thread",
+        new_callable=AsyncMock,
+    ) as to_thread:
+        to_thread.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
+        await client.search_paths(
+            [0.1] * client.dense_dim,
+            allowed_blob_names=[blob_name],
+        )
+
+    to_thread.assert_awaited_once()
+    milvus.search.assert_called_once()

@@ -9,6 +9,7 @@ import shutil
 
 from oce.shared.config.settings import MilvusSettings
 from oce.infrastructure.milvus3 import Milvus3Client, Milvus3SearchStore
+from oce.infrastructure.milvus3.path_index import PathIndexClient
 
 
 @pytest.fixture(scope="module")
@@ -214,3 +215,58 @@ class TestMilvus3SearchStoreIntegration:
         assert len(results) >= 1
         assert results[0].blob_name == "d" * 64
         assert results[0].path == "test.py"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_path_index_lite_lifecycle(tmp_path):
+    settings = MilvusSettings(
+        endpoint=str(tmp_path / "paths.db"),
+        path_collection_name="test_oce_paths",
+        dense_dim=8,
+    )
+    client = PathIndexClient(settings)
+    first_blob = "a" * 64
+    second_blob = "b" * 64
+    try:
+        inserted = await client.insert(
+            [
+                {
+                    "path_id": f"path_{first_blob}",
+                    "blob_name": first_blob,
+                    "path": "src/auth.py",
+                    "path_document": "auth python source file",
+                    "path_vector": [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                },
+                {
+                    "path_id": f"path_{second_blob}",
+                    "blob_name": second_blob,
+                    "path": "src/cache.py",
+                    "path_document": "cache python source file",
+                    "path_vector": [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                },
+            ]
+        )
+
+        hits = await client.search_paths(
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            allowed_blob_names=[first_blob],
+            top_k=2,
+        )
+        stats = await client.index_stats()
+
+        assert inserted == {"inserted": 2}
+        assert [(hit.blob_name, hit.path) for hit in hits] == [
+            (first_blob, "src/auth.py")
+        ]
+        assert stats.exists is True
+        assert stats.entities == 2
+
+        await client.delete_by_blob_names([first_blob])
+        assert await client.search_paths(
+            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            allowed_blob_names=[first_blob],
+            top_k=2,
+        ) == []
+    finally:
+        await client.close()

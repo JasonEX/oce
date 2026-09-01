@@ -128,10 +128,7 @@ def _blob_name(path: str, content: str) -> str:
 
 
 @pytest.fixture
-def indexing_pipeline(monkeypatch):
-    # 启用嵌入，确保 embed_pending 返回正确的数量
-    monkeypatch.setenv("EMBED_ENABLED", "true")
-
+def indexing_pipeline():
     blob_repo = FakeBlobRepo()
     chunk_repo = FakeChunkRepo()
     embedder = FakeEmbedder()
@@ -338,7 +335,7 @@ class TestEmbedPending:
         ]
 
     async def test_embed_pending_disabled_keeps_pending_and_staging(
-        self, indexing_pipeline, monkeypatch
+        self, indexing_pipeline
     ):
         """回归：EMBED_ENABLED=false 时，有 chunk 的 blob 必须停在 pending 且保留
         staging，绝不 mark_ready。
@@ -348,8 +345,6 @@ class TestEmbedPending:
         待开关恢复重新入队即可无损补嵌。
         """
         from oce.domain.blob.blob import Blob, BlobStatus
-        from oce.shared.config import get_settings
-
         indexing_pipeline.chunk_repo.pending.clear()
         indexing_pipeline.chunk_repo.chunks.clear()
         indexing_pipeline.vector_index.items.clear()
@@ -380,13 +375,17 @@ class TestEmbedPending:
             LocatedChunk(name, chunk.content_hash, chunk.path, chunk.content, 1, 1)
         ]
 
-        # 关掉嵌入开关；get_settings 有 lru_cache，必须 cache_clear 才能让新值穿透。
-        monkeypatch.setenv("EMBED_ENABLED", "false")
-        get_settings.cache_clear()
-        try:
-            embedded = await indexing_pipeline.embed_pending([name])
-        finally:
-            get_settings.cache_clear()  # 避免 false 泄漏到后续用例
+        disabled_pipeline = IndexingPipeline(
+            chunker=indexing_pipeline.chunker,
+            embedder=indexing_pipeline.embedder,
+            vector_index=indexing_pipeline.vector_index,
+            blob_repo=indexing_pipeline.blob_repo,
+            chunk_repo=indexing_pipeline.chunk_repo,
+            event_bus=indexing_pipeline.event_bus,
+            path_store=indexing_pipeline.path_store,
+            embedding_enabled=False,
+        )
+        embedded = await disabled_pipeline.embed_pending([name])
 
         assert embedded == 0
         assert indexing_pipeline.vector_index.items == []  # 未写任何向量

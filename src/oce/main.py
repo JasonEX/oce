@@ -31,21 +31,23 @@ async def lifespan(app: FastAPI):
         data_dir=Path(data_dir) if data_dir else None,
     )
 
-    # 启动 worker（如果启用）
     container = get_container()
-    await container.ensure_index_compatible()
-    if container.worker is not None:
-        await container.worker.start()
-    await container.metrics.start()
-    if container.resource_sampler is not None:
-        await container.resource_sampler.start()
-    if container.monitoring_cleaner is not None:
-        await container.monitoring_cleaner.start()
-    yield
-    # 关闭时停止 worker + 清理资源
-    if get_container.cache_info().currsize:
-        await get_container().close()
-    await engine.dispose()
+    try:
+        await container.ensure_index_compatible()
+        if container.worker is not None:
+            await container.worker.start()
+        await container.metrics.start()
+        if container.resource_sampler is not None:
+            await container.resource_sampler.start()
+        if container.monitoring_cleaner is not None:
+            await container.monitoring_cleaner.start()
+        yield
+    finally:
+        try:
+            await container.close()
+        finally:
+            get_container.cache_clear()
+            await engine.dispose()
 
 
 app = FastAPI(

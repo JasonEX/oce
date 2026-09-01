@@ -99,7 +99,9 @@ async def test_ingest_blank_content_is_ready(dependencies):
     assert factory.uow.blobs.blobs[name].status == BlobStatus.PENDING
 
     # embed_pending 处理空内容，标记 READY
-    handler = EmbedPendingCommandHandler(factory, chunker, embedder, index)
+    handler = EmbedPendingCommandHandler(
+        factory, chunker, embedder, index, embedding_enabled=True
+    )
     await handler.handle(EmbedPendingCommand((name,)))
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
 
@@ -116,13 +118,39 @@ async def test_embed_pending_writes_vector_and_marks_ready(dependencies):
     await ingest.handle(IngestBlobCommand(name, path, content))
 
     # embed_pending 完成切块和嵌入
-    handler = EmbedPendingCommandHandler(factory, chunker, embedder, index)
+    handler = EmbedPendingCommandHandler(
+        factory, chunker, embedder, index, embedding_enabled=True
+    )
     result = await handler.handle(EmbedPendingCommand((name,)))
 
     assert result.embedded_count == 1
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
     assert len(index.upserted) == 1
     assert index.upserted[0]["blob_name"] == name
+
+
+async def test_embed_handler_propagates_disabled_runtime_state(dependencies):
+    factory, chunker, embedder, index = dependencies
+    content = "print('later')"
+    path = "src/later.py"
+    name = blob_name(path, content)
+    await IngestBlobCommandHandler(factory, chunker, embedder, index).handle(
+        IngestBlobCommand(name, path, content)
+    )
+    handler = EmbedPendingCommandHandler(
+        factory,
+        chunker,
+        embedder,
+        index,
+        embedding_enabled=False,
+    )
+
+    result = await handler.handle(EmbedPendingCommand((name,)))
+
+    assert result.embedded_count == 0
+    assert factory.uow.blobs.blobs[name].status == BlobStatus.PENDING
+    assert name in factory.uow.blobs.staging
+    assert index.upserted == []
 
 
 async def test_embed_pending_limits_vector_batches(dependencies):
@@ -137,7 +165,9 @@ async def test_embed_pending_limits_vector_batches(dependencies):
     ingest = IngestBlobCommandHandler(factory, chunker, embedder, index)
     await ingest.handle(IngestBlobCommand(name, path, content))
 
-    handler = EmbedPendingCommandHandler(factory, chunker, embedder, index)
+    handler = EmbedPendingCommandHandler(
+        factory, chunker, embedder, index, embedding_enabled=True
+    )
     result = await handler.handle(EmbedPendingCommand((name,)))
 
     assert result.embedded_count > 1  # 验证确实切了多块
@@ -163,7 +193,11 @@ async def test_embed_failure_commits_error_state(dependencies):
 
     # embed_pending 使用失败的 embedder
     handler = EmbedPendingCommandHandler(
-        factory, chunker, FailingEmbedder(), index
+        factory,
+        chunker,
+        FailingEmbedder(),
+        index,
+        embedding_enabled=True,
     )
 
     with pytest.raises(RuntimeError, match="provider failed"):

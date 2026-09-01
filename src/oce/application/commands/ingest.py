@@ -136,6 +136,8 @@ class EmbedPendingCommandHandler:
         vector_index: VectorIndex,
         path_store: PathSearchStore | None = None,
         blob_batch_size: int = 32,
+        *,
+        embedding_enabled: bool,
     ) -> None:
         if blob_batch_size < 1:
             raise ValueError("blob_batch_size must be positive")
@@ -145,6 +147,7 @@ class EmbedPendingCommandHandler:
         self._vector_index = vector_index
         self._path_store = path_store
         self._blob_batch_size = blob_batch_size
+        self._embedding_enabled = embedding_enabled
 
     async def handle(self, command: EmbedPendingCommand) -> EmbedPendingResult:
         names = command.blob_names
@@ -168,6 +171,7 @@ class EmbedPendingCommandHandler:
                     blob_repo=uow.blobs,
                     chunk_repo=uow.chunks,
                     path_store=self._path_store,
+                    embedding_enabled=self._embedding_enabled,
                 )
                 try:
                     embedded += await pipeline.embed_pending(group)

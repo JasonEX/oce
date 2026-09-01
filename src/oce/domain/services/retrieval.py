@@ -41,7 +41,6 @@ from oce.domain.services.search import (
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import SelectionMode, Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
-from oce.shared.config import get_settings
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 
@@ -112,6 +111,7 @@ class RetrievalPipeline:
         *,
         embedder: Embedder,
         store: SearchStore,
+        settings: RetrievalSettings,
         reranker: Reranker | None = None,
         llm_reranker: LLMReranker | None = None,
         query_rewriter: "QueryRewriter | None" = None,
@@ -121,7 +121,6 @@ class RetrievalPipeline:
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
         priority_factor: Callable[[str], float] | None = None,
-        settings: RetrievalSettings | None = None,
         intent_classifier: IntentClassifier | None = None,  # 意图分类器
     ) -> None:
         self.embedder = embedder
@@ -133,7 +132,7 @@ class RetrievalPipeline:
         )
         self.path_store = path_store  # Optional path index for filename queries
         self.path_content_store = path_content_store
-        self.settings = settings or get_settings().retrieval
+        self.settings = settings
         self.exact_store = exact_store
         self.priority_factor = priority_factor or (
             source_priority_factor
