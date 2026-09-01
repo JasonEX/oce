@@ -59,13 +59,31 @@ class RedisQueue:
             _ENQUEUE_DEDUP_LUA, 2, self._pending, self._name, blob_name,
         )
 
-    async def dequeue(self, timeout: int = 5) -> str | None:
-        """阻塞取一个 blob_name，原子移入处理中队列。超时返回 None。
+    async def dequeue_many(
+        self,
+        max_items: int,
+        timeout: int = 5,
+    ) -> list[str]:
+        """阻塞等待首条消息，并非阻塞地补齐当前积压中的有界批次。"""
+        if max_items < 1:
+            raise ValueError("max_items must be positive")
 
-        不动 pending SET：blob 从主队列移到处理中仍属于「在飞」状态，
-        ack/fail 时才从 pending 摘除。
-        """
-        return await self._redis.brpoplpush(self._name, self._processing, timeout=timeout)
+        # pending SET 不动：从主队列转到 processing 后仍属于在飞状态。
+        first = await self._redis.brpoplpush(
+            self._name,
+            self._processing,
+            timeout=timeout,
+        )
+        if first is None:
+            return []
+
+        items = [first]
+        while len(items) < max_items:
+            blob_name = await self._redis.rpoplpush(self._name, self._processing)
+            if blob_name is None:
+                break
+            items.append(blob_name)
+        return items
 
     async def ack(self, blob_name: str) -> None:
         """确认完成：从处理中队列移除 + 摘 pending"""

@@ -12,8 +12,12 @@ class Queue(Protocol):
         """投递待处理 blob（幂等，去重防幽灵消息）"""
         ...
 
-    async def dequeue(self, timeout: int = 5) -> str | None:
-        """阻塞取一个 blob_name，超时返回 None"""
+    async def dequeue_many(
+        self,
+        max_items: int,
+        timeout: int = 5,
+    ) -> list[str]:
+        """阻塞取首条，再尽量补齐一个有界批次。"""
         ...
 
     async def ack(self, blob_name: str) -> None:

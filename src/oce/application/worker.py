@@ -2,14 +2,14 @@
 
 流程
 ----
-    dequeue(blob_name) → IndexingPipeline.embed_pending([blob_name])
-    成功 → ack；异常 → fail + DB retry_count++，超限置 error
+    dequeue_many(blob_names) → IndexingPipeline.embed_pending(blob_names)
+    成功 → 逐条 ack；整批异常 → 逐条隔离重试，失败项递增 retry_count
 
 并发
 ----
 启动 N 个 worker 协程并行消费（concurrency 可配）。
 每个协程一个消费循环，stop() 置标志后协程在下次 dequeue 超时自然退出。
-每条消息在自己的 UoW 内构造独立 IndexingPipeline，协程间不共享可变状态。
+每个批次在自己的 UoW 内构造独立 IndexingPipeline，协程间不共享可变状态。
 """
 from __future__ import annotations
 
@@ -43,8 +43,11 @@ class EmbedWorker:
         path_store: PathSearchStore | None = None,
         embedding_enabled: bool,
         concurrency: int = 2,
+        blob_batch_size: int = 16,
         max_retries: int = 3,
     ) -> None:
+        if blob_batch_size < 1:
+            raise ValueError("blob_batch_size must be positive")
         self._queue = queue
         self._uow_factory = uow_factory
         self._chunker = chunker
@@ -53,6 +56,7 @@ class EmbedWorker:
         self._path_store = path_store
         self._embedding_enabled = embedding_enabled
         self._concurrency = max(1, concurrency)
+        self._blob_batch_size = blob_batch_size
         self._max_retries = max_retries
         self._running = False
         self._tasks: list[asyncio.Task] = []
@@ -105,7 +109,10 @@ class EmbedWorker:
         """单个消费协程：取任务 → 嵌入 → ack/fail"""
         while self._running:
             try:
-                blob_name = await self._queue.dequeue(timeout=5)
+                blob_names = await self._queue.dequeue_many(
+                    self._blob_batch_size,
+                    timeout=5,
+                )
             except asyncio.CancelledError:
                 break
             except Exception as e:
@@ -113,46 +120,129 @@ class EmbedWorker:
                 await asyncio.sleep(1)
                 continue
 
-            if blob_name is None:
+            if not blob_names:
                 await asyncio.sleep(0.05)
                 continue
 
             try:
-                # embed_pending 内部会从 staging 取原文切块(如需),然后嵌入、删 staging
-                async with self._uow_factory() as uow:
-                    pipeline = self._build_pipeline(uow)
-                    n = await pipeline.embed_pending(
-                        [blob_name],
-                        mark_failures=False,
-                    )
-                    await uow.commit()
-
-                await self._queue.ack(blob_name)
-                logger.debug("worker#{} processed blob {} ({} chunks embed)", worker_id, blob_name[:12], n)
+                await self._process_batch(worker_id, blob_names)
             except asyncio.CancelledError:
                 break
-            except Exception as e:
-                logger.warning("worker#{} process 失败 blob {}: {}", worker_id, blob_name[:12], e)
-                try:
-                    await self._queue.fail(blob_name)
-                    should_retry = False
-                    # DB 层处理重试:超限则 mark_error + 删 staging,未超限保留 staging 供重试
-                    async with self._uow_factory() as uow:
-                        blob = await uow.blobs.get(blob_name)
-                        if blob:
-                            exceeded = blob.increment_retry(self._max_retries)
-                            if exceeded:
-                                blob.mark_error(str(e))
-                            await uow.blobs.save(blob)
-                            if exceeded:
-                                # 超限放弃,清理 staging
-                                await uow.blobs.delete_staging(blob_name)
-                                logger.error("worker#{} blob {} 重试超限 → error, staging 已清理", worker_id, blob_name[:12])
-                            else:
-                                should_retry = True
-                                logger.info("worker#{} blob {} retry_count={}, staging 保留供重试", worker_id, blob_name[:12], blob.retry_count)
-                            await uow.commit()
-                    if should_retry:
-                        await self._queue.enqueue(blob_name)
-                except Exception as e2:
-                    logger.error("worker#{} fail 处理异常: {}", worker_id, e2)
+
+    async def _process_batch(self, worker_id: int, blob_names: list[str]) -> None:
+        """优先整批处理；失败时逐条隔离，避免健康 blob 被共同记为失败。"""
+        try:
+            embedded = await self._embed(blob_names)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            if len(blob_names) == 1:
+                await self._handle_failure(worker_id, blob_names[0], exc)
+                return
+            logger.warning(
+                "worker#{} batch of {} blobs failed; isolating individually: {}",
+                worker_id,
+                len(blob_names),
+                exc,
+            )
+            for blob_name in blob_names:
+                await self._process_one(worker_id, blob_name)
+            return
+
+        for blob_name in blob_names:
+            await self._ack(worker_id, blob_name)
+        logger.debug(
+            "worker#{} processed {} blobs ({} chunks embedded)",
+            worker_id,
+            len(blob_names),
+            embedded,
+        )
+
+    async def _process_one(self, worker_id: int, blob_name: str) -> None:
+        try:
+            embedded = await self._embed([blob_name])
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            await self._handle_failure(worker_id, blob_name, exc)
+            return
+
+        await self._ack(worker_id, blob_name)
+        logger.debug(
+            "worker#{} processed blob {} ({} chunks embedded)",
+            worker_id,
+            blob_name[:12],
+            embedded,
+        )
+
+    async def _embed(self, blob_names: list[str]) -> int:
+        # 外部向量写入是内容寻址幂等的；事务失败后的逐条回退可安全重复 upsert。
+        async with self._uow_factory() as uow:
+            pipeline = self._build_pipeline(uow)
+            embedded = await pipeline.embed_pending(
+                blob_names,
+                mark_failures=False,
+            )
+            await uow.commit()
+        return embedded
+
+    async def _ack(self, worker_id: int, blob_name: str) -> None:
+        try:
+            await self._queue.ack(blob_name)
+        except Exception as exc:
+            # DB/向量写入已经完成，不能把队列确认失败误记成索引失败。消息留在
+            # processing，进程重启时 recover_processing 会再次安全处理。
+            logger.error(
+                "worker#{} ack failed for blob {}: {}",
+                worker_id,
+                blob_name[:12],
+                exc,
+            )
+
+    async def _handle_failure(
+        self,
+        worker_id: int,
+        blob_name: str,
+        error: Exception,
+    ) -> None:
+        logger.warning(
+            "worker#{} process failed for blob {}: {}",
+            worker_id,
+            blob_name[:12],
+            error,
+        )
+        try:
+            await self._queue.fail(blob_name)
+            should_retry = False
+            async with self._uow_factory() as uow:
+                blob = await uow.blobs.get(blob_name)
+                if blob:
+                    exceeded = blob.increment_retry(self._max_retries)
+                    if exceeded:
+                        blob.mark_error(str(error))
+                    await uow.blobs.save(blob)
+                    if exceeded:
+                        await uow.blobs.delete_staging(blob_name)
+                        logger.error(
+                            "worker#{} blob {} retry limit exceeded; "
+                            "marked error and removed staging",
+                            worker_id,
+                            blob_name[:12],
+                        )
+                    else:
+                        should_retry = True
+                        logger.info(
+                            "worker#{} blob {} retry_count={}; staging retained",
+                            worker_id,
+                            blob_name[:12],
+                            blob.retry_count,
+                        )
+                    await uow.commit()
+            if should_retry:
+                await self._queue.enqueue(blob_name)
+        except Exception as recovery_error:
+            logger.error(
+                "worker#{} failure recovery failed: {}",
+                worker_id,
+                recovery_error,
+            )

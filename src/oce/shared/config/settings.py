@@ -350,6 +350,12 @@ class WorkerSettings(BaseSettings):
 
     enabled: bool = Field(default=True, description="是否启用后台 worker")
     concurrency: int = Field(default=2, ge=1, le=32, description="并发消费协程数")
+    blob_batch_size: int = Field(
+        default=16,
+        ge=1,
+        le=256,
+        description="单个消费协程一次处理的最大 blob 数",
+    )
     max_retries: int = Field(default=3, ge=1, le=10, description="失败重试上限")
 
 

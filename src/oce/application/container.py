@@ -358,6 +358,7 @@ class Container:
                 path_store=self.path_index,
                 embedding_enabled=settings.embedding.enabled,
                 concurrency=worker_concurrency,
+                blob_batch_size=settings.worker.blob_batch_size,
                 max_retries=settings.worker.max_retries,
             )
 
