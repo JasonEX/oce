@@ -25,6 +25,7 @@ from oce.domain.services.path_document_builder import (
 from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.search import VectorIndex
 from oce.domain.services.source_filter import is_binary_source, is_ignored_source_path
+from oce.domain.services.symbols import SymbolProjection
 from oce.shared.events import DomainEvent, EventBus
 from oce.domain.repositories import BlobRepository, ChunkRepository
 
@@ -44,6 +45,7 @@ class IndexingPipeline:
         vector_index: VectorIndex,
         blob_repo: BlobRepository,
         chunk_repo: ChunkRepository,
+        symbol_projection: SymbolProjection,
         event_bus: EventBus | None = None,
         embed_batch_size: int = 64,
         path_store: PathSearchStore | None = None,
@@ -56,6 +58,7 @@ class IndexingPipeline:
         self.vector_index = vector_index
         self.blob_repo = blob_repo
         self.chunk_repo = chunk_repo
+        self.symbol_projection = symbol_projection
         self.event_bus = event_bus
         self.embed_batch_size = embed_batch_size
         self.path_store = path_store
@@ -156,6 +159,7 @@ class IndexingPipeline:
                     await self.chunk_repo.save_many(chunks)
                     blob.chunks = [c.to_ref() for c in chunks]
                     await self.blob_repo.save(blob)
+                    await self.symbol_projection.index(blob, chunks)
                 else:
                     # 无有效内容也可能需要路径召回，统一在路径索引完成后置 ready。
                     continue

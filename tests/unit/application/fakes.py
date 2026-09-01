@@ -150,6 +150,16 @@ class FakeChunkRepo:
         self.pending = [c for c in self.pending if c.content_hash not in hashes]
 
 
+class FakeSymbolProjection:
+    def __init__(self) -> None:
+        self.indexed: list[tuple[str, tuple[str, ...]]] = []
+
+    async def index(self, blob: Blob, chunks) -> None:
+        self.indexed.append(
+            (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
+        )
+
+
 class FakeEmbedder:
     """确定性假 embedder"""
 
@@ -187,6 +197,7 @@ class FakeUnitOfWork:
         self.blobs = FakeBlobRepo()
         self.chunks = FakeChunkRepo(self.blobs)
         self.chains = FakeChainRepo()
+        self.symbols = FakeSymbolProjection()
         self.commits = 0
 
     async def __aenter__(self):

@@ -96,6 +96,7 @@ class EmbedWorker:
             vector_index=self._vector_index,
             blob_repo=uow.blobs,
             chunk_repo=uow.chunks,
+            symbol_projection=uow.symbols,
             path_store=self._path_store,
             embedding_enabled=self._embedding_enabled,
         )

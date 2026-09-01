@@ -8,6 +8,7 @@ from oce.domain.services.symbols import SymbolProvider
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
+from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
 
 
 class SqlAlchemyUnitOfWork:
@@ -24,9 +25,10 @@ class SqlAlchemyUnitOfWork:
 
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
-        self.blobs = SqlBlobRepository(self.session, self._symbol_provider)
+        self.blobs = SqlBlobRepository(self.session)
         self.chunks = SqlChunkRepository(self.session)
         self.chains = SqlChainRepository(self.session)
+        self.symbols = SqlSymbolProjection(self.session, self._symbol_provider)
         return self
 
     async def __aexit__(self, exc_type, exc, traceback) -> None:

@@ -10,13 +10,14 @@ from oce.domain.services.search import SearchScope
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
+from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from tests.conftest import make_sha256
 
 
 def _blob_repository(session):
-    return SqlBlobRepository(session, RegexSymbolProvider())
+    return SqlBlobRepository(session)
 
 
 @pytest.fixture
@@ -181,20 +182,66 @@ async def test_chunk_repository_crud(sqlite_session):
 async def _save_symbol_blobs(sqlite_session, specs):
     blob_repo = _blob_repository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
+    symbol_projection = SqlSymbolProjection(
+        sqlite_session,
+        RegexSymbolProvider(),
+    )
     chunks = [
         Chunk(make_sha256(label), path, content, start_line, end_line)
         for label, path, content, start_line, end_line in specs
     ]
     names = [make_sha256(f"blob-{label}") for label, *_ in specs]
     await chunk_repo.save_many(chunks)
-    await blob_repo.save_many(
-        [
-            Blob(name, chunk.path, BlobStatus.READY, chunks=[chunk.to_ref()])
-            for name, chunk in zip(names, chunks, strict=True)
-        ]
-    )
+    blobs = [
+        Blob(name, chunk.path, BlobStatus.READY, chunks=[chunk.to_ref()])
+        for name, chunk in zip(names, chunks, strict=True)
+    ]
+    await blob_repo.save_many(blobs)
+    for blob, chunk in zip(blobs, chunks, strict=True):
+        await symbol_projection.index(blob, [chunk])
     await sqlite_session.commit()
     return names, chunks
+
+
+@pytest.mark.asyncio
+async def test_blob_status_save_does_not_repeat_symbol_projection(sqlite_session):
+    class CountingProvider:
+        def __init__(self) -> None:
+            self.calls = 0
+            self._delegate = RegexSymbolProvider()
+
+        def extract(self, **kwargs):
+            self.calls += 1
+            return self._delegate.extract(**kwargs)
+
+    provider = CountingProvider()
+    blob_repo = _blob_repository(sqlite_session)
+    chunk_repo = SqlChunkRepository(sqlite_session)
+    projection = SqlSymbolProjection(sqlite_session, provider)
+    content = "def projected_once():\n    return True\n"
+    chunk = Chunk(
+        make_sha256("projected-once"),
+        "src/once.py",
+        content,
+        1,
+        2,
+    )
+    blob = Blob(
+        make_sha256("blob-projected-once"),
+        chunk.path,
+        BlobStatus.PENDING,
+        chunks=[chunk.to_ref()],
+        language="python",
+    )
+
+    await chunk_repo.save(chunk)
+    await blob_repo.save(blob)
+    await projection.index(blob, [chunk])
+    blob.mark_ready()
+    await blob_repo.save(blob)
+    await sqlite_session.commit()
+
+    assert provider.calls == 1
 
 
 @pytest.mark.asyncio

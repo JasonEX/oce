@@ -53,6 +53,7 @@ class IngestBlobCommandHandler:
                 vector_index=self._vector_index,
                 blob_repo=uow.blobs,
                 chunk_repo=uow.chunks,
+                symbol_projection=uow.symbols,
             )
             count = await pipeline.ingest(command.blob_name, command.path, command.content)
             stored = await uow.blobs.get(command.blob_name)
@@ -99,6 +100,7 @@ class IngestBlobsCommandHandler:
                 vector_index=self._vector_index,
                 blob_repo=uow.blobs,
                 chunk_repo=uow.chunks,
+                symbol_projection=uow.symbols,
             )
             chunk_count = 0
             for blob in command.blobs:
@@ -170,6 +172,7 @@ class EmbedPendingCommandHandler:
                     vector_index=self._vector_index,
                     blob_repo=uow.blobs,
                     chunk_repo=uow.chunks,
+                    symbol_projection=uow.symbols,
                     path_store=self._path_store,
                     embedding_enabled=self._embedding_enabled,
                 )

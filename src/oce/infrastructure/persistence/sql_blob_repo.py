@@ -12,25 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import ChunkRef
-from oce.domain.services.symbols import SymbolProvider
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
     ChainMemberModel,
     ChunkModel,
-    SymbolOccurrenceModel,
 )
 from oce.domain.repositories import BlobRepository
 
 
 class SqlBlobRepository(BlobRepository):
-    def __init__(
-        self,
-        session: AsyncSession,
-        symbol_provider: SymbolProvider,
-    ) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self.session = session
-        self._symbol_provider = symbol_provider
 
     def _insert(self):
         bind = self.session.get_bind()
@@ -119,7 +112,6 @@ class SqlBlobRepository(BlobRepository):
         await self.session.execute(stmt)
         for blob in blobs:
             await self._save_blob_chunks(blob.blob_name, blob.chunks)
-            await self._extract_and_save_symbols(blob)
 
     async def delete(self, blob_name: str) -> None:
         await self.delete_many([blob_name])
@@ -273,76 +265,6 @@ class SqlBlobRepository(BlobRepository):
             index_elements=["blob_name", "content_hash", "start_line", "end_line"]
         )
         await self.session.execute(stmt)
-
-    async def _extract_and_save_symbols(self, blob: Blob) -> None:
-        """从 blob 的所有 chunks 提取标识符并写入 symbol_occurrences 表。"""
-        import logging
-
-        logger = logging.getLogger(__name__)
-
-        if not blob.chunks:
-            logger.debug(
-                f"Blob {blob.blob_name}: no chunks, skipping symbol extraction"
-            )
-            return
-
-        # 先获取所有 chunk 的 content
-        content_hashes = [chunk.content_hash for chunk in blob.chunks]
-        result = await self.session.execute(
-            select(ChunkModel.content_hash, ChunkModel.content).where(
-                ChunkModel.content_hash.in_(content_hashes)
-            )
-        )
-        chunk_contents = {row.content_hash: row.content for row in result}
-        logger.debug(
-            f"Blob {blob.blob_name}: loaded {len(chunk_contents)} chunk contents"
-        )
-
-        # 提取所有标识符
-        symbol_values = []
-        for chunk_ref in blob.chunks:
-            content = chunk_contents.get(chunk_ref.content_hash)
-            if not content:
-                logger.warning(
-                    f"Blob {blob.blob_name}: chunk {chunk_ref.content_hash} content not found"
-                )
-                continue
-
-            symbols = self._symbol_provider.extract(
-                content=content,
-                language=blob.language,
-                start_line=chunk_ref.start_line,
-                end_line=chunk_ref.end_line,
-            )
-
-            for symbol in symbols:
-                symbol_values.append(
-                    {
-                        "identifier": symbol.identifier,
-                        "blob_name": blob.blob_name,
-                        "content_hash": chunk_ref.content_hash,
-                        "kind": symbol.kind,
-                        "start_line": symbol.start_line,
-                        "end_line": symbol.end_line,
-                    }
-                )
-
-        logger.info(
-            f"Blob {blob.blob_name}: extracted {len(symbol_values)} symbols from {len(blob.chunks)} chunks"
-        )
-
-        if not symbol_values:
-            return
-
-        # 批量插入（冲突时忽略）
-        stmt = self._insert()(SymbolOccurrenceModel).values(symbol_values)
-        stmt = stmt.on_conflict_do_nothing(
-            index_elements=["identifier", "blob_name", "content_hash", "kind"]
-        )
-        await self.session.execute(stmt)
-        logger.info(
-            f"Blob {blob.blob_name}: saved {len(symbol_values)} symbol occurrences"
-        )
 
     async def list_pending_names(self) -> list[str]:
         """全部 pending blob 名。队列对账要全集，且只需要标识不需要聚合。"""

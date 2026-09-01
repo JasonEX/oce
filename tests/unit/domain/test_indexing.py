@@ -111,6 +111,16 @@ class FakeEmbedder:
         return [[1.0] * 4 for _ in texts]
 
 
+class FakeSymbolProjection:
+    def __init__(self) -> None:
+        self.indexed: list[tuple[str, tuple[str, ...]]] = []
+
+    async def index(self, blob, chunks) -> None:
+        self.indexed.append(
+            (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
+        )
+
+
 class RecordingPathStore:
     def __init__(self, *, error: Exception | None = None) -> None:
         self.error = error
@@ -148,6 +158,7 @@ def indexing_pipeline():
         vector_index=FakeVectorIndex(),
         blob_repo=blob_repo,
         chunk_repo=chunk_repo,
+        symbol_projection=FakeSymbolProjection(),
         event_bus=event_bus,
     )
     pipe._events = events  # type: ignore[attr-defined]
@@ -381,6 +392,7 @@ class TestEmbedPending:
             vector_index=indexing_pipeline.vector_index,
             blob_repo=indexing_pipeline.blob_repo,
             chunk_repo=indexing_pipeline.chunk_repo,
+            symbol_projection=indexing_pipeline.symbol_projection,
             event_bus=indexing_pipeline.event_bus,
             path_store=indexing_pipeline.path_store,
             embedding_enabled=False,

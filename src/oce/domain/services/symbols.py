@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol, Sequence
+from typing import TYPE_CHECKING, Literal, Protocol, Sequence
+
+if TYPE_CHECKING:
+    from oce.domain.blob.blob import Blob
+    from oce.domain.chunk import Chunk
 
 
 SymbolKind = Literal["endpoint", "definition", "reference"]
@@ -30,3 +34,9 @@ class SymbolProvider(Protocol):
         start_line: int,
         end_line: int,
     ) -> Sequence[SymbolOccurrence]: ...
+
+
+class SymbolProjection(Protocol):
+    """Persist structural evidence when a blob's immutable chunks are created."""
+
+    async def index(self, blob: Blob, chunks: Sequence[Chunk]) -> None: ...
