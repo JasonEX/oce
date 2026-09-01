@@ -44,6 +44,10 @@ jobs:
           DB_URL: "sqlite+aiosqlite:///:memory:"
         run: uv run python -c "from oce.main import app; print('import OK')"
 
+      - name: Run Ruff
+        if: matrix.python-version == '3.13'
+        run: uv run ruff check src tests
+
       # 关键约束：每个测试文件独立进程运行。tree-sitter 语言包 + Milvus Lite
       # 在同一进程累积会吃掉 10GB+ 内存，禁止一次性跑整个 tests/unit/infrastructure。
       # 循环内不用 set -e，让所有文件都跑完再统一以非零码退出，便于一次看到全部失败。
@@ -84,4 +88,3 @@ jobs:
           name: dist
           path: dist/*
           if-no-files-found: error
-
