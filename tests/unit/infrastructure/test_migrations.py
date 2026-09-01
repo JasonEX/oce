@@ -71,6 +71,37 @@ def test_run_migrations_is_idempotent(sqlite_url: str) -> None:
     run_migrations(sqlite_url)  # 第二次不应抛“表已存在”
 
 
+def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
+    """A release rollback must leave the migration chain upgradeable again."""
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(_SCRIPT_LOCATION))
+
+    command.upgrade(cfg, "head")
+    command.downgrade(cfg, "base")
+
+    engine = _sync_engine(sqlite_url)
+    try:
+        with engine.begin() as connection:
+            tables_after_rollback = set(inspect(connection).get_table_names())
+    finally:
+        engine.dispose()
+    assert tables_after_rollback <= {"oce_alembic_version"}
+
+    command.upgrade(cfg, "head")
+    engine = _sync_engine(sqlite_url)
+    try:
+        with engine.begin() as connection:
+            version = connection.execute(
+                text("SELECT version_num FROM oce_alembic_version")
+            ).scalar()
+    finally:
+        engine.dispose()
+    assert version == _head_revision()
+
+
 def test_run_migrations_stamps_legacy_create_all_db(sqlite_url: str) -> None:
     """旧版 create_all 库（无版本表）应被 stamp 为 head，而不是重放建表报错。"""
     from oce.infrastructure.persistence import models  # noqa: F401
