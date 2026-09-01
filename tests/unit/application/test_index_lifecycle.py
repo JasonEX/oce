@@ -1,5 +1,7 @@
 """Persisted index profiles prevent silent reuse across vector spaces."""
 
+from dataclasses import replace
+
 import pytest
 
 from oce.application.index_lifecycle import IndexLifecycleManager, build_index_profile
@@ -97,6 +99,19 @@ async def test_embedding_or_chunking_change_is_rejected_without_overwrite():
         )
 
     assert store.stored == original
+
+
+async def test_source_admission_change_is_rejected_without_reusing_old_blobs():
+    store = Store()
+    profile = build_index_profile(Settings(), _embedding())
+    old_profile = replace(profile, source_admission_version=0)
+    store.stored = StoredIndexProfile(
+        old_profile.fingerprint,
+        old_profile.canonical_json(),
+    )
+
+    with pytest.raises(ServiceNotReadyError, match="source_admission_version"):
+        await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())
 
 
 @pytest.mark.parametrize(

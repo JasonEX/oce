@@ -14,6 +14,7 @@ from oce.shared.index_profile import (
     CHUNKER_VERSION,
     INDEX_SCHEMA_VERSION,
     PATH_DOCUMENT_VERSION,
+    SOURCE_ADMISSION_VERSION,
     SYMBOL_EXTRACTION_VERSION,
     EmbeddingIndexProfile,
     IndexDataProbe,
@@ -54,6 +55,7 @@ def build_index_profile(
         recursive_chunk_overlap=chunking.recursive_chunk_overlap,
         symbol_extraction_version=SYMBOL_EXTRACTION_VERSION,
         path_document_version=PATH_DOCUMENT_VERSION,
+        source_admission_version=SOURCE_ADMISSION_VERSION,
         embedding=embedding,
     )
 

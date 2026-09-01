@@ -8,11 +8,12 @@ from dataclasses import asdict, dataclass
 from typing import Protocol
 
 
-INDEX_SCHEMA_VERSION = 1
+INDEX_SCHEMA_VERSION = 2
 CHUNKER_VERSION = 2
 EMBEDDING_PIPELINE_VERSION = 1
 SYMBOL_EXTRACTION_VERSION = 1
 PATH_DOCUMENT_VERSION = 1
+SOURCE_ADMISSION_VERSION = 1
 
 
 def profile_value_hash(value: str) -> str:
@@ -59,6 +60,7 @@ class IndexProfile:
     recursive_chunk_overlap: int
     symbol_extraction_version: int
     path_document_version: int
+    source_admission_version: int
     embedding: EmbeddingIndexProfile
 
     def canonical_json(self) -> str:

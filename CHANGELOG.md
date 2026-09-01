@@ -7,6 +7,7 @@
 
 ### Added
 
+- **index lifecycle**: bind persisted artifacts to the server source-admission policy version so tightened filters require a clean resync
 - **evaluation**: add production-wired ablation switches for semantic chunking, exact recall, source priority, and coverage selection
 - **indexing**: persist a secret-free model/chunker/vector-store fingerprint and fail closed on incompatible reuse
 - **embedding**: add a bounded TTL query-vector cache that stores hashed keys and clears on credential reload
