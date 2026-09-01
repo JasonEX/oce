@@ -1,6 +1,6 @@
 """Chunker 装配:把 infrastructure 的各语言 chunker 组装进 router。"""
 
-from oce.domain.chunk import LanguageChunkerRouter
+from oce.domain.chunk import Chunker, LanguageChunkerRouter
 from oce.domain.chunk.recursive_chunker import RecursiveChunker
 from oce.infrastructure.astchunk.cast_chunker import CastChunker
 from oce.infrastructure.chunkers.jsp_chunker import JspChunker
@@ -8,7 +8,7 @@ from oce.infrastructure.chunkers.markdown_chunker import MarkdownChunker
 from oce.infrastructure.chunkers.vue_chunker import VueChunker
 
 
-def build_chunker() -> LanguageChunkerRouter:
+def build_chunker(*, semantic_enabled: bool = True) -> Chunker:
     """构建 Chunker router，使用 RecursiveChunker 作为统一 fallback。
 
     架构说明：
@@ -18,6 +18,8 @@ def build_chunker() -> LanguageChunkerRouter:
     - FixedChunker 已废弃，完全由 RecursiveChunker 替代
     """
     recursive_chunker = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
+    if not semantic_enabled:
+        return recursive_chunker
 
     return LanguageChunkerRouter(
         fallback=recursive_chunker,

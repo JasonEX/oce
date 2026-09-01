@@ -29,6 +29,7 @@ from oce.shared.index_stats import (
     IndexStoreStats,
     MetadataIndexStats,
     QueryCacheStats,
+    RetrievalRuntimeProfile,
 )
 
 
@@ -109,6 +110,10 @@ class StubApplication:
                 600.0,
                 hits=3,
                 misses=1,
+            ),
+            runtime=RetrievalRuntimeProfile(
+                semantic_chunking_enabled=False,
+                exact_enabled=False,
             ),
         )
 
@@ -368,4 +373,6 @@ async def test_admin_index_stats_contract_and_auth():
     assert body["dense"]["entities"] == 10
     assert body["path"]["error_type"] == "NotInitialized"
     assert body["query_cache"]["hits"] == 3
+    assert body["runtime"]["semantic_chunking_enabled"] is False
+    assert body["runtime"]["exact_enabled"] is False
     assert unauthorized.status_code == 401

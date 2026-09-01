@@ -7,6 +7,7 @@
 
 ### Added
 
+- **evaluation**: add production-wired ablation switches for semantic chunking, exact recall, source priority, and coverage selection
 - **embedding**: add a bounded TTL query-vector cache that stores hashed keys and clears on credential reload
 - **admin**: expose authoritative metadata, dense/path collection, and query-cache index statistics
 

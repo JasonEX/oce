@@ -12,6 +12,7 @@ from oce.shared.index_stats import (
     IndexStoreStatsProvider,
     MetadataIndexStatsReader,
     QueryCacheStatsProvider,
+    RetrievalRuntimeProfile,
 )
 
 
@@ -27,11 +28,13 @@ class IndexStatsQueryHandler:
         dense: IndexStoreStatsProvider,
         path: IndexStoreStatsProvider | None,
         query_cache: QueryCacheStatsProvider,
+        runtime: RetrievalRuntimeProfile,
     ) -> None:
         self._metadata_reader = metadata_reader
         self._dense = dense
         self._path = path
         self._query_cache = query_cache
+        self._runtime = runtime
 
     async def handle(self, _query: IndexStatsQuery) -> IndexStats:
         metadata = await self._metadata_reader.read()
@@ -45,6 +48,7 @@ class IndexStatsQueryHandler:
             dense=dense,
             path=path,
             query_cache=query_cache,
+            runtime=self._runtime,
         )
 
     @staticmethod

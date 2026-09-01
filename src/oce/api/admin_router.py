@@ -27,6 +27,7 @@ from oce.api.schemas import (
     RequeueStaleResponse,
     ResourceSnapshotResponse,
     RetrievalStatsResponse,
+    RetrievalRuntimeProfileResponse,
     TokenKindStatsResponse,
 )
 from oce.application.container import get_container
@@ -279,6 +280,10 @@ async def admin_index_stats(
         ),
         query_cache=QueryCacheStatsResponse.model_validate(
             stats.query_cache,
+            from_attributes=True,
+        ),
+        runtime=RetrievalRuntimeProfileResponse.model_validate(
+            stats.runtime,
             from_attributes=True,
         ),
     )

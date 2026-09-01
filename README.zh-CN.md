@@ -200,6 +200,10 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 超时仍回退 dense 检索。
 symbol index 只识别已支持的定义和 endpoint 模式，不是 call/reference/implementation graph；
 需要这些结构关系时应使用原生文本搜索或 LSP。
+可复现消融可通过 `CHUNKING_SEMANTIC_ENABLED`、`RETRIEVAL_EXACT_ENABLED`、
+`RETRIEVAL_SOURCE_PRIORITY_ENABLED` 与 `RETRIEVAL_COVERAGE_SELECTION_ENABLED` 分别关闭
+结构化切块、exact recall、源码路径先验和 coverage selector。切块配置变化后必须使用干净
+数据目录完整重同步，这些开关不会改写已有索引。
 
 上传准入会在切块前拒绝依赖/构建/缓存目录、`.env`、私钥、SSH/AWS 凭据目录、含 NUL 的文件，
 以及 SVG、媒体、压缩包、压缩打包产物、source map、lock 文件等非源码产物；`.env.example`

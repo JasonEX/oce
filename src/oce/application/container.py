@@ -94,6 +94,7 @@ from oce.infrastructure.metrics.stats_store import SqlMonitoringStatsReader
 from oce.infrastructure.queue.redis_queue import RedisQueue
 from oce.shared.config import get_settings
 from oce.shared.database.session import async_session_factory
+from oce.shared.index_stats import RetrievalRuntimeProfile
 from oce.shared.logging import DATA_DIR_ENV
 from oce.shared.metrics import NoopMetricsSink, TokenUsageRecord
 
@@ -250,7 +251,9 @@ class Container:
             query_cache=self.embedder,
         )
 
-        self.chunker = build_chunker()
+        self.chunker = build_chunker(
+            semantic_enabled=settings.chunking.semantic_enabled,
+        )
         self.symbol_provider = RegexSymbolProvider()
         self._uow_factory = lambda: SqlAlchemyUnitOfWork(
             async_session_factory,
@@ -447,6 +450,24 @@ class Container:
                 self.search_store,
                 self.path_index,
                 self.embedder,
+                RetrievalRuntimeProfile(
+                    semantic_chunking_enabled=settings.chunking.semantic_enabled,
+                    exact_enabled=settings.retrieval.exact_enabled,
+                    path_index_enabled=settings.retrieval.path_index_enabled,
+                    source_priority_enabled=settings.retrieval.source_priority_enabled,
+                    coverage_selection_enabled=(
+                        settings.retrieval.coverage_selection_enabled
+                    ),
+                    query_decomposition_enabled=(
+                        settings.retrieval.query_decomposition_enabled
+                    ),
+                    api_rerank_enabled=settings.rerank.enabled,
+                    llm_rerank_enabled=settings.llm.rerank_enabled,
+                    query_rewrite_enabled=settings.retrieval.query_rewrite_enabled,
+                    intent_classification_enabled=(
+                        settings.retrieval.intent_classification_enabled
+                    ),
+                ),
             ),
         )
         query_bus.register(

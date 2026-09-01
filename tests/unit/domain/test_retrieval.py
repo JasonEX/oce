@@ -154,6 +154,28 @@ class TestRetrievalPipeline:
         results = await pipe.search("q")
         assert [r.path for r in results] == ["src/core.py", "README.md"]
 
+    async def test_source_priority_can_be_disabled_for_ablation(self):
+        hits = [
+            _hit("docs/guide.md", 0.8),
+            _hit("src/core.py", 0.7),
+        ]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(hits),
+            settings=_settings(
+                source_priority_enabled=False,
+                confidence_floor=0.0,
+                final_select_k=10,
+            ),
+        )
+
+        results = await pipe.search("q")
+
+        assert [result.path for result in results] == [
+            "docs/guide.md",
+            "src/core.py",
+        ]
+
     async def test_confidence_floor_filters_weak_hits(self):
         hits = [
             _hit("src/a.py", 0.9),
@@ -176,6 +198,26 @@ class TestRetrievalPipeline:
         )
         results = await pipe.search("q")
         assert len(results) == 3
+
+    async def test_coverage_selection_can_be_disabled_for_topk_ablation(self):
+        hits = [
+            replace(_hit("src/a.py", 0.9), content_hash="a1", start_line=1),
+            replace(_hit("src/a.py", 0.8), content_hash="a2", start_line=20),
+            replace(_hit("src/b.py", 0.7), content_hash="b1", start_line=1),
+        ]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(hits),
+            settings=_settings(
+                coverage_selection_enabled=False,
+                max_chunks_per_path=1,
+                final_select_k=2,
+            ),
+        )
+
+        results = await pipe.search("q")
+
+        assert [result.path for result in results] == ["src/a.py", "src/a.py"]
 
     async def test_allowed_blob_names_passed_to_store(self):
         store = FakeSearchStore([_hit("src/a.py", 0.9)])
@@ -342,6 +384,24 @@ class TestRetrievalPipeline:
         results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
 
         assert [result.path for result in results] == ["src/fallback.py"]
+
+    async def test_exact_identifier_recall_can_be_disabled_for_ablation(self):
+        exact_store = FakeExactSearchStore([_hit("src/exact.py", 1.0)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
+            exact_store=exact_store,
+            settings=_settings(
+                exact_enabled=False,
+                confidence_floor=0.0,
+                final_select_k=10,
+            ),
+        )
+
+        results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
+
+        assert [result.path for result in results] == ["src/semantic.py"]
+        assert exact_store.identifiers == ()
 
     async def test_exact_identifier_requires_scope_but_accepts_large_scopes(self):
         exact_store = FakeExactSearchStore([_hit("src/exact.py", 1.0)])

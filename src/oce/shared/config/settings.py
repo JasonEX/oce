@@ -147,6 +147,22 @@ class RerankSettings(BaseSettings):
     timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
 
 
+class ChunkingSettings(BaseSettings):
+    """Source chunking composition."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="CHUNKING_",
+        env_file=[".env", ".env.local"],
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    semantic_enabled: bool = Field(
+        default=True,
+        description="启用 cAST 与专用结构化 chunker；关闭时统一使用 recursive chunker",
+    )
+
+
 class LLMSettings(BaseSettings):
     """LLM 功能共享的环境变量 fallback 配置。
 
@@ -218,6 +234,19 @@ class RetrievalSettings(BaseSettings):
         default=2.0,
         gt=0.0,
         description="SQL 精确标识符召回超时；超时后回退向量检索",
+    )
+    exact_enabled: bool = Field(
+        default=True,
+        description="是否启用 SQL exact identifier recall",
+    )
+
+    source_priority_enabled: bool = Field(
+        default=True,
+        description="是否对文档、测试和 barrel 文件应用 source priority",
+    )
+    coverage_selection_enabled: bool = Field(
+        default=True,
+        description="是否使用 focused/coverage selector；关闭时使用纯 Top-K",
     )
 
     # 仓库级多意图召回
@@ -398,6 +427,7 @@ class Settings(BaseSettings):
     milvus: MilvusSettings = Field(default_factory=MilvusSettings)
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
     rerank: RerankSettings = Field(default_factory=RerankSettings)
+    chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
     retrieval: RetrievalSettings = Field(default_factory=RetrievalSettings)
     redis: RedisSettings = Field(default_factory=RedisSettings)

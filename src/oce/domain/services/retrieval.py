@@ -40,6 +40,7 @@ from oce.domain.services.search import (
 )
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import SelectionMode, Selector
+from oce.domain.services.selector.topk_selector import TopKSelector
 from oce.shared.config import get_settings
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
@@ -130,9 +131,13 @@ class RetrievalPipeline:
             query_rewriter  # Optional query rewriter for better recall
         )
         self.path_store = path_store  # Optional path index for filename queries
-        self.exact_store = exact_store
-        self.priority_factor = priority_factor or source_priority_factor
         self.settings = settings or get_settings().retrieval
+        self.exact_store = exact_store
+        self.priority_factor = priority_factor or (
+            source_priority_factor
+            if self.settings.source_priority_enabled
+            else lambda _path: 1.0
+        )
         self.intent_classifier = intent_classifier  # Optional intent classifier
         self.query_planner = query_planner or HeuristicQueryPlanner(
             max_queries=(
@@ -142,12 +147,17 @@ class RetrievalPipeline:
             ),
             min_facet_chars=self.settings.query_min_facet_chars,
         )
-        self.selector = selector or CoverageSelector(
-            max_per_path=self.settings.max_chunks_per_path,
-            focused_max_per_path=self.settings.focused_max_chunks_per_path,
-            max_chars=self.settings.max_context_chars,
-            overlap_threshold=self.settings.overlap_threshold,
-        )
+        if selector is not None:
+            self.selector = selector
+        elif self.settings.coverage_selection_enabled:
+            self.selector = CoverageSelector(
+                max_per_path=self.settings.max_chunks_per_path,
+                focused_max_per_path=self.settings.focused_max_chunks_per_path,
+                max_chars=self.settings.max_context_chars,
+                overlap_threshold=self.settings.overlap_threshold,
+            )
+        else:
+            self.selector = TopKSelector()
 
     async def search(
         self,
@@ -321,7 +331,12 @@ class RetrievalPipeline:
         query: str,
         scope: SearchScope | None,
     ) -> list[SearchHit]:
-        if self.exact_store is None or scope is None or not scope.blob_names:
+        if (
+            not self.settings.exact_enabled
+            or self.exact_store is None
+            or scope is None
+            or not scope.blob_names
+        ):
             return []
         identifiers = extract_code_identifiers(query)
         if not identifiers:

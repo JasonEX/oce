@@ -163,11 +163,25 @@ class QueryCacheStatsResponse(BaseModel):
     invalidations: int = 0
 
 
+class RetrievalRuntimeProfileResponse(BaseModel):
+    semantic_chunking_enabled: bool
+    exact_enabled: bool
+    path_index_enabled: bool
+    source_priority_enabled: bool
+    coverage_selection_enabled: bool
+    query_decomposition_enabled: bool
+    api_rerank_enabled: bool
+    llm_rerank_enabled: bool
+    query_rewrite_enabled: bool
+    intent_classification_enabled: bool
+
+
 class IndexStatsResponse(BaseModel):
     metadata: MetadataIndexStatsResponse
     dense: IndexStoreStatsResponse
     path: IndexStoreStatsResponse
     query_cache: QueryCacheStatsResponse
+    runtime: RetrievalRuntimeProfileResponse
 
 
 # 凭据用途：embed/rerank 走 REST（/v1/embeddings、/v1/rerank）；后三类走 chat。

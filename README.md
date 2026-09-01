@@ -226,6 +226,11 @@ recall without expanding every member into one SQL `IN (...)` clause. Added-only
 unusually large request deltas use bounded batches; timeout still falls back to dense retrieval.
 The symbol index recognizes supported definition and endpoint patterns; it is not a call,
 reference, or implementation graph. Use native text search or an LSP for those relations.
+Reproducible ablations can disable semantic chunking, exact recall, source priority, and
+coverage selection with `CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`,
+`RETRIEVAL_SOURCE_PRIORITY_ENABLED`, and `RETRIEVAL_COVERAGE_SELECTION_ENABLED`.
+Changing chunking requires a clean data directory and full resync; these switches do not
+retroactively transform an existing index.
 
 Upload admission rejects dependency/build/cache directories, common secret files such as
 `.env`, private keys, and SSH/AWS credential directories, NUL-containing files, and

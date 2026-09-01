@@ -30,3 +30,9 @@ def test_recursive_chunker_languages_are_not_claimed_by_semantic_chunkers():
     assert set(router.language_chunkers).union(recursive_chunker_languages) == set(
         SUPPORTED_LANGUAGES
     )
+
+
+def test_semantic_chunking_can_be_disabled_for_recursive_ablation():
+    chunker = build_chunker(semantic_enabled=False)
+
+    assert isinstance(chunker, RecursiveChunker)

@@ -5,6 +5,7 @@ from oce.shared.index_stats import (
     IndexStoreStats,
     MetadataIndexStats,
     QueryCacheStats,
+    RetrievalRuntimeProfile,
 )
 
 
@@ -35,6 +36,7 @@ async def test_index_stats_preserve_partial_store_availability():
         Store(error=RuntimeError("milvus unavailable")),
         Store(IndexStoreStats(True, False, "paths", error_type="NotInitialized")),
         Cache(),
+        RetrievalRuntimeProfile(exact_enabled=False),
     )
 
     result = await handler.handle(IndexStatsQuery())
@@ -45,6 +47,7 @@ async def test_index_stats_preserve_partial_store_availability():
     assert result.path.collection_name == "paths"
     assert result.path.error_type == "NotInitialized"
     assert result.query_cache.hits == 3
+    assert result.runtime.exact_enabled is False
 
 
 async def test_index_stats_marks_missing_path_provider_disabled():
@@ -53,6 +56,7 @@ async def test_index_stats_marks_missing_path_provider_disabled():
         Store(IndexStoreStats(True, True, "dense", True, 10)),
         None,
         Cache(),
+        RetrievalRuntimeProfile(),
     )
 
     result = await handler.handle(IndexStatsQuery())

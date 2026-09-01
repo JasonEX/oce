@@ -44,6 +44,20 @@ class QueryCacheStats:
 
 
 @dataclass(frozen=True)
+class RetrievalRuntimeProfile:
+    semantic_chunking_enabled: bool = True
+    exact_enabled: bool = True
+    path_index_enabled: bool = True
+    source_priority_enabled: bool = True
+    coverage_selection_enabled: bool = True
+    query_decomposition_enabled: bool = True
+    api_rerank_enabled: bool = False
+    llm_rerank_enabled: bool = False
+    query_rewrite_enabled: bool = False
+    intent_classification_enabled: bool = False
+
+
+@dataclass(frozen=True)
 class IndexStats:
     metadata: MetadataIndexStats = field(default_factory=MetadataIndexStats)
     dense: IndexStoreStats = field(
@@ -53,6 +67,7 @@ class IndexStats:
     query_cache: QueryCacheStats = field(
         default_factory=lambda: QueryCacheStats(False, 0, 0, 0.0)
     )
+    runtime: RetrievalRuntimeProfile = field(default_factory=RetrievalRuntimeProfile)
 
 
 class MetadataIndexStatsReader(Protocol):
