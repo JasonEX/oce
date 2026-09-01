@@ -53,7 +53,13 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
     finally:
         engine.dispose()
 
-    assert {"blobs", "chunks", "blob_chunks", "symbol_occurrences"}.issubset(tables)
+    assert {
+        "blobs",
+        "chunks",
+        "blob_chunks",
+        "symbol_occurrences",
+        "index_profiles",
+    }.issubset(tables)
     # 监控迁移链（含检索审计）也应被建出
     assert {
         "api_call_metrics",

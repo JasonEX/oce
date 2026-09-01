@@ -161,6 +161,21 @@ class ChunkingSettings(BaseSettings):
         default=True,
         description="启用 cAST 与专用结构化 chunker；关闭时统一使用 recursive chunker",
     )
+    semantic_max_chunk_chars: int = Field(
+        default=1500,
+        gt=0,
+        description="cAST semantic chunk 的 non-whitespace 字符预算",
+    )
+    recursive_chunk_size: int = Field(
+        default=6000,
+        gt=0,
+        description="recursive fallback 目标字符数",
+    )
+    recursive_chunk_overlap: int = Field(
+        default=200,
+        ge=0,
+        description="recursive splitter 的边界搜索重叠字符数",
+    )
 
 
 class LLMSettings(BaseSettings):

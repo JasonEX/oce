@@ -67,6 +67,7 @@ from oce.application.queries.status import (
 )
 from oce.application.service import RetrievalApplication
 from oce.application.factories.chunker import build_chunker
+from oce.application.index_lifecycle import IndexLifecycleManager
 from oce.application.worker import EmbedWorker
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
@@ -81,6 +82,7 @@ from oce.infrastructure.persistence.credential_admin_store import (
 from oce.infrastructure.persistence.index_stats_reader import (
     SqlMetadataIndexStatsReader,
 )
+from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileStore
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
@@ -94,13 +96,20 @@ from oce.infrastructure.metrics.stats_store import SqlMonitoringStatsReader
 from oce.infrastructure.queue.redis_queue import RedisQueue
 from oce.shared.config import get_settings
 from oce.shared.database.session import async_session_factory
+from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_stats import RetrievalRuntimeProfile
 from oce.shared.logging import DATA_DIR_ENV
 from oce.shared.metrics import NoopMetricsSink, TokenUsageRecord
 
 
 class _CredentialRuntime:
-    def __init__(self, embedder, reranker, llm_clients=(), query_cache=None) -> None:
+    def __init__(
+        self,
+        embedder,
+        reranker,
+        llm_clients=(),
+        query_cache=None,
+    ) -> None:
         self._embedder = embedder
         self._reranker = reranker
         self._llm_clients = [client for client in llm_clients if client is not None]
@@ -112,6 +121,12 @@ class _CredentialRuntime:
             rerank_replacement = await self._reranker.prepare_reload()
         except Exception:
             await self._embedder.discard_prepared(embedding_replacement)
+            raise
+        try:
+            await self._embedder.validate_prepared(embedding_replacement)
+        except Exception:
+            await self._embedder.discard_prepared(embedding_replacement)
+            await self._reranker.discard_prepared(rerank_replacement)
             raise
         try:
             pool_size = await self._embedder.activate_prepared(embedding_replacement)
@@ -147,11 +162,16 @@ class Container:
             if settings.embedding.api_key is not None
             else None
         )
+        self.index_lifecycle = IndexLifecycleManager(
+            SqlIndexProfileStore(async_session_factory),
+            settings,
+        )
         self.embedding_runtime = CredentialConfiguredEmbedder(
             async_session_factory,
             settings.embedding,
             expected_dimensions=settings.milvus.dense_dim,
             on_usage=token_usage_cb,
+            on_index_profile=self.index_lifecycle.ensure_compatible,
         )
         self.embedder = QueryCachingEmbedder(
             self.embedding_runtime,
@@ -253,6 +273,9 @@ class Container:
 
         self.chunker = build_chunker(
             semantic_enabled=settings.chunking.semantic_enabled,
+            semantic_max_chunk_chars=settings.chunking.semantic_max_chunk_chars,
+            recursive_chunk_size=settings.chunking.recursive_chunk_size,
+            recursive_chunk_overlap=settings.chunking.recursive_chunk_overlap,
         )
         self.symbol_provider = RegexSymbolProvider()
         self._uow_factory = lambda: SqlAlchemyUnitOfWork(
@@ -451,6 +474,7 @@ class Container:
                 self.path_index,
                 self.embedder,
                 RetrievalRuntimeProfile(
+                    embedding_enabled=settings.embedding.enabled,
                     semantic_chunking_enabled=settings.chunking.semantic_enabled,
                     exact_enabled=settings.retrieval.exact_enabled,
                     path_index_enabled=settings.retrieval.path_index_enabled,
@@ -468,6 +492,7 @@ class Container:
                         settings.retrieval.intent_classification_enabled
                     ),
                 ),
+                self.index_lifecycle,
             ),
         )
         query_bus.register(
@@ -486,6 +511,26 @@ class Container:
             query_bus,
             background_indexing=self.queue is not None,
         )
+
+    async def ensure_index_compatible(self) -> bool:
+        """Validate persisted artifacts before workers or data-plane traffic start."""
+        if not self.embedding_runtime.enabled:
+            await self.index_lifecycle.ensure_compatible(
+                await self.embedding_runtime.resolve_index_profile()
+            )
+            return True
+        try:
+            replacement = await self.embedding_runtime.prepare_reload()
+        except ServiceNotReadyError as exc:
+            logger.warning("Index profile check deferred: {}", exc)
+            return False
+        try:
+            await self.embedding_runtime.validate_prepared(replacement)
+        except Exception:
+            await self.embedding_runtime.discard_prepared(replacement)
+            raise
+        await self.embedding_runtime.activate_prepared(replacement)
+        return True
 
     async def _record_token_usage(
         self,

@@ -11,6 +11,7 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 已移除；路径索引独立维护
 - 检索主链路：dense + exact + path → source priority → 按需 LLM rerank → focused/coverage select
 - 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite/intent）+ status=active + 最小 priority 解析，取不到回落各自环境变量
+- `index_profiles` 持久化不含密钥的 embedding/chunker/schema fingerprint；不兼容启动或热重载必须 fail closed，不得复用旧向量/切块
 - 运维面 `/admin/*` 用独立 `ADMIN_API_KEY`（空则回落 `API_KEY`）：凭据 CRUD/热重载、队列、GC、监控与索引统计
 - 监控子系统旁路采集调用/token/资源与检索阶段审计，落 metrics 表
 - query vector 使用只保存 query 哈希与向量的进程内 TTL LRU；源码向量与 retrieval result 不缓存，凭据热重载后清空
@@ -56,6 +57,7 @@ uv run pytest tests/unit/infrastructure/test_milvus3.py -q
 - 新业务编排进入 `application/`，FastAPI router 仅处理 DTO、鉴权和异常映射。
 - 数据面用 `verify_api_key`、运维面用 `verify_admin_key`，两者分离；凭据明文只经 `model_credentials`，响应与日志一律只暴露末 4 位。
 - 监控/指标为旁路且非阻塞：采集失败或 usage 字段缺失只跳过，不得影响检索主链路。
+- 修改 chunking、embedding 输入/池化、symbol extraction 或 path-document 语义时，同步递增 `shared/index_profile.py` 中对应版本常量。
 - 不保留未接入 production composition root 的占位实现或阶段性迁移注释。
 - 单文件职责单一；注释解释约束和原因，不复述代码。
 - 保持 ACE API 字段与错误语义兼容。

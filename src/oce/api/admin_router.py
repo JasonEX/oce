@@ -15,6 +15,7 @@ from oce.api.schemas import (
     GcRequest,
     GcResponse,
     IndexStatsResponse,
+    IndexProfileStatsResponse,
     IndexStoreStatsResponse,
     MetadataIndexStatsResponse,
     MonitoringStatsResponse,
@@ -284,6 +285,10 @@ async def admin_index_stats(
         ),
         runtime=RetrievalRuntimeProfileResponse.model_validate(
             stats.runtime,
+            from_attributes=True,
+        ),
+        profile=IndexProfileStatsResponse.model_validate(
+            stats.profile,
             from_attributes=True,
         ),
     )

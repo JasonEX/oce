@@ -45,6 +45,7 @@ class QueryCacheStats:
 
 @dataclass(frozen=True)
 class RetrievalRuntimeProfile:
+    embedding_enabled: bool = True
     semantic_chunking_enabled: bool = True
     exact_enabled: bool = True
     path_index_enabled: bool = True
@@ -58,6 +59,16 @@ class RetrievalRuntimeProfile:
 
 
 @dataclass(frozen=True)
+class IndexProfileStats:
+    state: str
+    fingerprint: str | None = None
+    schema_version: int | None = None
+    embedding_enabled: bool | None = None
+    embedding_model: str | None = None
+    embedding_dimensions: int | None = None
+
+
+@dataclass(frozen=True)
 class IndexStats:
     metadata: MetadataIndexStats = field(default_factory=MetadataIndexStats)
     dense: IndexStoreStats = field(
@@ -68,6 +79,9 @@ class IndexStats:
         default_factory=lambda: QueryCacheStats(False, 0, 0, 0.0)
     )
     runtime: RetrievalRuntimeProfile = field(default_factory=RetrievalRuntimeProfile)
+    profile: IndexProfileStats = field(
+        default_factory=lambda: IndexProfileStats("uninitialized")
+    )
 
 
 class MetadataIndexStatsReader(Protocol):
@@ -80,3 +94,7 @@ class IndexStoreStatsProvider(Protocol):
 
 class QueryCacheStatsProvider(Protocol):
     async def query_cache_stats(self) -> QueryCacheStats: ...
+
+
+class IndexProfileStatsProvider(Protocol):
+    async def index_profile_stats(self) -> IndexProfileStats: ...

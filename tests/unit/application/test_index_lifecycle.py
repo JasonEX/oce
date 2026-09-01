@@ -1,0 +1,115 @@
+"""Persisted index profiles prevent silent reuse across vector spaces."""
+
+import pytest
+
+from oce.application.index_lifecycle import IndexLifecycleManager
+from oce.shared.config.settings import ChunkingSettings, Settings
+from oce.shared.errors import ServiceNotReadyError
+from oce.shared.index_profile import (
+    EmbeddingIndexProfile,
+    StoredIndexProfile,
+)
+
+
+def _embedding(model: str = "embedding-v1") -> EmbeddingIndexProfile:
+    return EmbeddingIndexProfile(
+        enabled=True,
+        endpoint_hash="a" * 64,
+        model=model,
+        dimensions=1024,
+        query_instruction_hash="b" * 64,
+        max_input_chars=8000,
+        input_overlap_chars=400,
+    )
+
+
+class Store:
+    def __init__(self, *, has_data: bool = False) -> None:
+        self.stored: StoredIndexProfile | None = None
+        self.has_data = has_data
+        self.initializations = 0
+
+    async def read(self):
+        return self.stored
+
+    async def has_index_data(self):
+        return self.has_data
+
+    async def initialize(self, profile):
+        self.initializations += 1
+        if self.stored is None:
+            self.stored = StoredIndexProfile(
+                profile.fingerprint,
+                profile.canonical_json(),
+            )
+        return self.stored
+
+
+async def test_empty_index_initializes_once_and_accepts_same_profile():
+    store = Store()
+    manager = IndexLifecycleManager(store, Settings())
+
+    first = await manager.ensure_compatible(_embedding())
+    second = await manager.ensure_compatible(_embedding())
+
+    assert first.fingerprint == second.fingerprint
+    assert manager.current == second
+    assert store.initializations == 1
+    stats = await manager.index_profile_stats()
+    assert stats.state == "compatible"
+    assert stats.fingerprint == first.fingerprint
+    assert stats.embedding_model == "embedding-v1"
+
+
+async def test_embedding_or_chunking_change_is_rejected_without_overwrite():
+    store = Store()
+    await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())
+    original = store.stored
+
+    with pytest.raises(ServiceNotReadyError, match="embedding.model"):
+        await IndexLifecycleManager(store, Settings()).ensure_compatible(
+            _embedding("embedding-v2")
+        )
+
+    changed_chunker = Settings(
+        chunking=ChunkingSettings(semantic_enabled=False),
+    )
+    with pytest.raises(
+        ServiceNotReadyError,
+        match="semantic_chunking_enabled",
+    ):
+        await IndexLifecycleManager(store, changed_chunker).ensure_compatible(
+            _embedding()
+        )
+
+    assert store.stored == original
+
+
+async def test_legacy_index_without_profile_fails_closed():
+    manager = IndexLifecycleManager(Store(has_data=True), Settings())
+
+    with pytest.raises(ServiceNotReadyError, match="no lifecycle fingerprint"):
+        await manager.ensure_compatible(_embedding())
+
+
+async def test_stored_profile_is_reported_as_unverified_before_runtime_resolution():
+    store = Store()
+    initialized = IndexLifecycleManager(store, Settings())
+    profile = await initialized.ensure_compatible(_embedding())
+
+    stats = await IndexLifecycleManager(store, Settings()).index_profile_stats()
+
+    assert stats.state == "stored_unverified"
+    assert stats.fingerprint == profile.fingerprint
+    assert stats.embedding_dimensions == 1024
+
+
+async def test_corrupted_stored_profile_fails_closed():
+    store = Store()
+    initialized = IndexLifecycleManager(store, Settings())
+    await initialized.ensure_compatible(_embedding())
+    assert store.stored is not None
+    store.stored = StoredIndexProfile(store.stored.fingerprint, "{}")
+
+    with pytest.raises(ServiceNotReadyError, match="integrity check"):
+        await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())

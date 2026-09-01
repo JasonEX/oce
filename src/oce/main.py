@@ -33,6 +33,7 @@ async def lifespan(app: FastAPI):
 
     # 启动 worker（如果启用）
     container = get_container()
+    await container.ensure_index_compatible()
     if container.worker is not None:
         await container.worker.start()
     await container.metrics.start()

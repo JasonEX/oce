@@ -8,7 +8,13 @@ from oce.infrastructure.chunkers.markdown_chunker import MarkdownChunker
 from oce.infrastructure.chunkers.vue_chunker import VueChunker
 
 
-def build_chunker(*, semantic_enabled: bool = True) -> Chunker:
+def build_chunker(
+    *,
+    semantic_enabled: bool = True,
+    semantic_max_chunk_chars: int = 1500,
+    recursive_chunk_size: int = 6000,
+    recursive_chunk_overlap: int = 200,
+) -> Chunker:
     """构建 Chunker router，使用 RecursiveChunker 作为统一 fallback。
 
     架构说明：
@@ -17,7 +23,10 @@ def build_chunker(*, semantic_enabled: bool = True) -> Chunker:
     - 各专用 chunker (Markdown/JSP/Vue): 针对特定格式优化
     - FixedChunker 已废弃，完全由 RecursiveChunker 替代
     """
-    recursive_chunker = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
+    recursive_chunker = RecursiveChunker(
+        chunk_size=recursive_chunk_size,
+        chunk_overlap=recursive_chunk_overlap,
+    )
     if not semantic_enabled:
         return recursive_chunker
 
@@ -25,7 +34,7 @@ def build_chunker(*, semantic_enabled: bool = True) -> Chunker:
         fallback=recursive_chunker,
         language_chunkers=(
             CastChunker(
-                max_chunk_size=1500,
+                max_chunk_size=semantic_max_chunk_chars,
                 chunk_overlap=0,
                 fallback=recursive_chunker,
             ),

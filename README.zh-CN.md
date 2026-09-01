@@ -178,8 +178,15 @@ kind 没有匹配的启用行时，对应客户端回退到各自的环境变量
 重排还会复用嵌入 key）。通过 `/admin/credentials` API 管理这些行，再调
 `POST /admin/credentials/reload` 可在不重启服务的情况下热重载运行凭据。嵌入 API key、凭据
 超时和凭据批量限制可原位更新；更换嵌入 endpoint、模型、维度或文档输入窗口前，必须准备
-干净的元数据与向量存储，再让客户端完整重同步。当前 embedder 已激活时，不兼容的热重载会
-被拒绝。升级版本若改变了切块或索引行为，也按同样方式重建。
+干净的元数据与向量存储，再让客户端完整重同步；不兼容的热重载会被拒绝。
+
+空索引第一次使用时，OCE 会持久化一份不含密钥的 SHA-256 profile，覆盖解析后的 embedding
+endpoint 哈希、模型、维度、query instruction 哈希、文档窗口，以及 chunker 模式/配置/版本、
+索引 schema、symbol extraction 和 path-document 版本。每次启动都会在 worker 运行前将当前
+配置与该 profile 比对。配置不匹配，或旧索引已有数据却没有 profile 时，服务会 fail closed，
+且不会改动旧数据。此时应改用新的 data directory（服务模式则使用新的数据库和 Milvus
+collection 名称），再让客户端完整重同步。OCE 不会再把旧向量与新模型静默混用，也不会在
+切块行为变化后继续复用旧 chunks。
 
 SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`max_batch_size` 和
 `max_batch_chars` 是每个凭据可覆盖的 provider 默认值。超过 `max_input_chars` 的输入会在
@@ -276,7 +283,7 @@ MCP 配置文件。
 | `POST` | `/admin/queue/requeue-stale` | 重新入队滞留的在飞 blob |
 | `POST` | `/admin/gc` | 回收过期的 chain 与 blob |
 | `GET` | `/admin/stats` | 调用 / token / 检索 / 资源指标 |
-| `GET` | `/admin/index-stats` | 元数据、dense/path 索引与 query cache 状态 |
+| `GET` | `/admin/index-stats` | 元数据、dense/path/cache、运行开关与持久化 index profile |
 
 示例：
 

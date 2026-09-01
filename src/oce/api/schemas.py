@@ -164,6 +164,7 @@ class QueryCacheStatsResponse(BaseModel):
 
 
 class RetrievalRuntimeProfileResponse(BaseModel):
+    embedding_enabled: bool
     semantic_chunking_enabled: bool
     exact_enabled: bool
     path_index_enabled: bool
@@ -176,12 +177,22 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     intent_classification_enabled: bool
 
 
+class IndexProfileStatsResponse(BaseModel):
+    state: str
+    fingerprint: str | None = None
+    schema_version: int | None = None
+    embedding_enabled: bool | None = None
+    embedding_model: str | None = None
+    embedding_dimensions: int | None = None
+
+
 class IndexStatsResponse(BaseModel):
     metadata: MetadataIndexStatsResponse
     dense: IndexStoreStatsResponse
     path: IndexStoreStatsResponse
     query_cache: QueryCacheStatsResponse
     runtime: RetrievalRuntimeProfileResponse
+    profile: IndexProfileStatsResponse
 
 
 # 凭据用途：embed/rerank 走 REST（/v1/embeddings、/v1/rerank）；后三类走 chat。

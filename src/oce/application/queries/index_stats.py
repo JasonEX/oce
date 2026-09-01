@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from oce.application.messages import Query
 from oce.shared.index_stats import (
     IndexStats,
+    IndexProfileStatsProvider,
     IndexStoreStats,
     IndexStoreStatsProvider,
     MetadataIndexStatsReader,
@@ -29,19 +30,22 @@ class IndexStatsQueryHandler:
         path: IndexStoreStatsProvider | None,
         query_cache: QueryCacheStatsProvider,
         runtime: RetrievalRuntimeProfile,
+        profile: IndexProfileStatsProvider,
     ) -> None:
         self._metadata_reader = metadata_reader
         self._dense = dense
         self._path = path
         self._query_cache = query_cache
         self._runtime = runtime
+        self._profile = profile
 
     async def handle(self, _query: IndexStatsQuery) -> IndexStats:
         metadata = await self._metadata_reader.read()
-        dense, path, query_cache = await asyncio.gather(
+        dense, path, query_cache, profile = await asyncio.gather(
             self._safe_store_stats(self._dense),
             self._safe_store_stats(self._path),
             self._query_cache.query_cache_stats(),
+            self._profile.index_profile_stats(),
         )
         return IndexStats(
             metadata=metadata,
@@ -49,6 +53,7 @@ class IndexStatsQueryHandler:
             path=path,
             query_cache=query_cache,
             runtime=self._runtime,
+            profile=profile,
         )
 
     @staticmethod

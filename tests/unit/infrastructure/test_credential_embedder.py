@@ -75,6 +75,12 @@ async def test_environment_settings_are_used_without_active_credential():
     assert config.max_batch_size == 7
     assert config.max_batch_chars == 31_000
     assert config.query_instruction == "Represent this query: "
+    profile = embedder.index_profile_for_config(config)
+    assert profile.model == settings.model
+    assert profile.dimensions == 1024
+    assert profile.endpoint_hash is not None
+    assert settings.endpoint not in str(profile)
+    assert settings.query_instruction not in str(profile)
     delegate = embedder._build_delegate(config)
     assert delegate._query_instruction == "Represent this query: "
     await delegate.close()
@@ -116,6 +122,38 @@ async def test_reload_allows_key_rotation_but_rejects_vector_semantic_changes():
     with pytest.raises(ServiceNotReadyError, match="clean metadata and vector storage"):
         await embedder.prepare_reload()
 
+    await engine.dispose()
+
+
+async def test_lazy_delegate_cannot_activate_before_persisted_profile_validation():
+    engine, sessions = await _runtime()
+    validated = []
+
+    async def reject(profile):
+        validated.append(profile)
+        raise ServiceNotReadyError("index profile mismatch")
+
+    embedder = CredentialConfiguredEmbedder(
+        sessions,
+        EmbeddingSettings(api_key="fallback-key"),
+        expected_dimensions=1024,
+        on_index_profile=reject,
+    )
+
+    class Delegate:
+        async def embed_documents(self, _texts):
+            raise AssertionError("delegate must not run before profile validation")
+
+        async def close(self):
+            pass
+
+    embedder._build_delegate = lambda _config: Delegate()
+
+    with pytest.raises(ServiceNotReadyError, match="index profile mismatch"):
+        await embedder.embed_documents(["source"])
+
+    assert validated[0].model == embedder._fallback.model
+    assert embedder._delegate is None
     await engine.dispose()
 
 

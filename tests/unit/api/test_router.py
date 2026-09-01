@@ -25,6 +25,7 @@ from oce.shared.metrics_read import (
     TokenKindStats,
 )
 from oce.shared.index_stats import (
+    IndexProfileStats,
     IndexStats,
     IndexStoreStats,
     MetadataIndexStats,
@@ -114,6 +115,14 @@ class StubApplication:
             runtime=RetrievalRuntimeProfile(
                 semantic_chunking_enabled=False,
                 exact_enabled=False,
+            ),
+            profile=IndexProfileStats(
+                state="compatible",
+                fingerprint="a" * 64,
+                schema_version=1,
+                embedding_enabled=True,
+                embedding_model="embedding-v1",
+                embedding_dimensions=1024,
             ),
         )
 
@@ -375,4 +384,6 @@ async def test_admin_index_stats_contract_and_auth():
     assert body["query_cache"]["hits"] == 3
     assert body["runtime"]["semantic_chunking_enabled"] is False
     assert body["runtime"]["exact_enabled"] is False
+    assert body["profile"]["state"] == "compatible"
+    assert body["profile"]["embedding_model"] == "embedding-v1"
     assert unauthorized.status_code == 401

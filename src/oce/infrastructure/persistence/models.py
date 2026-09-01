@@ -86,6 +86,19 @@ class ModelCredentialModel(Base):
     )
 
 
+class IndexProfileModel(Base):
+    """Singleton identity of the metadata and vector artifacts in this deployment."""
+
+    __tablename__ = "index_profiles"
+
+    profile_key = Column(String(16), primary_key=True)
+    fingerprint = Column(String(64), nullable=False)
+    profile_json = Column(Text, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class BlobModel(Base):
     __tablename__ = "blobs"
 

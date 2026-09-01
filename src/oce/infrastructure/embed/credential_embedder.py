@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Callable
+from typing import Awaitable, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,6 +13,7 @@ from oce.infrastructure.embed.openai_embedder import OpenAIEmbedder, UsageCallba
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import EmbeddingSettings
 from oce.shared.errors import ServiceNotReadyError
+from oce.shared.index_profile import EmbeddingIndexProfile, profile_value_hash
 
 
 @dataclass(frozen=True)
@@ -48,16 +49,24 @@ class CredentialConfiguredEmbedder:
         *,
         expected_dimensions: int,
         on_usage: UsageCallback | None = None,
+        on_index_profile: (
+            Callable[[EmbeddingIndexProfile], Awaitable[object]] | None
+        ) = None,
     ) -> None:
         self._session_factory = session_factory
         self._fallback = fallback
         self._expected_dimensions = expected_dimensions
         self._on_usage = on_usage
+        self._on_index_profile = on_index_profile
         self._delegate: OpenAIEmbedder | None = None
         self._config: EmbeddingRuntimeConfig | None = None
         self._lock = asyncio.Lock()
         self._active_calls: dict[OpenAIEmbedder, int] = {}
         self._retired: set[OpenAIEmbedder] = set()
+
+    @property
+    def enabled(self) -> bool:
+        return self._fallback.enabled
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
         delegate = await self._acquire_delegate()
@@ -77,6 +86,7 @@ class CredentialConfiguredEmbedder:
         async with self._lock:
             if self._delegate is None:
                 config = await self._resolve_config()
+                await self._validate_index_profile(config)
                 self._delegate = self._build_delegate(config)
                 self._config = config
             delegate = self._delegate
@@ -219,7 +229,44 @@ class CredentialConfiguredEmbedder:
 
     async def reload(self) -> int:
         replacement = await self.prepare_reload()
+        try:
+            await self.validate_prepared(replacement)
+        except Exception:
+            await self.discard_prepared(replacement)
+            raise
         return await self.activate_prepared(replacement)
+
+    async def validate_prepared(
+        self,
+        replacement: PreparedEmbeddingReload,
+    ) -> None:
+        await self._validate_index_profile(replacement.config)
+
+    async def _validate_index_profile(self, config: EmbeddingRuntimeConfig) -> None:
+        if self._on_index_profile is not None:
+            await self._on_index_profile(self.index_profile_for_config(config))
+
+    async def resolve_index_profile(self) -> EmbeddingIndexProfile:
+        if not self.enabled:
+            return EmbeddingIndexProfile(enabled=False)
+        return self.index_profile_for_config(await self._resolve_config())
+
+    @staticmethod
+    def index_profile_for_config(
+        config: EmbeddingRuntimeConfig,
+    ) -> EmbeddingIndexProfile:
+        endpoint = config.endpoint.rstrip("/")
+        if endpoint.endswith("/embeddings"):
+            endpoint = endpoint[: -len("/embeddings")]
+        return EmbeddingIndexProfile(
+            enabled=True,
+            endpoint_hash=profile_value_hash(endpoint),
+            model=config.model,
+            dimensions=config.dimensions,
+            query_instruction_hash=profile_value_hash(config.query_instruction),
+            max_input_chars=config.max_input_chars,
+            input_overlap_chars=config.input_overlap_chars,
+        )
 
     @staticmethod
     def _indexed_vector_config(config: EmbeddingRuntimeConfig) -> tuple[object, ...]:
