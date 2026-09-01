@@ -134,9 +134,6 @@ class IndexingPipeline:
         if not blobs:
             return 0
 
-        # 收集本次调用中置为 ready 的 blob，统一补写路径索引
-        ready_blobs: list[Blob] = []
-
         # 第一阶段:补切块(针对 ingest 只写元数据的 blob)
         for blob in blobs:
             if not blob.chunks:
@@ -144,10 +141,8 @@ class IndexingPipeline:
                 content = await self.blob_repo.get_staging(blob.blob_name)
                 if content is None:
                     if blob.content_size == 0:
-                        # 空文件没有 staging 内容（或为空串），无需切块，直接 ready
-                        blob.mark_ready()
-                        await self.blob_repo.save(blob)
-                        ready_blobs.append(blob)
+                        # 空文件没有 staging 内容（或为空串），无需切块；路径索引
+                        # 完成后再统一置 ready。
                         continue
                     # staging 不存在,可能被清理或异常,跳过
                     blob.mark_error("staging content not found")
@@ -162,11 +157,7 @@ class IndexingPipeline:
                     blob.chunks = [c.to_ref() for c in chunks]
                     await self.blob_repo.save(blob)
                 else:
-                    # 无有效内容,直接 ready
-                    blob.mark_ready()
-                    await self.blob_repo.save(blob)
-                    await self.blob_repo.delete_staging(blob.blob_name)
-                    ready_blobs.append(blob)
+                    # 无有效内容也可能需要路径召回，统一在路径索引完成后置 ready。
                     continue
 
         # 检查嵌入开关
@@ -219,6 +210,11 @@ class IndexingPipeline:
                 # 标记已嵌入
                 await self.chunk_repo.mark_embedded([c.content_hash for c in chunk_batch])
                 embedded += len(vectors)
+
+            # READY 表示当前配置声明的检索产物均已写完。路径索引启用时若写入失败，
+            # 异常必须进入现有失败/重试流程，不能删除 staging 后静默留下永久缺口。
+            ready_blobs = [blob for blob in blobs if blob.status == BlobStatus.PENDING]
+            await self._index_paths(ready_blobs)
         except Exception as exc:
             if mark_failures:
                 for blob in blobs:
@@ -235,24 +231,20 @@ class IndexingPipeline:
                         ))
             raise
 
-        # 第三阶段:标记 ready + 清理 staging
-        for blob in blobs:
-            if blob.status == BlobStatus.PENDING:  # 跳过第一阶段标记 error 的
-                blob.mark_ready()
-                await self.blob_repo.save(blob)
-                await self.blob_repo.delete_staging(blob.blob_name)
-                ready_blobs.append(blob)
-                if self.event_bus is not None:
-                    await self.event_bus.publish(DomainEvent(
-                        event_type=EVENT_BLOB_READY,
-                        data={"blob_name": blob.blob_name, "path": blob.path},
-                    ))
-        # 路径索引写入失败不应影响主索引（chunk 已嵌入、blob 已 ready），仅记日志
-        await self._index_paths(ready_blobs)
+        # 第三阶段:所有启用的索引写完后再标记 ready、清理 staging。
+        for blob in ready_blobs:
+            blob.mark_ready()
+            await self.blob_repo.save(blob)
+            await self.blob_repo.delete_staging(blob.blob_name)
+            if self.event_bus is not None:
+                await self.event_bus.publish(DomainEvent(
+                    event_type=EVENT_BLOB_READY,
+                    data={"blob_name": blob.blob_name, "path": blob.path},
+                ))
         return embedded
 
     async def _index_paths(self, blobs: Sequence[Blob]) -> None:
-        """把 ready blob 的路径写入路径索引（文件名查询专用通道）。
+        """在 blob 置 ready 前把路径写入文件名查询索引。
 
         路径索引只依赖路径文本与扩展名语义，不需要 chunk 内容，因此放在
         embed_pending 完成后统一批量写入，避免 ingest 阶段多一次 embedding
@@ -271,18 +263,20 @@ class IndexingPipeline:
             }
             for blob in indexable
         ]
-        try:
-            vectors = await self.embedder.embed_documents(
-                [doc["path_document"] for doc in docs]
+        vectors = await self.embedder.embed_documents(
+            [doc["path_document"] for doc in docs]
+        )
+        if len(vectors) != len(docs):
+            raise RuntimeError(
+                "Path embedding count mismatch: "
+                f"expected {len(docs)}, got {len(vectors)}"
             )
-            for doc, vector in zip(docs, vectors):
-                doc["path_id"] = f"path_{doc['blob_name']}"
-                doc["path_vector"] = vector
-            result = await self.path_store.insert(docs)
-            logger.info(
-                "path index write: {} blobs ({})",
-                len(docs),
-                result.get("inserted", 0),
-            )
-        except Exception as exc:
-            logger.warning("path index write failed for {} blobs: {}", len(docs), exc)
+        for doc, vector in zip(docs, vectors):
+            doc["path_id"] = f"path_{doc['blob_name']}"
+            doc["path_vector"] = vector
+        result = await self.path_store.insert(docs)
+        logger.info(
+            "path index write: {} blobs ({})",
+            len(docs),
+            result.get("inserted", 0),
+        )

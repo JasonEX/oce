@@ -111,6 +111,18 @@ class FakeEmbedder:
         return [[1.0] * 4 for _ in texts]
 
 
+class RecordingPathStore:
+    def __init__(self, *, error: Exception | None = None) -> None:
+        self.error = error
+        self.documents: list[dict] = []
+
+    async def insert(self, path_docs):
+        if self.error is not None:
+            raise self.error
+        self.documents.extend(path_docs)
+        return {"inserted": len(path_docs)}
+
+
 def _blob_name(path: str, content: str) -> str:
     return hashlib.sha256((path + content).encode("utf-8")).hexdigest()
 
@@ -289,6 +301,41 @@ class TestEmbedPending:
         # 验证嵌入的 chunk
         assert len(indexing_pipeline.vector_index.items) == 1
         assert indexing_pipeline.vector_index.items[0]["content_hash"] == chunk.content_hash
+
+    async def test_path_index_is_written_before_blob_becomes_ready(
+        self, indexing_pipeline
+    ):
+        content = "def feature():\n    return True\n"
+        name = _blob_name("src/feature.py", content)
+        path_store = RecordingPathStore()
+        indexing_pipeline.path_store = path_store
+
+        await indexing_pipeline.ingest(name, "src/feature.py", content)
+        await indexing_pipeline.embed_pending([name])
+
+        assert indexing_pipeline.blob_repo.blobs[name].status == BlobStatus.READY
+        assert len(path_store.documents) == 1
+        assert path_store.documents[0]["blob_name"] == name
+        assert path_store.documents[0]["path"] == "src/feature.py"
+        assert path_store.documents[0]["path_vector"] == [1.0] * 4
+
+    async def test_path_index_failure_keeps_blob_retryable(self, indexing_pipeline):
+        content = "def feature():\n    return True\n"
+        name = _blob_name("src/feature.py", content)
+        indexing_pipeline.path_store = RecordingPathStore(
+            error=RuntimeError("path store unavailable")
+        )
+
+        await indexing_pipeline.ingest(name, "src/feature.py", content)
+        with pytest.raises(RuntimeError, match="path store unavailable"):
+            await indexing_pipeline.embed_pending([name], mark_failures=False)
+
+        blob = indexing_pipeline.blob_repo.blobs[name]
+        assert blob.status == BlobStatus.PENDING
+        assert name in indexing_pipeline.blob_repo.staging
+        assert EVENT_BLOB_READY not in [
+            event.event_type for event in indexing_pipeline._events
+        ]
 
     async def test_embed_pending_disabled_keeps_pending_and_staging(
         self, indexing_pipeline, monkeypatch

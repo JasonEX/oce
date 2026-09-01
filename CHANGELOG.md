@@ -18,6 +18,7 @@
 - **migrations**: verify the complete SQLite migration chain can roll back to base and upgrade to head again
 - **admission**: reject common environment, key, and credential files before indexing
 - **embedding**: apply query instructions in the credential-backed client and reject incompatible hot reloads
+- **indexing**: keep blobs retryable when an enabled path index cannot be written instead of marking an incomplete index ready
 - **llm**: preserve TLS verification through proxies, keep source queries out of logs, and degrade intent failures to heuristic routing
 - **llm**: fail locally when an enabled LLM feature has no usable credential
 
