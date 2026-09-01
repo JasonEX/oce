@@ -91,6 +91,18 @@ class TestBlobStatusQueryHandler:
         assert found.checkpoint_not_found is False
         assert missing.checkpoint_not_found is True
 
+    async def test_stale_token_reports_not_found(self, repos):
+        factory, _, chain_repo = repos
+        chain = await chain_repo.create(["a"])
+        stale_token = chain.get_checkpoint_token()
+        await chain_repo.apply_checkpoint(chain.chain_id, chain.version, ["b"], [])
+
+        result = await BlobStatusQueryHandler(factory).handle(
+            BlobStatusQuery(checkpoint_id=stale_token)
+        )
+
+        assert result.checkpoint_not_found is True
+
     async def test_combines_blob_status(self, repos):
         factory, blob_repo, chain_repo = repos
         ready = await _save_ready_blob(blob_repo, "src/a.py", "print(1)\n")
@@ -145,6 +157,17 @@ class TestResolveScopeQueryHandler:
         with pytest.raises(NeedsResetError):
             await ResolveScopeQueryHandler(factory).handle(
                 ResolveScopeQuery(checkpoint_id=ghost)
+            )
+
+    async def test_stale_checkpoint_raises_needs_reset(self, repos):
+        factory, _, chain_repo = repos
+        chain = await chain_repo.create(["a"])
+        stale_token = chain.get_checkpoint_token()
+        await chain_repo.apply_checkpoint(chain.chain_id, chain.version, ["b"], [])
+
+        with pytest.raises(NeedsResetError):
+            await ResolveScopeQueryHandler(factory).handle(
+                ResolveScopeQuery(checkpoint_id=stale_token)
             )
 
     async def test_checkpoint_members_plus_increments(self, repos):

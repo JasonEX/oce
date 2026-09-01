@@ -12,7 +12,11 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.chain.chain import Chain
-from oce.infrastructure.persistence.models import BlobModel, ChainMemberModel, ChainModel
+from oce.infrastructure.persistence.models import (
+    BlobModel,
+    ChainMemberModel,
+    ChainModel,
+)
 from oce.domain.repositories import ChainRepository
 
 
@@ -43,9 +47,12 @@ class SqlChainRepository(ChainRepository):
             updated_at=row.updated_at,
         )
 
-    async def exists(self, chain_id: str) -> bool:
+    async def exists(self, chain_id: str, version: int | None = None) -> bool:
+        conditions = [ChainModel.chain_id == chain_id]
+        if version is not None:
+            conditions.append(ChainModel.version == version)
         value = await self.session.scalar(
-            select(func.count()).select_from(ChainModel).where(ChainModel.chain_id == chain_id)
+            select(func.count()).select_from(ChainModel).where(*conditions)
         )
         return bool(value)
 
@@ -68,20 +75,32 @@ class SqlChainRepository(ChainRepository):
 
     async def get_members(self, chain_id: str) -> set[str]:
         rows = await self.session.execute(
-            select(ChainMemberModel.blob_name).where(ChainMemberModel.chain_id == chain_id)
+            select(ChainMemberModel.blob_name).where(
+                ChainMemberModel.chain_id == chain_id
+            )
         )
         return set(rows.scalars())
 
     async def apply_checkpoint(
         self,
         chain_id: str,
+        expected_version: int,
         added: Sequence[str],
         deleted: Sequence[str],
     ) -> int | None:
-        current_version = await self.session.scalar(
-            select(ChainModel.version).where(ChainModel.chain_id == chain_id)
+        new_version = expected_version + 1
+        claimed = await self.session.execute(
+            update(ChainModel)
+            .where(
+                ChainModel.chain_id == chain_id,
+                ChainModel.version == expected_version,
+            )
+            .values(
+                version=new_version,
+                updated_at=datetime.now(timezone.utc),
+            )
         )
-        if current_version is None:
+        if claimed.rowcount != 1:
             return None
 
         unique_deleted = sorted(set(deleted))
@@ -102,14 +121,14 @@ class SqlChainRepository(ChainRepository):
             .select_from(ChainMemberModel)
             .where(ChainMemberModel.chain_id == chain_id)
         )
-        new_version = int(current_version) + 1
         await self.session.execute(
             update(ChainModel)
-            .where(ChainModel.chain_id == chain_id)
+            .where(
+                ChainModel.chain_id == chain_id,
+                ChainModel.version == new_version,
+            )
             .values(
-                version=new_version,
                 total_blobs=int(count or 0),
-                updated_at=datetime.now(timezone.utc),
             )
         )
         return new_version
@@ -139,7 +158,9 @@ class SqlChainRepository(ChainRepository):
         await self.session.execute(
             delete(ChainMemberModel).where(ChainMemberModel.chain_id == chain_id)
         )
-        await self.session.execute(delete(ChainModel).where(ChainModel.chain_id == chain_id))
+        await self.session.execute(
+            delete(ChainModel).where(ChainModel.chain_id == chain_id)
+        )
 
     async def find_expired(self, ttl_days: int) -> list[str]:
         threshold = datetime.now(timezone.utc) - timedelta(days=ttl_days)

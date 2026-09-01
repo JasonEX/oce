@@ -40,7 +40,8 @@ class FakeBlobRepo:
     async def find_pending(self, blob_names=None) -> list[Blob]:
         names = set(blob_names) if blob_names is not None else None
         return [
-            b for b in self.blobs.values()
+            b
+            for b in self.blobs.values()
             if b.status == BlobStatus.PENDING
             and (names is None or b.blob_name in names)
         ]
@@ -84,16 +85,19 @@ class FakeChainRepo:
     async def get(self, chain_id: str) -> Chain | None:
         return self.chains.get(chain_id)
 
-    async def exists(self, chain_id: str) -> bool:
-        return chain_id in self.chains
+    async def exists(self, chain_id: str, version: int | None = None) -> bool:
+        chain = self.chains.get(chain_id)
+        return chain is not None and (version is None or chain.version == version)
 
     async def get_members(self, chain_id: str) -> set[str]:
         chain = self.chains.get(chain_id)
         return set(chain.members) if chain else set()
 
-    async def apply_checkpoint(self, chain_id, added, deleted) -> int | None:
+    async def apply_checkpoint(
+        self, chain_id, expected_version, added, deleted
+    ) -> int | None:
         chain = self.chains.get(chain_id)
-        if chain is None:
+        if chain is None or chain.version != expected_version:
             return None
         chain.apply_checkpoint(list(added), list(deleted))
         return chain.version
@@ -128,14 +132,16 @@ class FakeChunkRepo:
                 chunk = self.chunks.get(ref.content_hash)
                 if chunk is None or ref.content_hash not in pending_hashes:
                     continue
-                result.append(LocatedChunk(
-                    blob_name=blob_name,
-                    content_hash=ref.content_hash,
-                    path=blob.path,
-                    content=chunk.content,
-                    start_line=ref.start_line,
-                    end_line=ref.end_line,
-                ))
+                result.append(
+                    LocatedChunk(
+                        blob_name=blob_name,
+                        content_hash=ref.content_hash,
+                        path=blob.path,
+                        content=chunk.content,
+                        start_line=ref.start_line,
+                        end_line=ref.end_line,
+                    )
+                )
         return result if limit is None else result[:limit]
 
     async def mark_embedded(self, content_hashes: list[str]) -> None:

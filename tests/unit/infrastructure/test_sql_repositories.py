@@ -320,6 +320,7 @@ async def test_chain_repository_checkpoint(sqlite_session):
     # 应用 checkpoint
     new_version = await repo.apply_checkpoint(
         chain.chain_id,
+        chain.version,
         added=[make_sha256("blob3")],
         deleted=[make_sha256("blob1")],
     )
@@ -333,6 +334,35 @@ async def test_chain_repository_checkpoint(sqlite_session):
     assert make_sha256("blob2") in updated_members
     assert make_sha256("blob3") in updated_members
     assert make_sha256("blob1") not in updated_members
+
+
+@pytest.mark.asyncio
+async def test_chain_repository_rejects_stale_checkpoint(sqlite_session):
+    repo = SqlChainRepository(sqlite_session)
+    original = make_sha256("blob1")
+    chain = await repo.create([original])
+    await sqlite_session.commit()
+
+    new_version = await repo.apply_checkpoint(
+        chain.chain_id,
+        chain.version,
+        added=[make_sha256("blob2")],
+        deleted=[],
+    )
+    assert new_version == 2
+
+    stale_result = await repo.apply_checkpoint(
+        chain.chain_id,
+        chain.version,
+        added=[make_sha256("blob3")],
+        deleted=[original],
+    )
+
+    assert stale_result is None
+    loaded = await repo.get(chain.chain_id)
+    assert loaded is not None
+    assert loaded.version == 2
+    assert loaded.members == {original, make_sha256("blob2")}
 
 
 @pytest.mark.asyncio

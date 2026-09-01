@@ -70,7 +70,7 @@ class BlobStatusQueryHandler:
             if query.checkpoint_id:
                 parsed = Chain.parse_checkpoint_token(query.checkpoint_id)
                 checkpoint_not_found = not (
-                    parsed is not None and await uow.chains.exists(parsed[0])
+                    parsed is not None and await uow.chains.exists(parsed[0], parsed[1])
                 )
         return BlobStatusResult(
             missing.unknown,
@@ -99,9 +99,9 @@ class ResolveScopeQueryHandler:
         """把 (checkpoint 成员 ∪ added) − deleted 解析为检索范围。
 
         全库检索已禁用：客户端必须正面声明工作集。checkpoint_id 或 added_blobs 任一
-        有效即可；deleted_blobs 只是减法，不构成声明。checkpoint 无效（格式非法或链
-        不存在）直接报错，避免范围静默变窄。结果恒为非 None frozenset（可为空集），
-        空集表示工作集为空，检索返回空结果而非全库。
+        有效即可；deleted_blobs 只是减法，不构成声明。checkpoint 无效（格式非法、链
+        不存在或版本已过期）直接报错，避免范围静默变更。结果恒为非 None
+        frozenset（可为空集），空集表示工作集为空，检索返回空结果而非全库。
         """
         base: set[str] = set()
         chain_id: str | None = None
@@ -110,11 +110,11 @@ class ResolveScopeQueryHandler:
             parsed = Chain.parse_checkpoint_token(query.checkpoint_id)
             if parsed is None:
                 raise InvalidCheckpointTokenError(query.checkpoint_id)
-            chain_id = parsed[0]
+            chain_id, expected_version = parsed
             async with self._uow_factory() as uow:
                 chain = await uow.chains.get(chain_id)
-                if chain is None:
-                    raise NeedsResetError("checkpoint 链不存在（服务端状态丢失）")
+                if chain is None or chain.version != expected_version:
+                    raise NeedsResetError("checkpoint 链不存在或版本已过期")
                 base = set(chain.members)
                 chain_version = chain.version
         elif not query.added_blobs:

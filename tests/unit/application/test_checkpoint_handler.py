@@ -21,9 +21,7 @@ def handler():
 
 class TestCheckpointCommandHandler:
     async def test_create_new_chain_returns_version_1(self, handler):
-        result = await handler.handle(
-            CheckpointCommand(added_blobs=("a", "b", "c"))
-        )
+        result = await handler.handle(CheckpointCommand(added_blobs=("a", "b", "c")))
 
         assert result.new_checkpoint_id.endswith(":1")
         chain_id = result.new_checkpoint_id.rsplit(":", 1)[0]
@@ -62,6 +60,27 @@ class TestCheckpointCommandHandler:
             await handler.handle(
                 CheckpointCommand(checkpoint_id=token, added_blobs=("a",))
             )
+
+    async def test_stale_version_raises_needs_reset_without_mutating_chain(
+        self, handler
+    ):
+        first = await handler.handle(CheckpointCommand(added_blobs=("a",)))
+        second = await handler.handle(
+            CheckpointCommand(checkpoint_id=first.new_checkpoint_id, added_blobs=("b",))
+        )
+
+        with pytest.raises(NeedsResetError):
+            await handler.handle(
+                CheckpointCommand(
+                    checkpoint_id=first.new_checkpoint_id, added_blobs=("c",)
+                )
+            )
+
+        chain_id = second.new_checkpoint_id.rsplit(":", 1)[0]
+        chain = await handler._uow_factory.uow.chains.get(chain_id)
+        assert chain is not None
+        assert chain.version == 2
+        assert chain.members == {"a", "b"}
 
     async def test_malformed_token_raises_invalid(self, handler):
         with pytest.raises(InvalidCheckpointTokenError):

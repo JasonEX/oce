@@ -36,14 +36,15 @@ class CheckpointCommandHandler:
                 parsed = Chain.parse_checkpoint_token(command.checkpoint_id)
                 if parsed is None:
                     raise InvalidCheckpointTokenError(command.checkpoint_id)
-                chain_id, _ = parsed
+                chain_id, expected_version = parsed
                 version = await uow.chains.apply_checkpoint(
                     chain_id,
+                    expected_version,
                     command.added_blobs,
                     command.deleted_blobs,
                 )
                 if version is None:
-                    raise NeedsResetError("checkpoint 链不存在（服务端状态丢失）")
+                    raise NeedsResetError("checkpoint 链不存在或版本已过期")
             await uow.chains.touch_members(chain_id)
             await uow.commit()
         return CheckpointResult(f"{chain_id}:{version}")

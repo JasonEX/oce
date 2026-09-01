@@ -93,7 +93,8 @@ class Chain:
         """获取 Checkpoint 令牌
         
         格式：{chain_id}:{version}
-        不透明令牌，客户端只需存储并回传
+        不透明令牌，客户端必须存储并回传最新值。版本不匹配时服务端要求
+        重建工作集，避免旧令牌静默读取或改写新成员集。
         """
         return f"{self.chain_id}:{self.version}"
     
