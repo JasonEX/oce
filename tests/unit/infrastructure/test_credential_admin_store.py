@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from oce.application.credential_admin import (
-    CredentialCreate,
-    CredentialDuplicate,
-    CredentialUpdate,
-)
 from oce.infrastructure.persistence.credential_admin_store import (
     SqlCredentialAdminStore,
     _hash_key,
 )
 from oce.shared.database.session import Base
 from oce.shared.errors import CredentialConflictError
+from oce.shared.model_credentials import (
+    CredentialCreate,
+    CredentialDuplicate,
+    CredentialUpdate,
+)
 
 
 async def _store():

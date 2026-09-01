@@ -10,14 +10,14 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oce.application.credential_admin import (
+from oce.infrastructure.persistence.models import ModelCredentialModel
+from oce.shared.errors import CredentialConflictError
+from oce.shared.model_credentials import (
     CredentialCreate,
     CredentialDuplicate,
     CredentialRecord,
     CredentialUpdate,
 )
-from oce.infrastructure.persistence.models import ModelCredentialModel
-from oce.shared.errors import CredentialConflictError
 
 # CredentialCreate/Update 中可直接透传到模型的标量字段（api_key 单独处理以同步 hash）。
 _SCALAR_FIELDS = (
@@ -92,14 +92,18 @@ class SqlCredentialAdminStore:
     async def list(self) -> list[CredentialRecord]:
         async with self._session_factory() as session:
             rows = (
-                await session.execute(
-                    select(ModelCredentialModel).order_by(
-                        ModelCredentialModel.kind,
-                        ModelCredentialModel.priority,
-                        ModelCredentialModel.id,
+                (
+                    await session.execute(
+                        select(ModelCredentialModel).order_by(
+                            ModelCredentialModel.kind,
+                            ModelCredentialModel.priority,
+                            ModelCredentialModel.id,
+                        )
                     )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
             return [_to_record(row) for row in rows]
 
     async def create(self, data: CredentialCreate) -> CredentialRecord:
@@ -164,9 +168,7 @@ class SqlCredentialAdminStore:
             )
         return await self._persist_new(clone)
 
-    async def _persist_new(
-        self, model: ModelCredentialModel
-    ) -> CredentialRecord:
+    async def _persist_new(self, model: ModelCredentialModel) -> CredentialRecord:
         async with self._session_factory() as session:
             session.add(model)
             try:

@@ -1,9 +1,9 @@
 """Production language chunker composition."""
 
-from oce.application.factories.chunker import build_chunker
 from oce.domain.chunk import RecursiveChunker, LanguageChunkerRouter
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES
 from oce.infrastructure.astchunk.cast_chunker import CastChunker
+from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.chunkers.jsp_chunker import JspChunker
 from oce.infrastructure.chunkers.markdown_chunker import MarkdownChunker
 from oce.infrastructure.chunkers.vue_chunker import VueChunker

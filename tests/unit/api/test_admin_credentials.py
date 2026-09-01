@@ -6,7 +6,7 @@ import httpx
 from fastapi import Header
 
 from oce.api.router import get_application
-from oce.application.credential_admin import CredentialRecord
+from oce.shared.model_credentials import CredentialRecord
 from oce.auth import _unauthorized, verify_admin_key
 from oce.main import app
 from oce.shared.errors import CredentialConflictError
@@ -19,7 +19,9 @@ async def _mock_admin_auth(authorization: str | None = Header(default=None)) -> 
     return authorization.removeprefix("Bearer ")
 
 
-def _record(credential_id: int, name: str, *, last4: str = "1234", status: str = "active") -> CredentialRecord:
+def _record(
+    credential_id: int, name: str, *, last4: str = "1234", status: str = "active"
+) -> CredentialRecord:
     return CredentialRecord(
         id=credential_id,
         kind="embed",
@@ -61,7 +63,9 @@ class StubCredentialApp:
     async def update_credential(self, credential_id, changes):
         if credential_id == 999:
             return None
-        return _record(credential_id, changes.name or "primary", status=changes.status or "active")
+        return _record(
+            credential_id, changes.name or "primary", status=changes.status or "active"
+        )
 
     async def delete_credential(self, credential_id):
         return credential_id != 999

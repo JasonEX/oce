@@ -66,10 +66,10 @@ from oce.application.queries.status import (
     ResolveScopeQueryHandler,
 )
 from oce.application.service import RetrievalApplication
-from oce.application.factories.chunker import build_chunker
 from oce.application.index_lifecycle import IndexLifecycleManager
 from oce.application.worker import EmbedWorker
 from oce.domain.services.retrieval import RetrievalPipeline
+from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
 from oce.infrastructure.embed.query_cache import QueryCachingEmbedder
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker

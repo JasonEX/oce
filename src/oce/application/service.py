@@ -22,10 +22,6 @@ from oce.application.commands.queue_admin import ResetQueueCommand, ResetQueueRe
 from oce.application.commands.requeue import RequeueStaleCommand, RequeueStaleResult
 from oce.application.credential_admin import (
     CreateCredentialCommand,
-    CredentialCreate,
-    CredentialDuplicate,
-    CredentialRecord,
-    CredentialUpdate,
     DeleteCredentialCommand,
     DuplicateCredentialCommand,
     ListCredentialsQuery,
@@ -45,8 +41,14 @@ from oce.application.queries.status import (
 )
 from oce.domain.services.formatter import format_retrieval
 from oce.domain.services.search import SearchHit
-from oce.shared.metrics_read import MonitoringStats
 from oce.shared.index_stats import IndexStats
+from oce.shared.metrics_read import MonitoringStats
+from oce.shared.model_credentials import (
+    CredentialCreate,
+    CredentialDuplicate,
+    CredentialRecord,
+    CredentialUpdate,
+)
 
 
 def compute_blob_name(path: str, content: str) -> str:

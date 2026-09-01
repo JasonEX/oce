@@ -32,15 +32,15 @@ from oce.api.schemas import (
     TokenKindStatsResponse,
 )
 from oce.application.container import get_container
-from oce.application.credential_admin import (
+from oce.application.service import RetrievalApplication
+from oce.auth import verify_admin_key
+from oce.shared.errors import CredentialConflictError
+from oce.shared.model_credentials import (
     CredentialCreate,
     CredentialDuplicate,
     CredentialRecord,
     CredentialUpdate,
 )
-from oce.application.service import RetrievalApplication
-from oce.auth import verify_admin_key
-from oce.shared.errors import CredentialConflictError
 
 admin_router = APIRouter(
     prefix="/admin",
