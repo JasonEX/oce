@@ -15,7 +15,7 @@ import asyncio
 import re
 from contextlib import contextmanager
 from dataclasses import replace
-from typing import TYPE_CHECKING, Callable, Iterator
+from typing import TYPE_CHECKING, Callable, Iterator, Sequence
 
 from loguru import logger
 
@@ -228,24 +228,26 @@ class RetrievalPipeline:
             if rewritten_queries:
                 queries_to_search = rewritten_queries
 
-        # 对每个查询执行完整检索流程
-        all_result_lists = []
-        with stage("dense"):
-            for search_query in queries_to_search:
-                planned_queries = self.query_planner.plan(search_query)
-                if not planned_queries:
-                    continue
-                num_queries = len(planned_queries)
-                result_lists = await asyncio.gather(
-                    *(
-                        self._recall(planned_query, allowed_blob_names, num_queries)
-                        for planned_query in planned_queries
-                    )
-                )
-                all_result_lists.extend(result_lists)
+        planned_queries = self._plan_queries(queries_to_search)
 
-        with stage("exact"):
-            exact_hits = await self._recall_exact(query, scope)
+        async def recall_dense() -> list[list[SearchHit]]:
+            with stage("dense"):
+                return await self._recall_planned(
+                    planned_queries,
+                    allowed_blob_names,
+                )
+
+        async def recall_exact() -> list[SearchHit]:
+            with stage("exact"):
+                return await self._recall_exact(query, scope)
+
+        # Exact SQL and dense model/vector I/O are independent after routing and
+        # rewrite. Running them together removes one full backend RTT from symbol
+        # queries without changing fusion order or failure semantics.
+        all_result_lists, exact_hits = await asyncio.gather(
+            recall_dense(),
+            recall_exact(),
+        )
         if not all_result_lists and not exact_hits:
             return []
 
@@ -302,10 +304,53 @@ class RetrievalPipeline:
         reranked = await self.llm_reranker.rerank(query, candidates)
         return [c["hit"] for c in reranked if "hit" in c]
 
-    async def _recall(
+    def _plan_queries(self, queries: Sequence[str]) -> list[tuple[str, int]]:
+        planned: list[tuple[str, int]] = []
+        for query in queries:
+            facets = self.query_planner.plan(query)
+            count = len(facets)
+            planned.extend((facet, count) for facet in facets)
+        return planned
+
+    async def _embed_query_vectors(
+        self,
+        queries: Sequence[str],
+    ) -> dict[str, list[float]]:
+        unique_queries = tuple(dict.fromkeys(queries))
+        vectors = await asyncio.gather(
+            *(self.embedder.embed_query(query) for query in unique_queries)
+        )
+        return dict(zip(unique_queries, vectors, strict=True))
+
+    async def _recall_planned(
+        self,
+        planned_queries: Sequence[tuple[str, int]],
+        allowed_blob_names: set[str] | frozenset[str] | None,
+    ) -> list[list[SearchHit]]:
+        if not planned_queries:
+            return []
+        vectors = await self._embed_query_vectors(
+            [query for query, _count in planned_queries]
+        )
+        return list(
+            await asyncio.gather(
+                *(
+                    self._recall_with_vector(
+                        query,
+                        vectors[query],
+                        allowed_blob_names,
+                        num_queries,
+                    )
+                    for query, num_queries in planned_queries
+                )
+            )
+        )
+
+    async def _recall_with_vector(
         self,
         query: str,
-        allowed_blob_names: set[str] | None,
+        query_vector: list[float],
+        allowed_blob_names: set[str] | frozenset[str] | None,
         num_queries: int = 1,
     ) -> list[SearchHit]:
         # 动态调整召回量：单查询用 default_top_k，多查询用 per_query_top_k
@@ -314,8 +359,6 @@ class RetrievalPipeline:
             if num_queries == 1
             else self.settings.per_query_top_k
         )
-
-        query_vector = await self.embedder.embed_query(query)
 
         return await self.store.search(
             query=query,
@@ -529,21 +572,32 @@ class RetrievalPipeline:
                 except Exception as exc:
                     logger.warning("Query rewrite failed: {}", type(exc).__name__)
 
+        path_queries = tuple(dict.fromkeys((query, *queries_to_search)))
+        content_queries = self._plan_queries(queries_to_search)
+        with stage("embed"):
+            query_vectors = await self._embed_query_vectors(
+                [*path_queries, *(item[0] for item in content_queries)]
+            )
+
         # 1. 路径索引检索：原查询 + 改写变体分别检索，每个 blob 取最高路径分。
         #    中文查询（如「版本变更历史记录文件在哪里」）直接 embedding 常匹配不到
         #    英文路径文档，改写变体（含文件名如 CHANGES.rst）才能命中路径索引。
-        path_scores: dict[str, float] = {}
-        with stage("dense"):
+        async def recall_paths() -> dict[str, float]:
+            path_scores: dict[str, float] = {}
             try:
                 blob_filter = list(allowed_blob_names) if allowed_blob_names else None
-                path_queries = tuple(dict.fromkeys((query, *queries_to_search)))
-                for variant in path_queries:
-                    query_vector = await self.embedder.embed_query(variant)
-                    path_results = await self.path_store.search_paths(
-                        query_vector=query_vector,
-                        allowed_blob_names=blob_filter,
-                        top_k=20,
+                with stage("path"):
+                    result_lists = await asyncio.gather(
+                        *(
+                            self.path_store.search_paths(
+                                query_vector=query_vectors[variant],
+                                allowed_blob_names=blob_filter,
+                                top_k=20,
+                            )
+                            for variant in path_queries
+                        )
                     )
+                for path_results in result_lists:
                     for r in path_results:
                         if (
                             r.blob_name not in path_scores
@@ -556,31 +610,34 @@ class RetrievalPipeline:
                     "Path index search failed: {}; falling back to content-only",
                     type(exc).__name__,
                 )
+            return path_scores
 
         # 2. 内容索引检索（常规流程，但减少 top_k）
-        content_hits = []
-        content_error: Exception | None = None
-        with stage("dense"):
+        async def recall_content() -> tuple[list[SearchHit], Exception | None]:
             try:
-                all_result_lists = []
-                for search_query in queries_to_search:
-                    planned_queries = self.query_planner.plan(search_query)
-                    if not planned_queries:
-                        continue
-                    num_queries = len(planned_queries)
+                with stage("dense"):
                     result_lists = await asyncio.gather(
                         *(
-                            self._recall(planned_query, allowed_blob_names, num_queries)
-                            for planned_query in planned_queries
+                            self._recall_with_vector(
+                                planned_query,
+                                query_vectors[planned_query],
+                                allowed_blob_names,
+                                num_queries,
+                            )
+                            for planned_query, num_queries in content_queries
                         )
                     )
-                    all_result_lists.extend(result_lists)
-
-                if all_result_lists:
-                    content_hits = self._fuse(all_result_lists)
+                return (self._fuse(list(result_lists)) if result_lists else []), None
             except Exception as exc:
-                content_error = exc
                 logger.warning("Content search failed: {}", type(exc).__name__)
+                return [], exc
+
+        # Both stores use the same embedding space, so the shared vectors above
+        # feed independent path/content searches concurrently.
+        path_scores, (content_hits, content_error) = await asyncio.gather(
+            recall_paths(),
+            recall_content(),
+        )
 
         # 3. 融合：路径分数作为文件级加权，排序仍在 chunk 粒度上进行
         with stage("fuse"):

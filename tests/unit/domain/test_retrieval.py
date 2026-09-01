@@ -6,6 +6,7 @@ embed → search → rerank → 源码优先 → 置信度门槛 → select。
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 
 import pytest
@@ -347,6 +348,7 @@ class TestRetrievalPipeline:
     async def test_path_only_hit_uses_injected_content_store(self):
         blob_name = "p" * 64
         path_store = FakePathStore([PathSearchResult("src/config.py", blob_name, 0.91)])
+        embedder = FakeEmbedder()
         content_store = FakePathContentStore(
             [
                 SearchHit(
@@ -361,7 +363,7 @@ class TestRetrievalPipeline:
             ]
         )
         pipe = RetrievalPipeline(
-            embedder=FakeEmbedder(),
+            embedder=embedder,
             store=FakeSearchStore(),
             path_store=path_store,
             path_content_store=content_store,
@@ -376,6 +378,7 @@ class TestRetrievalPipeline:
         assert [(hit.path, hit.content, hit.score) for hit in results] == [
             ("src/config.py", "SETTING = True", 0.91)
         ]
+        assert embedder.queries == ["Where is config.py?"]
 
     async def test_path_content_failure_degrades_to_other_content_hits(self):
         missing_blob = "p" * 64
@@ -395,6 +398,37 @@ class TestRetrievalPipeline:
         results = await pipe.search("Where is missing.py?")
 
         assert [hit.path for hit in results] == ["src/fallback.py"]
+
+    async def test_path_and_content_recall_overlap(self):
+        path_started = asyncio.Event()
+        content_started = asyncio.Event()
+
+        class CoordinatedPathStore(FakePathStore):
+            async def search_paths(self, *args, **kwargs):
+                path_started.set()
+                await asyncio.wait_for(content_started.wait(), timeout=0.5)
+                return await super().search_paths(*args, **kwargs)
+
+        class CoordinatedContentStore(FakeSearchStore):
+            async def search(self, **kwargs):
+                content_started.set()
+                await asyncio.wait_for(path_started.wait(), timeout=0.5)
+                return await super().search(**kwargs)
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=CoordinatedContentStore([_hit("src/config.py", 0.8)]),
+            path_store=CoordinatedPathStore(
+                [PathSearchResult("src/config.py", "x" * 64, 0.9)]
+            ),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("Where is config.py?")
+
+        assert path_started.is_set()
+        assert content_started.is_set()
+        assert [hit.path for hit in results] == ["src/config.py"]
 
     async def test_path_query_propagates_content_failure_without_path_fallback(self):
         class FailingSearchStore(FakeSearchStore):
@@ -471,6 +505,35 @@ class TestRetrievalPipeline:
         assert exact_store.identifiers == ("copilot_get_models",)
         assert exact_store.scope == _scope("a" * 64)
         assert results[0].path == "src-tauri/src/commands/copilot.rs"
+
+    async def test_exact_and_dense_recall_overlap(self):
+        dense_started = asyncio.Event()
+        exact_started = asyncio.Event()
+
+        class CoordinatedSearchStore(FakeSearchStore):
+            async def search(self, **kwargs):
+                dense_started.set()
+                await asyncio.wait_for(exact_started.wait(), timeout=0.5)
+                return await super().search(**kwargs)
+
+        class CoordinatedExactStore(FakeExactSearchStore):
+            async def search_exact(self, **kwargs):
+                exact_started.set()
+                await asyncio.wait_for(dense_started.wait(), timeout=0.5)
+                return await super().search_exact(**kwargs)
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=CoordinatedSearchStore([_hit("src/semantic.py", 0.9)]),
+            exact_store=CoordinatedExactStore([_hit("src/exact.py", 1.0)]),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
+
+        assert dense_started.is_set()
+        assert exact_started.is_set()
+        assert [hit.path for hit in results] == ["src/exact.py", "src/semantic.py"]
 
     async def test_exact_identifier_failure_falls_back_to_semantic_results(self):
         pipe = RetrievalPipeline(
@@ -641,6 +704,25 @@ class TestRetrievalPipeline:
             "src/credentials.py",
         ]
         assert len(embedder.queries) == 3
+
+    async def test_duplicate_planned_query_reuses_one_vector(self):
+        class DuplicatePlanner:
+            def plan(self, query: str) -> list[str]:
+                return [query, query]
+
+        store = FakeSearchStore([_hit("src/a.py", 0.9)])
+        embedder = FakeEmbedder()
+        pipe = RetrievalPipeline(
+            embedder=embedder,
+            store=store,
+            query_planner=DuplicatePlanner(),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        await pipe.search("same query")
+
+        assert store.queries == ["same query", "same query"]
+        assert embedder.queries == ["same query"]
 
     async def test_query_decomposition_can_be_disabled(self):
         store = FakeSearchStore([_hit("src/a.py", 0.9)])
