@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from oce.domain.services.symbols import SymbolProvider
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
@@ -12,13 +13,18 @@ from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 class SqlAlchemyUnitOfWork:
     """为一个 application 用例提供同一事务内的仓储。"""
 
-    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+    def __init__(
+        self,
+        session_factory: async_sessionmaker[AsyncSession],
+        symbol_provider: SymbolProvider,
+    ) -> None:
         self._session_factory = session_factory
+        self._symbol_provider = symbol_provider
         self.session: AsyncSession | None = None
 
     async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
         self.session = self._session_factory()
-        self.blobs = SqlBlobRepository(self.session)
+        self.blobs = SqlBlobRepository(self.session, self._symbol_provider)
         self.chunks = SqlChunkRepository(self.session)
         self.chains = SqlChainRepository(self.session)
         return self

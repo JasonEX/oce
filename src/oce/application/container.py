@@ -78,6 +78,7 @@ from oce.infrastructure.persistence.credential_admin_store import (
 )
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
+from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from oce.infrastructure.metrics.cleanup import MonitoringCleaner
 from oce.infrastructure.metrics.resource_sampler import (
     ResourceSampler,
@@ -234,7 +235,11 @@ class Container:
         )
 
         self.chunker = build_chunker()
-        self._uow_factory = lambda: SqlAlchemyUnitOfWork(async_session_factory)
+        self.symbol_provider = RegexSymbolProvider()
+        self._uow_factory = lambda: SqlAlchemyUnitOfWork(
+            async_session_factory,
+            self.symbol_provider,
+        )
 
         # 监控 sink：启用时异步落库，否则空实现（monitoring 已在前面解析）
         if monitoring.enabled:

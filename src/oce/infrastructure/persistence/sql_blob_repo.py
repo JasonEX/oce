@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import ChunkRef
+from oce.domain.services.symbols import SymbolProvider
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
@@ -19,13 +20,16 @@ from oce.infrastructure.persistence.models import (
     SymbolOccurrenceModel,
 )
 from oce.domain.repositories import BlobRepository
-from oce.infrastructure.persistence.symbol_extractor import SymbolExtractor
 
 
 class SqlBlobRepository(BlobRepository):
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(
+        self,
+        session: AsyncSession,
+        symbol_provider: SymbolProvider,
+    ) -> None:
         self.session = session
-        self._symbol_extractor = SymbolExtractor()
+        self._symbol_provider = symbol_provider
 
     def _insert(self):
         bind = self.session.get_bind()
@@ -45,10 +49,14 @@ class SqlBlobRepository(BlobRepository):
         if not blob_names:
             return {}
         rows = (
-            await self.session.execute(
-                select(BlobModel).where(BlobModel.blob_name.in_(blob_names))
+            (
+                await self.session.execute(
+                    select(BlobModel).where(BlobModel.blob_name.in_(blob_names))
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         chunks = await self._load_chunks_many(blob_names)
         return {
             row.blob_name: self._row_to_domain(row, chunks.get(row.blob_name, []))
@@ -57,7 +65,9 @@ class SqlBlobRepository(BlobRepository):
 
     async def exists(self, blob_name: str) -> bool:
         count = await self.session.scalar(
-            select(func.count()).select_from(BlobModel).where(BlobModel.blob_name == blob_name)
+            select(func.count())
+            .select_from(BlobModel)
+            .where(BlobModel.blob_name == blob_name)
         )
         return bool(count)
 
@@ -128,7 +138,9 @@ class SqlBlobRepository(BlobRepository):
         await self.session.execute(
             delete(BlobChunkModel).where(BlobChunkModel.blob_name.in_(blob_names))
         )
-        await self.session.execute(delete(BlobModel).where(BlobModel.blob_name.in_(blob_names)))
+        await self.session.execute(
+            delete(BlobModel).where(BlobModel.blob_name.in_(blob_names))
+        )
         if content_hashes:
             referenced = select(BlobChunkModel.content_hash).where(
                 BlobChunkModel.content_hash == ChunkModel.content_hash
@@ -172,8 +184,11 @@ class SqlBlobRepository(BlobRepository):
     async def get_staging(self, blob_name: str) -> str | None:
         """读取 staging 原文，不存在返回 None"""
         from oce.infrastructure.persistence.models import BlobStagingModel
+
         result = await self.session.execute(
-            select(BlobStagingModel.content).where(BlobStagingModel.blob_name == blob_name)
+            select(BlobStagingModel.content).where(
+                BlobStagingModel.blob_name == blob_name
+            )
         )
         row = result.scalar_one_or_none()
         # 空文件保存的是空串，不能把空串当成“不存在”（否则空文件会被误判为 staging 丢失）
@@ -187,19 +202,24 @@ class SqlBlobRepository(BlobRepository):
 
         # 根据 dialect 选择 insert 语句
         if self.session.bind.dialect.name == "postgresql":
-            stmt = pg_insert(BlobStagingModel).values(
-                blob_name=blob_name, content=content
-            ).on_conflict_do_nothing(index_elements=["blob_name"])
+            stmt = (
+                pg_insert(BlobStagingModel)
+                .values(blob_name=blob_name, content=content)
+                .on_conflict_do_nothing(index_elements=["blob_name"])
+            )
         else:  # SQLite
-            stmt = sqlite_insert(BlobStagingModel).values(
-                blob_name=blob_name, content=content
-            ).on_conflict_do_nothing()
+            stmt = (
+                sqlite_insert(BlobStagingModel)
+                .values(blob_name=blob_name, content=content)
+                .on_conflict_do_nothing()
+            )
 
         await self.session.execute(stmt)
 
     async def delete_staging(self, blob_name: str) -> None:
         """删除 staging 原文（worker 消费完后调用）"""
         from oce.infrastructure.persistence.models import BlobStagingModel
+
         await self.session.execute(
             delete(BlobStagingModel).where(BlobStagingModel.blob_name == blob_name)
         )
@@ -207,7 +227,9 @@ class SqlBlobRepository(BlobRepository):
     async def _load_chunks(self, blob_name: str) -> list[ChunkRef]:
         return (await self._load_chunks_many([blob_name])).get(blob_name, [])
 
-    async def _load_chunks_many(self, blob_names: Sequence[str]) -> dict[str, list[ChunkRef]]:
+    async def _load_chunks_many(
+        self, blob_names: Sequence[str]
+    ) -> dict[str, list[ChunkRef]]:
         if not blob_names:
             return {}
         rows = (
@@ -224,7 +246,9 @@ class SqlBlobRepository(BlobRepository):
             )
         return result
 
-    async def _save_blob_chunks(self, blob_name: str, chunks: Sequence[ChunkRef]) -> None:
+    async def _save_blob_chunks(
+        self, blob_name: str, chunks: Sequence[ChunkRef]
+    ) -> None:
         if not chunks:
             return
         values = [
@@ -246,10 +270,13 @@ class SqlBlobRepository(BlobRepository):
     async def _extract_and_save_symbols(self, blob: Blob) -> None:
         """从 blob 的所有 chunks 提取标识符并写入 symbol_occurrences 表。"""
         import logging
+
         logger = logging.getLogger(__name__)
 
         if not blob.chunks:
-            logger.debug(f"Blob {blob.blob_name}: no chunks, skipping symbol extraction")
+            logger.debug(
+                f"Blob {blob.blob_name}: no chunks, skipping symbol extraction"
+            )
             return
 
         # 先获取所有 chunk 的 content
@@ -260,18 +287,23 @@ class SqlBlobRepository(BlobRepository):
             )
         )
         chunk_contents = {row.content_hash: row.content for row in result}
-        logger.debug(f"Blob {blob.blob_name}: loaded {len(chunk_contents)} chunk contents")
+        logger.debug(
+            f"Blob {blob.blob_name}: loaded {len(chunk_contents)} chunk contents"
+        )
 
         # 提取所有标识符
         symbol_values = []
         for chunk_ref in blob.chunks:
             content = chunk_contents.get(chunk_ref.content_hash)
             if not content:
-                logger.warning(f"Blob {blob.blob_name}: chunk {chunk_ref.content_hash} content not found")
+                logger.warning(
+                    f"Blob {blob.blob_name}: chunk {chunk_ref.content_hash} content not found"
+                )
                 continue
 
-            symbols = self._symbol_extractor.extract_symbols(
+            symbols = self._symbol_provider.extract(
                 content=content,
+                language=blob.language,
                 start_line=chunk_ref.start_line,
                 end_line=chunk_ref.end_line,
             )
@@ -288,7 +320,9 @@ class SqlBlobRepository(BlobRepository):
                     }
                 )
 
-        logger.info(f"Blob {blob.blob_name}: extracted {len(symbol_values)} symbols from {len(blob.chunks)} chunks")
+        logger.info(
+            f"Blob {blob.blob_name}: extracted {len(symbol_values)} symbols from {len(blob.chunks)} chunks"
+        )
 
         if not symbol_values:
             return
@@ -299,7 +333,9 @@ class SqlBlobRepository(BlobRepository):
             index_elements=["identifier", "blob_name", "content_hash", "kind"]
         )
         await self.session.execute(stmt)
-        logger.info(f"Blob {blob.blob_name}: saved {len(symbol_values)} symbol occurrences")
+        logger.info(
+            f"Blob {blob.blob_name}: saved {len(symbol_values)} symbol occurrences"
+        )
 
     async def list_pending_names(self) -> list[str]:
         """全部 pending blob 名。队列对账要全集，且只需要标识不需要聚合。"""

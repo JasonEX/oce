@@ -9,7 +9,12 @@ from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
+from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from tests.conftest import make_sha256
+
+
+def _blob_repository(session):
+    return SqlBlobRepository(session, RegexSymbolProvider())
 
 
 @pytest.fixture
@@ -70,7 +75,7 @@ async def sqlite_session():
 @pytest.mark.asyncio
 async def test_blob_repository_crud(sqlite_session):
     """测试 BlobRepository CRUD 操作"""
-    repo = SqlBlobRepository(sqlite_session)
+    repo = _blob_repository(sqlite_session)
 
     # 创建 Blob
     blob = Blob(
@@ -141,7 +146,7 @@ async def test_chunk_repository_crud(sqlite_session):
 
 
 async def _save_symbol_blobs(sqlite_session, specs):
-    blob_repo = SqlBlobRepository(sqlite_session)
+    blob_repo = _blob_repository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
     chunks = [
         Chunk(make_sha256(label), path, content, start_line, end_line)
@@ -344,7 +349,7 @@ async def test_chain_repository_batches_large_member_sets(sqlite_session):
 @pytest.mark.asyncio
 async def test_batch_operations(sqlite_session):
     """测试批量操作"""
-    blob_repo = SqlBlobRepository(sqlite_session)
+    blob_repo = _blob_repository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
 
     # 批量保存 Chunk
@@ -389,7 +394,7 @@ async def test_batch_operations(sqlite_session):
 
 @pytest.mark.asyncio
 async def test_blob_delete_only_removes_unreferenced_chunks(sqlite_session):
-    blob_repo = SqlBlobRepository(sqlite_session)
+    blob_repo = _blob_repository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
     shared = Chunk(make_sha256("shared"), "", "shared", 1, 1)
     unique = Chunk(make_sha256("unique"), "", "unique", 2, 2)

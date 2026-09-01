@@ -14,6 +14,7 @@
 
 ### Changed
 
+- **symbols**: inject the production regex symbol provider through a domain protocol instead of constructing parsing policy inside SQL persistence
 - **config**: default intent classification off and keep all optional LLM calls off in newly generated personal configurations
 - **compose**: keep the Milvus data port internal to the service network
 - **retrieval**: use one canonical intent model and remove strategy options not connected to the pipeline
