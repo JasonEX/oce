@@ -2,6 +2,8 @@
 
 from unittest.mock import AsyncMock, Mock, patch
 
+import pytest
+
 from oce.infrastructure.milvus3 import Milvus3Client, Milvus3SearchStore
 from oce.infrastructure.milvus3.path_index import PathIndexClient
 from oce.shared.config.settings import MilvusSettings
@@ -59,3 +61,46 @@ async def test_uninitialized_path_stats_do_not_create_collection():
     assert stats.collection_name == "test_paths"
     assert stats.error_type == "NotInitialized"
     assert client.collection is None
+
+
+async def test_path_filters_reject_non_sha256_values_before_connecting():
+    client = PathIndexClient(
+        MilvusSettings(
+            endpoint="http://localhost:19530",
+            path_collection_name="test_paths",
+        )
+    )
+
+    with pytest.raises(ValueError, match="SHA256"):
+        await client.search_paths(
+            [0.1] * client.dense_dim,
+            allowed_blob_names=['x" or true'],
+        )
+    with pytest.raises(ValueError, match="SHA256"):
+        await client.delete_by_blob_names(['x" or true'])
+
+    assert client.collection is None
+
+
+async def test_path_filters_use_validated_blob_names():
+    client = PathIndexClient(
+        MilvusSettings(
+            endpoint="http://localhost:19530",
+            path_collection_name="test_paths",
+        )
+    )
+    client.collection = Mock()
+    client.collection.search.return_value = []
+    client._initialized = True
+    blob_name = "a" * 64
+
+    await client.search_paths(
+        [0.1] * client.dense_dim,
+        allowed_blob_names=[blob_name],
+    )
+    await client.delete_by_blob_names([blob_name])
+
+    assert client.collection.search.call_args.kwargs["expr"] == (
+        f'blob_name in ["{blob_name}"]'
+    )
+    client.collection.delete.assert_called_once_with(f'blob_name in ["{blob_name}"]')

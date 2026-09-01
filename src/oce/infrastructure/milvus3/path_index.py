@@ -17,6 +17,8 @@ from oce.domain.services.path_search import PathSearchResult
 from oce.shared.config.settings import MilvusSettings
 from oce.shared.index_stats import IndexStoreStats
 
+from .client import validate_blob_name
+
 
 class PathIndexClient:
     """路径索引客户端 - 只存储路径信息的轻量索引"""
@@ -43,16 +45,17 @@ class PathIndexClient:
         # 创建或加载集合
         if not self._collection_exists():
             self._create_collection()
-        
+
         self.collection = Collection(self.collection_name)
         self.collection.load()
-        
+
         self._initialized = True
         logger.info(f"PathIndexClient initialized, collection: {self.collection_name}")
 
     def _collection_exists(self) -> bool:
         """检查集合是否存在"""
         from pymilvus import utility
+
         return utility.has_collection(self.collection_name)
 
     def _create_collection(self) -> None:
@@ -111,7 +114,7 @@ class PathIndexClient:
     async def insert(self, path_docs: list[dict[str, Any]]) -> dict[str, Any]:
         """
         插入路径文档
-        
+
         Args:
             path_docs: 路径文档列表，每个包含:
                 - path_id: str (e.g., "path_{blob_name}")
@@ -119,7 +122,7 @@ class PathIndexClient:
                 - path: str
                 - path_document: str
                 - path_vector: list[float]
-        
+
         Returns:
             插入结果统计
         """
@@ -131,22 +134,26 @@ class PathIndexClient:
         # 准备数据
         data = []
         for doc in path_docs:
-            data.append({
-                "path_id": doc["path_id"],
-                "blob_name": doc["blob_name"],
-                "path": doc["path"],
-                "path_document": doc["path_document"],
-                "path_vector": doc["path_vector"],
-            })
+            data.append(
+                {
+                    "path_id": doc["path_id"],
+                    "blob_name": doc["blob_name"],
+                    "path": doc["path"],
+                    "path_document": doc["path_document"],
+                    "path_vector": doc["path_vector"],
+                }
+            )
 
         # 分批 upsert：单次请求受 Milvus gRPC 消息体上限约束，整仓上万条向量必须切片
         batch_size = 1000
         count = 0
         for start in range(0, len(data), batch_size):
-            chunk = data[start:start + batch_size]
+            chunk = data[start : start + batch_size]
             result = self.collection.upsert(chunk)
-            count += result.upsert_count if hasattr(result, "upsert_count") else len(chunk)
-        
+            count += (
+                result.upsert_count if hasattr(result, "upsert_count") else len(chunk)
+            )
+
         logger.info(f"Upserted {count} path documents")
         return {"inserted": count}
 
@@ -167,12 +174,17 @@ class PathIndexClient:
         Returns:
             路径搜索结果列表
         """
+        validated_blob_names = (
+            [validate_blob_name(name) for name in allowed_blob_names]
+            if allowed_blob_names
+            else None
+        )
         await self.initialize()
 
         # 构建过滤表达式
         filter_expr = None
-        if allowed_blob_names:
-            blob_list = ", ".join(f'"{name}"' for name in allowed_blob_names)
+        if validated_blob_names:
+            blob_list = ", ".join(f'"{name}"' for name in validated_blob_names)
             filter_expr = f"blob_name in [{blob_list}]"
 
         # 执行搜索
@@ -207,13 +219,14 @@ class PathIndexClient:
 
     async def delete_by_blob_names(self, blob_names: list[str]) -> None:
         """删除指定 blob 的路径文档"""
+        validated_blob_names = [validate_blob_name(name) for name in blob_names]
         await self.initialize()
-        
+
         # 嵌套 f-string 复用引号在 Python <3.12 解析器下报错，先拼好列表字面量再整体格式化。
-        quoted = ", ".join(f'"{name}"' for name in blob_names)
+        quoted = ", ".join(f'"{name}"' for name in validated_blob_names)
         expr = f"blob_name in [{quoted}]"
         self.collection.delete(expr)
-        logger.info(f"Deleted path documents for {len(blob_names)} blobs")
+        logger.info(f"Deleted path documents for {len(validated_blob_names)} blobs")
 
     async def index_stats(self) -> IndexStoreStats:
         """Report an initialized path index without creating it from a GET."""

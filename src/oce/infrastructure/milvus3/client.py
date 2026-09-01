@@ -14,9 +14,9 @@ from .schema import create_oce_collection_schema
 _MAX_CONTENT_BYTES = 65_535
 
 
-def _validate_blob_name(blob_name: str) -> str:
+def validate_blob_name(blob_name: str) -> str:
     if len(blob_name) != 64 or any(
-            character not in "0123456789abcdef" for character in blob_name.casefold()
+        character not in "0123456789abcdef" for character in blob_name.casefold()
     ):
         raise ValueError("Milvus blob filters require a SHA256 blob_name")
     return blob_name
@@ -187,7 +187,7 @@ class Milvus3Client:
         filter_expr = None
         if blob_filter:
             blob_list = ", ".join(
-                f'"{_validate_blob_name(blob_name)}"' for blob_name in blob_filter
+                f'"{validate_blob_name(blob_name)}"' for blob_name in blob_filter
             )
             filter_expr = f"blob_name in [{blob_list}]"
 
@@ -205,7 +205,13 @@ class Milvus3Client:
                 },
                 limit=top_k,
                 filter=filter_expr,
-                output_fields=["chunk_id", "content_hash", "content", "blob_name", "metadata"],
+                output_fields=[
+                    "chunk_id",
+                    "content_hash",
+                    "content",
+                    "blob_name",
+                    "metadata",
+                ],
             )
         except Exception as exc:
             logger.error(
@@ -225,7 +231,11 @@ class Milvus3Client:
         formatted: list[dict[str, Any]] = []
         for hit in hits:
             entity = hit.get("entity", hit) if isinstance(hit, dict) else hit.entity
-            score = hit.get("distance", hit.get("score")) if isinstance(hit, dict) else hit.distance
+            score = (
+                hit.get("distance", hit.get("score"))
+                if isinstance(hit, dict)
+                else hit.distance
+            )
             formatted.append(
                 {
                     "content_hash": entity.get("content_hash"),
@@ -246,7 +256,7 @@ class Milvus3Client:
         Returns:
             删除的向量数
         """
-        _validate_blob_name(blob_name)
+        validate_blob_name(blob_name)
         result = await self._call(
             "delete",
             collection_name=self.settings.collection_name,
