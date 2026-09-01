@@ -50,6 +50,14 @@ class Store:
         return self.stored
 
 
+class Probe:
+    def __init__(self, has_data: bool) -> None:
+        self.has_data = has_data
+
+    async def has_index_data(self):
+        return self.has_data
+
+
 async def test_empty_index_initializes_once_and_accepts_same_profile():
     store = Store()
     manager = IndexLifecycleManager(store, Settings())
@@ -150,6 +158,17 @@ def test_vector_store_identity_normalizes_equivalent_settings(tmp_path):
 
 async def test_legacy_index_without_profile_fails_closed():
     manager = IndexLifecycleManager(Store(has_data=True), Settings())
+
+    with pytest.raises(ServiceNotReadyError, match="no lifecycle fingerprint"):
+        await manager.ensure_compatible(_embedding())
+
+
+async def test_vector_data_without_metadata_profile_fails_closed():
+    manager = IndexLifecycleManager(
+        Store(),
+        Settings(),
+        [Probe(False), Probe(True)],
+    )
 
     with pytest.raises(ServiceNotReadyError, match="no lifecycle fingerprint"):
         await manager.ensure_compatible(_embedding())

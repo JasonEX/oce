@@ -59,15 +59,17 @@ class Milvus3SearchStore:
             if score < vector_threshold:
                 continue
             metadata = result.get("metadata", {})
-            hits.append(SearchHit(
-                blob_name=result.get("blob_name", ""),
-                path=metadata.get("path", result.get("blob_name", "")),
-                content=result.get("content", ""),
-                score=score,
-                content_hash=result.get("content_hash", ""),
-                start_line=metadata.get("start_line", 1),
-                end_line=metadata.get("end_line", 1),
-            ))
+            hits.append(
+                SearchHit(
+                    blob_name=result.get("blob_name", ""),
+                    path=metadata.get("path", result.get("blob_name", "")),
+                    content=result.get("content", ""),
+                    score=score,
+                    content_hash=result.get("content_hash", ""),
+                    start_line=metadata.get("start_line", 1),
+                    end_line=metadata.get("end_line", 1),
+                )
+            )
         return hits
 
     async def upsert(self, items: list[dict[str, Any]]) -> None:
@@ -106,6 +108,10 @@ class Milvus3SearchStore:
             exists=exists,
             entities=entities,
         )
+
+    async def has_index_data(self) -> bool:
+        _exists, entities = await self.client.read_collection_stats()
+        return entities > 0
 
     async def close(self):
         """关闭客户端连接"""

@@ -163,9 +163,27 @@ class Container:
             if settings.embedding.api_key is not None
             else None
         )
+        self.search_store = Milvus3SearchStore(settings.milvus)
+
+        # Initialize path index for filename queries
+        self.path_index = None
+        self.path_content_store = None
+        if settings.retrieval.path_index_enabled:
+            try:
+                self.path_index = PathIndexClient(settings.milvus)
+                self.path_content_store = SqlPathContentStore(async_session_factory)
+                logger.info("Path index enabled for filename queries")
+            except Exception as e:
+                logger.warning("Failed to initialize path index: {}", e)
+                self.path_index = None
+
+        artifact_probes = [self.search_store]
+        if self.path_index is not None:
+            artifact_probes.append(self.path_index)
         self.index_lifecycle = IndexLifecycleManager(
             SqlIndexProfileStore(async_session_factory),
             settings,
+            artifact_probes,
         )
         self.embedding_runtime = CredentialConfiguredEmbedder(
             async_session_factory,
@@ -179,7 +197,6 @@ class Container:
             max_entries=settings.embedding.query_cache_max_entries,
             ttl_seconds=settings.embedding.query_cache_ttl_seconds,
         )
-        self.search_store = Milvus3SearchStore(settings.milvus)
         self.symbol_search_store = SymbolSearchStore(
             async_session_factory,
             timeout_seconds=settings.retrieval.exact_timeout_seconds,
@@ -191,18 +208,6 @@ class Container:
             fallback_embedding_key=embedding_key,
             on_usage=token_usage_cb,
         )
-
-        # Initialize path index for filename queries
-        self.path_index = None
-        self.path_content_store = None
-        if settings.retrieval.path_index_enabled:
-            try:
-                self.path_index = PathIndexClient(settings.milvus)
-                self.path_content_store = SqlPathContentStore(async_session_factory)
-                logger.info("Path index enabled for filename queries")
-            except Exception as e:
-                logger.warning("Failed to initialize path index: {}", e)
-                self.path_index = None
 
         # LLM 三类（LLM 重排 / 查询改写 / 意图分类）各自按 kind 从 model_credentials 解析
         # 凭证（env 兜底），不再共用单一 client，可分别配置 key/base_url/model/tpm。

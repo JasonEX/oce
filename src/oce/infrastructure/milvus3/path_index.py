@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from loguru import logger
@@ -244,3 +245,19 @@ class PathIndexClient:
             exists=True,
             entities=int(self.collection.num_entities),
         )
+
+    async def has_index_data(self) -> bool:
+        """Probe existing rows without creating or loading the collection."""
+        if self.collection is not None:
+            return int(self.collection.num_entities) > 0
+        return await asyncio.to_thread(self._has_existing_data)
+
+    def _has_existing_data(self) -> bool:
+        connections.connect(
+            alias="default",
+            uri=self.settings.endpoint,
+            token=self.settings.token,
+        )
+        if not self._collection_exists():
+            return False
+        return int(Collection(self.collection_name).num_entities) > 0

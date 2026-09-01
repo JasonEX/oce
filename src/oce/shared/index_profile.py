@@ -80,9 +80,11 @@ class StoredIndexProfile:
     profile_json: str
 
 
-class IndexProfileStore(Protocol):
-    async def read(self) -> StoredIndexProfile | None: ...
-
+class IndexDataProbe(Protocol):
     async def has_index_data(self) -> bool: ...
+
+
+class IndexProfileStore(IndexDataProbe, Protocol):
+    async def read(self) -> StoredIndexProfile | None: ...
 
     async def initialize(self, profile: IndexProfile) -> StoredIndexProfile: ...

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from oce.shared.index_profile import (
     PATH_DOCUMENT_VERSION,
     SYMBOL_EXTRACTION_VERSION,
     EmbeddingIndexProfile,
+    IndexDataProbe,
     IndexProfile,
     IndexProfileStore,
     StoredIndexProfile,
@@ -82,9 +84,15 @@ def _changed_fields(stored_json: str, current_json: str) -> tuple[str, ...]:
 class IndexLifecycleManager:
     """Persist the first profile and reject every incompatible reuse thereafter."""
 
-    def __init__(self, store: IndexProfileStore, settings: Settings) -> None:
+    def __init__(
+        self,
+        store: IndexProfileStore,
+        settings: Settings,
+        artifact_probes: Sequence[IndexDataProbe] = (),
+    ) -> None:
         self._store = store
         self._settings = settings
+        self._artifact_probes = tuple(artifact_probes)
         self._lock = asyncio.Lock()
         self._current: IndexProfile | None = None
 
@@ -100,7 +108,13 @@ class IndexLifecycleManager:
         async with self._lock:
             stored = await self._store.read()
             if stored is None:
-                if await self._store.has_index_data():
+                has_index_data = await self._store.has_index_data()
+                if not has_index_data:
+                    for probe in self._artifact_probes:
+                        if await probe.has_index_data():
+                            has_index_data = True
+                            break
+                if has_index_data:
                     raise ServiceNotReadyError(
                         "Existing index has no lifecycle fingerprint. Use a new data "
                         "directory, or clean metadata and vector storage, then fully "
