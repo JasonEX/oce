@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- **chunking**: skip whitespace-only cAST inputs instead of raising on an out-of-range EOF chunk
 - **migrations**: verify the complete SQLite migration chain can roll back to base and upgrade to head again
 - **admission**: reject common environment, key, and credential files before indexing
 - **embedding**: apply query instructions in the credential-backed client and reject incompatible hot reloads

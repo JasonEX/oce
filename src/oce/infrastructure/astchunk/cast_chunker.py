@@ -8,10 +8,9 @@ trusted to line up with the line numbers the formatter prints.
 
 from __future__ import annotations
 
-from loguru import logger
-
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES, detect_language
 from oce.domain.chunk.protocols import Chunker
+from oce.domain.chunk.recursive_chunker import is_meaningful
 from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
 from oce.domain.chunk.types import Chunk
 from oce.infrastructure.astchunk.astchunk_builder import ASTChunkBuilder, LANGUAGE_MAP
@@ -78,7 +77,7 @@ class CastChunker:
         self._builders: dict[str, ASTChunkBuilder] = {}
 
     def chunk(self, content: str, path: str) -> list[Chunk]:
-        if content == "":
+        if not is_meaningful(content):
             return []
         language = detect_language(path)
         if language is None:

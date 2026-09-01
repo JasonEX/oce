@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from oce.domain.chunk import RecursiveChunker
 from oce.infrastructure.astchunk.cast_chunker import CastChunker
 
@@ -88,6 +86,16 @@ class TestCASTChunker:
     def test_empty_content(self):
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
         assert CastChunker(max_chunk_size=1500, chunk_overlap=0, fallback=fallback).chunk("", "src/empty.py") == []
+
+    def test_whitespace_only_content_does_not_emit_invalid_eof_range(self):
+        fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
+        chunker = CastChunker(
+            max_chunk_size=1500,
+            chunk_overlap=0,
+            fallback=fallback,
+        )
+
+        assert chunker.chunk("\n", "src/oce/alembic/__init__.py") == []
 
     def test_chunk_path_preserved(self):
         content = "def hello():\n    return 'world'\n"
