@@ -52,11 +52,6 @@ class CommandBus:
             raise CommandNotRegisteredError(type(command))
         return await handler.handle(command)
 
-    async def execute_many(self, commands: list[Any]) -> list[Any]:
-        """顺序执行一批命令，返回结果列表（保持输入顺序）"""
-        return [await self.execute(cmd) for cmd in commands]
-
-
 class QueryBus:
     """查询总线"""
 

@@ -122,8 +122,8 @@ class TestQueryIntentClassification:
             assert intent in (QueryIntent.REFERENCE, QueryIntent.CALL_CHAIN)
 
 
-class TestLegacyCompatibility:
-    """旧接口兼容性验证"""
+class TestPathIndexRouting:
+    """路径索引路由验证"""
 
     def test_should_use_path_index_delegates_to_intent(self):
         """should_use_path_index 应基于意图分类"""

@@ -51,16 +51,6 @@ class TestCommandBus:
         with pytest.raises(CommandNotRegisteredError):
             await bus.execute(DummyCommand())
 
-    async def test_execute_many_preserves_order(self, marker):
-        bus = CommandBus()
-        bus.register(DummyCommand, DummyHandler(marker))
-
-        results = await bus.execute_many([DummyCommand(), DummyCommand()])
-
-        assert results == ["ok", "ok"]
-        assert len(marker) == 2
-
-
 class TestQueryBus:
     async def test_ask_dispatches_to_registered_handler(self, marker):
         bus = QueryBus()

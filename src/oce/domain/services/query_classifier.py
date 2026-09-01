@@ -170,16 +170,6 @@ def classify_query_intent(query: str) -> QueryIntent:
     # 默认功能定位
     return QueryIntent.FEATURE
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 兼容层（保留旧接口供外部调用）
-# ──────────────────────────────────────────────────────────────────────────────
-
-
-def has_code_identifier(query: str) -> bool:
-    """查询是否包含代码标识符而非纯自然语言描述。"""
-    return bool(_SYMBOL_PATTERN.search(query))
-
-
 def extract_code_identifiers(query: str) -> tuple[str, ...]:
     """提取适合精确词法召回的代码标识符，保持查询中的出现顺序。"""
     identifiers: list[str] = []
@@ -202,31 +192,7 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
     return tuple(identifiers)
 
 
-def is_filename_query(query: str) -> tuple[bool, float]:
-    """
-    判断查询是否是文件名查询（兼容接口，内部改用意图分类）
-
-    Args:
-        query: 用户查询
-
-    Returns:
-        (is_filename_query, confidence)
-
-    Examples:
-        >>> is_filename_query("主配置文件在哪里？")
-        (True, 0.9)
-
-        >>> is_filename_query("`parse_config` 函数在哪里？")
-        (False, 0.0)
-    """
-    intent = classify_query_intent(query)
-    if intent == QueryIntent.PATH:
-        # PATH意图给高置信度
-        return True, 0.9
-    return False, 0.0
-
-
-def should_use_path_index(query: str, threshold: float = 0.5) -> bool:
+def should_use_path_index(query: str) -> bool:
     """
     判断是否应该使用路径索引（基于意图分类）。
 
@@ -235,8 +201,6 @@ def should_use_path_index(query: str, threshold: float = 0.5) -> bool:
 
     Args:
         query: 用户查询
-        threshold: 置信度阈值（保留向后兼容，实际不再使用）
-
     Returns:
         是否使用路径索引
 
