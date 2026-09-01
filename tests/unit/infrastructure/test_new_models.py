@@ -66,7 +66,6 @@ async def test_new_models_create_in_sqlite():
 async def test_new_models_create_in_postgresql():
     """验证新表结构在 PostgreSQL 中也能创建（如果配置了 PG）"""
     import uuid
-    import os
     from dotenv import dotenv_values
 
     # 直接读 .env 文件，绕过 pytest 的环境变量覆盖
@@ -79,14 +78,10 @@ async def test_new_models_create_in_postgresql():
     from oce.shared.database.session import Base
     from sqlalchemy import text
 
-    # 导入模型让 Base.metadata 包含表定义
-    from oce.infrastructure.persistence.models import (
-        BlobModel,
-        ChunkModel,
-        BlobChunkModel,
-        ChainModel,
-        ChainMemberModel,
-    )
+    # 导入模型让 Base.metadata 包含表定义。
+    from oce.infrastructure.persistence import models
+
+    assert models.BlobModel.metadata is Base.metadata
 
     schema = f"oce_model_test_{uuid.uuid4().hex}"
     engine = create_async_engine(db_url, echo=True)

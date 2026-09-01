@@ -15,12 +15,6 @@ text 属性通过快照的字节范围从 _source 切片，避免调用原生 .t
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Optional
-
-
 class _Point:
     """tree-sitter Point 的轻量快照（row, column）。"""
 

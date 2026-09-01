@@ -197,11 +197,12 @@ class TestBoundaryConditions:
         builder = ASTChunkBuilder(max_chunk_size=200, language="python", metadata_template="default")
         chunks = builder.chunkify(code)
         
-        # 每个 chunk 的非空白字符数应该 <= max_chunk_size（或略超，如果是叶子节点）
-        for chunk in chunks:
-            non_ws_count = sum(1 for c in chunk['content'] if not c.isspace())
-            # 允许叶子节点超限（P1 fix 的预期行为）
-            # assert non_ws_count <= builder.max_chunk_size * 5  # 给足宽松度
+        # 叶子节点允许适度超过目标窗口，但不应吞掉无界内容。
+        assert all(
+            sum(1 for char in chunk["content"] if not char.isspace())
+            <= builder.max_chunk_size * 5
+            for chunk in chunks
+        )
 
 
 class TestChunkExpansion:
@@ -387,7 +388,7 @@ END."""
         )
 
         # 应该成功，不抛异常
-        assert builder.use_fallback == True
+        assert builder.use_fallback
 
         chunks = builder.chunkify(code, repo_level_metadata={"filepath": "test.pas"})
 
@@ -429,7 +430,7 @@ END."""
             metadata_template="default"
         )
 
-        assert builder.use_fallback == False
+        assert not builder.use_fallback
 
         chunks = builder.chunkify(code)
 

@@ -5,6 +5,6 @@
 - 标量过滤：blob_name 索引级过滤
 """
 
-from .client import Milvus3Client
-from .schema import create_oce_collection_schema
-from .search_store import Milvus3SearchStore
+from .client import Milvus3Client as Milvus3Client
+from .schema import create_oce_collection_schema as create_oce_collection_schema
+from .search_store import Milvus3SearchStore as Milvus3SearchStore

@@ -9,8 +9,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from oce.domain.chunk.recursive_chunker import RecursiveChunker
 from oce.infrastructure.astchunk.cast_chunker import CastChunker
 

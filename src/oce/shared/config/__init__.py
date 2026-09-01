@@ -7,6 +7,6 @@
 - 热加载支持
 """
 
-from .settings import Settings, get_settings
-
+from .settings import Settings as Settings
+from .settings import get_settings as get_settings
 

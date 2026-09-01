@@ -13,8 +13,7 @@ from oce.application.commands.ingest import (
     IngestBlobCommandHandler,
 )
 from oce.domain.blob.blob import Blob, BlobStatus
-from oce.domain.chunk import Chunk, RecursiveChunker, LocatedChunk
-from oce.domain.services.indexing import IndexingPipeline
+from oce.domain.chunk import RecursiveChunker
 
 from tests.unit.application.fakes import (
     FakeEmbedder,

@@ -5,7 +5,6 @@
 """
 
 import pytest
-from pathlib import Path
 import shutil
 
 from oce.shared.config.settings import MilvusSettings

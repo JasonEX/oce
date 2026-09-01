@@ -18,12 +18,16 @@ source text differed from the chunk itself.
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from loguru import logger
 
 from oce.domain.chunk.lang import detect_language
-from oce.domain.chunk.protocols import Chunker
 from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
 from oce.domain.chunk.types import Chunk
+
+if TYPE_CHECKING:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 DEFAULT_MAX_CHUNK_CHARS = 6_000
 DEFAULT_CHUNK_OVERLAP = 200

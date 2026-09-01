@@ -334,7 +334,7 @@ class TestMilvus3SearchStore:
     @patch("oce.infrastructure.milvus3.search_store.Milvus3Client")
     def test_search_store_init(self, mock_client_class, mock_settings):
         """测试 SearchStore 初始化"""
-        store = Milvus3SearchStore(mock_settings)
+        Milvus3SearchStore(mock_settings)
         
         # 验证客户端创建
         mock_client_class.assert_called_once_with(mock_settings)
