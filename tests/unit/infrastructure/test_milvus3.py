@@ -14,6 +14,16 @@ from oce.infrastructure.milvus3 import (
     Milvus3Client,
     Milvus3SearchStore,
 )
+from oce.infrastructure.milvus3.client import build_blob_filter
+
+
+def test_build_blob_filter_reports_exact_production_expression_size():
+    names = ["a" * 64, "b" * 64]
+
+    expression = build_blob_filter(names)
+
+    assert expression == f'blob_name in ["{names[0]}", "{names[1]}"]'
+    assert build_blob_filter([]) is None
 
 
 class TestMilvusSchema:

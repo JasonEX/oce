@@ -13,7 +13,7 @@ from oce.domain.services.path_search import PathSearchResult
 from oce.shared.config.settings import MilvusSettings
 from oce.shared.index_stats import IndexStoreStats
 
-from .client import validate_blob_name
+from .client import build_blob_filter, validate_blob_name
 from .schema import create_path_collection_schema
 
 
@@ -140,16 +140,8 @@ class PathIndexClient:
         top_k: int = 20,
     ) -> list[PathSearchResult]:
         """Search semantic path documents within the resolved workspace scope."""
-        validated_blob_names = (
-            [validate_blob_name(name) for name in allowed_blob_names]
-            if allowed_blob_names
-            else None
-        )
+        filter_expr = build_blob_filter(allowed_blob_names) or ""
         await self.initialize()
-        filter_expr = ""
-        if validated_blob_names:
-            blob_list = ", ".join(f'"{name}"' for name in validated_blob_names)
-            filter_expr = f"blob_name in [{blob_list}]"
 
         results = await self._call(
             "search",

@@ -22,6 +22,16 @@ def validate_blob_name(blob_name: str) -> str:
     return blob_name
 
 
+def build_blob_filter(blob_names: list[str] | None) -> str | None:
+    """Build the production Milvus workspace filter from validated blob names."""
+    if not blob_names:
+        return None
+    blob_list = ", ".join(
+        f'"{validate_blob_name(blob_name)}"' for blob_name in blob_names
+    )
+    return f"blob_name in [{blob_list}]"
+
+
 def _fit_content_field(content: str) -> tuple[str, bool]:
     """Fit text into Milvus VARCHAR without splitting a UTF-8 code point."""
     encoded = content.encode("utf-8")
@@ -184,12 +194,7 @@ class Milvus3Client:
         top_k: int = 10,
     ) -> list[dict[str, Any]]:
         """执行 Milvus dense 向量检索。"""
-        filter_expr = None
-        if blob_filter:
-            blob_list = ", ".join(
-                f'"{validate_blob_name(blob_name)}"' for blob_name in blob_filter
-            )
-            filter_expr = f"blob_name in [{blob_list}]"
+        filter_expr = build_blob_filter(blob_filter)
 
         dense_limit = top_k * 2
         dense_ef = max(self.settings.hnsw_ef_search, dense_limit)
