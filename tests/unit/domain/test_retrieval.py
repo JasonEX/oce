@@ -371,6 +371,7 @@ class TestRetrievalPipeline:
 
         results = await pipe.search("Where is config.py?")
 
+        assert path_store.queries == 1
         assert content_store.blob_names == (blob_name,)
         assert [(hit.path, hit.content, hit.score) for hit in results] == [
             ("src/config.py", "SETTING = True", 0.91)
@@ -394,6 +395,40 @@ class TestRetrievalPipeline:
         results = await pipe.search("Where is missing.py?")
 
         assert [hit.path for hit in results] == ["src/fallback.py"]
+
+    async def test_path_query_propagates_content_failure_without_path_fallback(self):
+        class FailingSearchStore(FakeSearchStore):
+            async def search(self, **kwargs):
+                raise RuntimeError("dense unavailable")
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FailingSearchStore(),
+            path_store=FakePathStore(),
+            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        with pytest.raises(RuntimeError, match="dense unavailable"):
+            await pipe.search("Where is missing.py?")
+
+    async def test_path_query_propagates_backfill_failure_without_content_hits(self):
+        blob_name = "p" * 64
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            path_store=FakePathStore(
+                [PathSearchResult("src/missing.py", blob_name, 0.9)]
+            ),
+            path_content_store=FakePathContentStore(
+                error=RuntimeError("metadata unavailable")
+            ),
+            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        with pytest.raises(RuntimeError, match="metadata unavailable"):
+            await pipe.search("Where is missing.py?")
 
     async def test_intent_failure_falls_back_without_aborting_retrieval(self):
         class FailingIntentClassifier:

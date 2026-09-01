@@ -537,7 +537,8 @@ class RetrievalPipeline:
         with stage("dense"):
             try:
                 blob_filter = list(allowed_blob_names) if allowed_blob_names else None
-                for variant in [query, *queries_to_search]:
+                path_queries = tuple(dict.fromkeys((query, *queries_to_search)))
+                for variant in path_queries:
                     query_vector = await self.embedder.embed_query(variant)
                     path_results = await self.path_store.search_paths(
                         query_vector=query_vector,
@@ -559,6 +560,7 @@ class RetrievalPipeline:
 
         # 2. 内容索引检索（常规流程，但减少 top_k）
         content_hits = []
+        content_error: Exception | None = None
         with stage("dense"):
             try:
                 all_result_lists = []
@@ -578,6 +580,7 @@ class RetrievalPipeline:
                 if all_result_lists:
                     content_hits = self._fuse(all_result_lists)
             except Exception as exc:
+                content_error = exc
                 logger.warning("Content search failed: {}", type(exc).__name__)
 
         # 3. 融合：路径分数作为文件级加权，排序仍在 chunk 粒度上进行
@@ -588,6 +591,8 @@ class RetrievalPipeline:
                 hits = content_hits
             else:
                 hits = await self._merge_path_and_content(path_scores, content_hits)
+            if not hits and content_error is not None:
+                raise content_error
 
         # 4. 应用常规后处理
         with stage("rerank"):
@@ -644,7 +649,16 @@ class RetrievalPipeline:
         # 内容检索完全没覆盖到的文件才回填首个 chunk，保住纯文件名查询的召回
         missing = [name for name in path_scores if name not in covered]
         if missing:
-            merged.extend(await self._fetch_content_for_paths(missing, path_scores))
+            try:
+                merged.extend(await self._fetch_content_for_paths(missing, path_scores))
+            except Exception as exc:
+                if not merged:
+                    raise
+                logger.error(
+                    "Failed to fetch content for path-only hits: {}; "
+                    "using content candidates",
+                    type(exc).__name__,
+                )
 
         logger.info(
             f"Merged {len(content_hits)} content hits with {len(path_scores)} path hits "
@@ -666,9 +680,5 @@ class RetrievalPipeline:
         """
         if self.path_content_store is None:
             return []
-        try:
-            hits = await self.path_content_store.get_representative_chunks(blob_names)
-        except Exception as exc:
-            logger.error("Failed to fetch content for paths: {}", type(exc).__name__)
-            return []
+        hits = await self.path_content_store.get_representative_chunks(blob_names)
         return [replace(hit, score=path_scores.get(hit.blob_name, 0.0)) for hit in hits]
