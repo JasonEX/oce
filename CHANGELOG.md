@@ -13,6 +13,10 @@
 - **embedding**: add a bounded TTL query-vector cache that stores hashed keys and clears on credential reload
 - **admin**: expose authoritative metadata, dense/path collection, and query-cache index statistics
 
+### Security
+
+- **development compose**: bind database, queue, object-store, and Milvus ports to localhost instead of every host interface
+
 ### Fixed
 
 - **chunking**: skip whitespace-only cAST inputs instead of raising on an out-of-range EOF chunk

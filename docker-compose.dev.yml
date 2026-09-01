@@ -17,7 +17,7 @@ services:
       - shared-network
     restart: unless-stopped
     ports:
-      - "25432:5432"
+      - "127.0.0.1:25432:5432"
 
   redis:
     image: redis:7-alpine
@@ -34,7 +34,7 @@ services:
       - shared-network
     restart: unless-stopped
     ports:
-      - "26379:6379"
+      - "127.0.0.1:26379:6379"
   etcd:
     image: quay.io/coreos/etcd:v3.5.25
     container_name: milvus-etcd-dev
@@ -71,8 +71,8 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data_dev:/minio_data
     command:
@@ -111,8 +111,8 @@ services:
     volumes:
       - milvus_data_dev:/var/lib/milvus
     ports:
-      - "19530:19530"
-      - "9091:9091"
+      - "127.0.0.1:19530:19530"
+      - "127.0.0.1:9091:9091"
     healthcheck:
       test:
         [
