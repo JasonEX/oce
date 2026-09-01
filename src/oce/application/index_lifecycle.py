@@ -129,6 +129,18 @@ class IndexLifecycleManager:
         embedding_enabled = embedding.get("enabled")
         embedding_model = embedding.get("model")
         embedding_dimensions = embedding.get("dimensions")
+        embedding_fingerprint = (
+            profile_value_hash(
+                json.dumps(
+                    embedding,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                    sort_keys=True,
+                )
+            )
+            if embedding
+            else None
+        )
         return IndexProfileStats(
             state=state,
             fingerprint=fingerprint,
@@ -141,6 +153,7 @@ class IndexLifecycleManager:
             embedding_enabled=(
                 embedding_enabled if isinstance(embedding_enabled, bool) else None
             ),
+            embedding_fingerprint=embedding_fingerprint,
             embedding_model=(
                 embedding_model if isinstance(embedding_model, str) else None
             ),

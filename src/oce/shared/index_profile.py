@@ -31,6 +31,18 @@ class EmbeddingIndexProfile:
     input_overlap_chars: int | None = None
     pipeline_version: int = EMBEDDING_PIPELINE_VERSION
 
+    def canonical_json(self) -> str:
+        return json.dumps(
+            asdict(self),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+    @property
+    def fingerprint(self) -> str:
+        return profile_value_hash(self.canonical_json())
+
 
 @dataclass(frozen=True)
 class IndexProfile:

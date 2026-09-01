@@ -121,6 +121,7 @@ class StubApplication:
                 fingerprint="a" * 64,
                 schema_version=1,
                 embedding_enabled=True,
+                embedding_fingerprint="b" * 64,
                 embedding_model="embedding-v1",
                 embedding_dimensions=1024,
             ),
@@ -385,5 +386,6 @@ async def test_admin_index_stats_contract_and_auth():
     assert body["runtime"]["semantic_chunking_enabled"] is False
     assert body["runtime"]["exact_enabled"] is False
     assert body["profile"]["state"] == "compatible"
+    assert body["profile"]["embedding_fingerprint"] == "b" * 64
     assert body["profile"]["embedding_model"] == "embedding-v1"
     assert unauthorized.status_code == 401

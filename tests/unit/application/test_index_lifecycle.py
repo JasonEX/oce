@@ -58,6 +58,7 @@ async def test_empty_index_initializes_once_and_accepts_same_profile():
     stats = await manager.index_profile_stats()
     assert stats.state == "compatible"
     assert stats.fingerprint == first.fingerprint
+    assert len(stats.embedding_fingerprint or "") == 64
     assert stats.embedding_model == "embedding-v1"
 
 

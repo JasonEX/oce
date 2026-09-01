@@ -81,6 +81,12 @@ async def test_environment_settings_are_used_without_active_credential():
     assert profile.endpoint_hash is not None
     assert settings.endpoint not in str(profile)
     assert settings.query_instruction not in str(profile)
+    assert profile.fingerprint == embedder.index_profile_for_config(
+        replace(config, api_key="rotated-key")
+    ).fingerprint
+    assert profile.fingerprint != embedder.index_profile_for_config(
+        replace(config, model="different-model")
+    ).fingerprint
     delegate = embedder._build_delegate(config)
     assert delegate._query_instruction == "Represent this query: "
     await delegate.close()

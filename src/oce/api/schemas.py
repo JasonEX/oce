@@ -182,6 +182,7 @@ class IndexProfileStatsResponse(BaseModel):
     fingerprint: str | None = None
     schema_version: int | None = None
     embedding_enabled: bool | None = None
+    embedding_fingerprint: str | None = None
     embedding_model: str | None = None
     embedding_dimensions: int | None = None
 
