@@ -21,7 +21,7 @@ from loguru import logger
 
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.llm.intent import IntentClassifier
-from oce.domain.services.path_search import PathSearchStore
+from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
@@ -116,6 +116,7 @@ class RetrievalPipeline:
         llm_reranker: LLMReranker | None = None,
         query_rewriter: "QueryRewriter | None" = None,
         path_store: PathSearchStore | None = None,  # 路径索引
+        path_content_store: PathContentStore | None = None,
         exact_store: ExactSearchStore | None = None,
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
@@ -131,6 +132,7 @@ class RetrievalPipeline:
             query_rewriter  # Optional query rewriter for better recall
         )
         self.path_store = path_store  # Optional path index for filename queries
+        self.path_content_store = path_content_store
         self.settings = settings or get_settings().retrieval
         self.exact_store = exact_store
         self.priority_factor = priority_factor or (
@@ -662,61 +664,11 @@ class RetrievalPipeline:
         仅用于内容索引完全没召回的文件：取首个 chunk 作为代表，让纯文件名查询
         至少能命中目标文件。
         """
-        hits = []
-
-        # 使用一个虚拟查询来获取这些 blob 的内容
-        # 这里我们需要直接访问数据库，因为 SearchStore 不提供按 blob_name 查询的接口
-        from oce.infrastructure.persistence.models import (
-            BlobChunkModel,
-            BlobModel,
-            ChunkModel,
-        )
-        from oce.shared.database.session import async_session_factory
-        from sqlalchemy import select
-
+        if self.path_content_store is None:
+            return []
         try:
-            async with async_session_factory() as session:
-                # 为每个 blob 获取第一个 chunk
-                for blob_name in blob_names:
-                    stmt = (
-                        select(
-                            ChunkModel.content_hash,
-                            ChunkModel.content,
-                            BlobChunkModel.start_line,
-                            BlobChunkModel.end_line,
-                            BlobModel.blob_name,
-                            BlobModel.path,
-                        )
-                        .join(
-                            BlobChunkModel,
-                            BlobChunkModel.content_hash == ChunkModel.content_hash,
-                        )
-                        .join(
-                            BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name
-                        )
-                        .where(BlobModel.blob_name == blob_name)
-                        .order_by(BlobChunkModel.start_line)
-                        .limit(1)
-                    )
-
-                    result = await session.execute(stmt)
-                    row = result.first()
-
-                    if row:
-                        hits.append(
-                            SearchHit(
-                                content_hash=row.content_hash,
-                                blob_name=row.blob_name,
-                                path=row.path,
-                                start_line=row.start_line,
-                                end_line=row.end_line,
-                                content=row.content,
-                                score=path_scores.get(
-                                    blob_name, 0.9
-                                ),  # 使用路径索引的分数
-                            )
-                        )
+            hits = await self.path_content_store.get_representative_chunks(blob_names)
         except Exception as exc:
             logger.error("Failed to fetch content for paths: {}", type(exc).__name__)
-
-        return hits
+            return []
+        return [replace(hit, score=path_scores.get(hit.blob_name, 0.0)) for hit in hits]

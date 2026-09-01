@@ -11,6 +11,7 @@ from dataclasses import replace
 import pytest
 
 from oce.domain.services.llm.intent import QueryIntent
+from oce.domain.services.path_search import PathSearchResult
 from oce.domain.services.retrieval import RetrievalPipeline, source_priority_factor
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
@@ -61,12 +62,26 @@ class FakeIntentClassifier:
 
 
 class FakePathStore:
-    def __init__(self):
+    def __init__(self, results=None):
         self.queries = 0
+        self.results = results or []
 
     async def search_paths(self, query_vector, allowed_blob_names=None, top_k=20):
         self.queries += 1
-        return []
+        return list(self.results)
+
+
+class FakePathContentStore:
+    def __init__(self, hits=None, error: Exception | None = None):
+        self.hits = hits or []
+        self.error = error
+        self.blob_names: tuple[str, ...] = ()
+
+    async def get_representative_chunks(self, blob_names):
+        self.blob_names = tuple(blob_names)
+        if self.error is not None:
+            raise self.error
+        return list(self.hits)
 
 
 class FakeExactSearchStore:
@@ -328,6 +343,57 @@ class TestRetrievalPipeline:
 
         assert path_store.queries == 0
         assert [result.path for result in results] == ["src/commands/provider.rs"]
+
+    async def test_path_only_hit_uses_injected_content_store(self):
+        blob_name = "p" * 64
+        path_store = FakePathStore([PathSearchResult("src/config.py", blob_name, 0.91)])
+        content_store = FakePathContentStore(
+            [
+                SearchHit(
+                    blob_name=blob_name,
+                    path="src/config.py",
+                    content="SETTING = True",
+                    content_hash="c" * 64,
+                    start_line=5,
+                    end_line=5,
+                    score=0.0,
+                )
+            ]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            path_store=path_store,
+            path_content_store=content_store,
+            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("Where is config.py?")
+
+        assert content_store.blob_names == (blob_name,)
+        assert [(hit.path, hit.content, hit.score) for hit in results] == [
+            ("src/config.py", "SETTING = True", 0.91)
+        ]
+
+    async def test_path_content_failure_degrades_to_other_content_hits(self):
+        missing_blob = "p" * 64
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/fallback.py", 0.7)]),
+            path_store=FakePathStore(
+                [PathSearchResult("src/missing.py", missing_blob, 0.9)]
+            ),
+            path_content_store=FakePathContentStore(
+                error=RuntimeError("database unavailable")
+            ),
+            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("Where is missing.py?")
+
+        assert [hit.path for hit in results] == ["src/fallback.py"]
 
     async def test_intent_failure_falls_back_without_aborting_retrieval(self):
         class FailingIntentClassifier:

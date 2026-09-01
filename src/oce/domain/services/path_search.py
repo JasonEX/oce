@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
+
+from oce.domain.services.search import SearchHit
 
 
 class PathSearchResult:
@@ -55,3 +57,12 @@ class PathSearchStore(Protocol):
     async def delete_by_blob_names(self, blob_names: list[str]) -> None:
         """删除指定 blob 的路径文档。"""
         ...
+
+
+class PathContentStore(Protocol):
+    """Resolve representative source chunks for path-only recall hits."""
+
+    async def get_representative_chunks(
+        self,
+        blob_names: Sequence[str],
+    ) -> list[SearchHit]: ...

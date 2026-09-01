@@ -83,6 +83,7 @@ from oce.infrastructure.persistence.index_stats_reader import (
     SqlMetadataIndexStatsReader,
 )
 from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileStore
+from oce.infrastructure.persistence.path_content_store import SqlPathContentStore
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
@@ -193,9 +194,11 @@ class Container:
 
         # Initialize path index for filename queries
         self.path_index = None
+        self.path_content_store = None
         if settings.retrieval.path_index_enabled:
             try:
                 self.path_index = PathIndexClient(settings.milvus)
+                self.path_content_store = SqlPathContentStore(async_session_factory)
                 logger.info("Path index enabled for filename queries")
             except Exception as e:
                 logger.warning("Failed to initialize path index: {}", e)
@@ -444,6 +447,7 @@ class Container:
                     llm_reranker=self.llm_reranker,
                     query_rewriter=self.query_rewriter,
                     path_store=self.path_index,
+                    path_content_store=self.path_content_store,
                     exact_store=self.symbol_search_store,
                     intent_classifier=self.intent_classifier,
                     settings=settings.retrieval,
