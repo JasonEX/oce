@@ -6,7 +6,7 @@
 
 **Self-hosted, ACE-compatible code retrieval for AI coding agents.**
 
-Hybrid dense + exact + path recall · cAST-aware chunking · adaptive reranking · task-aware selection
+Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking · task-aware selection
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -23,8 +23,8 @@ Hybrid dense + exact + path recall · cAST-aware chunking · adaptive reranking 
 
 OpenContextEngine is a self-hosted, ACE-compatible code retrieval service. It indexes
 source files with cAST-aware chunking, stores metadata in PostgreSQL or SQLite, performs
-dense vector retrieval in Milvus 3.0, and conditionally reranks ambiguous results before
-task-aware context selection.
+dense vector retrieval in Milvus 3.0, and can apply a dedicated rerank API or chat LLM
+before task-aware context selection.
 
 It ships two deployment modes: a zero-dependency **personal mode** (SQLite + embedded
 Milvus Lite, background worker disabled) for a single machine, and a **service mode**
@@ -46,7 +46,7 @@ machines need to share one index.
 
 - **Hybrid retrieval** — concurrent dense semantic recall (Milvus 3.0), exact identifier lookup (`symbol_occurrences`), and an independent path index, fused with weighted rank fusion.
 - **cAST-aware chunking** — tree-sitter parsing splits source along semantic boundaries instead of blind line windows.
-- **Adaptive reranking + task-aware selection** — confident exact/path or clearly separated dense results skip the optional LLM call; ambiguous and structurally complex results escalate. Focused symbol/path queries preserve relevance order, while broader queries prioritize repository coverage under overlap and character budgets.
+- **Composable reranking + task-aware selection** — a dedicated reranker can provide low-latency relevance ordering, while a chat LLM can compare implementation semantics globally. Either may run alone or as an ordered cascade. Both preserve their input candidate set; configured recall filtering and the final focused/coverage selector own pruning.
 - **Two deployment modes** — zero-dependency personal mode (SQLite + embedded Milvus Lite) for a single machine, or service mode (PostgreSQL + Milvus 3.0 + Redis) for shared, higher-throughput use.
 - **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
 - **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
@@ -99,21 +99,44 @@ EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 ```
 
-Embedding sends admitted source chunks to the configured endpoint. Optional LLM
-features send retrieval queries and candidate snippets as well. For private code, use
+Embedding sends admitted source chunks to the configured endpoint. Optional reranking and
+LLM features send retrieval queries and candidate snippets as well. For private code, use
 only endpoints approved to receive that data, preferably local or internal services.
 
-The generated personal configuration keeps optional LLM calls disabled. To enable intent
-classification and semantic reranking, configure an OpenAI-compatible lightweight LLM
-that is permitted to receive code snippets, then turn on the two features:
+The generated personal configuration keeps optional reranking disabled until you explicitly
+authorize an endpoint to receive candidate snippets. A dedicated reranker offers predictable,
+low-latency relevance ordering:
 
 ```dotenv
+RERANK_ENABLED=true
+RERANK_API_KEY=your_rerank_service_key
+RERANK_ENDPOINT=https://provider.example.com/v1/rerank
+RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+# Rank the full default candidate window; provider-omitted candidates still remain.
+RERANK_TOP_N=50
+```
+
+A strong chat LLM can instead, or subsequently, judge cross-language meaning, implementation
+versus forwarding code, and multi-file behavior:
+
+```dotenv
+LLM_RERANK_ENABLED=true
 LLM_API_KEY=your_llm_service_key
 LLM_BASE_URL=https://provider.example.com/v1
-LLM_MODEL=qwen3.7-flash
-LLM_RERANK_ENABLED=true
-RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=true
+LLM_MODEL=deepseek-v4-flash
+RETRIEVAL_LLM_RERANK_POLICY=adaptive
+LLM_RERANK_TIMEOUT_SECONDS=15
 ```
+
+`adaptive` skips the chat call when exact symbol/path evidence already answers a focused
+lookup and preserves reference occurrence coverage; it uses semantic judging for feature,
+flow, overview, and compound requests. `always` reranks every result set with at least two
+candidates and is useful for quality-first deployments and controlled comparisons. Enabling
+both backends forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an
+operational data/latency boundary, not a claim that chat-LLM ranking is lower quality.
+`LLM_MAX_CANDIDATES=50` favors multi-file coverage; reducing it to `20` is a useful
+latency/TPM tradeoff for interactive deployments. In either case, candidates outside the
+chat window remain available to final selection.
 
 Then start the service:
 
@@ -190,7 +213,7 @@ repository, or log. For a custom panel domain, configure its allowed origin with
 `CORS_ORIGINS`.
 
 Model clients resolve credentials from the single `model_credentials` table by `kind`
-(`embed`, `rerank`, `llm_rerank`, `query_rewrite`, `intent`): the active row with the
+(`embed`, `rerank`, `llm_rerank`, `query_rewrite`): the active row with the
 lowest `priority` number wins. When no active row matches a kind, that client falls back
 to its environment variables (`EMBED_*`, `RERANK_*`, `LLM_*`; rerank also reuses the
 embedding key). Manage these rows through the `/admin/credentials` API, then call
@@ -222,9 +245,13 @@ decomposed into one complete query plus bounded facet queries. Each query recall
 candidates independently; results are fused with weighted rank fusion (configurable via
 `RETRIEVAL_RRF_K`) before reranking. Single-query mode uses `RETRIEVAL_DEFAULT_TOP_K`;
 multi-query mode uses `RETRIEVAL_PER_QUERY_TOP_K` per query to control candidate pool
-size. Optional LLM reranking is uncertainty-gated: confident exact symbol hits, confident
-path hits, and clearly separated simple candidates skip the call; ambiguous candidates and
-call-chain/overview/compound queries escalate. Final selection uses focused mode for symbol
+size. Static source priors and the optional recall confidence floor run before either model,
+so heterogeneous model and retrieval scores are never mixed for filtering and static order
+cannot overwrite model ordering.
+Both rerankers conserve candidates: they promote a ranked head and leave the remaining
+retrieval order available to the final selector. With `adaptive` chat-LLM policy, exact symbol
+and path evidence skip the model, reference queries retain occurrence coverage, and semantic
+feature/flow/overview/compound requests use global snippet comparison. Final selection uses focused mode for symbol
 and path lookups, preserving relevance order with a higher per-path cap, and coverage mode
 for broader queries, first representing different files before filling remaining budget.
 Both modes suppress overlapping spans and enforce the same hard character budget. Disable
@@ -370,7 +397,7 @@ flowchart TB
         direction LR
         Chunker["cAST / tree-sitter"]
         Embed["Embedder / Reranker<br/>OpenAI-compatible"]
-        LLMC["LLM client<br/>rerank·rewrite·intent"]
+        LLMC["LLM client<br/>rerank·rewrite"]
         Vector["Milvus3SearchStore<br/>PathIndexClient"]
         Sql["SQL repos · UoW<br/>SymbolSearchStore"]
         RedisQ["RedisQueue · service mode"]
@@ -405,18 +432,17 @@ stores dense vectors and the path index.
 
 ### Retrieval pipeline
 
-`RetrievalPipeline.search` (`domain/services/retrieval.py`) runs intent-aware stages:
-heuristic routing with optional LLM intent override and query rewrite, concurrent dense +
-exact recall, weighted rank fusion, base rerank, uncertainty-gated LLM rerank, and task-aware
-final selection.
+`RetrievalPipeline.search` (`domain/services/retrieval.py`) runs deterministic routing and
+optional query rewrite, concurrent dense + exact recall, weighted rank fusion, a single
+candidate-preserving ranking state machine, and task-aware final selection.
 
 ```mermaid
 flowchart TB
     Q["query + SearchScope"]
-    Q --> Intent["heuristic intent<br/>optional LLM override"]
+    Q --> Intent["deterministic query signals"]
     Intent --> PathCheck{"Path-boost branch?<br/>intent or filename heuristic"}
 
-    PathCheck -->|yes| PathBoost["_search_with_path_boost<br/>path recall + optional rewrite"]
+    PathCheck -->|yes| PathBoost["_search_with_path_boost<br/>path + dense + exact recall"]
     PathCheck -->|no| Rewrite["Query rewrite (optional)<br/>query_planner.plan splits sub-queries"]
 
     Rewrite --> Recall
@@ -429,17 +455,17 @@ flowchart TB
 
     Recall --> Fuse["_fuse (weighted RRF)"]
     Fuse --> Merge["_merge_exact_hits"]
-    Merge --> Rerank["reranker.rerank (base)"]
-    Rerank --> Source["_apply_source_priority"]
-    Source --> Gate{"ambiguous or complex?"}
-    Gate -->|yes| LLMRerank["_llm_rerank_hits<br/>LLM rerank"]
+    Merge --> Source["_apply_source_priority"]
+    Source --> Floor["_apply_confidence_floor (optional)"]
+    Floor --> Rerank["dedicated reranker (optional)<br/>promote, never prune"]
+    Rerank --> Gate{"chat policy requests<br/>semantic judging?"}
+    Gate -->|yes| LLMRerank["chat LLM reranker<br/>promote, never prune"]
     Gate -->|no| Promote
     LLMRerank --> Promote["_promote_symbol_endpoints"]
-    Promote --> Floor["_apply_confidence_floor"]
-    Floor --> Select["selector.select<br/>focused / coverage"]
+    Promote --> Select["selector.select<br/>focused / coverage"]
 
-    PathBoost --> Select
-    Select --> Out["final hits (fused score desc)"]
+    PathBoost --> Source
+    Select --> Out["final context candidates"]
 ```
 
 ## Tests

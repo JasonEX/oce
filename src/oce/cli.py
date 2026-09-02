@@ -66,10 +66,24 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # EMBED_QUERY_CACHE_MAX_ENTRIES=256
 # EMBED_QUERY_CACHE_TTL_SECONDS=600
 
-# ==================== 可选：LLM 增强 ====================
-# 个人模式默认关闭可选 LLM 调用；配置受信任的 LLM 后可按需开启。
+# ==================== 可选：专用 reranker ====================
+# 专用相关性模型延迟较低；默认关闭，启用后会外发 query 和候选源码。
+RERANK_ENABLED=false
+# RERANK_API_KEY=your_rerank_api_key_here
+# RERANK_ENDPOINT=https://api.siliconflow.cn/v1/rerank
+# RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+# RERANK_TOP_N=50
+
+# ==================== 可选：chat LLM 语义重排 ====================
+# 个人模式默认关闭；配置受信任的 LLM 后可按需开启。
 # 开启后，检索 query 和候选源码片段会发送到该 LLM。
 LLM_RERANK_ENABLED=false
+# adaptive 仅对需要全局语义判断的查询调用；always 对所有多候选查询调用。
+# RETRIEVAL_LLM_RERANK_POLICY=adaptive
+# 50 偏覆盖；交互延迟或 TPM 受限时可降到 20。
+# LLM_MAX_CANDIDATES=50
+# 超时时无损回退到原候选顺序。
+# LLM_RERANK_TIMEOUT_SECONDS=15
 # LLM_API_KEY=your_llm_api_key_here
 # LLM_BASE_URL=https://openrouter.ai/api/v1
 # LLM_MODEL=inclusionai/ling-3.0-flash-fin:free

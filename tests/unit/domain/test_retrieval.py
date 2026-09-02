@@ -1,7 +1,7 @@
 """RetrievalPipeline 领域服务测试
 
 用 Fake store / embedder 验证编排流程：
-embed → search → rerank → 源码优先 → 置信度门槛 → select。
+embed → search → 源码优先/召回过滤 → rerank → select。
 """
 
 from __future__ import annotations
@@ -196,6 +196,23 @@ class TestRetrievalPipeline:
         results = await pipe.search("q")
         assert [r.path for r in results] == ["src/a.py"]
 
+    async def test_confidence_floor_does_not_compare_model_scores(self):
+        class RescoringReranker:
+            async def rerank(self, query, hits):
+                return [replace(hit, score=0.1) for hit in hits]
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/a.py", 0.9)]),
+            reranker=RescoringReranker(),
+            settings=_settings(confidence_floor=0.5, final_select_k=10),
+        )
+
+        results = await pipe.search("q")
+
+        assert [result.path for result in results] == ["src/a.py"]
+        assert results[0].score == 0.1
+
     async def test_final_select_k_limits_results(self):
         hits = [_hit(f"src/f{i}.py", 1.0 - i * 0.01) for i in range(10)]
         pipe = RetrievalPipeline(
@@ -265,15 +282,15 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
         results = await pipe.search("q")
-        # rerank 后反转，但源码优先排序会重新稳定为 b 在前（0.9）
-        assert results[0].path == "src/b.py"
+        # source prior 在模型之前应用；reranker 返回顺序是最终相关性顺序。
+        assert results[0].path == "src/a.py"
 
     async def test_llm_rerank_order_is_not_overwritten_by_retrieval_scores(self):
         class ReverseLLMReranker:
             def __init__(self):
                 self.calls = 0
 
-            async def rerank(self, query, candidates, top_k=None):
+            async def rerank(self, query, candidates):
                 self.calls += 1
                 return list(reversed(candidates))
 
@@ -294,12 +311,43 @@ class TestRetrievalPipeline:
             "src/high.py",
         ]
 
-    async def test_llm_rerank_skipped_for_clear_dense_winner(self):
+    async def test_dedicated_and_llm_rerankers_form_an_ordered_cascade(self):
+        stages: list[tuple[str, list[str]]] = []
+
+        class DedicatedReranker:
+            async def rerank(self, query, hits):
+                stages.append(("dedicated", [hit.path for hit in hits]))
+                return list(reversed(hits))
+
+        class SemanticReranker:
+            async def rerank(self, query, hits):
+                stages.append(("llm", [hit.path for hit in hits]))
+                return list(reversed(hits))
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(
+                [_hit("src/lower.py", 0.5), _hit("src/higher.py", 0.9)]
+            ),
+            reranker=DedicatedReranker(),
+            llm_reranker=SemanticReranker(),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search("Explain the subsystem architecture")
+
+        assert stages == [
+            ("dedicated", ["src/higher.py", "src/lower.py"]),
+            ("llm", ["src/lower.py", "src/higher.py"]),
+        ]
+        assert [hit.path for hit in results] == ["src/higher.py", "src/lower.py"]
+
+    async def test_llm_rerank_skipped_for_reference_coverage(self):
         class RecordingLLMReranker:
             def __init__(self):
                 self.calls = 0
 
-            async def rerank(self, query, candidates, top_k=None):
+            async def rerank(self, query, candidates):
                 self.calls += 1
                 return candidates
 
@@ -313,7 +361,7 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
-        results = await pipe.search("find retry behavior")
+        results = await pipe.search("Where is `winner` referenced?")
 
         assert llm_reranker.calls == 0
         assert [result.path for result in results] == [
@@ -624,11 +672,11 @@ class TestRetrievalPipeline:
             def __init__(self):
                 self.calls = 0
 
-            async def rerank(self, query, candidates, top_k=None):
+            async def rerank(self, query, candidates):
                 self.calls += 1
                 return sorted(
                     candidates,
-                    key=lambda item: "services" in item["path"],
+                    key=lambda item: "services" in item.path,
                     reverse=True,
                 )
 

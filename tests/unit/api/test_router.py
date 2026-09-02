@@ -385,6 +385,7 @@ async def test_admin_index_stats_contract_and_auth():
     assert body["query_cache"]["hits"] == 3
     assert body["runtime"]["semantic_chunking_enabled"] is False
     assert body["runtime"]["exact_enabled"] is False
+    assert body["runtime"]["llm_rerank_policy"] == "adaptive"
     assert body["profile"]["state"] == "compatible"
     assert body["profile"]["embedding_fingerprint"] == "b" * 64
     assert body["profile"]["embedding_model"] == "embedding-v1"

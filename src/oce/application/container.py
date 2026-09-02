@@ -205,7 +205,7 @@ class Container:
             on_usage=token_usage_cb,
         )
 
-        # LLM 三类（LLM 重排 / 查询改写 / 意图分类）各自按 kind 从 model_credentials 解析
+        # LLM 重排与查询改写各自按 kind 从 model_credentials 解析
         # 凭证（env 兜底），不再共用单一 client，可分别配置 key/base_url/model/tpm。
         # reload 命令会一并刷新它们（credential_runtime 持有列表）。
         llm_clients: list[CredentialConfiguredLLMClient] = []
@@ -228,6 +228,7 @@ class Container:
                 max_candidates=settings.llm.max_candidates,
                 output_top_k=settings.llm.output_top_k,
                 snippet_chars=settings.llm.snippet_chars,
+                timeout_seconds=settings.llm.rerank_timeout_seconds,
             )
             logger.info("LLM reranker enabled (kind=llm_rerank)")
 
@@ -482,6 +483,7 @@ class Container:
                     ),
                     api_rerank_enabled=settings.rerank.enabled,
                     llm_rerank_enabled=settings.llm.rerank_enabled,
+                    llm_rerank_policy=settings.retrieval.llm_rerank_policy,
                     query_rewrite_enabled=settings.retrieval.query_rewrite_enabled,
                 ),
                 self.index_lifecycle,

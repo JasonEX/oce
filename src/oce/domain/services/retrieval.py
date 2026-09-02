@@ -2,8 +2,8 @@
 
 流程（与旧 pipeline 语义对齐）：
     embed_query → store.search（dense 向量检索）
-    → 精确标识符召回 → 多查询结果融合 → rerank（逐篇精排）
-    → 源码优先（降权文档/测试）→ 置信度门槛 → select（最终 K 条）
+    → 精确标识符召回 → 多查询结果融合 → 源码优先/可选置信度过滤
+    → 专用 rerank → 可选 LLM 语义 rerank → select（最终 K 条）
 
 rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余」，职责不同。
 关闭查询分解、使用 Noop reranker 和自定义 TopK selector 时，可退化为传统 Top-K。
@@ -45,12 +45,6 @@ from oce.shared.metrics import RetrievalAudit
 
 if TYPE_CHECKING:
     from oce.domain.services.llm.rewriter import QueryRewriter
-
-# LLM reranker (optional)
-try:
-    from oce.domain.services.llm.reranker import LLMReranker
-except ImportError:
-    LLMReranker = None  # type: ignore
 
 
 @contextmanager
@@ -112,7 +106,7 @@ class RetrievalPipeline:
         store: SearchStore,
         settings: RetrievalSettings,
         reranker: Reranker | None = None,
-        llm_reranker: LLMReranker | None = None,
+        llm_reranker: Reranker | None = None,
         query_rewriter: "QueryRewriter | None" = None,
         path_store: PathSearchStore | None = None,  # 路径索引
         path_content_store: PathContentStore | None = None,
@@ -242,55 +236,60 @@ class RetrievalPipeline:
         with stage("fuse"):
             hits = self._fuse(all_result_lists) if all_result_lists else []
             hits = self._merge_exact_hits(query, exact_hits, hits)
+        return await self._rank_and_select(
+            query,
+            hits,
+            intent=detected_intent,
+            selection_mode=strategy.selection_mode,
+            has_exact_hits=bool(exact_hits),
+            audit=audit,
+        )
+
+    async def _rank_and_select(
+        self,
+        query: str,
+        hits: list[SearchHit],
+        *,
+        intent: QueryIntent,
+        selection_mode: SelectionMode,
+        has_exact_hits: bool = False,
+        has_path_hits: bool = False,
+        priority_factor: Callable[[str], float] | None = None,
+        audit: RetrievalAudit | None = None,
+    ) -> list[SearchHit]:
+        """Apply one candidate-preserving rerank state machine before selection."""
+        stage = audit.stage if audit is not None else _noop_stage
+
+        # Static source priors prepare the candidate order. Model rerankers run
+        # afterwards, so their returned order cannot be silently overwritten.
+        hits = self._apply_source_priority(hits, priority_factor=priority_factor)
+        # This optional floor belongs to recall, before model scores can enter the
+        # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
+        # to a shared scale; filtering their mixture after reranking is undefined.
+        hits = self._apply_confidence_floor(
+            hits,
+            priority_factor=priority_factor,
+        )
         with stage("rerank"):
             hits = await self.reranker.rerank(query, hits)
-        hits = self._apply_source_priority(hits)
 
-        exact_confidence = max((hit.score for hit in exact_hits), default=None)
-        candidate_scores = [hit.score * self.priority_factor(hit.path) for hit in hits]
         if self.llm_reranker is not None and should_use_llm_rerank(
-            detected_intent,
-            candidate_scores,
-            exact_confidence=exact_confidence,
+            intent,
+            len(hits),
+            policy=self.settings.llm_rerank_policy,
+            has_exact_hits=has_exact_hits,
+            has_path_hits=has_path_hits,
         ):
             with stage("llm_rerank"):
-                hits = await self._llm_rerank_hits(query, hits)
-        hits = self._promote_symbol_endpoints(query, hits)
+                hits = await self.llm_reranker.rerank(query, hits)
 
+        hits = self._promote_symbol_endpoints(query, hits)
         with stage("select"):
-            hits = self._apply_confidence_floor(hits)
-            selected = await self.selector.select(
+            return await self.selector.select(
                 hits,
                 self.settings.final_select_k,
-                mode=strategy.selection_mode,
+                mode=selection_mode,
             )
-        return selected
-
-    async def _llm_rerank_hits(
-        self, query: str, hits: list[SearchHit]
-    ) -> list[SearchHit]:
-        """用 LLM 语义重排候选。
-
-        必须带上 content 与行号：只给路径会让重排退化成文件名匹配，符号定义
-        和调用链查询无从判断。search() 与 _search_with_path_index() 共用此
-        方法，避免两处候选字段再次分叉。
-        """
-        if self.llm_reranker is None:
-            return hits
-
-        candidates = [
-            {
-                "path": hit.path,
-                "score": hit.score,
-                "content": hit.content,
-                "start_line": hit.start_line,
-                "end_line": hit.end_line,
-                "hit": hit,
-            }
-            for hit in hits
-        ]
-        reranked = await self.llm_reranker.rerank(query, candidates)
-        return [c["hit"] for c in reranked if "hit" in c]
 
     def _plan_queries(self, queries: Sequence[str]) -> list[tuple[str, int]]:
         planned: list[tuple[str, int]] = []
@@ -645,36 +644,18 @@ class RetrievalPipeline:
             if not hits and content_error is not None:
                 raise content_error
 
-        # 4. 应用常规后处理
-        with stage("rerank"):
-            hits = await self.reranker.rerank(query, hits)
-        # 路径类查询使用文档中立的优先级因子（不降权 .rst/.md/.txt）
-        # 避免「版本变更历史文件在哪里」被 .rst 文档降权压出 Top-10
-        hits = self._apply_source_priority(
-            hits, priority_factor=path_query_priority_factor
+        # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）；之后与
+        # 普通分支进入同一重排/选择状态机，避免两条路径的候选语义漂移。
+        return await self._rank_and_select(
+            query,
+            hits,
+            intent=intent,
+            selection_mode=selection_mode,
+            has_exact_hits=bool(exact_hits),
+            has_path_hits=bool(path_scores),
+            priority_factor=path_query_priority_factor,
+            audit=audit,
         )
-
-        path_confidence = max(path_scores.values(), default=None)
-        exact_confidence = max((hit.score for hit in exact_hits), default=None)
-        if self.llm_reranker is not None and should_use_llm_rerank(
-            intent,
-            [hit.score for hit in hits],
-            exact_confidence=exact_confidence,
-            path_confidence=path_confidence,
-        ):
-            with stage("llm_rerank"):
-                hits = await self._llm_rerank_hits(query, hits)
-
-        with stage("select"):
-            hits = self._apply_confidence_floor(
-                hits, priority_factor=path_query_priority_factor
-            )
-            selected = await self.selector.select(
-                hits,
-                self.settings.final_select_k,
-                mode=selection_mode,
-            )
-        return selected
 
     async def _merge_path_and_content(
         self,

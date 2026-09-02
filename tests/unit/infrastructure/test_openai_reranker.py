@@ -135,7 +135,7 @@ async def test_rerank_authorization_header():
 
 @pytest.mark.asyncio
 async def test_rerank_filters_below_min_score():
-    """relevance_score < min_score 的丢弃。"""
+    """relevance_score < min_score 的候选不提升，但不丢失。"""
     reranker, _ = _make_reranker(
         min_score=0.5,
         response_payload={"results": [
@@ -146,14 +146,14 @@ async def test_rerank_filters_below_min_score():
     )
     hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
     result = await reranker.rerank("q", hits)
-    assert [h.content for h in result] == ["a", "c"]
+    assert [h.content for h in result] == ["a", "c", "b"]
     assert result[0].score == pytest.approx(0.9)
     assert result[1].score == pytest.approx(0.6)
 
 
 @pytest.mark.asyncio
-async def test_rerank_truncates_to_top_n():
-    """API 多返了，按 top_n 截断。"""
+async def test_rerank_promotes_top_n_without_truncating_candidates():
+    """API 多返了，只提升 top_n，其余候选交给 selector。"""
     reranker, _ = _make_reranker(
         top_n=2,
         response_payload={"results": [
@@ -164,8 +164,8 @@ async def test_rerank_truncates_to_top_n():
     )
     hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
     result = await reranker.rerank("q", hits)
-    assert len(result) == 2
-    assert [h.content for h in result] == ["a", "b"]
+    assert len(result) == 3
+    assert [h.content for h in result] == ["a", "b", "c"]
 
 
 @pytest.mark.asyncio
@@ -186,22 +186,38 @@ async def test_rerank_top_n_in_body_caps_at_documents_size():
 
 @pytest.mark.asyncio
 async def test_rerank_http_failure_returns_original_order():
-    """HTTP 报错时不抛异常，返回原顺序前 top_n 条。"""
+    """HTTP 报错时不抛异常，完整保留原顺序。"""
     reranker, _ = _make_reranker(
         top_n=2,
         raise_exc=httpx.ConnectError("network down"),
     )
     hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
     result = await reranker.rerank("q", hits)
-    assert [h.content for h in result] == ["a", "b"]
+    assert [h.content for h in result] == ["a", "b", "c"]
 
 
-# ── on_usage 上报：成功路径触发 fire-and-forget 回调 ───────────────────────
+@pytest.mark.asyncio
+async def test_rerank_malformed_results_preserve_original_order():
+    reranker, _ = _make_reranker(
+        response_payload={
+            "results": [
+                None,
+                {"index": 0, "relevance_score": "not-a-number"},
+                {"index": 1, "relevance_score": float("nan")},
+            ]
+        },
+    )
+    hits = [_Hit(content="a"), _Hit(content="b")]
+
+    result = await reranker.rerank("q", hits)
+
+    assert result == hits
+
+
+# ── on_usage 上报：成功路径触发旁路回调 ───────────────────────────
 @pytest.mark.asyncio
 async def test_rerank_on_usage_callback_invoked_on_success():
     """rerank 成功后调用 on_usage(cred_id, 'rerank', model, tokens, 0)；usage 缺字段时 tokens=0。"""
-    import asyncio as _asyncio
-
     captured: list[tuple] = []
 
     async def _on_usage(cid, kind, model, prompt, completion):
@@ -217,9 +233,6 @@ async def test_rerank_on_usage_callback_invoked_on_success():
         client=fake_client, credential_id=7, on_usage=_on_usage,
     )
     await rk.rerank("q", [_Hit(content="d1")])
-    # fire-and-forget：等一轮事件循环让 task 执行
-    await _asyncio.sleep(0)
-    await _asyncio.sleep(0)
     assert captured, "on_usage 应至少被调用一次"
     cid, kind, model, prompt, completion = captured[0]
     assert (cid, kind, model, prompt, completion) == (7, "rerank", "qwen3-rerank", 42, 0)
@@ -227,8 +240,7 @@ async def test_rerank_on_usage_callback_invoked_on_success():
 
 @pytest.mark.asyncio
 async def test_rerank_on_usage_not_invoked_on_http_failure():
-    """HTTP 失败 → 直接 return hits[:top_n]，不调用 on_usage（无需计费）。"""
-    import asyncio as _asyncio
+    """HTTP 失败保留候选，不调用 on_usage（无需计费）。"""
     captured: list[tuple] = []
 
     async def _on_usage(cid, kind, model, prompt, completion):
@@ -241,5 +253,32 @@ async def test_rerank_on_usage_not_invoked_on_http_failure():
         client=fake_client, credential_id=7, on_usage=_on_usage,
     )
     await rk.rerank("q", [_Hit(content="d1")])
-    await _asyncio.sleep(0)
     assert captured == [], "失败路径不应该触发 usage 上报"
+
+
+@pytest.mark.asyncio
+async def test_rerank_usage_failure_does_not_fail_retrieval():
+    async def _on_usage(*_args):
+        raise RuntimeError("metrics unavailable")
+
+    fake_client = MagicMock(spec=httpx.AsyncClient)
+    fake_client.post = AsyncMock(
+        return_value=_fake_response(
+            {
+                "results": [{"index": 1, "relevance_score": 0.9}],
+                "meta": {"tokens": {"input_tokens": "malformed"}},
+            }
+        )
+    )
+    reranker = OpenAIReranker(
+        endpoint="https://x/rerank",
+        api_key="sk",
+        model="qwen3-rerank",
+        client=fake_client,
+        on_usage=_on_usage,
+    )
+    hits = [_Hit(content="a"), _Hit(content="b")]
+
+    result = await reranker.rerank("q", hits)
+
+    assert [hit.content for hit in result] == ["b", "a"]

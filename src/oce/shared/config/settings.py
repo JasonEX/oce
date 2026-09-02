@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -132,7 +133,8 @@ class RerankSettings(BaseSettings):
     )
 
     enabled: bool = Field(
-        default=False, description="是否启用 API 重排（已被 LLM 重排取代，默认关）"
+        default=False,
+        description="是否启用专用 rerank API",
     )
     endpoint: str = Field(
         default="https://api.siliconflow.cn/v1/rerank",
@@ -142,7 +144,12 @@ class RerankSettings(BaseSettings):
         default=None, description="空值时复用 embedding key"
     )
     model: str = Field(default="Qwen/Qwen3-Reranker-0.6B", description="重排模型")
-    top_n: int = Field(default=10, ge=1, le=100, description="重排返回数")
+    top_n: int = Field(
+        default=50,
+        ge=1,
+        le=100,
+        description="专用 reranker 提升到候选队首的最大条数",
+    )
     min_score: float = Field(default=0.05, ge=0.0, le=1.0, description="最低重排分")
     timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
 
@@ -193,7 +200,8 @@ class LLMSettings(BaseSettings):
     )
 
     rerank_enabled: bool = Field(
-        default=True, description="是否允许对低置信度或复杂查询按需执行 LLM 语义重排"
+        default=False,
+        description="是否允许 chat LLM 参与语义重排",
     )
     model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="LLM 模型")
     api_key: SecretStr = Field(default="", description="LLM API Key")
@@ -202,17 +210,34 @@ class LLMSettings(BaseSettings):
         description="LLM API Base URL",
     )
     proxy: str | None = Field(default=None, description="LLM API HTTP 代理")
+    timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description="单次 LLM HTTP 请求超时秒数",
+    )
+    rerank_timeout_seconds: float = Field(
+        default=15.0,
+        gt=0,
+        description="chat LLM 重排的端到端延迟上限；超时保留原排序",
+    )
     max_candidates: int = Field(
         default=50, ge=10, le=100, description="LLM 重排最大候选数"
     )
-    output_top_k: int = Field(default=10, ge=1, le=50, description="LLM 重排输出数")
+    output_top_k: int = Field(
+        default=10,
+        ge=1,
+        le=50,
+        description="LLM 提升到候选队首的最大条数",
+    )
     # 实测 chunk 中位长度约 1560 字符，99% 超过 400；截断过短会让 LLM 只看到片段开头
     snippet_chars: int = Field(
         default=1600, ge=200, le=4000, description="每个候选送入 LLM 的代码字符上限"
     )
     # 单次 rerank 可达 16k token，不限流会在十几个查询后连续 429 并静默退回原始顺序
     tpm_limit: int = Field(
-        default=60_000, ge=1_000, description="LLM 接口 TPM 上限，0 以上时客户端排队"
+        default=60_000,
+        ge=1_000,
+        description="LLM 接口 TPM 上限，客户端按滑动窗口排队",
     )
 
 
@@ -241,7 +266,17 @@ class RetrievalSettings(BaseSettings):
 
     # 置信度门槛
     confidence_floor: float = Field(
-        default=0.0, ge=0.0, le=1.0, description="最终置信度门槛"
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="进入模型重排前的召回置信度门槛",
+    )
+
+    # chat LLM 只处理排序，不参与候选裁剪。adaptive 按稳定查询信号决定是否调用；
+    # always 用于追求全量语义判断或进行可复现对照。
+    llm_rerank_policy: Literal["adaptive", "always"] = Field(
+        default="adaptive",
+        description="chat LLM 重排调用策略",
     )
 
     # 精确标识符召回

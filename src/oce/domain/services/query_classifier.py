@@ -56,7 +56,7 @@ _CALL_VERBS = {
 # 引用/使用动词（单向依赖）
 _REFERENCE_VERBS = {
     "使用", "引用", "导入", "依赖", "消费", "接收",
-    "use", "import", "depend", "consume", "receive",
+    "use", "reference", "import", "depend", "consume", "receive",
 }
 
 # 概览/架构关键词

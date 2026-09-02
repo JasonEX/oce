@@ -59,6 +59,7 @@ async def test_index_stats_preserve_partial_store_availability():
     assert result.path.error_type == "NotInitialized"
     assert result.query_cache.hits == 3
     assert result.runtime.exact_enabled is False
+    assert result.runtime.llm_rerank_policy == "adaptive"
     assert result.profile.state == "compatible"
     assert result.profile.embedding_model == "embedding-v1"
 

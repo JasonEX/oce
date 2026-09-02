@@ -33,12 +33,14 @@ class OpenAICompatibleLLMClient:
         tpm_limit: int | None = None,
         on_usage: UsageCallback | None = None,
         credential_id: int = 0,
+        usage_kind: str = "llm",
     ):
         """
         Args:
             tpm_limit: 接口 TPM 上限。给定时请求前排队，避免 429 让上层静默降级。
             on_usage: 可选用量回调；每次成功 chat 后按真实 usage 上报，None 时零开销。
             credential_id: 解析到的 DB 凭证 id，随用量上报；纯 env 回落时为 0。
+            usage_kind: 用量归因阶段，如 llm_rerank 或 query_rewrite。
         """
         self.api_key = api_key
         self.base_url = base_url
@@ -46,6 +48,7 @@ class OpenAICompatibleLLMClient:
         self.proxy = proxy
         self._on_usage = on_usage
         self._credential_id = credential_id
+        self._usage_kind = usage_kind
         self._limiter = (
             TokenRateLimiter(tpm_limit) if tpm_limit and tpm_limit > 0 else None
         )
@@ -127,12 +130,24 @@ class OpenAICompatibleLLMClient:
                     # 按真实 usage 上报（旁路，缺字段则跳过）；credential_id 由构造时注入
                     if self._on_usage is not None:
                         usage = data.get("usage") or {}
-                        prompt = int(usage.get("prompt_tokens", 0) or 0)
-                        completion = int(usage.get("completion_tokens", 0) or 0)
+                        prompt = self._token_count(usage.get("prompt_tokens", 0))
+                        completion = self._token_count(
+                            usage.get("completion_tokens", 0)
+                        )
                         if prompt or completion:
-                            await self._on_usage(
-                                self._credential_id, "llm", model, prompt, completion
-                            )
+                            try:
+                                await self._on_usage(
+                                    self._credential_id,
+                                    self._usage_kind,
+                                    model,
+                                    prompt,
+                                    completion,
+                                )
+                            except Exception as exc:
+                                logger.warning(
+                                    "LLM usage reporting failed: {}",
+                                    type(exc).__name__,
+                                )
                     return content
 
                 except httpx.HTTPStatusError as e:
@@ -157,3 +172,10 @@ class OpenAICompatibleLLMClient:
                     raise
 
         raise RuntimeError("LLM chat exhausted retries without a response")
+
+    @staticmethod
+    def _token_count(value: object) -> int:
+        try:
+            return max(int(value or 0), 0)
+        except (TypeError, ValueError):
+            return 0

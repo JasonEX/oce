@@ -25,10 +25,6 @@ from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import LLMSettings
 from oce.shared.errors import ServiceNotReadyError
 
-# OpenAICompatibleLLMClient 的默认超时；env 回落分支无 DB timeout_seconds 时沿用。
-_DEFAULT_LLM_TIMEOUT = 120.0
-
-
 @dataclass(frozen=True)
 class LLMRuntimeConfig:
     api_key: str
@@ -122,7 +118,7 @@ class CredentialConfiguredLLMClient:
             model=None,
             proxy=fb.proxy,
             tpm_limit=fb.tpm_limit,
-            timeout_seconds=_DEFAULT_LLM_TIMEOUT,
+            timeout_seconds=fb.timeout_seconds,
             credential_id=0,
         )
 
@@ -135,6 +131,7 @@ class CredentialConfiguredLLMClient:
             tpm_limit=config.tpm_limit,
             on_usage=self._on_usage,
             credential_id=config.credential_id,
+            usage_kind=self._kind,
         )
 
     async def reload(self) -> int:

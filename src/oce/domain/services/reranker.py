@@ -12,10 +12,14 @@ from oce.domain.services.search import SearchHit
 
 
 class Reranker(Protocol):
-    """重排器协议"""
+    """候选保真的重排器协议。
+
+    实现可替换顺序或更新分数，但必须保留每个输入候选且不得引入新候选；
+    去重、覆盖度与上下文预算属于后续 Selector。
+    """
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
-        """对召回结果精排，返回重排后的列表"""
+        """对召回结果精排，返回包含同一候选集的新顺序。"""
         ...
 
 

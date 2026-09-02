@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import Any, Awaitable, Callable
 
@@ -63,18 +64,38 @@ class OpenAIReranker:
             payload = response.json()
         except (httpx.HTTPError, ValueError) as exc:
             logger.warning("Rerank request failed; using retrieval order: {}", exc)
-            return hits[: self._top_n]
+            return hits
+
+        raw_results = payload.get("results", [])
+        if not isinstance(raw_results, list):
+            logger.warning("Rerank response has no result list; using retrieval order")
+            return hits
 
         ranked: list[tuple[int, float]] = []
-        for item in payload.get("results", []):
+        seen: set[int] = set()
+        for item in raw_results:
+            if not isinstance(item, dict):
+                continue
             index = item.get("index")
-            score = item.get("relevance_score", item.get("score", 0.0))
-            if isinstance(index, int) and 0 <= index < len(hits) and score >= self._min_score:
-                ranked.append((index, float(score)))
+            raw_score = item.get("relevance_score", item.get("score", 0.0))
+            try:
+                score = float(raw_score)
+            except (TypeError, ValueError):
+                continue
+            if (
+                isinstance(index, int)
+                and 0 <= index < len(hits)
+                and index not in seen
+                and math.isfinite(score)
+                and score >= self._min_score
+            ):
+                seen.add(index)
+                ranked.append((index, score))
         ranked.sort(key=lambda pair: pair[1], reverse=True)
 
+        promoted = ranked[: self._top_n]
         output: list[Any] = []
-        for index, score in ranked[: self._top_n]:
+        for index, score in promoted:
             hit = hits[index]
             try:
                 hit = replace(hit, score=score)
@@ -89,17 +110,31 @@ class OpenAIReranker:
             meta = payload.get("meta") or {}
             token_meta = meta.get("tokens") or {}
             tokens = sum(
-                int(token_meta.get(key, 0) or 0)
+                self._token_count(token_meta.get(key, 0))
                 for key in ("input_tokens", "output_tokens", "image_tokens")
             )
             # rerank 无 prompt/completion 之分：总量记入 prompt，completion=0
-            await self._on_usage(
-                self._credential_id,
-                "rerank",
-                self._model,
-                tokens,
-                0,
-            )
+            try:
+                await self._on_usage(
+                    self._credential_id,
+                    "rerank",
+                    self._model,
+                    tokens,
+                    0,
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Rerank usage reporting failed: {}",
+                    type(exc).__name__,
+                )
+        # The reranker promotes a scored head; filtering and selection own pruning.
+        # Preserve provider-omitted, below-threshold, and out-of-window hits in
+        # their original relative order so coverage selection can still fill its
+        # path and character budget.
+        promoted_indices = {index for index, _score in promoted}
+        output.extend(
+            hit for index, hit in enumerate(hits) if index not in promoted_indices
+        )
         return output
 
     @staticmethod
@@ -113,6 +148,13 @@ class OpenAIReranker:
                 f"{hit.content}"
             )
         return hit.content
+
+    @staticmethod
+    def _token_count(value: Any) -> int:
+        try:
+            return max(int(value or 0), 0)
+        except (TypeError, ValueError):
+            return 0
 
     async def close(self) -> None:
         if self._owns_client:

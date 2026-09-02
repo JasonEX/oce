@@ -173,6 +173,7 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     query_decomposition_enabled: bool
     api_rerank_enabled: bool
     llm_rerank_enabled: bool
+    llm_rerank_policy: str
     query_rewrite_enabled: bool
 
 

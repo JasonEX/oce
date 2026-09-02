@@ -5,12 +5,14 @@
 """
 from __future__ import annotations
 
+import asyncio
 import re
 
 from loguru import logger
 
 from oce.domain.services.llm.client import LLMClient
 from oce.domain.services.llm.prompts import RERANK_SYSTEM_PROMPT, RERANK_USER_TEMPLATE
+from oce.domain.services.search import SearchHit
 
 
 class LLMReranker:
@@ -22,91 +24,112 @@ class LLMReranker:
         model: str = "deepseek-v4-flash",
         max_candidates: int = 50,
         output_top_k: int = 10,
-        snippet_chars: int = 400,
+        snippet_chars: int = 1600,
+        timeout_seconds: float = 15.0,
     ):
         """
         Args:
             client: LLM 客户端
             model: 模型名称
             max_candidates: 最多重排序的候选数量（控制成本）
-            output_top_k: 输出的 Top-K 结果数量
+            output_top_k: 由 LLM 提升到队首的最大候选数
             snippet_chars: 每个候选送入 LLM 的代码字符上限。只给路径会让重排
                 退化成文件名匹配，符号定义和调用链查询无从判断。
+            timeout_seconds: 语义重排端到端时限，超时保留原候选顺序。
         """
+        if max_candidates < 1:
+            raise ValueError("max_candidates must be positive")
+        if output_top_k < 1:
+            raise ValueError("output_top_k must be positive")
+        if snippet_chars < 1:
+            raise ValueError("snippet_chars must be positive")
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
         self.client = client
         self.model = model
         self.max_candidates = max_candidates
         self.output_top_k = output_top_k
         self.snippet_chars = snippet_chars
+        self.timeout_seconds = timeout_seconds
 
     async def rerank(
         self,
         query: str,
-        candidates: list[dict],
-        top_k: int | None = None,
-    ) -> list[dict]:
+        candidates: list[SearchHit],
+    ) -> list[SearchHit]:
         """
         使用 LLM 重新排序候选结果。
 
         Args:
             query: 用户查询
-            candidates: 候选结果列表，每个结果需包含 'path' 字段
-            top_k: 返回的结果数量，默认使用 output_top_k
+            candidates: 候选代码片段。
 
         Returns:
-            重新排序后的候选结果（保留原始数据结构）
+            候选数量不变：LLM 选中的条目在前，其余保留原顺序。
         """
         if not candidates:
             return []
 
-        top_k = top_k or self.output_top_k
+        # Limit the model window first. output_top_k may be configured larger than
+        # max_candidates, but the prompt must never request more ids than it contains.
+        candidates_subset = candidates[: self.max_candidates]
+        promotion_count = min(self.output_top_k, len(candidates_subset))
 
         logger.info(
             "LLM rerank called: query_chars={}, candidates={}, top_k={}",
             len(query),
             len(candidates),
-            top_k,
+            promotion_count,
         )
-
-        # 限制候选数量（控制成本和 token 长度）
-        candidates_subset = candidates[: self.max_candidates]
 
         try:
             # 按下标而非路径回收顺序：同一文件可能贡献多个片段，
             # 用路径做键会把它们折叠成一条，符号级查询正需要区分片段。
-            order = await self._llm_rerank(query, candidates_subset, top_k)
+            async with asyncio.timeout(self.timeout_seconds):
+                order = await self._llm_rerank(
+                    query,
+                    candidates_subset,
+                    promotion_count,
+                )
             reranked_results = [candidates_subset[i] for i in order]
 
-            # LLM 返回不足时按原始顺序补齐，保证下游拿到足够候选
-            if len(reranked_results) < top_k:
-                chosen = set(order)
-                remaining = [
-                    c for i, c in enumerate(candidates_subset) if i not in chosen
-                ]
-                reranked_results.extend(remaining[: top_k - len(reranked_results)])
+            # Reranker 只改变优先级，不拥有裁剪权。未选中的窗口内候选与
+            # 窗口外候选均按原顺序追加，交给最终 selector 处理覆盖度和预算。
+            chosen = set(order)
+            reranked_results.extend(
+                candidate
+                for index, candidate in enumerate(candidates_subset)
+                if index not in chosen
+            )
+            reranked_results.extend(candidates[len(candidates_subset) :])
+            return reranked_results
 
-            return reranked_results[:top_k]
-
+        except TimeoutError:
+            logger.warning(
+                "LLM rerank exceeded {:.1f}s; preserving retrieval order",
+                self.timeout_seconds,
+            )
+            return candidates
         except Exception as e:
             logger.warning(
                 "LLM rerank failed: {}; falling back to original order",
                 type(e).__name__,
             )
-            return candidates[:top_k]
+            return candidates
 
-    def _format_candidate(self, index: int, candidate: dict) -> str:
+    def _format_candidate(self, index: int, candidate: SearchHit) -> str:
         """把候选渲染成带路径、行号和代码的 <candidate> 元素。
 
         只给路径时 LLM 无法判断符号定义或调用关系，必须附带片段正文。
         用闭合标签而非 markdown 围栏：候选可能是 .md 文件，其正文自带 ```，
         围栏方案会让 30 个候选的边界互相撕裂。
         """
-        path = str(candidate.get("path", "")).replace('"', "&quot;")
-        start = candidate.get("start_line")
-        end = candidate.get("end_line")
+        path = candidate.path.replace('"', "&quot;")
+        start = candidate.start_line
+        end = candidate.end_line
         lines_attr = f' lines="{start}-{end}"' if start and end else ""
 
-        snippet = (candidate.get("content") or "").strip()
+        snippet = candidate.content.strip()
         if len(snippet) > self.snippet_chars:
             snippet = snippet[: self.snippet_chars] + "\n…"
         # 正文里出现闭合标签会提前终止候选，必须中和
@@ -118,7 +141,7 @@ class LLMReranker:
         return f"{open_tag}\n{snippet}\n</candidate>"
 
     async def _llm_rerank(
-        self, query: str, candidates: list[dict], top_k: int
+        self, query: str, candidates: list[SearchHit], top_k: int
     ) -> list[int]:
         """
         调用 LLM API 进行重排序。
@@ -143,7 +166,12 @@ class LLMReranker:
             },
         ]
 
-        response = await self.client.chat(messages, model=self.model, temperature=0.1)
+        response = await self.client.chat(
+            messages,
+            model=self.model,
+            temperature=0.1,
+            max_tokens=min(512, max(128, top_k * 12)),
+        )
 
         order: list[int] = []
         seen: set[int] = set()

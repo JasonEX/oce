@@ -70,7 +70,12 @@ async def test_falls_back_to_env_without_credential():
     client = CredentialConfiguredLLMClient(
         "query_rewrite",
         sessions,
-        LLMSettings(api_key="env-key", base_url="https://env.test/v1", tpm_limit=12_345),
+        LLMSettings(
+            api_key="env-key",
+            base_url="https://env.test/v1",
+            tpm_limit=12_345,
+            timeout_seconds=17,
+        ),
         fallback_model="env-model",
     )
     config = await client._resolve_config()
@@ -79,7 +84,9 @@ async def test_falls_back_to_env_without_credential():
     assert config.base_url == "https://env.test/v1"
     assert config.model is None
     assert config.tpm_limit == 12_345
+    assert config.timeout_seconds == 17
     assert config.credential_id == 0
+    assert client._build_delegate(config)._usage_kind == "query_rewrite"
     await engine.dispose()
 
 

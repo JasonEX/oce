@@ -92,6 +92,29 @@ async def test_chat_without_callback_is_inert(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_usage_failure_does_not_fail_successful_chat(monkeypatch):
+    async def _on_usage(*_args):
+        raise RuntimeError("metrics unavailable")
+
+    _patch_httpx(monkeypatch, {
+        "choices": [{"message": {"content": "answer"}}],
+        "usage": {"prompt_tokens": 12, "completion_tokens": "malformed"},
+    })
+    client = OpenAICompatibleLLMClient(
+        api_key="sk",
+        on_usage=_on_usage,
+        usage_kind="llm_rerank",
+    )
+
+    content = await client.chat(
+        [{"role": "user", "content": "hi"}],
+        model="test-llm",
+    )
+
+    assert content == "answer"
+
+
+@pytest.mark.asyncio
 async def test_proxy_does_not_disable_tls_verification(monkeypatch):
     captured: dict[str, object] = {}
     payload = {"choices": [{"message": {"content": "hi"}}]}

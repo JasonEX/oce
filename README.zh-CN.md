@@ -22,8 +22,8 @@ dense + exact + path 混合召回 · cAST 语义切块 · 按需重排 · 任务
 </div>
 
 OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 cAST 语义切块索引源码，
-把元数据存入 PostgreSQL 或 SQLite，在 Milvus 3.0 中做 dense 向量检索，只对歧义结果按需
-调用 LLM 重排，再按任务类型选择上下文。
+把元数据存入 PostgreSQL 或 SQLite，在 Milvus 3.0 中做 dense 向量检索，可选调用专用
+rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 
 它提供两种部署模式：零依赖的**个人模式**（SQLite + 内嵌 Milvus Lite，后台 worker 关闭），
 面向单机；以及**服务模式**（PostgreSQL + Milvus 3.0 + Redis），面向共享、更高吞吐的部署。
@@ -43,7 +43,7 @@ OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 
 
 - **混合检索** —— 并发的 dense 语义召回（Milvus 3.0）、exact 精确标识符查找（`symbol_occurrences`）与独立路径索引，用加权 rank fusion 融合。
 - **cAST 语义切块** —— 基于 tree-sitter 沿语义边界切分源码，而非机械的行窗口。
-- **按需重排 + 任务感知选择** —— 高置信 exact/path 命中或分差明显的 dense 结果跳过可选 LLM 调用，歧义或结构复杂的结果才升级；symbol/path 查询保持 relevance 顺序，宽泛查询优先仓库覆盖度，并统一遵守重叠和字符预算。
+- **可组合重排 + 任务感知选择** —— 专用 reranker 提供低延迟相关性排序，chat LLM 负责全局比较实现语义；二者可单独运行，也可级联。两种重排都保留输入候选集，裁剪只由显式召回过滤与最终 selector 执行。
 - **两种部署模式** —— 零依赖个人模式（SQLite + 内嵌 Milvus Lite）面向单机；服务模式（PostgreSQL + Milvus 3.0 + Redis）面向共享与更高吞吐。
 - **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
 - **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
@@ -94,19 +94,39 @@ EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 ```
 
-嵌入会把准入后的源码块发送到配置的 endpoint；可选 LLM 功能还会发送检索 query 和候选源码
+嵌入会把准入后的源码块发送到配置的 endpoint；可选重排和 LLM 功能还会发送检索 query 和候选源码
 片段。私有代码只应使用获准接收这些数据的端点，优先选择本地或内网服务。
 
-新生成的个人模式配置默认关闭可选 LLM 调用。如需意图识别和语义精排，请配置一个允许接收
-代码片段的 OpenAI 兼容轻量 LLM，并显式开启这两项功能：
+新生成的个人模式配置默认关闭可选重排，需要先明确授权相应 endpoint 接收候选代码。
+专用 reranker 适合可预期的低延迟相关性排序：
 
 ```dotenv
+RERANK_ENABLED=true
+RERANK_API_KEY=你的 rerank 服务密钥
+RERANK_ENDPOINT=https://provider.example.com/v1/rerank
+RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+# 对默认 50 条候选窗完整排序；provider 未返回的候选仍保留
+RERANK_TOP_N=50
+```
+
+强 chat LLM 可以替代专用 reranker，或在它之后继续判断跨语言语义、真实实现与转发代码、
+多文件行为：
+
+```dotenv
+LLM_RERANK_ENABLED=true
 LLM_API_KEY=你的 LLM 服务密钥
 LLM_BASE_URL=https://provider.example.com/v1
-LLM_MODEL=qwen3.7-flash
-LLM_RERANK_ENABLED=true
-RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=true
+LLM_MODEL=deepseek-v4-flash
+RETRIEVAL_LLM_RERANK_POLICY=adaptive
+LLM_RERANK_TIMEOUT_SECONDS=15
 ```
+
+`adaptive` 在 exact symbol/path 证据已足够时跳过 chat 调用，reference 查询保留 occurrence
+覆盖，而 feature/flow/overview/compound 查询启用全局语义判断。`always` 对所有至少两个
+候选的结果重排，适合质量优先部署与受控对照。同时启用两种后端时，管线按专用 reranker
+→ chat LLM 级联。默认关闭只是数据外发和延迟边界，不代表 chat LLM 的排序质量更低。
+`LLM_MAX_CANDIDATES=50` 偏向多文件覆盖；交互部署若更在意延迟或 TPM，可降到 `20`。
+无论窗口多大，窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
 
 然后启动服务：
 
@@ -173,7 +193,7 @@ admin key 只保存在浏览器本地存储中，不要写入 URL、仓库或日
 `CORS_ORIGINS` 配置允许的来源。
 
 模型客户端从单张 `model_credentials` 表按 `kind`（`embed`、`rerank`、`llm_rerank`、
-`query_rewrite`、`intent`）解析凭据：取 status=active 中 `priority` 数字最小的一行。某个
+`query_rewrite`）解析凭据：取 status=active 中 `priority` 数字最小的一行。某个
 kind 没有匹配的启用行时，对应客户端回退到各自的环境变量（`EMBED_*`、`RERANK_*`、`LLM_*`；
 重排还会复用嵌入 key）。通过 `/admin/credentials` API 管理这些行，再调
 `POST /admin/credentials/reload` 可在不重启服务的情况下热重载运行凭据。嵌入 API key、凭据
@@ -197,8 +217,11 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 包含多个明确句子或列表项的仓库级请求，会被分解成一个完整查询加若干有界 facet 查询。每个
 查询独立召回候选；结果用加权 rank fusion（`RETRIEVAL_RRF_K` 可调）融合后再重排。单查询
 模式用 `RETRIEVAL_DEFAULT_TOP_K`，多查询模式每个查询用 `RETRIEVAL_PER_QUERY_TOP_K` 控制
-候选池大小。可选 LLM 重排由不确定性触发：高置信 exact symbol、path 命中和分差明显的简单
-候选会跳过调用；歧义候选及 call-chain/overview/compound 查询才升级。最终选择对 symbol/path
+候选池大小。静态 source prior 和可选召回置信度下限都在模型之前应用，避免用不同
+量纲的模型分数和召回分数混合过滤，也不会再覆盖模型顺序。两种 reranker 都只提升
+队首候选，并保留其余顺序给最终 selector。`adaptive` chat-LLM 策略在 exact symbol/path 证据
+足够时跳过模型，reference 查询保留 occurrence 覆盖，feature/flow/overview/compound 查询则进行
+全局片段语义比较。最终选择对 symbol/path
 查询使用 focused 模式，按相关性顺序允许同文件提供更多片段；其他查询使用 coverage 模式，先
 覆盖不同文件再填充剩余预算。两种模式都抑制文件内重叠片段并遵守硬字符预算。设
 `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询召回。
@@ -334,7 +357,7 @@ flowchart TB
         direction LR
         Chunker["cAST / tree-sitter"]
         Embed["Embedder / Reranker<br/>OpenAI 兼容"]
-        LLMC["LLM 客户端<br/>rerank·rewrite·intent"]
+        LLMC["LLM 客户端<br/>rerank·rewrite"]
         Vector["Milvus3SearchStore<br/>PathIndexClient"]
         Sql["SQL Repos · UoW<br/>SymbolSearchStore"]
         RedisQ["RedisQueue · 服务模式"]
@@ -368,17 +391,17 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval.py`）按意图分阶段执行：启发式路由与
-可选 LLM 意图覆盖/查询改写、并发的 dense + exact 召回、加权 rank fusion、基础重排、按
-不确定性触发的 LLM 重排，以及 focused/coverage 任务感知选择。
+`RetrievalPipeline.search`（`domain/services/retrieval.py`）执行确定性路由与可选查询改写、并发的
+dense + exact 召回、加权 rank fusion、单一的候选保真重排状态机，以及 focused/coverage
+任务感知选择。
 
 ```mermaid
 flowchart TB
     Q["查询：query + SearchScope"]
-    Q --> Intent["启发式意图<br/>可选 LLM 覆盖"]
+    Q --> Intent["确定性查询信号"]
     Intent --> PathCheck{"路径增强分支？<br/>意图或文件名启发式"}
 
-    PathCheck -->|是| PathBoost["_search_with_path_boost<br/>路径召回 + 可选查询改写"]
+    PathCheck -->|是| PathBoost["_search_with_path_boost<br/>path + dense + exact 召回"]
     PathCheck -->|否| Rewrite["查询改写（可选）<br/>query_planner.plan 拆分子查询"]
 
     Rewrite --> Recall
@@ -391,17 +414,17 @@ flowchart TB
 
     Recall --> Fuse["_fuse 加权融合"]
     Fuse --> Merge["_merge_exact_hits 合并精确命中"]
-    Merge --> Rerank["reranker.rerank 基础重排"]
-    Rerank --> Source["_apply_source_priority 来源优先级"]
-    Source --> Gate{"结果歧义或查询复杂？"}
-    Gate -->|是| LLMRerank["_llm_rerank_hits<br/>LLM 重排"]
+    Merge --> Source["_apply_source_priority 来源优先级"]
+    Source --> Floor["_apply_confidence_floor（可选）"]
+    Floor --> Rerank["专用 reranker（可选）<br/>提升、不裁剪"]
+    Rerank --> Gate{"chat 策略需要<br/>语义判断？"}
+    Gate -->|是| LLMRerank["chat LLM reranker<br/>提升、不裁剪"]
     Gate -->|否| Promote
     LLMRerank --> Promote["_promote_symbol_endpoints 符号端点提升"]
-    Promote --> Floor["_apply_confidence_floor 置信度下限"]
-    Floor --> Select["selector.select<br/>focused / coverage"]
+    Promote --> Select["selector.select<br/>focused / coverage"]
 
-    PathBoost --> Select
-    Select --> Out["最终命中（按融合分降序）"]
+    PathBoost --> Source
+    Select --> Out["最终上下文候选"]
 ```
 
 ## 测试

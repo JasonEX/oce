@@ -26,6 +26,8 @@
 - **indexing**: keep blobs retryable when an enabled path index cannot be written instead of marking an incomplete index ready
 - **llm**: preserve TLS verification through proxies, keep source queries out of logs, and degrade intent failures to heuristic routing
 - **llm**: fail locally when an enabled LLM feature has no usable credential
+- **monitoring**: retain buffered samples after transient persistence failures
+- **monitoring**: attribute chat-model token usage to rerank and query-rewrite stages
 
 ### Changed
 
@@ -34,7 +36,8 @@
 - **compose**: keep the Milvus data port internal to the service network
 - **retrieval**: use one canonical intent model and remove strategy options not connected to the pipeline
 - **retrieval**: preserve exact identifier recall for large checkpoints through relational or bounded-batch scope filtering
-- **retrieval**: gate LLM reranking by uncertainty and select focused or coverage context by query intent
+- **retrieval**: route queries from deterministic signals instead of a mandatory LLM intent classifier
+- **retrieval**: compose candidate-preserving dedicated and chat-LLM rerankers with structural adaptive routing, bounded fallback, and task-aware selection
 
 ## [0.2.0] - 2026-08-30
 

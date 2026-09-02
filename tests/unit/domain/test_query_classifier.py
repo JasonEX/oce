@@ -195,6 +195,10 @@ class TestBilingualSymmetry:
             QueryIntent.CALL_CHAIN,
         )
 
+    def test_english_referenced_query(self):
+        query = "Where is `get_providers` referenced?"
+        assert classify_query_intent(query) == QueryIntent.REFERENCE
+
     def test_english_overview_query(self):
         query = "the state management architecture of the app"
         assert classify_query_intent(query) == QueryIntent.OVERVIEW

@@ -6,21 +6,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Sequence
-
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.selector.protocols import SelectionMode
 
 
-_COMPLEX_INTENTS = {
+_SEMANTIC_INTENTS = {
     QueryIntent.CALL_CHAIN,
+    QueryIntent.FEATURE,
     QueryIntent.OVERVIEW,
     QueryIntent.COMPOUND,
 }
-_CONFIDENT_EXACT_SCORE = 0.95
-_CONFIDENT_PATH_SCORE = 0.80
-_LOW_CONFIDENCE_SCORE = 0.35
-_AMBIGUOUS_RELATIVE_MARGIN = 0.15
 
 
 @dataclass(frozen=True)
@@ -95,26 +90,30 @@ def get_strategy(intent: QueryIntent) -> RetrievalStrategy:
 
 def should_use_llm_rerank(
     intent: QueryIntent,
-    candidate_scores: Sequence[float],
+    candidate_count: int,
     *,
-    exact_confidence: float | None = None,
-    path_confidence: float | None = None,
+    policy: str = "adaptive",
+    has_exact_hits: bool = False,
+    has_path_hits: bool = False,
 ) -> bool:
-    """Escalate only ambiguous retrievals that can benefit from semantic judging."""
-    if len(candidate_scores) < 2:
-        return False
-    if (
-        intent == QueryIntent.SYMBOL
-        and (exact_confidence or 0.0) >= _CONFIDENT_EXACT_SCORE
-    ):
-        return False
-    if intent == QueryIntent.PATH and (path_confidence or 0.0) >= _CONFIDENT_PATH_SCORE:
-        return False
-    if intent in _COMPLEX_INTENTS:
-        return True
+    """Decide whether a candidate set benefits from global semantic judging.
 
-    top_score, second_score = candidate_scores[:2]
-    if top_score < _LOW_CONFIDENCE_SCORE:
+    Retrieval scores are deliberately excluded: dense cosine, RRF, exact, path, and
+    dedicated-reranker scores do not share a calibrated scale. ``adaptive`` instead
+    uses stable structural evidence. Exact symbol and path hits already have a strong
+    deterministic operator; reference queries preserve occurrence coverage. Feature,
+    flow, overview, and compound questions benefit from comparing snippet meaning.
+    """
+    if candidate_count < 2:
+        return False
+    if policy == "always":
         return True
-    relative_margin = (top_score - second_score) / max(abs(top_score), 1e-9)
-    return relative_margin < _AMBIGUOUS_RELATIVE_MARGIN
+    if policy != "adaptive":
+        raise ValueError(f"Unsupported LLM rerank policy: {policy}")
+    if intent == QueryIntent.REFERENCE:
+        return False
+    if intent == QueryIntent.SYMBOL:
+        return not has_exact_hits
+    if intent == QueryIntent.PATH:
+        return not has_path_hits
+    return intent in _SEMANTIC_INTENTS

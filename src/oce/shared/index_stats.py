@@ -54,6 +54,7 @@ class RetrievalRuntimeProfile:
     query_decomposition_enabled: bool = True
     api_rerank_enabled: bool = False
     llm_rerank_enabled: bool = False
+    llm_rerank_policy: str = "adaptive"
     query_rewrite_enabled: bool = False
 
 

@@ -9,8 +9,8 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - cAST/tree-sitter 语义切块
 - PostgreSQL/SQLite 存储元数据与 `symbol_occurrences` 精确标识符索引
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 已移除；路径索引独立维护
-- 检索主链路：dense + exact + path → source priority → 按需 LLM rerank → focused/coverage select
-- 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite/intent）+ status=active + 最小 priority 解析，取不到回落各自环境变量
+- 检索主链路：dense + exact + path → source priority / 召回过滤 → 专用 reranker → 按策略 chat-LLM reranker → focused/coverage select；两种 reranker 必须保留候选集
+- 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite）+ status=active + 最小 priority 解析，取不到回落各自环境变量
 - `index_profiles` 持久化不含密钥的 embedding/chunker/schema fingerprint；不兼容启动或热重载必须 fail closed，不得复用旧向量/切块
 - 运维面 `/admin/*` 用独立 `ADMIN_API_KEY`（空则回落 `API_KEY`）：凭据 CRUD/热重载、队列、GC、监控与索引统计
 - 监控子系统旁路采集调用/token/资源与检索阶段审计，落 metrics 表
