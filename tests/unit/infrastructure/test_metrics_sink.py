@@ -2,6 +2,7 @@
 
 用 StaticPool 的内存库让多个 session 共享同一连接（默认 :memory: 每连接独立库）。
 """
+
 from __future__ import annotations
 
 from sqlalchemy import func, select
@@ -48,15 +49,24 @@ async def test_flush_writes_all_three_kinds():
     try:
         sink = SqlMetricsSink(factory, flush_interval_seconds=999, max_buffer=100)
         sink.record_api_call(
-            ApiCallRecord(endpoint="/agents/codebase-retrieval", method="POST", status_code=200, latency_ms=12)
+            ApiCallRecord(
+                endpoint="/agents/codebase-retrieval",
+                method="POST",
+                status_code=200,
+                latency_ms=12,
+            )
         )
         sink.record_token_usage(
             TokenUsageRecord(kind="embed", model="m", total_tokens=10, credential_id=1)
         )
         sink.record_resource_sample(
             ResourceSampleRecord(
-                disk_data_bytes=1, disk_free_bytes=2, disk_total_bytes=3,
-                mem_rss_bytes=4, mem_percent=5.0, cpu_percent=6.0,
+                disk_data_bytes=1,
+                disk_free_bytes=2,
+                disk_total_bytes=3,
+                mem_rss_bytes=4,
+                mem_percent=5.0,
+                cpu_percent=6.0,
             )
         )
         await sink._flush_once()
@@ -72,10 +82,83 @@ async def test_flush_drains_buffer_no_double_write():
     factory, engine = await _make_factory()
     try:
         sink = SqlMetricsSink(factory, flush_interval_seconds=999, max_buffer=100)
-        sink.record_token_usage(TokenUsageRecord(kind="rerank", model="m", total_tokens=5))
+        sink.record_token_usage(
+            TokenUsageRecord(kind="rerank", model="m", total_tokens=5)
+        )
         await sink._flush_once()
         await sink._flush_once()  # 第二次缓冲已空，不应重复写
         assert await _count(factory, TokenUsageMetricModel) == 1
+    finally:
+        await engine.dispose()
+
+
+async def test_failed_flush_retains_records_for_later_flush():
+    factory, engine = await _make_factory()
+
+    class FailingSession:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        def add_all(self, rows):
+            return None
+
+        async def commit(self):
+            raise RuntimeError("database busy")
+
+    try:
+        sink = SqlMetricsSink(lambda: FailingSession(), flush_interval_seconds=999)
+        sink.record_api_call(
+            ApiCallRecord(
+                endpoint="/health", method="GET", status_code=200, latency_ms=1
+            )
+        )
+
+        await sink._flush_once()
+        assert await _count(factory, ApiCallMetricModel) == 0
+
+        sink._session_factory = factory
+        await sink._flush_once()
+        assert await _count(factory, ApiCallMetricModel) == 1
+    finally:
+        await engine.dispose()
+
+
+async def test_failed_flush_keeps_newest_records_with_bounded_buffer():
+    factory, engine = await _make_factory()
+    sink = SqlMetricsSink(factory, flush_interval_seconds=999, max_buffer=2)
+    older = [
+        ApiCallRecord(
+            endpoint=f"/old-{index}", method="GET", status_code=200, latency_ms=1
+        )
+        for index in range(2)
+    ]
+    batch = sink._drain()
+    assert len(batch) == 0
+
+    for record in older:
+        sink.record_api_call(record)
+    batch = sink._drain()
+    sink.record_api_call(
+        ApiCallRecord(endpoint="/new", method="GET", status_code=200, latency_ms=1)
+    )
+    sink._restore(batch)
+
+    try:
+        await sink._flush_once()
+        async with factory() as session:
+            endpoints = list(
+                (
+                    await session.execute(
+                        select(ApiCallMetricModel.endpoint).order_by(
+                            ApiCallMetricModel.id
+                        )
+                    )
+                ).scalars()
+            )
+        assert endpoints == ["/old-1", "/new"]
     finally:
         await engine.dispose()
 
@@ -86,7 +169,9 @@ async def test_start_stop_flushes_remaining():
         sink = SqlMetricsSink(factory, flush_interval_seconds=999, max_buffer=100)
         await sink.start()
         sink.record_api_call(
-            ApiCallRecord(endpoint="/health", method="GET", status_code=200, latency_ms=1)
+            ApiCallRecord(
+                endpoint="/health", method="GET", status_code=200, latency_ms=1
+            )
         )
         await sink.stop()  # stop 前应 flush 掉剩余
         assert await _count(factory, ApiCallMetricModel) == 1
@@ -100,7 +185,9 @@ async def test_buffer_maxlen_drops_oldest():
         sink = SqlMetricsSink(factory, flush_interval_seconds=999, max_buffer=2)
         for i in range(5):
             sink.record_api_call(
-                ApiCallRecord(endpoint=f"/e{i}", method="GET", status_code=200, latency_ms=i)
+                ApiCallRecord(
+                    endpoint=f"/e{i}", method="GET", status_code=200, latency_ms=i
+                )
             )
         await sink._flush_once()
         assert await _count(factory, ApiCallMetricModel) == 2  # maxlen=2，仅留最新两条

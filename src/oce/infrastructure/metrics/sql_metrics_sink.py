@@ -1,11 +1,13 @@
 """监控指标的异步落库 sink：内存缓冲 + 后台批量 flush。
 
-写库失败只记日志、丢弃该批，不重试也不上抛——监控是旁路，绝不影响主链路。
+写库失败只记日志并把样本留在有界缓冲中，绝不把异常传播到主链路。
 """
+
 from __future__ import annotations
 
 import asyncio
 from collections import deque
+from dataclasses import dataclass
 from typing import Callable
 
 from loguru import logger
@@ -23,6 +25,19 @@ from oce.shared.metrics import (
     RetrievalMetricRecord,
     TokenUsageRecord,
 )
+
+
+@dataclass(frozen=True)
+class _MetricBatch:
+    api: list[ApiCallRecord]
+    token: list[TokenUsageRecord]
+    resource: list[ResourceSampleRecord]
+    retrieval: list[RetrievalMetricRecord]
+
+    def __len__(self) -> int:
+        return (
+            len(self.api) + len(self.token) + len(self.resource) + len(self.retrieval)
+        )
 
 
 class SqlMetricsSink:
@@ -86,11 +101,37 @@ class SqlMetricsSink:
             except Exception as exc:
                 logger.warning("metrics flush loop error: {}", exc)
 
-    def _drain(self) -> list:
-        """原子取出三类缓冲并清空，构造成待插入的 ORM 行。"""
+    def _drain(self) -> _MetricBatch:
+        """原子取出缓冲；失败时可按原始 record 安全放回。"""
+        batch = _MetricBatch(
+            api=list(self._api),
+            token=list(self._token),
+            resource=list(self._resource),
+            retrieval=list(self._retrieval),
+        )
+        self._api.clear()
+        self._token.clear()
+        self._resource.clear()
+        self._retrieval.clear()
+        return batch
+
+    @staticmethod
+    def _restore_queue(queue: deque, drained: list) -> None:
+        """合并失败批次和期间新到样本，超限时保留最新记录。"""
+        current = list(queue)
+        queue.clear()
+        queue.extend([*drained, *current])
+
+    def _restore(self, batch: _MetricBatch) -> None:
+        self._restore_queue(self._api, batch.api)
+        self._restore_queue(self._token, batch.token)
+        self._restore_queue(self._resource, batch.resource)
+        self._restore_queue(self._retrieval, batch.retrieval)
+
+    @staticmethod
+    def _to_rows(batch: _MetricBatch) -> list:
         rows: list = []
-        while self._api:
-            r = self._api.popleft()
+        for r in batch.api:
             rows.append(
                 ApiCallMetricModel(
                     ts=r.ts,
@@ -101,8 +142,7 @@ class SqlMetricsSink:
                     error_type=r.error_type,
                 )
             )
-        while self._token:
-            r = self._token.popleft()
+        for r in batch.token:
             rows.append(
                 TokenUsageMetricModel(
                     ts=r.ts,
@@ -114,8 +154,7 @@ class SqlMetricsSink:
                     total_tokens=r.total_tokens,
                 )
             )
-        while self._resource:
-            r = self._resource.popleft()
+        for r in batch.resource:
             rows.append(
                 ResourceSampleModel(
                     ts=r.ts,
@@ -127,8 +166,7 @@ class SqlMetricsSink:
                     cpu_percent=r.cpu_percent,
                 )
             )
-        while self._retrieval:
-            r = self._retrieval.popleft()
+        for r in batch.retrieval:
             s = r.stages
             rows.append(
                 RetrievalMetricModel(
@@ -140,7 +178,6 @@ class SqlMetricsSink:
                     intent=r.intent,
                     path_boosted=r.path_boosted,
                     query_text=r.query_text,
-                    intent_ms=s.get("intent"),
                     rewrite_ms=s.get("rewrite"),
                     dense_ms=s.get("dense"),
                     exact_ms=s.get("exact"),
@@ -153,12 +190,17 @@ class SqlMetricsSink:
         return rows
 
     async def _flush_once(self) -> None:
-        rows = self._drain()
-        if not rows:
+        batch = self._drain()
+        if not len(batch):
             return
         try:
             async with self._session_factory() as session:
+                rows = self._to_rows(batch)
                 session.add_all(rows)
                 await session.commit()
         except Exception as exc:
-            logger.warning("metrics flush failed, dropped {} rows: {}", len(rows), exc)
+            self._restore(batch)
+            logger.warning(
+                "metrics flush failed; retained buffered rows for a later flush: {}",
+                exc,
+            )
