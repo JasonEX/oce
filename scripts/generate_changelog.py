@@ -103,10 +103,11 @@ def group_commits(commits: list[tuple[str, str, str]]) -> dict[str, list[str]]:
         breaking = bool(m.group("breaking")) or "BREAKING CHANGE:" in body.upper()
         entry = f"- **{scope}**: {desc}" if scope else f"- {desc}"
         if breaking:
-            groups["Breaking Changes"].append(entry)
+            if entry not in groups["Breaking Changes"]:
+                groups["Breaking Changes"].append(entry)
         else:
             group = _GROUP_BY_TYPE.get(ctype)
-            if group:
+            if group and entry not in groups[group]:
                 groups[group].append(entry)
     return {k: v for k, v in groups.items() if v}
 
