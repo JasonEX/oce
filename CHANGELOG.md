@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-02
+
 ### Added
 
 - **evaluation**: add a pinned 30-query symbol/path/reference suite that verifies adaptive rerank routes and stage latency against the production client and local audit store
