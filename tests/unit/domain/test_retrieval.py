@@ -635,9 +635,7 @@ class TestRetrievalPipeline:
         assert exact_store.identifiers == ("target_symbol",)
 
     def test_call_chain_exact_candidates_fill_window_without_overwriting_scores(self):
-        class WindowedLLMReranker:
-            max_candidates = 30
-
+        rerank_window = 30
         semantic = [
             SearchHit(
                 blob_name=str(index).zfill(64),
@@ -658,7 +656,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore(),
             exact_store=FakeExactSearchStore(),
-            llm_reranker=WindowedLLMReranker(),
+            rerank_window=rerank_window,
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
@@ -673,7 +671,7 @@ class TestRetrievalPipeline:
         exact_position = next(
             index for index, hit in enumerate(merged) if hit.path == exact_only.path
         )
-        assert exact_position < WindowedLLMReranker.max_candidates
+        assert exact_position < rerank_window
 
     async def test_confident_exact_symbol_skips_llm_and_promotes_endpoint(self):
         class HelperFirstLLMReranker:

@@ -36,7 +36,7 @@ from oce.shared.metrics_read import (
 
 class StubApplication:
     async def reload_embedding_credentials(self):
-        return SimpleNamespace(reloaded=True, pool_size=1, reason=None)
+        return SimpleNamespace(reloaded=True, reason=None)
 
     async def find_missing(self, names):
         return SimpleNamespace(unknown=("missing",), nonindexed=("pending",))
@@ -186,7 +186,7 @@ async def test_reload_embedding_credentials_contract():
         )
 
     assert response.status_code == 200
-    assert response.json() == {"reloaded": True, "pool_size": 1, "reason": None}
+    assert response.json() == {"reloaded": True, "reason": None}
 
 
 async def test_retrieval_endpoints_require_bearer_token():

@@ -14,6 +14,7 @@ from oce.shared.config.settings import (
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_profile import (
     EmbeddingIndexProfile,
+    IndexProfile,
     StoredIndexProfile,
 )
 
@@ -199,6 +200,30 @@ async def test_stored_profile_is_reported_as_unverified_before_runtime_resolutio
     assert stats.state == "stored_unverified"
     assert stats.fingerprint == profile.fingerprint
     assert stats.embedding_dimensions == 1024
+
+
+async def test_unparsable_stored_profile_reports_fingerprint_only():
+    store = Store()
+    await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())
+    assert store.stored is not None
+    store.stored = StoredIndexProfile(store.stored.fingerprint, '{"schema_version": 1}')
+
+    stats = await IndexLifecycleManager(store, Settings()).index_profile_stats()
+
+    assert stats.state == "stored_unverified"
+    assert stats.fingerprint == store.stored.fingerprint
+    assert stats.schema_version is None
+    assert stats.embedding_model is None
+
+
+def test_index_profile_round_trips_through_json():
+    profile = build_index_profile(Settings(), _embedding())
+
+    restored = IndexProfile.from_json(profile.canonical_json())
+
+    assert restored == profile
+    assert IndexProfile.from_json("not json") is None
+    assert IndexProfile.from_json("[]") is None
 
 
 async def test_corrupted_stored_profile_fails_closed():

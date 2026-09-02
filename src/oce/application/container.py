@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from functools import lru_cache
+from collections.abc import Sequence
+from functools import lru_cache, partial
 
 from loguru import logger
 
@@ -101,7 +102,7 @@ from oce.shared.logging import DATA_DIR_ENV
 from oce.shared.metrics import MetricsSink, NoopMetricsSink, TokenUsageRecord
 
 
-def record_token_usage(
+async def record_token_usage(
     metrics: MetricsSink,
     credential_id: int,
     kind: str,
@@ -109,7 +110,7 @@ def record_token_usage(
     prompt_tokens: int,
     completion_tokens: int,
 ) -> None:
-    """把 embedder/reranker/llm 的真实用量桥接到 sink。
+    """把 embedder/reranker/llm 的真实用量桥接到 sink（UsageCallback 形状）。
 
     credential_id=0（无凭证，如 env 回落）归一为 None；旁路容错：任何异常只记日志，
     绝不抛回主链路。
@@ -135,36 +136,41 @@ class _CredentialRuntime:
     def __init__(
         self,
         embedder: CredentialConfiguredEmbedder,
-        reranker: CredentialConfiguredReranker,
-        llm_clients: tuple[CredentialConfiguredLLMClient, ...] | list = (),
+        reranker: CredentialConfiguredReranker | None = None,
+        llm_clients: Sequence[CredentialConfiguredLLMClient] = (),
         query_cache: QueryCachingEmbedder | None = None,
     ) -> None:
         self._embedder = embedder
         self._reranker = reranker
-        self._llm_clients = [client for client in llm_clients if client is not None]
+        self._llm_clients = tuple(llm_clients)
         self._query_cache = query_cache
 
-    async def reload(self) -> int:
+    async def reload(self) -> None:
         embedding_replacement = await self._embedder.prepare_reload()
-        try:
-            rerank_replacement = await self._reranker.prepare_reload()
-        except Exception:
-            await self._embedder.discard_prepared(embedding_replacement)
-            raise
+        rerank_replacement = None
+        if self._reranker is not None:
+            try:
+                rerank_replacement = await self._reranker.prepare_reload()
+            except Exception:
+                await self._embedder.discard_prepared(embedding_replacement)
+                raise
         try:
             await self._embedder.validate_prepared(embedding_replacement)
         except Exception:
             await self._embedder.discard_prepared(embedding_replacement)
-            await self._reranker.discard_prepared(rerank_replacement)
+            if self._reranker is not None:
+                await self._reranker.discard_prepared(rerank_replacement)
             raise
         try:
-            pool_size = await self._embedder.activate_prepared(embedding_replacement)
+            await self._embedder.activate_prepared(embedding_replacement)
         except Exception:
-            await self._reranker.discard_prepared(rerank_replacement)
+            if self._reranker is not None:
+                await self._reranker.discard_prepared(rerank_replacement)
             raise
         if self._query_cache is not None:
             await self._query_cache.clear_query_cache()
-        await self._reranker.activate_prepared(rerank_replacement)
+        if self._reranker is not None:
+            await self._reranker.activate_prepared(rerank_replacement)
         # LLM 客户端无预备/激活两阶段（reload 仅原子替换 delegate）；旁路容错，
         # 单个刷新失败不回滚已激活的 embedder/reranker，只记日志。
         for client in self._llm_clients:
@@ -172,7 +178,6 @@ class _CredentialRuntime:
                 await client.reload()
             except Exception as exc:
                 logger.warning("LLM client reload failed: {}", exc)
-        return pool_size
 
 
 class Container:
@@ -209,7 +214,9 @@ class Container:
             else None
         )
         # 监控关闭时传 None，采集侧判空直接跳过（零开销）。
-        token_usage_cb = self._record_token_usage if monitoring.enabled else None
+        token_usage_cb = (
+            partial(record_token_usage, self.metrics) if monitoring.enabled else None
+        )
 
         self.search_store = Milvus3SearchStore(settings.milvus, dense_dim=dense_dim)
         self.path_index: PathIndexClient | None = None
@@ -239,19 +246,23 @@ class Container:
             max_entries=settings.embedding.query_cache_max_entries,
             ttl_seconds=settings.embedding.query_cache_ttl_seconds,
         )
-        self.reranker = CredentialConfiguredReranker(
-            async_session_factory,
-            settings.rerank,
-            fallback_embedding_key=(
-                settings.embedding.api_key.get_secret_value()
-                if settings.embedding.api_key is not None
-                else None
-            ),
-            on_usage=token_usage_cb,
-        )
+        # RERANK_ENABLED 是数据外发授权：未授权时不构造客户端，pipeline 与审计据此
+        # 区分「未启用」和「按策略跳过」。
+        self.reranker: CredentialConfiguredReranker | None = None
+        if settings.rerank.enabled:
+            self.reranker = CredentialConfiguredReranker(
+                async_session_factory,
+                settings.rerank,
+                fallback_embedding_key=(
+                    settings.embedding.api_key.get_secret_value()
+                    if settings.embedding.api_key is not None
+                    else None
+                ),
+                on_usage=token_usage_cb,
+            )
 
         # LLM 重排与查询改写各自按 kind 解析凭证（env 兜底），可分别配置。
-        llm_clients: list[CredentialConfiguredLLMClient] = []
+        self.llm_clients: list[CredentialConfiguredLLMClient] = []
         self.llm_reranker: LLMReranker | None = None
         if settings.llm.rerank_enabled:
             rerank_llm = CredentialConfiguredLLMClient(
@@ -261,7 +272,7 @@ class Container:
                 fallback_model=settings.llm.model,
                 on_usage=token_usage_cb,
             )
-            llm_clients.append(rerank_llm)
+            self.llm_clients.append(rerank_llm)
             self.llm_reranker = LLMReranker(
                 client=rerank_llm,
                 model=settings.llm.model,
@@ -279,7 +290,7 @@ class Container:
                 fallback_model=settings.retrieval.query_rewrite_model,
                 on_usage=token_usage_cb,
             )
-            llm_clients.append(rewrite_llm)
+            self.llm_clients.append(rewrite_llm)
             self.query_rewriter = QueryRewriter(
                 client=rewrite_llm,
                 model=settings.retrieval.query_rewrite_model,
@@ -288,7 +299,7 @@ class Container:
         credential_runtime = _CredentialRuntime(
             self.embedding_runtime,
             self.reranker,
-            llm_clients,
+            self.llm_clients,
             query_cache=self.embedder,
         )
 
@@ -394,9 +405,13 @@ class Container:
                 RetrievalPipeline(
                     embedder=self.embedder,
                     store=self.search_store,
-                    # 未授权时不注入，pipeline 与审计据此区分「未启用」和「按策略跳过」。
-                    reranker=self.reranker if settings.rerank.enabled else None,
+                    reranker=self.reranker,
                     llm_reranker=self.llm_reranker,
+                    rerank_window=(
+                        settings.llm.max_candidates
+                        if self.llm_reranker is not None
+                        else None
+                    ),
                     query_rewriter=self.query_rewriter,
                     path_store=self.path_index,
                     path_content_store=self.path_content_store,
@@ -470,18 +485,6 @@ class Container:
         await self.embedding_runtime.activate_prepared(replacement)
         return True
 
-    async def _record_token_usage(
-        self,
-        credential_id: int,
-        kind: str,
-        model: str,
-        prompt_tokens: int,
-        completion_tokens: int,
-    ) -> None:
-        record_token_usage(
-            self.metrics, credential_id, kind, model, prompt_tokens, completion_tokens
-        )
-
     async def close(self) -> None:
         if self.worker is not None:
             await self.worker.stop()
@@ -494,7 +497,10 @@ class Container:
         if self.path_index is not None:
             await self.path_index.close()
         await self.embedder.close()
-        await self.reranker.close()
+        if self.reranker is not None:
+            await self.reranker.close()
+        for client in self.llm_clients:
+            await client.close()
         if self.queue is not None:
             await self.queue.close()
 

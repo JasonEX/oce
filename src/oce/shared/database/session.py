@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 from oce.shared.config import get_settings
 from oce.shared.config.settings import DatabaseSettings
@@ -36,4 +36,7 @@ async_session_factory = async_sessionmaker(
     class_=AsyncSession,
     expire_on_commit=False,
 )
-Base = declarative_base()
+
+
+class Base(DeclarativeBase):
+    """Declarative base shared by every metadata and monitoring table."""

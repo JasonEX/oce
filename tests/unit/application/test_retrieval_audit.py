@@ -52,7 +52,8 @@ class TestPipelineAuditFill:
             "main entry", SearchScope(frozenset({"h1", "h2"})), audit=audit
         )
 
-        # 无查询改写器 → 只跑核心阶段；stage() 应填充这些键
+        # 无查询改写器 → 只跑核心阶段；query embedding 与向量召回分开计时
+        assert "embed" in audit.stages
         assert "dense" in audit.stages
         assert "select" in audit.stages
         assert all(v >= 0 for v in audit.stages.values())

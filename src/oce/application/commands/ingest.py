@@ -124,8 +124,6 @@ class EmbedPendingCommandHandler:
 
         embedded = 0
         for group in groups:
-            if group == ():
-                continue
             async with self._uow_factory() as uow:
                 pipeline = self._pipeline_factory(uow)
                 # 失败时 pipeline 已把 blob 置 error，提交后再抛出，错误状态才可见。

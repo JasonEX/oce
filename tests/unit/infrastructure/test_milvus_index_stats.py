@@ -33,14 +33,22 @@ async def test_read_collection_stats_does_not_initialize_or_create(
     mock_client.load_collection.assert_not_called()
 
 
-@patch("oce.infrastructure.milvus3.search_store.Milvus3Client")
-async def test_index_stats_report_collection_cardinality(mock_client_class):
+def _remote_milvus(client_class, *, exists: bool, row_count: int) -> Mock:
+    mock_client = client_class.return_value
+    mock_client.has_collection = AsyncMock(return_value=exists)
+    mock_client.get_collection_stats = AsyncMock(
+        return_value={"row_count": str(row_count)}
+    )
+    return mock_client
+
+
+@patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
+async def test_index_stats_report_collection_cardinality(client_class):
     settings = MilvusSettings(
         endpoint="http://localhost:19530",
         collection_name="test_collection",
     )
-    mock_client = mock_client_class.return_value
-    mock_client.read_collection_stats = AsyncMock(return_value=(True, 12))
+    mock_client = _remote_milvus(client_class, exists=True, row_count=12)
     store = Milvus3SearchStore(settings, dense_dim=8)
 
     stats = await store.index_stats()
@@ -48,34 +56,40 @@ async def test_index_stats_report_collection_cardinality(mock_client_class):
     assert stats.available is True
     assert stats.collection_name == settings.collection_name
     assert stats.entities == 12
+    mock_client.create_collection.assert_not_called()
+    mock_client.load_collection.assert_not_called()
 
 
-@patch("oce.infrastructure.milvus3.search_store.Milvus3Client")
-async def test_dense_data_probe_uses_collection_cardinality(mock_client_class):
-    mock_client = mock_client_class.return_value
-    mock_client.read_collection_stats = AsyncMock(return_value=(True, 3))
-    store = Milvus3SearchStore(MilvusSettings(), dense_dim=8)
+@patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
+async def test_dense_data_probe_uses_collection_cardinality(client_class):
+    _remote_milvus(client_class, exists=True, row_count=3)
+    store = Milvus3SearchStore(
+        MilvusSettings(endpoint="http://localhost:19530"), dense_dim=8
+    )
 
     assert await store.has_index_data() is True
 
 
 @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
 async def test_uninitialized_path_stats_do_not_create_collection(client_class):
+    """Path and dense stats share one read-only semantics: report, never create."""
     settings = MilvusSettings(
         endpoint="http://localhost:19530",
         path_collection_name="test_paths",
     )
+    mock_client = _remote_milvus(client_class, exists=False, row_count=0)
     client = PathIndexClient(settings, dense_dim=8)
 
     stats = await client.index_stats()
 
     assert stats.enabled is True
-    assert stats.available is False
+    assert stats.available is True
     assert stats.collection_name == "test_paths"
-    assert stats.error_type == "NotInitialized"
+    assert stats.exists is False
+    assert stats.entities == 0
     assert client._initialized is False
-    client_class.return_value.create_collection.assert_not_called()
-    client_class.return_value.load_collection.assert_not_called()
+    mock_client.create_collection.assert_not_called()
+    mock_client.load_collection.assert_not_called()
 
 
 @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")

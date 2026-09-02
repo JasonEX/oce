@@ -10,9 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from oce.domain.services.reranker import NoopReranker, Reranker
 from oce.domain.services.search import SearchHit
 from oce.infrastructure.delegate_runtime import SwappableDelegate
-from oce.infrastructure.embed.openai_reranker import OpenAIReranker, UsageCallback
+from oce.infrastructure.embed.openai_reranker import OpenAIReranker
 from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import RerankSettings
+from oce.shared.metrics import UsageCallback
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,12 @@ class RerankRuntimeConfig:
 
 
 class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
+    """Resolve the active rerank credential; without a usable key it stays a no-op.
+
+    Only constructed when ``RERANK_ENABLED`` authorizes the egress, so the
+    ``enabled`` flag is not re-checked here.
+    """
+
     def __init__(
         self,
         session_factory: Callable[[], AsyncSession],
@@ -52,8 +59,6 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
         return self._build_delegate(await self._resolve_config())
 
     async def _resolve_config(self) -> RerankRuntimeConfig | None:
-        if not self._fallback.enabled:
-            return None
         credential = await resolve_active_credential(
             self._session_factory,
             "rerank",

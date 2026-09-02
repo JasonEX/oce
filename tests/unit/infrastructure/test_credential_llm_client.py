@@ -86,7 +86,9 @@ async def test_falls_back_to_env_without_credential():
     assert config.tpm_limit == 12_345
     assert config.timeout_seconds == 17
     assert config.credential_id == 0
-    assert client._build_delegate(config)._usage_kind == "query_rewrite"
+    delegate = client._build_delegate(config)
+    assert delegate._usage_kind == "query_rewrite"
+    await delegate.close()
     await engine.dispose()
 
 
@@ -125,6 +127,7 @@ async def test_build_delegate_wires_credential_id_and_usage():
 
     assert delegate._credential_id == 0
     assert delegate._on_usage is _cb
+    await delegate.close()
     await engine.dispose()
 
 
@@ -152,6 +155,9 @@ async def test_chat_model_precedence():
             captured["model"] = model
             return "ok"
 
+        async def close(self) -> None:
+            return None
+
     client = CredentialConfiguredLLMClient(
         "llm_rerank",
         sessions,
@@ -163,4 +169,78 @@ async def test_chat_model_precedence():
     # 凭证 model 存在 → 覆盖调用方传入的 model
     await client.chat([{"role": "user", "content": "x"}], model="call-model")
     assert captured["model"] == "db-model"
+    await client.close()
+    await engine.dispose()
+
+
+async def test_reload_defers_closing_in_flight_client_until_release(monkeypatch):
+    engine, sessions = await _runtime()
+    client = CredentialConfiguredLLMClient(
+        "llm_rerank",
+        sessions,
+        LLMSettings(api_key="env-key"),
+        fallback_model="env-model",
+    )
+
+    class _FakeDelegate:
+        def __init__(self) -> None:
+            self.closed = 0
+
+        async def close(self) -> None:
+            self.closed += 1
+
+    delegates: list[_FakeDelegate] = []
+
+    def build(_config):
+        delegate = _FakeDelegate()
+        delegates.append(delegate)
+        return delegate
+
+    monkeypatch.setattr(client, "_build_delegate", build)
+    active = await client._acquire()
+
+    await client.reload()
+
+    assert len(delegates) == 2
+    assert delegates[0].closed == 0
+    await client._release(active)
+    assert delegates[0].closed == 1
+
+    await client.close()
+    assert delegates[1].closed == 1
+    await engine.dispose()
+
+
+async def test_reload_closes_idle_client_immediately(monkeypatch):
+    engine, sessions = await _runtime()
+    client = CredentialConfiguredLLMClient(
+        "query_rewrite",
+        sessions,
+        LLMSettings(api_key="env-key"),
+        fallback_model="env-model",
+    )
+
+    class _FakeDelegate:
+        def __init__(self) -> None:
+            self.closed = 0
+
+        async def close(self) -> None:
+            self.closed += 1
+
+    delegates: list[_FakeDelegate] = []
+
+    def build(_config):
+        delegate = _FakeDelegate()
+        delegates.append(delegate)
+        return delegate
+
+    monkeypatch.setattr(client, "_build_delegate", build)
+    active = await client._acquire()
+    await client._release(active)
+
+    await client.reload()
+
+    assert delegates[0].closed == 1
+    await client.close()
+    assert delegates[1].closed == 1
     await engine.dispose()

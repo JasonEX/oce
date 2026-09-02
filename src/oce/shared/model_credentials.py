@@ -37,34 +37,13 @@ class CredentialRecord:
     updated_at: datetime | None
 
 
-@dataclass(frozen=True)
-class CredentialCreate:
-    kind: str
-    name: str
-    api_key: str
-    provider: str | None = None
-    status: str = "active"
-    priority: int = 100
-    endpoint: str | None = None
-    model: str | None = None
-    timeout_seconds: int = 30
-    note: str | None = None
-    dimensions: int | None = None
-    max_batch_size: int | None = None
-    max_batch_chars: int | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    top_n: int | None = None
-    min_score: float | None = None
-    tpm_limit: int | None = None
-
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class CredentialPatch:
     """Field overrides in which ``None`` keeps the existing value.
 
     Used both for partial updates and for cloning: when duplicating, ``None``
     inherits the source row, including reuse of the source API key.
+    ``CredentialCreate`` shares this field set so the two cannot drift apart.
     """
 
     kind: str | None = None
@@ -85,6 +64,18 @@ class CredentialPatch:
     top_n: int | None = None
     min_score: float | None = None
     tpm_limit: int | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class CredentialCreate(CredentialPatch):
+    """A complete new credential: the identifying fields are required here."""
+
+    kind: str
+    name: str
+    api_key: str
+    status: str = "active"
+    priority: int = 100
+    timeout_seconds: int = 30
 
 
 class CredentialAdminStore(Protocol):

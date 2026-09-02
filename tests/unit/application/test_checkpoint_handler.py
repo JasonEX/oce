@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from oce.application.commands.checkpoint import (
     CheckpointCommand,
     CheckpointCommandHandler,
 )
-from oce.domain.chain.chain import Chain
 from oce.shared.errors import InvalidCheckpointTokenError, NeedsResetError
 from tests.unit.application.fakes import FakeUnitOfWorkFactory
 
@@ -53,7 +54,7 @@ class TestCheckpointCommandHandler:
         assert members == {"b"}
 
     async def test_chain_missing_raises_needs_reset(self, handler):
-        token = f"{Chain.create(['x']).chain_id}:1"  # 链不在 repo 里
+        token = f"{uuid.uuid4().hex}:1"  # 链不在 repo 里
 
         with pytest.raises(NeedsResetError):
             await handler.handle(

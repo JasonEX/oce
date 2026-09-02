@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import asyncio
 import math
-from collections.abc import Awaitable, Callable
 
 import httpx
 from openai import AsyncOpenAI
 
-# 用量回调：(credential_id, kind, model, prompt_tokens, completion_tokens)
-UsageCallback = Callable[[int, str, str, int, int], Awaitable[None]]
+from oce.shared.metrics import UsageCallback, coerce_token_count
+
+_EMBEDDINGS_SUFFIX = "/embeddings"
+
+
+def embedding_base_url(endpoint: str) -> str:
+    """The OpenAI-compatible API base without the ``/embeddings`` resource suffix."""
+    base_url = endpoint.rstrip("/")
+    if base_url.endswith(_EMBEDDINGS_SUFFIX):
+        base_url = base_url[: -len(_EMBEDDINGS_SUFFIX)]
+    return base_url
 
 
 class OpenAIEmbedder:
@@ -66,16 +74,13 @@ class OpenAIEmbedder:
         proxy: str | None = None,
         query_instruction: str = "",
     ) -> OpenAIEmbedder:
-        base_url = endpoint.rstrip("/")
-        if base_url.endswith("/embeddings"):
-            base_url = base_url[: -len("/embeddings")]
         http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout),
             limits=httpx.Limits(max_connections=max_concurrency * 2),
             proxy=proxy,
         )
         client = AsyncOpenAI(
-            base_url=base_url,
+            base_url=embedding_base_url(endpoint),
             api_key=api_key,
             timeout=timeout,
             http_client=http_client,
@@ -210,7 +215,7 @@ class OpenAIEmbedder:
         if any(len(vector) != self._dimensions for vector in vectors):
             raise RuntimeError("Embedding response dimension mismatch")
         if self._on_usage is not None:
-            tokens = int(getattr(response.usage, "total_tokens", 0) or 0)
+            tokens = coerce_token_count(getattr(response.usage, "total_tokens", 0))
             # embed 无 prompt/completion 之分：总量记入 prompt，completion=0
             await self._on_usage(self._credential_id, "embed", self._model, tokens, 0)
         return vectors

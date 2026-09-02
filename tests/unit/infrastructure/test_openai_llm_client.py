@@ -23,19 +23,19 @@ def _fake_response(payload: dict):
 
 
 class _FakeAsyncClient:
-    """够 chat() 用的 httpx.AsyncClient 替身：async 上下文 + post 返回预置响应。"""
+    """够 chat() 用的长连接 httpx.AsyncClient 替身。"""
 
     def __init__(self, payload: dict, **_: object) -> None:
         self._payload = payload
-
-    async def __aenter__(self) -> _FakeAsyncClient:
-        return self
-
-    async def __aexit__(self, *_: object) -> bool:
-        return False
+        self.closed = False
+        self.posts = 0
 
     async def post(self, url, json=None, headers=None):
+        self.posts += 1
         return _fake_response(self._payload)
+
+    async def aclose(self) -> None:
+        self.closed = True
 
 
 def _patch_httpx(monkeypatch, payload: dict) -> None:
@@ -142,3 +142,25 @@ async def test_proxy_does_not_disable_tls_verification(monkeypatch):
     assert await client.chat([{"role": "user", "content": "hi"}], model="m") == "hi"
     assert captured["proxy"] == "http://proxy.test:8080"
     assert "verify" not in captured
+
+
+@pytest.mark.asyncio
+async def test_reuses_connection_pool_and_closes_it(monkeypatch):
+    instances: list[_FakeAsyncClient] = []
+    payload = {"choices": [{"message": {"content": "hi"}}]}
+
+    def factory(**kwargs):
+        instance = _FakeAsyncClient(payload, **kwargs)
+        instances.append(instance)
+        return instance
+
+    monkeypatch.setattr(llm_mod.httpx, "AsyncClient", factory)
+    client = OpenAICompatibleLLMClient(api_key="sk")
+
+    await client.chat([{"role": "user", "content": "one"}], model="m")
+    await client.chat([{"role": "user", "content": "two"}], model="m")
+    await client.close()
+
+    assert len(instances) == 1
+    assert instances[0].posts == 2
+    assert instances[0].closed is True

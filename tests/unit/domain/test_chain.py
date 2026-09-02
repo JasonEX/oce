@@ -6,65 +6,22 @@ from oce.domain.chain.chain import Chain
 from tests.conftest import make_chain, make_sha256
 
 
-class TestChainCreation:
-    """测试 Chain 创建"""
-
-    def test_create_chain_with_factory(self):
-        """使用工厂方法创建 Chain"""
+class TestChainInvariants:
+    def test_members_are_kept_as_given(self):
         members = [make_sha256("file1"), make_sha256("file2")]
 
-        chain = Chain.create(members)
+        chain = make_chain(members=members)
 
-        assert chain.chain_id is not None
         assert chain.version == 1
-        assert len(chain.members) == 2
+        assert chain.members == set(members)
 
-    def test_create_chain_with_invalid_uuid(self):
-        """创建 Chain 时 chain_id 格式非法应抛异常"""
+    def test_invalid_uuid_is_rejected(self):
         with pytest.raises(ValueError, match="Invalid chain_id"):
-            Chain(
-                chain_id="not-a-uuid",
-                version=1,
-            )
+            Chain(chain_id="not-a-uuid", version=1)
 
-
-class TestCheckpointOperations:
-    """测试 Checkpoint 操作"""
-
-    def test_apply_checkpoint_add_members(self):
-        """应用 Checkpoint - 添加成员"""
-        chain = make_chain(members=[make_sha256("file1")])
-        initial_version = chain.version
-
-        new_blob = make_sha256("file2")
-        chain.apply_checkpoint(added=[new_blob], deleted=[])
-
-        assert new_blob in chain.members
-        assert chain.version == initial_version + 1
-
-    def test_apply_checkpoint_delete_members(self):
-        """应用 Checkpoint - 删除成员"""
-        blob1 = make_sha256("file1")
-        blob2 = make_sha256("file2")
-        chain = make_chain(members=[blob1, blob2])
-
-        chain.apply_checkpoint(added=[], deleted=[blob1])
-
-        assert blob1 not in chain.members
-        assert blob2 in chain.members
-
-    def test_apply_checkpoint_mixed_operations(self):
-        """应用 Checkpoint - 混合操作"""
-        blob1 = make_sha256("file1")
-        blob2 = make_sha256("file2")
-        blob3 = make_sha256("file3")
-
-        chain = make_chain(members=[blob1, blob2])
-        chain.apply_checkpoint(added=[blob3], deleted=[blob1])
-
-        assert blob1 not in chain.members
-        assert blob2 in chain.members
-        assert blob3 in chain.members
+    def test_version_below_one_is_rejected(self):
+        with pytest.raises(ValueError, match="Invalid version"):
+            make_chain(version=0)
 
 
 class TestCheckpointToken:

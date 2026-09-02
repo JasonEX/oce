@@ -35,37 +35,33 @@ class QueryNotRegisteredError(ApplicationError):
         )
 
 
-class CommandBus:
+class _MessageBus:
+    """消息类型 → handler 的注册分发；命令与查询只在未注册异常上不同。"""
+
+    _not_registered: type[ApplicationError]
+
+    def __init__(self) -> None:
+        self._handlers: dict[type, Any] = {}
+
+    def register(self, message_type: type, handler: Any) -> None:
+        self._handlers[message_type] = handler
+
+    async def dispatch(self, message: Any) -> Any:
+        handler = self._handlers.get(type(message))
+        if handler is None:
+            raise self._not_registered(type(message))
+        return await handler.handle(message)
+
+
+class CommandBus(_MessageBus):
     """命令总线"""
 
-    def __init__(self) -> None:
-        self._handlers: dict[type, Any] = {}
-
-    def register(self, command_type: type, handler: Any) -> None:
-        """注册命令处理器"""
-        self._handlers[command_type] = handler
-
-    async def execute(self, command: Any) -> Any:
-        """执行单个命令，返回 handler 结果"""
-        handler = self._handlers.get(type(command))
-        if handler is None:
-            raise CommandNotRegisteredError(type(command))
-        return await handler.handle(command)
+    _not_registered = CommandNotRegisteredError
+    execute = _MessageBus.dispatch
 
 
-class QueryBus:
+class QueryBus(_MessageBus):
     """查询总线"""
 
-    def __init__(self) -> None:
-        self._handlers: dict[type, Any] = {}
-
-    def register(self, query_type: type, handler: Any) -> None:
-        """注册查询处理器"""
-        self._handlers[query_type] = handler
-
-    async def ask(self, query: Any) -> Any:
-        """执行单个查询，返回 handler 结果"""
-        handler = self._handlers.get(type(query))
-        if handler is None:
-            raise QueryNotRegisteredError(type(query))
-        return await handler.handle(query)
+    _not_registered = QueryNotRegisteredError
+    ask = _MessageBus.dispatch

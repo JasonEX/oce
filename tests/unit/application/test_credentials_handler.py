@@ -16,19 +16,18 @@ class _Runtime:
     def __init__(self, error: Exception | None = None) -> None:
         self.error = error
 
-    async def reload(self) -> int:
+    async def reload(self) -> None:
         if self.error is not None:
             raise self.error
-        return 1
 
 
-async def test_reload_credentials_returns_runtime_size():
+async def test_reload_credentials_reports_success():
     result = await ReloadEmbeddingCredentialsCommandHandler(_Runtime()).handle(
         ReloadEmbeddingCredentialsCommand()
     )
 
     assert result.reloaded is True
-    assert result.pool_size == 1
+    assert result.reason is None
 
 
 async def test_reload_credentials_reports_missing_configuration():
@@ -109,14 +108,33 @@ async def test_combined_reload_clears_query_cache_after_embedding_activation():
 
     cache = Cache()
 
-    result = await _CredentialRuntime(
-        Runtime(),
-        Runtime(),
-        query_cache=cache,
-    ).reload()
+    await _CredentialRuntime(Runtime(), Runtime(), query_cache=cache).reload()
 
-    assert result == 1
     assert cache.clears == 1
+
+
+async def test_combined_reload_without_reranker_only_touches_embedder():
+    class Runtime:
+        def __init__(self) -> None:
+            self.activated = False
+
+        async def prepare_reload(self):
+            return SimpleNamespace(config=object())
+
+        async def validate_prepared(self, _replacement):
+            return None
+
+        async def activate_prepared(self, _replacement):
+            self.activated = True
+
+        async def discard_prepared(self, _replacement):
+            raise AssertionError("successful reload must not discard")
+
+    embedder = Runtime()
+
+    await _CredentialRuntime(embedder).reload()
+
+    assert embedder.activated is True
 
 
 async def test_combined_reload_discards_candidates_on_index_profile_mismatch():

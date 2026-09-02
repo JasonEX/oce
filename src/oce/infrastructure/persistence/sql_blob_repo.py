@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
@@ -52,14 +52,6 @@ class SqlBlobRepository(BlobRepository):
             row.blob_name: self._row_to_domain(row, chunks.get(row.blob_name, []))
             for row in rows
         }
-
-    async def exists(self, blob_name: str) -> bool:
-        count = await self.session.scalar(
-            select(func.count())
-            .select_from(BlobModel)
-            .where(BlobModel.blob_name == blob_name)
-        )
-        return bool(count)
 
     async def exists_many(self, blob_names: Sequence[str]) -> dict[str, bool]:
         if not blob_names:

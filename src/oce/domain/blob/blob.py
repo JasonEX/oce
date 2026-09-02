@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from oce.shared.hashes import is_sha256_hex
+
 if TYPE_CHECKING:
     from oce.domain.chunk import ChunkRef
 
@@ -48,13 +50,8 @@ class Blob:
 
     def __post_init__(self):
         """验证不变量"""
-        if not self._is_valid_sha256(self.blob_name):
+        if not is_sha256_hex(self.blob_name):
             raise ValueError(f"Invalid blob_name (not SHA256): {self.blob_name}")
-
-    @staticmethod
-    def _is_valid_sha256(s: str) -> bool:
-        """验证 SHA256 格式"""
-        return len(s) == 64 and all(c in "0123456789abcdef" for c in s.lower())
 
     def mark_ready(self) -> None:
         """标记为就绪；空文本文件也可以完成索引。"""

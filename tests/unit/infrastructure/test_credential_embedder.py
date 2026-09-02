@@ -205,7 +205,9 @@ async def test_reload_waits_for_inflight_request_before_closing_old_client():
 
     request = asyncio.create_task(embedder.embed_documents(["source"]))
     await started.wait()
-    await embedder.reload()
+    prepared = await embedder.prepare_reload()
+    await embedder.validate_prepared(prepared)
+    await embedder.activate_prepared(prepared)
 
     assert old.closed is False
     assert embedder._delegate is replacement

@@ -3,17 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
 
 import httpx
 from loguru import logger
 
 from oce.infrastructure.llm.rate_limiter import TokenRateLimiter, estimate_tokens
-
-# 用量回调：(credential_id, kind, model, prompt_tokens, completion_tokens)。
-# credential_id 由上层（CredentialConfiguredLLMClient）按解析到的 DB 凭证注入；
-# 无 DB 凭证（纯 env 回落）时为 0，sink 侧归一为 None。
-UsageCallback = Callable[[int, str, str, int, int], Awaitable[None]]
+from oce.shared.metrics import UsageCallback, coerce_token_count
 
 # 输出 token 也计入 TPM。rerank 只回编号（实测约 34 token），按此量级留余量，
 # 不按 max_tokens 记账，否则预算瞬间被 8000 占满。
@@ -24,7 +19,10 @@ _RETRY_BACKOFF_SECONDS = 20.0
 
 
 class OpenAICompatibleLLMClient:
-    """OpenAI 兼容的 LLM 聊天客户端（/v1/chat/completions），rerank / rewrite 共用。"""
+    """OpenAI 兼容的 LLM 聊天客户端（/v1/chat/completions），rerank / rewrite 共用。
+
+    持有一个长期 httpx 连接池；凭据热重载时由上层整体替换实例并在空闲后 close。
+    """
 
     def __init__(
         self,
@@ -54,6 +52,10 @@ class OpenAICompatibleLLMClient:
         self._limiter = (
             TokenRateLimiter(tpm_limit) if tpm_limit and tpm_limit > 0 else None
         )
+        client_kwargs: dict = {"timeout": timeout}
+        if proxy:
+            client_kwargs["proxy"] = proxy
+        self._client = httpx.AsyncClient(**client_kwargs)
 
     async def chat(
         self,
@@ -103,84 +105,69 @@ class OpenAICompatibleLLMClient:
         else:
             payload.setdefault("thinking", {"type": "disabled"})
 
-        client_kwargs: dict = {"timeout": self.timeout}
-        if self.proxy:
-            client_kwargs["proxy"] = self.proxy
-
         # 输入按 prompt 估算，输出按固定余量记账
         estimated = (
             sum(estimate_tokens(m.get("content", "")) for m in messages)
             + _OUTPUT_TOKEN_ALLOWANCE
         )
 
-        async with httpx.AsyncClient(**client_kwargs) as client:
-            for attempt in range(1, _MAX_ATTEMPTS + 1):
-                if self._limiter is not None:
-                    waited = await self._limiter.acquire(estimated)
-                    if waited > 0:
-                        logger.debug(
-                            "TPM limiter delayed request by {:.1f}s (est {} tokens)",
-                            waited,
-                            estimated,
-                        )
-                try:
-                    response = await client.post(url, json=payload, headers=headers)
-                    response.raise_for_status()
-                    data = response.json()
+        for attempt in range(1, _MAX_ATTEMPTS + 1):
+            if self._limiter is not None:
+                waited = await self._limiter.acquire(estimated)
+                if waited > 0:
+                    logger.debug(
+                        "TPM limiter delayed request by {:.1f}s (est {} tokens)",
+                        waited,
+                        estimated,
+                    )
+            try:
+                response = await self._client.post(url, json=payload, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPStatusError as e:
+                # 429 说明估算偏松或有其他调用方共用配额，退避后重试；
+                # 直接抛出会让 reranker 静默退回原始顺序。
+                if e.response.status_code == 429 and attempt < _MAX_ATTEMPTS:
+                    logger.warning(
+                        "LLM 429, retry {}/{} after {}s",
+                        attempt,
+                        _MAX_ATTEMPTS,
+                        _RETRY_BACKOFF_SECONDS,
+                    )
+                    await asyncio.sleep(_RETRY_BACKOFF_SECONDS)
+                    continue
+                logger.error("LLM API error: status={}", e.response.status_code)
+                raise
+            except httpx.TimeoutException:
+                logger.error("LLM API timeout after {}s", self.timeout)
+                raise
+            except Exception as e:
+                logger.error("LLM client error: {}", type(e).__name__)
+                raise
 
-                    # 提取响应内容
-                    content = data["choices"][0]["message"]["content"]
-                    if content is None:
-                        content = data["choices"][0]["message"]["reasoning"]
-                    # 按真实 usage 上报（旁路，缺字段则跳过）；credential_id 由构造时注入
-                    if self._on_usage is not None:
-                        usage = data.get("usage") or {}
-                        prompt = self._token_count(usage.get("prompt_tokens", 0))
-                        completion = self._token_count(
-                            usage.get("completion_tokens", 0)
-                        )
-                        if prompt or completion:
-                            try:
-                                await self._on_usage(
-                                    self._credential_id,
-                                    self._usage_kind,
-                                    model,
-                                    prompt,
-                                    completion,
-                                )
-                            except Exception as exc:
-                                logger.warning(
-                                    "LLM usage reporting failed: {}",
-                                    type(exc).__name__,
-                                )
-                    return content
-
-                except httpx.HTTPStatusError as e:
-                    # 429 说明估算偏松或有其他调用方共用配额，退避后重试；
-                    # 直接抛出会让 reranker 静默退回原始顺序。
-                    if e.response.status_code == 429 and attempt < _MAX_ATTEMPTS:
-                        logger.warning(
-                            "LLM 429, retry {}/{} after {}s",
-                            attempt,
-                            _MAX_ATTEMPTS,
-                            _RETRY_BACKOFF_SECONDS,
-                        )
-                        await asyncio.sleep(_RETRY_BACKOFF_SECONDS)
-                        continue
-                    logger.error("LLM API error: status={}", e.response.status_code)
-                    raise
-                except httpx.TimeoutException:
-                    logger.error("LLM API timeout after {}s", self.timeout)
-                    raise
-                except Exception as e:
-                    logger.error("LLM client error: {}", type(e).__name__)
-                    raise
+            message = data["choices"][0]["message"]
+            content = message["content"]
+            if content is None:
+                content = message["reasoning"]
+            await self._report_usage(model, data.get("usage") or {})
+            return content
 
         raise RuntimeError("LLM chat exhausted retries without a response")
 
-    @staticmethod
-    def _token_count(value: object) -> int:
+    async def _report_usage(self, model: str, usage: dict) -> None:
+        """按真实 usage 旁路上报；缺字段则跳过，回调失败不影响响应。"""
+        if self._on_usage is None:
+            return
+        prompt = coerce_token_count(usage.get("prompt_tokens", 0))
+        completion = coerce_token_count(usage.get("completion_tokens", 0))
+        if not (prompt or completion):
+            return
         try:
-            return max(int(value or 0), 0)
-        except (TypeError, ValueError):
-            return 0
+            await self._on_usage(
+                self._credential_id, self._usage_kind, model, prompt, completion
+            )
+        except Exception as exc:
+            logger.warning("LLM usage reporting failed: {}", type(exc).__name__)
+
+    async def close(self) -> None:
+        await self._client.aclose()

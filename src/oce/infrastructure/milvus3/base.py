@@ -10,12 +10,12 @@ from pymilvus import AsyncMilvusClient, CollectionSchema, MilvusClient
 from pymilvus.client.types import LoadState
 
 from oce.shared.config.settings import MilvusSettings
+from oce.shared.hashes import is_sha256_hex
+from oce.shared.index_stats import IndexStoreStats
 
 
 def validate_blob_name(blob_name: str) -> str:
-    if len(blob_name) != 64 or any(
-        character not in "0123456789abcdef" for character in blob_name.casefold()
-    ):
+    if not is_sha256_hex(blob_name):
         raise ValueError("Milvus blob filters require a SHA256 blob_name")
     return blob_name
 
@@ -207,6 +207,17 @@ class MilvusCollectionClient:
         """Probe existing rows without creating or loading the collection."""
         exists, entities = await self.read_collection_stats()
         return exists and entities > 0
+
+    async def index_stats(self) -> IndexStoreStats:
+        """Report collection cardinality without creating or loading it."""
+        exists, entities = await self.read_collection_stats()
+        return IndexStoreStats(
+            enabled=True,
+            available=True,
+            collection_name=self.collection_name,
+            exists=exists,
+            entities=entities,
+        )
 
     async def close(self) -> None:
         if self._closed:

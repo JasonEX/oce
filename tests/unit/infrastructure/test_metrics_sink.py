@@ -209,7 +209,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
                 path_boosted=True,
                 rerank_route="dedicated+llm",
                 query_text="q",
-                stages={"dense": 10, "select": 5},
+                stages={"embed": 7, "dense": 10, "path": 3, "select": 5},
             )
         )
         await sink._flush_once()
@@ -219,7 +219,9 @@ async def test_flush_writes_retrieval_with_stage_columns():
         assert row.source == "retrieval"
         assert row.hit_count == 0  # 空回也落库
         assert row.total_ms == 42
+        assert row.embed_ms == 7
         assert row.dense_ms == 10
+        assert row.path_ms == 3
         assert row.select_ms == 5
         assert row.exact_ms is None  # 未跑的阶段留空，不冒充 0
         assert row.path_boosted is True

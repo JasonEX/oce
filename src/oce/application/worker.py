@@ -118,7 +118,7 @@ class EmbedWorker:
                 exc,
             )
             for blob_name in blob_names:
-                await self._process_one(worker_id, blob_name)
+                await self._process_batch(worker_id, [blob_name])
             return
 
         for blob_name in blob_names:
@@ -127,23 +127,6 @@ class EmbedWorker:
             "worker#{} processed {} blobs ({} chunks embedded)",
             worker_id,
             len(blob_names),
-            embedded,
-        )
-
-    async def _process_one(self, worker_id: int, blob_name: str) -> None:
-        try:
-            embedded = await self._embed([blob_name])
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            await self._handle_failure(worker_id, blob_name, exc)
-            return
-
-        await self._ack(worker_id, blob_name)
-        logger.debug(
-            "worker#{} processed blob {} ({} chunks embedded)",
-            worker_id,
-            blob_name[:12],
             embedded,
         )
 

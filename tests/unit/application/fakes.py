@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import hashlib
+import uuid
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chain.chain import Chain
@@ -73,7 +74,7 @@ class FakeChainRepo:
         self.chains: dict[str, Chain] = {}
 
     async def create(self, members) -> Chain:
-        chain = Chain.create(list(members))
+        chain = Chain(chain_id=uuid.uuid4().hex, version=1, members=set(members))
         self.chains[chain.chain_id] = chain
         return chain
 
@@ -94,7 +95,8 @@ class FakeChainRepo:
         chain = self.chains.get(chain_id)
         if chain is None or chain.version != expected_version:
             return None
-        chain.apply_checkpoint(list(added), list(deleted))
+        chain.members = (chain.members | set(added)) - set(deleted)
+        chain.version += 1
         return chain.version
 
     async def touch_members(self, chain_id: str) -> None:

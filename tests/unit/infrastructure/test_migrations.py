@@ -74,6 +74,8 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "retrieval_metrics",
     }.issubset(tables)
     assert "rerank_route" in retrieval_columns
+    assert {"embed_ms", "path_ms"}.issubset(retrieval_columns)
+    assert "intent_ms" not in retrieval_columns
     assert version == _head_revision()
 
 

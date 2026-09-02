@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from typing import Any
 
@@ -11,9 +10,7 @@ import httpx
 from loguru import logger
 
 from oce.domain.services.search import SearchHit
-
-# 用量回调：(credential_id, kind, model, prompt_tokens, completion_tokens)
-UsageCallback = Callable[[int, str, str, int, int], Awaitable[None]]
+from oce.shared.metrics import UsageCallback, coerce_token_count
 
 
 class OpenAIReranker:
@@ -103,7 +100,7 @@ class OpenAIReranker:
             meta = payload.get("meta") or {}
             token_meta = meta.get("tokens") or {}
             tokens = sum(
-                self._token_count(token_meta.get(key, 0))
+                coerce_token_count(token_meta.get(key, 0))
                 for key in ("input_tokens", "output_tokens", "image_tokens")
             )
             # rerank 无 prompt/completion 之分：总量记入 prompt，completion=0
@@ -137,13 +134,6 @@ class OpenAIReranker:
         return (
             f"File: {hit.path}\nLines: {hit.start_line}-{hit.end_line}\n\n{hit.content}"
         )
-
-    @staticmethod
-    def _token_count(value: Any) -> int:
-        try:
-            return max(int(value or 0), 0)
-        except (TypeError, ValueError):
-            return 0
 
     async def close(self) -> None:
         if self._owns_client:

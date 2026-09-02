@@ -40,18 +40,10 @@ class Milvus3SearchStore:
         await self.client.delete_by_blob_names(blob_names)
 
     async def index_stats(self) -> IndexStoreStats:
-        exists, entities = await self.client.read_collection_stats()
-        return IndexStoreStats(
-            enabled=True,
-            available=True,
-            collection_name=self.milvus_settings.collection_name,
-            exists=exists,
-            entities=entities,
-        )
+        return await self.client.index_stats()
 
     async def has_index_data(self) -> bool:
-        _exists, entities = await self.client.read_collection_stats()
-        return entities > 0
+        return await self.client.has_index_data()
 
     async def close(self) -> None:
         await self.client.close()

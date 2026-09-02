@@ -5,11 +5,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 
-
-def _is_sha256(value: str) -> bool:
-    return len(value) == 64 and all(
-        char in "0123456789abcdef" for char in value.lower()
-    )
+from oce.shared.hashes import is_sha256_hex
 
 
 @dataclass
@@ -21,7 +17,7 @@ class ChunkRef:
     end_line: int
 
     def __post_init__(self) -> None:
-        if not _is_sha256(self.content_hash):
+        if not is_sha256_hex(self.content_hash):
             raise ValueError(f"Invalid content_hash: {self.content_hash}")
         if self.start_line < 1:
             raise ValueError(f"Invalid start_line: {self.start_line}")
@@ -45,7 +41,7 @@ class Chunk:
     chunk_type: str | None = None
 
     def __post_init__(self) -> None:
-        if not _is_sha256(self.content_hash):
+        if not is_sha256_hex(self.content_hash):
             raise ValueError(f"Invalid content_hash: {self.content_hash}")
         if self.start_line < 1 or self.end_line < self.start_line:
             raise ValueError(f"Invalid line range: {self.start_line} - {self.end_line}")

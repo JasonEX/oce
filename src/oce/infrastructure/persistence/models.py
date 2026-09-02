@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import (
     BigInteger,
     Boolean,
-    Column,
     DateTime,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -16,8 +16,18 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.orm import Mapped, mapped_column
 
 from oce.shared.database.session import Base
+
+# SQLite autoincrement only works on INTEGER primary keys.
+_AutoId = BigInteger().with_variant(Integer, "sqlite")
+
+
+def _timestamp(**kwargs) -> Mapped[datetime]:
+    return mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), **kwargs
+    )
 
 
 class ModelCredentialModel(Base):
@@ -34,39 +44,36 @@ class ModelCredentialModel(Base):
 
     __tablename__ = "model_credentials"
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    kind = Column(String(16), nullable=False)
-    provider = Column(String(64))  # 渠道标签（如 siliconflow），仅用于分组/复制
-    name = Column(String(128), nullable=False)
-    api_key = Column(String(512), nullable=False)
-    api_key_hash = Column(String(64), nullable=False)
-    endpoint = Column(String(512))
-    model = Column(String(128))
-    status = Column(String(16), nullable=False, default="active")
-    priority = Column(Integer, nullable=False, default=100)
-    timeout_seconds = Column(Integer, nullable=False, default=30)
-    note = Column(Text)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    kind: Mapped[str] = mapped_column(String(16))
+    # 渠道标签（如 siliconflow），仅用于分组/复制
+    provider: Mapped[str | None] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(String(128))
+    api_key: Mapped[str] = mapped_column(String(512))
+    api_key_hash: Mapped[str] = mapped_column(String(64))
+    endpoint: Mapped[str | None] = mapped_column(String(512))
+    model: Mapped[str | None] = mapped_column(String(128))
+    status: Mapped[str] = mapped_column(String(16), default="active")
+    priority: Mapped[int] = mapped_column(Integer, default=100)
+    timeout_seconds: Mapped[int] = mapped_column(Integer, default=30)
+    note: Mapped[str | None] = mapped_column(Text)
 
     # embed 专属
-    dimensions = Column(Integer)
-    max_batch_size = Column(Integer)
-    max_batch_chars = Column(Integer)
-    max_input_chars = Column(Integer)
-    input_overlap_chars = Column(Integer)
+    dimensions: Mapped[int | None] = mapped_column(Integer)
+    max_batch_size: Mapped[int | None] = mapped_column(Integer)
+    max_batch_chars: Mapped[int | None] = mapped_column(Integer)
+    max_input_chars: Mapped[int | None] = mapped_column(Integer)
+    input_overlap_chars: Mapped[int | None] = mapped_column(Integer)
 
     # rerank(API) 专属
-    top_n = Column(Integer)
-    min_score = Column(Float)
+    top_n: Mapped[int | None] = mapped_column(Integer)
+    min_score: Mapped[float | None]
 
     # chat 两类专属：llm_rerank / query_rewrite
-    tpm_limit = Column(Integer)
+    tpm_limit: Mapped[int | None] = mapped_column(Integer)
 
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    created_at: Mapped[datetime] = _timestamp()
+    updated_at: Mapped[datetime] = _timestamp()
 
     __table_args__ = (
         UniqueConstraint(
@@ -89,31 +96,25 @@ class IndexProfileModel(Base):
 
     __tablename__ = "index_profiles"
 
-    profile_key = Column(String(16), primary_key=True)
-    fingerprint = Column(String(64), nullable=False)
-    profile_json = Column(Text, nullable=False)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    profile_key: Mapped[str] = mapped_column(String(16), primary_key=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    profile_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = _timestamp()
 
 
 class BlobModel(Base):
     __tablename__ = "blobs"
 
-    blob_name = Column(String(64), primary_key=True)
-    path = Column(String(1024), nullable=False)
-    content_size = Column(Integer, nullable=False)
-    language = Column(String(32))
-    file_type = Column(String(16), nullable=False, default="text")
-    status = Column(String(16), nullable=False, default="pending")
-    retry_count = Column(Integer, nullable=False, server_default="0")
-    last_seen = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    error_message = Column(Text)
+    blob_name: Mapped[str] = mapped_column(String(64), primary_key=True)
+    path: Mapped[str] = mapped_column(String(1024))
+    content_size: Mapped[int] = mapped_column(Integer)
+    language: Mapped[str | None] = mapped_column(String(32))
+    file_type: Mapped[str] = mapped_column(String(16), default="text")
+    status: Mapped[str] = mapped_column(String(16), default="pending")
+    retry_count: Mapped[int] = mapped_column(Integer, server_default="0")
+    last_seen: Mapped[datetime] = _timestamp()
+    created_at: Mapped[datetime] = _timestamp()
+    error_message: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         Index("ix_blobs_status", "status"),
@@ -126,15 +127,13 @@ class BlobModel(Base):
 class BlobStagingModel(Base):
     __tablename__ = "blob_staging"
 
-    blob_name = Column(
+    blob_name: Mapped[str] = mapped_column(
         String(64),
         ForeignKey("blobs.blob_name", ondelete="CASCADE"),
         primary_key=True,
     )
-    content = Column(Text, nullable=False)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = _timestamp()
 
     __table_args__ = (Index("ix_blob_staging_created_at", "created_at"),)
 
@@ -142,14 +141,12 @@ class BlobStagingModel(Base):
 class ChunkModel(Base):
     __tablename__ = "chunks"
 
-    content_hash = Column(String(64), primary_key=True)
-    content = Column(Text, nullable=False)
-    content_size = Column(Integer, nullable=False)
-    chunk_type = Column(String(32))
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    embedded = Column(Boolean, server_default="false", nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    content: Mapped[str] = mapped_column(Text)
+    content_size: Mapped[int] = mapped_column(Integer)
+    chunk_type: Mapped[str | None] = mapped_column(String(32))
+    created_at: Mapped[datetime] = _timestamp()
+    embedded: Mapped[bool] = mapped_column(Boolean, server_default="false")
 
     __table_args__ = (
         Index("ix_chunks_chunk_type", "chunk_type"),
@@ -160,24 +157,16 @@ class ChunkModel(Base):
 class BlobChunkModel(Base):
     __tablename__ = "blob_chunks"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    blob_name: Mapped[str] = mapped_column(
+        String(64), ForeignKey("blobs.blob_name", ondelete="CASCADE")
     )
-    blob_name = Column(
-        String(64),
-        ForeignKey("blobs.blob_name", ondelete="CASCADE"),
-        nullable=False,
+    content_hash: Mapped[str] = mapped_column(
+        String(64), ForeignKey("chunks.content_hash", ondelete="CASCADE")
     )
-    content_hash = Column(
-        String(64),
-        ForeignKey("chunks.content_hash", ondelete="CASCADE"),
-        nullable=False,
-    )
-    start_line = Column(Integer, nullable=False)
-    end_line = Column(Integer, nullable=False)
-    chunk_index = Column(Integer, nullable=False)
+    start_line: Mapped[int] = mapped_column(Integer)
+    end_line: Mapped[int] = mapped_column(Integer)
+    chunk_index: Mapped[int] = mapped_column(Integer)
 
     __table_args__ = (
         UniqueConstraint(
@@ -196,20 +185,13 @@ class BlobChunkModel(Base):
 class ChainModel(Base):
     __tablename__ = "chains"
 
-    chain_id = Column(String(64), primary_key=True)
-    version = Column(Integer, nullable=False, default=1)
-    description = Column(String(512))
-    total_blobs = Column(Integer, nullable=False, default=0)
-    total_chunks = Column(Integer, nullable=False, default=0)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
+    chain_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    description: Mapped[str | None] = mapped_column(String(512))
+    total_blobs: Mapped[int] = mapped_column(Integer, default=0)
+    total_chunks: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = _timestamp()
+    updated_at: Mapped[datetime] = _timestamp(onupdate=func.now())
 
     __table_args__ = (Index("ix_chains_updated_at", "updated_at"),)
 
@@ -217,12 +199,12 @@ class ChainModel(Base):
 class ChainMemberModel(Base):
     __tablename__ = "chain_members"
 
-    chain_id = Column(
+    chain_id: Mapped[str] = mapped_column(
         String(64),
         ForeignKey("chains.chain_id", ondelete="CASCADE"),
         primary_key=True,
     )
-    blob_name = Column(String(64), primary_key=True)
+    blob_name: Mapped[str] = mapped_column(String(64), primary_key=True)
 
     __table_args__ = (Index("ix_chain_members_blob_name", "blob_name"),)
 
@@ -230,28 +212,18 @@ class ChainMemberModel(Base):
 class SymbolOccurrenceModel(Base):
     __tablename__ = "symbol_occurrences"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    identifier: Mapped[str] = mapped_column(String(256))
+    blob_name: Mapped[str] = mapped_column(
+        String(64), ForeignKey("blobs.blob_name", ondelete="CASCADE")
     )
-    identifier = Column(String(256), nullable=False)
-    blob_name = Column(
-        String(64),
-        ForeignKey("blobs.blob_name", ondelete="CASCADE"),
-        nullable=False,
+    content_hash: Mapped[str] = mapped_column(
+        String(64), ForeignKey("chunks.content_hash", ondelete="CASCADE")
     )
-    content_hash = Column(
-        String(64),
-        ForeignKey("chunks.content_hash", ondelete="CASCADE"),
-        nullable=False,
-    )
-    kind = Column(String(16), nullable=False)
-    start_line = Column(Integer, nullable=False)
-    end_line = Column(Integer, nullable=False)
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    kind: Mapped[str] = mapped_column(String(16))
+    start_line: Mapped[int] = mapped_column(Integer)
+    end_line: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _timestamp()
 
     __table_args__ = (
         Index("idx_so_identifier", "identifier"),
@@ -273,17 +245,13 @@ class ApiCallMetricModel(Base):
 
     __tablename__ = "api_call_metrics"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
-    )
-    ts = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    endpoint = Column(String(128), nullable=False)
-    method = Column(String(8), nullable=False)
-    status_code = Column(Integer, nullable=False)
-    latency_ms = Column(Integer, nullable=False)
-    error_type = Column(String(64))
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = _timestamp()
+    endpoint: Mapped[str] = mapped_column(String(128))
+    method: Mapped[str] = mapped_column(String(8))
+    status_code: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer)
+    error_type: Mapped[str | None] = mapped_column(String(64))
 
     __table_args__ = (
         Index("ix_api_call_metrics_ts", "ts"),
@@ -296,18 +264,14 @@ class TokenUsageMetricModel(Base):
 
     __tablename__ = "token_usage_metrics"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
-    )
-    ts = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    kind = Column(String(16), nullable=False)
-    model = Column(String(128), nullable=False)
-    credential_id = Column(Integer)
-    prompt_tokens = Column(Integer, nullable=False, server_default="0")
-    completion_tokens = Column(Integer, nullable=False, server_default="0")
-    total_tokens = Column(Integer, nullable=False, server_default="0")
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = _timestamp()
+    kind: Mapped[str] = mapped_column(String(16))
+    model: Mapped[str] = mapped_column(String(128))
+    credential_id: Mapped[int | None] = mapped_column(Integer)
+    prompt_tokens: Mapped[int] = mapped_column(Integer, server_default="0")
+    completion_tokens: Mapped[int] = mapped_column(Integer, server_default="0")
+    total_tokens: Mapped[int] = mapped_column(Integer, server_default="0")
 
     __table_args__ = (
         Index("ix_token_usage_metrics_ts", "ts"),
@@ -321,18 +285,14 @@ class ResourceSampleModel(Base):
 
     __tablename__ = "resource_samples"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
-    )
-    ts = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    disk_data_bytes = Column(BigInteger, nullable=False)
-    disk_free_bytes = Column(BigInteger, nullable=False)
-    disk_total_bytes = Column(BigInteger, nullable=False)
-    mem_rss_bytes = Column(BigInteger, nullable=False)
-    mem_percent = Column(Float, nullable=False)
-    cpu_percent = Column(Float, nullable=False)
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = _timestamp()
+    disk_data_bytes: Mapped[int] = mapped_column(BigInteger)
+    disk_free_bytes: Mapped[int] = mapped_column(BigInteger)
+    disk_total_bytes: Mapped[int] = mapped_column(BigInteger)
+    mem_rss_bytes: Mapped[int] = mapped_column(BigInteger)
+    mem_percent: Mapped[float]
+    cpu_percent: Mapped[float]
 
     __table_args__ = (Index("ix_resource_samples_ts", "ts"),)
 
@@ -342,27 +302,26 @@ class RetrievalMetricModel(Base):
 
     __tablename__ = "retrieval_metrics"
 
-    id = Column(
-        BigInteger().with_variant(Integer, "sqlite"),
-        primary_key=True,
-        autoincrement=True,
-    )
-    ts = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    source = Column(String(32), nullable=False)
-    scope_size = Column(Integer, nullable=True)
-    hit_count = Column(Integer, nullable=False)
-    total_ms = Column(Integer, nullable=False)
-    intent = Column(String(32), nullable=True)
-    path_boosted = Column(Boolean, nullable=False, server_default="false")
-    rerank_route = Column(String(48), nullable=True)
-    query_text = Column(Text, nullable=True)
-    rewrite_ms = Column(Integer, nullable=True)
-    dense_ms = Column(Integer, nullable=True)
-    exact_ms = Column(Integer, nullable=True)
-    fuse_ms = Column(Integer, nullable=True)
-    rerank_ms = Column(Integer, nullable=True)
-    llm_rerank_ms = Column(Integer, nullable=True)
-    select_ms = Column(Integer, nullable=True)
+    id: Mapped[int] = mapped_column(_AutoId, primary_key=True, autoincrement=True)
+    ts: Mapped[datetime] = _timestamp()
+    source: Mapped[str] = mapped_column(String(32))
+    scope_size: Mapped[int | None] = mapped_column(Integer)
+    hit_count: Mapped[int] = mapped_column(Integer)
+    total_ms: Mapped[int] = mapped_column(Integer)
+    intent: Mapped[str | None] = mapped_column(String(32))
+    path_boosted: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    rerank_route: Mapped[str | None] = mapped_column(String(48))
+    query_text: Mapped[str | None] = mapped_column(Text)
+    # 阶段耗时（毫秒）；未运行的阶段留 NULL，不冒充 0。
+    rewrite_ms: Mapped[int | None] = mapped_column(Integer)
+    embed_ms: Mapped[int | None] = mapped_column(Integer)
+    dense_ms: Mapped[int | None] = mapped_column(Integer)
+    exact_ms: Mapped[int | None] = mapped_column(Integer)
+    path_ms: Mapped[int | None] = mapped_column(Integer)
+    fuse_ms: Mapped[int | None] = mapped_column(Integer)
+    rerank_ms: Mapped[int | None] = mapped_column(Integer)
+    llm_rerank_ms: Mapped[int | None] = mapped_column(Integer)
+    select_ms: Mapped[int | None] = mapped_column(Integer)
 
     __table_args__ = (
         Index("ix_retrieval_metrics_ts", "ts"),

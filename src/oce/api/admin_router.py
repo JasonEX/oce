@@ -5,7 +5,10 @@ application 异常（凭据冲突 409、队列忙 409 等）由 api/errors.py �
 
 from __future__ import annotations
 
+from typing import TypeVar
+
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from oce.api.router import get_application
 from oce.api.schemas import (
@@ -42,6 +45,14 @@ admin_router = APIRouter(
 def _credential_response(record: CredentialRecord) -> CredentialResponse:
     # CredentialResponse 字段与 CredentialRecord 同名（不含明文 api_key），按属性直接映射。
     return CredentialResponse.model_validate(record, from_attributes=True)
+
+
+_ResponseT = TypeVar("_ResponseT", bound=BaseModel)
+
+
+def _response(model: type[_ResponseT], result: object) -> _ResponseT:
+    """application 结果 dataclass 与响应 DTO 同名字段，按属性映射。"""
+    return model.model_validate(result, from_attributes=True)
 
 
 @admin_router.get("/credentials", response_model=CredentialListResponse)
@@ -112,24 +123,14 @@ async def reload_credentials(
     application: RetrievalApplication = Depends(get_application),
 ) -> ReloadCredentialsResponse:
     result = await application.reload_embedding_credentials()
-    return ReloadCredentialsResponse(
-        reloaded=result.reloaded,
-        pool_size=result.pool_size,
-        reason=result.reason,
-    )
+    return _response(ReloadCredentialsResponse, result)
 
 
 @admin_router.get("/queue", response_model=QueueStatusResponse)
 async def queue_status(
     application: RetrievalApplication = Depends(get_application),
 ) -> QueueStatusResponse:
-    status = await application.queue_status()
-    return QueueStatusResponse(
-        enabled=status.enabled,
-        main_size=status.main_size,
-        inflight=status.inflight,
-        db_pending=status.db_pending,
-    )
+    return _response(QueueStatusResponse, await application.queue_status())
 
 
 @admin_router.post("/queue/reset", response_model=QueueResetResponse)
@@ -138,12 +139,7 @@ async def reset_queue(
     application: RetrievalApplication = Depends(get_application),
 ) -> QueueResetResponse:
     result = await application.reset_queue(mode=request.mode, requeue=request.requeue)
-    return QueueResetResponse(
-        removed=result.removed,
-        requeued=result.requeued,
-        queue_size=result.queue_size,
-        db_pending=result.db_pending,
-    )
+    return _response(QueueResetResponse, result)
 
 
 @admin_router.post("/queue/requeue-stale", response_model=RequeueStaleResponse)
@@ -154,7 +150,7 @@ async def requeue_stale(
     result = await application.requeue_stale(
         stale_hours=request.stale_hours, limit=request.limit
     )
-    return RequeueStaleResponse(requeued_count=result.requeued_count)
+    return _response(RequeueStaleResponse, result)
 
 
 @admin_router.post("/gc", response_model=GcResponse)
@@ -165,16 +161,7 @@ async def run_gc(
     result = await application.run_gc(
         ttl_days=request.ttl_days, dry_run=request.dry_run, limit=request.limit
     )
-    return GcResponse(
-        dry_run=result.dry_run,
-        ttl_days=result.ttl_days,
-        expired_chains=result.expired_chains,
-        expired_blobs=result.expired_blobs,
-        deletable_blobs=result.deletable_blobs,
-        skipped_inflight=result.skipped_inflight,
-        deleted_chains=result.deleted_chains,
-        deleted_blobs=result.deleted_blobs,
-    )
+    return _response(GcResponse, result)
 
 
 @admin_router.get("/stats", response_model=MonitoringStatsResponse)
@@ -183,12 +170,11 @@ async def admin_stats(
     application: RetrievalApplication = Depends(get_application),
 ) -> MonitoringStatsResponse:
     stats = await application.monitoring_stats(window_hours=window_hours)
-    return MonitoringStatsResponse.model_validate(stats, from_attributes=True)
+    return _response(MonitoringStatsResponse, stats)
 
 
 @admin_router.get("/index-stats", response_model=IndexStatsResponse)
 async def admin_index_stats(
     application: RetrievalApplication = Depends(get_application),
 ) -> IndexStatsResponse:
-    stats = await application.index_stats()
-    return IndexStatsResponse.model_validate(stats, from_attributes=True)
+    return _response(IndexStatsResponse, await application.index_stats())

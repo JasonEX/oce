@@ -10,18 +10,17 @@ from oce.shared.errors import ServiceNotReadyError
 
 
 class ReloadableEmbeddingRuntime(Protocol):
-    async def reload(self) -> int: ...
+    async def reload(self) -> None: ...
 
 
 @dataclass(frozen=True)
 class ReloadEmbeddingCredentialsCommand(Command):
-    """Reload the active embedding credential and rebuild its client."""
+    """Reload the active model credentials and rebuild their clients."""
 
 
 @dataclass(frozen=True)
 class ReloadEmbeddingCredentialsResult:
     reloaded: bool
-    pool_size: int = 0
     reason: str | None = None
 
 
@@ -34,7 +33,7 @@ class ReloadEmbeddingCredentialsCommandHandler:
         _command: ReloadEmbeddingCredentialsCommand,
     ) -> ReloadEmbeddingCredentialsResult:
         try:
-            pool_size = await self._runtime.reload()
+            await self._runtime.reload()
         except ServiceNotReadyError as exc:
             return ReloadEmbeddingCredentialsResult(False, reason=str(exc))
-        return ReloadEmbeddingCredentialsResult(True, pool_size=pool_size)
+        return ReloadEmbeddingCredentialsResult(True)

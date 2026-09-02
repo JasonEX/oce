@@ -11,6 +11,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # 所有配置组读同一组文件：.env.local 覆盖 .env，避免某些组读不到本地覆盖值。
 _ENV_FILES = (".env", ".env.local")
 
+# reranker 逐查询路由策略；authorization 由各自的 *_ENABLED 开关单独控制。
+RerankPolicy = Literal["adaptive", "always"]
+
 
 def _settings_config(env_prefix: str = "") -> SettingsConfigDict:
     return SettingsConfigDict(
@@ -198,7 +201,7 @@ class LLMSettings(BaseSettings):
         description="是否允许 chat LLM 参与语义重排",
     )
     model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="LLM 模型")
-    api_key: SecretStr = Field(default="", description="LLM API Key")
+    api_key: SecretStr | None = Field(default=None, description="LLM API Key")
     base_url: str = Field(
         default="https://api.siliconflow.cn/v1",
         description="LLM API Base URL",
@@ -264,11 +267,11 @@ class RetrievalSettings(BaseSettings):
     # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED 是
     # 数据外发授权；这里的策略只决定已授权的模型对哪些查询调用：adaptive 在
     # exact/path 等确定性证据已经回答问题时跳过，always 用于质量优先或可复现对照。
-    rerank_policy: Literal["adaptive", "always"] = Field(
+    rerank_policy: RerankPolicy = Field(
         default="adaptive",
         description="专用 reranker 调用策略",
     )
-    llm_rerank_policy: Literal["adaptive", "always"] = Field(
+    llm_rerank_policy: RerankPolicy = Field(
         default="adaptive",
         description="chat LLM 重排调用策略",
     )
@@ -340,6 +343,9 @@ class RetrievalSettings(BaseSettings):
     # Path index (独立路径索引用于文件名查询)
     path_index_enabled: bool = Field(
         default=True, description="是否启用路径索引（文件名查询增强）"
+    )
+    path_top_k: int = Field(
+        default=20, ge=1, le=100, description="每个查询变体从路径索引召回的文件数"
     )
     # 路径分数与内容分数同为 COSINE 量纲，加权相加而非替换，避免挤掉正确 chunk
     path_boost_weight: float = Field(

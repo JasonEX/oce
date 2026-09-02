@@ -45,7 +45,6 @@ class BatchUploadResponse(BaseModel):
 
 class ReloadCredentialsResponse(BaseModel):
     reloaded: bool
-    pool_size: int = 0
     reason: str | None = None
 
 

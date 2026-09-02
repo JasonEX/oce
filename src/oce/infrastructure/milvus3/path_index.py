@@ -11,7 +11,6 @@ from oce.domain.services.path_search import PathSearchResult
 from oce.infrastructure.milvus3.base import MilvusCollectionClient, build_blob_filter
 from oce.infrastructure.milvus3.schema import create_path_collection_schema
 from oce.shared.config.settings import MilvusSettings
-from oce.shared.index_stats import IndexStoreStats
 
 
 class PathIndexClient(MilvusCollectionClient):
@@ -75,21 +74,3 @@ class PathIndexClient(MilvusCollectionClient):
     async def delete_by_blob_names(self, blob_names: list[str]) -> None:
         await self._delete_by_blob_names(blob_names)
         logger.info("Deleted path documents for {} blobs", len(blob_names))
-
-    async def index_stats(self) -> IndexStoreStats:
-        """Report initialized state without creating or loading a collection."""
-        if not self._initialized:
-            return IndexStoreStats(
-                enabled=True,
-                available=False,
-                collection_name=self.collection_name,
-                error_type="NotInitialized",
-            )
-        exists, entities = await self.read_collection_stats()
-        return IndexStoreStats(
-            enabled=True,
-            available=True,
-            collection_name=self.collection_name,
-            exists=exists,
-            entities=entities,
-        )

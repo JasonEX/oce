@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.selector.protocols import SelectionMode
+from oce.shared.config.settings import RerankPolicy
 
 
 @dataclass(frozen=True)
@@ -54,9 +54,6 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
 
 def get_strategy(intent: QueryIntent) -> RetrievalStrategy:
     return STRATEGY_TABLE[intent]
-
-
-RerankPolicy = Literal["adaptive", "always"]
 
 
 @dataclass(frozen=True)

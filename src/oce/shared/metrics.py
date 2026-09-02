@@ -9,7 +9,7 @@ Protocol 与 record 数据结构，不关心落库细节；具体 sink 由 compo
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -19,6 +19,19 @@ from typing import Protocol
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+# 模型客户端的用量回调：(credential_id, kind, model, prompt_tokens, completion_tokens)。
+# credential_id 为 0 表示纯环境变量回落、无 DB 凭据，sink 侧归一为 None。
+UsageCallback = Callable[[int, str, str, int, int], Awaitable[None]]
+
+
+def coerce_token_count(value: object) -> int:
+    """把 provider 返回的 usage 字段收敛为非负整数；缺失或畸形一律记 0。"""
+    try:
+        return max(int(value or 0), 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 @dataclass(frozen=True)

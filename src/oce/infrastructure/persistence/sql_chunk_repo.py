@@ -18,17 +18,6 @@ class SqlChunkRepository(ChunkRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def get_many(self, content_hashes: Sequence[str]) -> dict[str, Chunk]:
-        if not content_hashes:
-            return {}
-        result = await self.session.execute(
-            select(ChunkModel).where(ChunkModel.content_hash.in_(content_hashes))
-        )
-        return {row.content_hash: self._row_to_domain(row) for row in result.scalars()}
-
-    async def save(self, chunk: Chunk) -> None:
-        await self.save_many([chunk])
-
     async def save_many(self, chunks: Sequence[Chunk]) -> None:
         if not chunks:
             return
@@ -96,15 +85,3 @@ class SqlChunkRepository(ChunkRepository):
             )
             for row in rows
         ]
-
-    @staticmethod
-    def _row_to_domain(row: ChunkModel) -> Chunk:
-        line_count = max(1, len(row.content.splitlines()))
-        return Chunk(
-            content_hash=row.content_hash,
-            path="",
-            content=row.content,
-            start_line=1,
-            end_line=line_count,
-            chunk_type=row.chunk_type,
-        )

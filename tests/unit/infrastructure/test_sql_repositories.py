@@ -3,10 +3,12 @@
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from sqlalchemy import select
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk, ChunkRef
 from oce.domain.services.search import SearchScope
+from oce.infrastructure.persistence.models import ChunkModel
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
@@ -105,8 +107,7 @@ async def test_blob_repository_crud(sqlite_session):
     assert len(loaded.chunks) == 2
 
     # 判断存在
-    exists = await repo.exists(blob.blob_name)
-    assert exists is True
+    assert await repo.exists_many([blob.blob_name]) == {blob.blob_name: True}
 
     # 更新状态
     loaded.mark_ready()
@@ -169,14 +170,16 @@ async def test_chunk_repository_crud(sqlite_session):
         end_line=1,
     )
 
-    # 保存
-    await repo.save(chunk)
+    # 保存（内容寻址，重复写入幂等）
+    await repo.save_many([chunk])
+    await repo.save_many([chunk])
     await sqlite_session.commit()
 
     # 读取
-    loaded = (await repo.get_many([chunk.content_hash]))[chunk.content_hash]
-    assert loaded.content_hash == chunk.content_hash
+    loaded = await sqlite_session.get(ChunkModel, chunk.content_hash)
+    assert loaded is not None
     assert loaded.content == "print('hello')"
+    assert loaded.embedded is False
 
 
 async def _save_symbol_blobs(sqlite_session, specs):
@@ -234,7 +237,7 @@ async def test_blob_status_save_does_not_repeat_symbol_projection(sqlite_session
         language="python",
     )
 
-    await chunk_repo.save(chunk)
+    await chunk_repo.save_many([chunk])
     await blob_repo.save(blob)
     await projection.index(blob, [chunk])
     blob.mark_ready()
@@ -526,5 +529,5 @@ async def test_blob_delete_only_removes_unreferenced_chunks(sqlite_session):
     await blob_repo.delete(first_name)
     await sqlite_session.commit()
 
-    remaining = await chunk_repo.get_many([shared.content_hash, unique.content_hash])
+    remaining = await sqlite_session.scalars(select(ChunkModel.content_hash))
     assert set(remaining) == {shared.content_hash}

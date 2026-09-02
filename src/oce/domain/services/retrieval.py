@@ -1,6 +1,6 @@
 """RetrievalPipeline 领域服务 - 检索编排
 
-流程（与旧 pipeline 语义对齐）：
+流程：
     embed_query → store.search（dense 向量检索）
     → 精确标识符召回 → 多查询结果融合 → 源码优先/可选置信度过滤
     → 专用 rerank → 可选 LLM 语义 rerank → select（最终 K 条）
@@ -87,12 +87,12 @@ def source_priority_factor(path: str) -> float:
     return 1.0
 
 
-def path_query_priority_factor(path: str) -> float:
-    """路径类查询的优先级因子：恒为 1.0（文档中立）。
+def neutral_priority_factor(_path: str) -> float:
+    """文档中立的优先级因子：恒为 1.0。
 
-    「XX 文件在哪里」类查询中，任何文件类型都可能是目标（文档、配置、测试、
-    license 都在找文件语义内），source_priority_factor 的「源码优先」先验不成立。
-    路径类查询不乘性降权，排序完全交由路径 boost + 内容分数 + rerank 决定。
+    用于关闭 source priority，以及「XX 文件在哪里」类路径查询：任何文件类型都可能
+    是目标（文档、配置、测试、license 都在找文件语义内），「源码优先」先验不成立，
+    排序完全交由路径 boost + 内容分数 + rerank 决定。
     """
     return 1.0
 
@@ -115,12 +115,16 @@ class RetrievalPipeline:
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
         priority_factor: Callable[[str], float] | None = None,
+        rerank_window: int | None = None,
     ) -> None:
         self.embedder = embedder
         self.store = store
         # None 表示未授权专用 reranker；决策与审计据此区分「未启用」和「按策略跳过」。
         self.reranker = reranker
         self.llm_reranker = llm_reranker
+        # LLM reranker 一次能看到的候选数；None 表示没有窗口限制。exact 命中必须
+        # 落在窗口内才有机会被重排，否则调用链查询的定义会被语义候选挤出。
+        self.rerank_window = rerank_window
         self.query_rewriter = query_rewriter
         self.path_store = path_store
         self.path_content_store = path_content_store
@@ -129,7 +133,7 @@ class RetrievalPipeline:
         self.priority_factor = priority_factor or (
             source_priority_factor
             if self.settings.source_priority_enabled
-            else lambda _path: 1.0
+            else neutral_priority_factor
         )
         self.query_planner = query_planner or HeuristicQueryPlanner(
             max_queries=(
@@ -203,7 +207,7 @@ class RetrievalPipeline:
         path_queries = (
             tuple(dict.fromkeys((query, *queries_to_search))) if use_path_index else ()
         )
-        with stage("dense"):
+        with stage("embed"):
             query_vectors = await self._embed_query_vectors(
                 [*path_queries, *(item[0] for item in planned_queries)]
             )
@@ -269,7 +273,7 @@ class RetrievalPipeline:
             has_exact_hits=bool(exact_hits),
             has_path_hits=bool(path_scores),
             # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）。
-            priority_factor=path_query_priority_factor if use_path_index else None,
+            priority_factor=neutral_priority_factor if use_path_index else None,
             audit=audit,
         )
 
@@ -402,11 +406,7 @@ class RetrievalPipeline:
             ]
             candidate_window = min(
                 self.settings.default_top_k,
-                getattr(
-                    self.llm_reranker,
-                    "max_candidates",
-                    self.settings.default_top_k,
-                ),
+                self.rerank_window or self.settings.default_top_k,
             )
             reserved = min(len(exact_only), max(1, candidate_window // 3))
             semantic_slots = max(candidate_window - reserved, 1)
@@ -467,7 +467,7 @@ class RetrievalPipeline:
         """按 score × 路径惩罚因子稳定重排（只重排，不改 rerank 决策）。
 
         普通查询默认用 self.priority_factor（源码优先）；路径类查询可传
-        文档中立的 factor（path_query_priority_factor）。
+        文档中立的 factor（neutral_priority_factor）。
         """
         factor = priority_factor or self.priority_factor
         return sorted(
@@ -492,8 +492,9 @@ class RetrievalPipeline:
         allowed_blob_names: frozenset[str] | None,
     ) -> dict[str, float]:
         """Best path score per blob over every query variant; failures degrade to none."""
-        assert self.path_store is not None
         path_scores: dict[str, float] = {}
+        if self.path_store is None:
+            return path_scores
         blob_filter = list(allowed_blob_names) if allowed_blob_names else None
         try:
             result_lists = await asyncio.gather(
@@ -501,7 +502,7 @@ class RetrievalPipeline:
                     self.path_store.search_paths(
                         query_vector=vector,
                         allowed_blob_names=blob_filter,
-                        top_k=20,
+                        top_k=self.settings.path_top_k,
                     )
                     for vector in query_vectors
                 )

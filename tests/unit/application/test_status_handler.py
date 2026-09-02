@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import uuid
+
 import pytest
 
 from oce.application.queries.status import (
@@ -81,10 +83,14 @@ class TestBlobStatusQueryHandler:
         handler = BlobStatusQueryHandler(factory)
 
         found = await handler.handle(
-            BlobStatusQuery(checkpoint_id=chain.get_checkpoint_token())
+            BlobStatusQuery(
+                checkpoint_id=Chain.format_checkpoint_token(
+                    chain.chain_id, chain.version
+                )
+            )
         )
         missing = await handler.handle(
-            BlobStatusQuery(checkpoint_id=f"{Chain.create(['x']).chain_id}:1")
+            BlobStatusQuery(checkpoint_id=f"{uuid.uuid4().hex}:1")
         )
 
         assert found.checkpoint_not_found is False
@@ -93,7 +99,7 @@ class TestBlobStatusQueryHandler:
     async def test_stale_token_reports_not_found(self, repos):
         factory, _, chain_repo = repos
         chain = await chain_repo.create(["a"])
-        stale_token = chain.get_checkpoint_token()
+        stale_token = Chain.format_checkpoint_token(chain.chain_id, chain.version)
         await chain_repo.apply_checkpoint(chain.chain_id, chain.version, ["b"], [])
 
         result = await BlobStatusQueryHandler(factory).handle(
@@ -110,7 +116,9 @@ class TestBlobStatusQueryHandler:
         result = await BlobStatusQueryHandler(factory).handle(
             BlobStatusQuery(
                 blob_names=(ready, "ghost"),
-                checkpoint_id=chain.get_checkpoint_token(),
+                checkpoint_id=Chain.format_checkpoint_token(
+                    chain.chain_id, chain.version
+                ),
             )
         )
 
@@ -152,7 +160,7 @@ class TestResolveScopeQueryHandler:
 
     async def test_missing_chain_raises_needs_reset(self, repos):
         factory, _, _ = repos
-        ghost = f"{Chain.create(['x']).chain_id}:1"
+        ghost = f"{uuid.uuid4().hex}:1"
         with pytest.raises(NeedsResetError):
             await ResolveScopeQueryHandler(factory).handle(
                 ResolveScopeQuery(checkpoint_id=ghost)
@@ -161,7 +169,7 @@ class TestResolveScopeQueryHandler:
     async def test_stale_checkpoint_raises_needs_reset(self, repos):
         factory, _, chain_repo = repos
         chain = await chain_repo.create(["a"])
-        stale_token = chain.get_checkpoint_token()
+        stale_token = Chain.format_checkpoint_token(chain.chain_id, chain.version)
         await chain_repo.apply_checkpoint(chain.chain_id, chain.version, ["b"], [])
 
         with pytest.raises(NeedsResetError):
@@ -174,7 +182,9 @@ class TestResolveScopeQueryHandler:
         chain = await chain_repo.create(["a", "b"])
         result = await ResolveScopeQueryHandler(factory).handle(
             ResolveScopeQuery(
-                checkpoint_id=chain.get_checkpoint_token(),
+                checkpoint_id=Chain.format_checkpoint_token(
+                    chain.chain_id, chain.version
+                ),
                 added_blobs=("c",),
                 deleted_blobs=("b",),
             )
@@ -190,6 +200,10 @@ class TestResolveScopeQueryHandler:
         factory, _, chain_repo = repos
         chain = await chain_repo.create([])
         result = await ResolveScopeQueryHandler(factory).handle(
-            ResolveScopeQuery(checkpoint_id=chain.get_checkpoint_token())
+            ResolveScopeQuery(
+                checkpoint_id=Chain.format_checkpoint_token(
+                    chain.chain_id, chain.version
+                )
+            )
         )
         assert result.scope.blob_names == frozenset()

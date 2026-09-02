@@ -20,16 +20,8 @@ def profile_value_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-@dataclass(frozen=True)
-class EmbeddingIndexProfile:
-    enabled: bool
-    endpoint_hash: str | None = None
-    model: str | None = None
-    dimensions: int | None = None
-    query_instruction_hash: str | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    pipeline_version: int = EMBEDDING_PIPELINE_VERSION
+class _CanonicalProfile:
+    """Deterministic JSON identity for a frozen profile dataclass."""
 
     def canonical_json(self) -> str:
         return json.dumps(
@@ -45,7 +37,19 @@ class EmbeddingIndexProfile:
 
 
 @dataclass(frozen=True)
-class IndexProfile:
+class EmbeddingIndexProfile(_CanonicalProfile):
+    enabled: bool
+    endpoint_hash: str | None = None
+    model: str | None = None
+    dimensions: int | None = None
+    query_instruction_hash: str | None = None
+    max_input_chars: int | None = None
+    input_overlap_chars: int | None = None
+    pipeline_version: int = EMBEDDING_PIPELINE_VERSION
+
+
+@dataclass(frozen=True)
+class IndexProfile(_CanonicalProfile):
     schema_version: int
     vector_store_endpoint_hash: str
     dense_collection_name: str
@@ -62,17 +66,15 @@ class IndexProfile:
     source_admission_version: int
     embedding: EmbeddingIndexProfile
 
-    def canonical_json(self) -> str:
-        return json.dumps(
-            asdict(self),
-            ensure_ascii=False,
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-
-    @property
-    def fingerprint(self) -> str:
-        return profile_value_hash(self.canonical_json())
+    @classmethod
+    def from_json(cls, text: str) -> IndexProfile | None:
+        """Rebuild a stored profile; ``None`` when the payload no longer fits."""
+        try:
+            payload = json.loads(text)
+            embedding = EmbeddingIndexProfile(**payload.pop("embedding"))
+            return cls(embedding=embedding, **payload)
+        except (TypeError, ValueError, KeyError, AttributeError):
+            return None
 
 
 @dataclass(frozen=True)

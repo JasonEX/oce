@@ -23,6 +23,9 @@ from oce.infrastructure.persistence.models import (
 
 _SCOPE_BATCH_SIZE = 500
 _RELATIONAL_DELTA_LIMIT = 500
+# 结构证据的优先级分：endpoint > definition > 其他；SQL 排序与命中打分共用一份。
+_KIND_SCORES = {"endpoint": 1.0, "definition": 0.95}
+_DEFAULT_KIND_SCORE = 0.85
 
 
 class SymbolSearchStore:
@@ -133,9 +136,11 @@ class SymbolSearchStore:
         top_k: int,
     ) -> list[Row[Any]]:
         kind_priority = case(
-            (SymbolOccurrenceModel.kind == "endpoint", 3),
-            (SymbolOccurrenceModel.kind == "definition", 2),
-            else_=1,
+            *(
+                (SymbolOccurrenceModel.kind == kind, score)
+                for kind, score in _KIND_SCORES.items()
+            ),
+            else_=_DEFAULT_KIND_SCORE,
         )
         stmt = (
             select(
@@ -190,9 +195,4 @@ class SymbolSearchStore:
 
     @staticmethod
     def _score_by_kind(kind: str) -> float:
-        """按 kind 分配优先级分数。"""
-        if kind == "endpoint":
-            return 1.0
-        if kind == "definition":
-            return 0.95
-        return 0.85
+        return _KIND_SCORES.get(kind, _DEFAULT_KIND_SCORE)

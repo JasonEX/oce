@@ -8,11 +8,12 @@ from dataclasses import dataclass
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.infrastructure.delegate_runtime import SwappableDelegate
-from oce.infrastructure.embed.openai_embedder import OpenAIEmbedder, UsageCallback
+from oce.infrastructure.embed.openai_embedder import OpenAIEmbedder, embedding_base_url
 from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import EmbeddingSettings
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_profile import EmbeddingIndexProfile, profile_value_hash
+from oce.shared.metrics import UsageCallback
 
 
 @dataclass(frozen=True)
@@ -32,11 +33,7 @@ class EmbeddingRuntimeConfig:
     credential_id: int = 0
 
     def normalized_endpoint(self) -> str:
-        """The API base without the ``/embeddings`` resource suffix."""
-        endpoint = self.endpoint.rstrip("/")
-        if endpoint.endswith("/embeddings"):
-            endpoint = endpoint[: -len("/embeddings")]
-        return endpoint
+        return embedding_base_url(self.endpoint)
 
     def indexed_vector_identity(self) -> tuple[object, ...]:
         """Fields whose change invalidates every stored document vector."""
@@ -179,15 +176,6 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
         self._config = None
         await super().close()
 
-    async def reload(self) -> int:
-        replacement = await self.prepare_reload()
-        try:
-            await self.validate_prepared(replacement)
-        except Exception:
-            await self.discard_prepared(replacement)
-            raise
-        return await self.activate_prepared(replacement)
-
     async def validate_prepared(self, replacement: PreparedEmbeddingReload) -> None:
         await self._validate_index_profile(replacement.config)
 
@@ -229,10 +217,9 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
             self._ensure_reload_compatible(config)
         return PreparedEmbeddingReload(self._build_delegate(config), config)
 
-    async def activate_prepared(self, replacement: PreparedEmbeddingReload) -> int:
+    async def activate_prepared(self, replacement: PreparedEmbeddingReload) -> None:
         self._config = replacement.config
         await self._activate(replacement.delegate)
-        return 1
 
     async def discard_prepared(self, replacement: PreparedEmbeddingReload) -> None:
         await replacement.delegate.close()

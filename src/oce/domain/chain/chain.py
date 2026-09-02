@@ -1,14 +1,12 @@
 """Chain 聚合根 - 工作集抽象
 
-Chain 是客户端工作集的领域抽象，职责：
-- 管理 Blob 成员列表
-- 实现 Checkpoint 版本控制
-- 支持增量更新（added/deleted）
+Chain 是客户端工作集的领域抽象：一组 Blob 成员加一个单调递增的 checkpoint
+版本。成员增删与版本推进由 ChainRepository 在同一事务内完成，这里只承载读模型
+和 checkpoint 令牌的编解码。
 
 不变量：
 - chain_id 必须是有效的 UUID
-- version 必须单调递增
-- members 集合去重
+- version 必须 >= 1
 """
 
 from __future__ import annotations
@@ -44,39 +42,6 @@ class Chain:
         except (ValueError, AttributeError):
             return False
 
-    @classmethod
-    def create(cls, members: list[str]) -> Chain:
-        """创建新 Chain"""
-        return cls(
-            chain_id=str(uuid.uuid4()),
-            version=1,
-            members=set(members),
-        )
-
-    def apply_checkpoint(
-        self,
-        added: list[str],
-        deleted: list[str],
-    ) -> None:
-        """应用 Checkpoint（增量更新）
-
-        操作：
-        1. members ∪ added
-        2. members - deleted
-        3. version += 1
-        """
-        # 添加新成员
-        for blob_name in added:
-            self.members.add(blob_name)
-
-        # 删除成员
-        for blob_name in deleted:
-            self.members.discard(blob_name)
-
-        # 版本递增
-        self.version += 1
-        self.updated_at = datetime.now(timezone.utc)
-
     @staticmethod
     def format_checkpoint_token(chain_id: str, version: int) -> str:
         """格式：{chain_id}:{version}
@@ -85,9 +50,6 @@ class Chain:
         重建工作集，避免旧令牌静默读取或改写新成员集。
         """
         return f"{chain_id}:{version}"
-
-    def get_checkpoint_token(self) -> str:
-        return self.format_checkpoint_token(self.chain_id, self.version)
 
     @staticmethod
     def parse_checkpoint_token(token: str) -> tuple[str, int] | None:

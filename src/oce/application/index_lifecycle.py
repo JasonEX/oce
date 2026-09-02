@@ -129,72 +129,34 @@ class IndexLifecycleManager:
 
     async def index_profile_stats(self) -> IndexProfileStats:
         if self._current is not None:
-            return self._stats_from_payload(
-                "compatible",
-                self._current.fingerprint,
-                json.loads(self._current.canonical_json()),
-            )
+            return self._stats("compatible", self._current.fingerprint, self._current)
         stored = await self._store.read()
         if stored is None:
             return IndexProfileStats("uninitialized")
-        try:
-            payload = json.loads(stored.profile_json)
-        except (TypeError, ValueError):
-            payload = {}
-        return self._stats_from_payload(
+        # 存量 JSON 可能来自更旧的 schema；解析不出来时只报告指纹。
+        return self._stats(
             "stored_unverified",
             stored.fingerprint,
-            payload,
+            IndexProfile.from_json(stored.profile_json),
         )
 
     @staticmethod
-    def _stats_from_payload(
+    def _stats(
         state: str,
         fingerprint: str,
-        payload: Any,
+        profile: IndexProfile | None,
     ) -> IndexProfileStats:
-        profile = payload if isinstance(payload, dict) else {}
-        embedding = profile.get("embedding")
-        if not isinstance(embedding, dict):
-            embedding = {}
-        schema_version = profile.get("schema_version")
-        embedding_enabled = embedding.get("enabled")
-        embedding_model = embedding.get("model")
-        embedding_dimensions = embedding.get("dimensions")
-        embedding_fingerprint = (
-            profile_value_hash(
-                json.dumps(
-                    embedding,
-                    ensure_ascii=False,
-                    separators=(",", ":"),
-                    sort_keys=True,
-                )
-            )
-            if embedding
-            else None
-        )
+        if profile is None:
+            return IndexProfileStats(state=state, fingerprint=fingerprint)
+        embedding = profile.embedding
         return IndexProfileStats(
             state=state,
             fingerprint=fingerprint,
-            schema_version=(
-                schema_version
-                if isinstance(schema_version, int)
-                and not isinstance(schema_version, bool)
-                else None
-            ),
-            embedding_enabled=(
-                embedding_enabled if isinstance(embedding_enabled, bool) else None
-            ),
-            embedding_fingerprint=embedding_fingerprint,
-            embedding_model=(
-                embedding_model if isinstance(embedding_model, str) else None
-            ),
-            embedding_dimensions=(
-                embedding_dimensions
-                if isinstance(embedding_dimensions, int)
-                and not isinstance(embedding_dimensions, bool)
-                else None
-            ),
+            schema_version=profile.schema_version,
+            embedding_enabled=embedding.enabled,
+            embedding_fingerprint=embedding.fingerprint,
+            embedding_model=embedding.model,
+            embedding_dimensions=embedding.dimensions,
         )
 
     @staticmethod
