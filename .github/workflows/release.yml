@@ -38,7 +38,7 @@ jobs:
           fi
 
       - name: Run Ruff
-        run: uv run ruff check src tests
+        run: uv run ruff check .
 
       - name: Run unit tests (one process per file)
         shell: bash
