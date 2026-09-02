@@ -37,7 +37,7 @@ async def test_resolves_active_credential_for_kind():
         # 不同 kind 的行即使优先级更高也不应被 llm_rerank 选中
         session.add(
             ModelCredentialModel(
-                kind="intent",
+                kind="query_rewrite",
                 name="i",
                 api_key="other",
                 api_key_hash="h2",
@@ -86,13 +86,13 @@ async def test_falls_back_to_env_without_credential():
 async def test_missing_database_and_environment_credential_fails_locally():
     engine, sessions = await _runtime()
     client = CredentialConfiguredLLMClient(
-        "intent",
+        "query_rewrite",
         sessions,
         LLMSettings(api_key=""),
         fallback_model="env-model",
     )
 
-    with pytest.raises(ServiceNotReadyError, match="No active intent credential"):
+    with pytest.raises(ServiceNotReadyError, match="No active query_rewrite credential"):
         await client._resolve_config()
 
     await engine.dispose()
@@ -105,7 +105,7 @@ async def test_build_delegate_wires_credential_id_and_usage():
         return None
 
     client = CredentialConfiguredLLMClient(
-        "intent",
+        "query_rewrite",
         sessions,
         LLMSettings(api_key="env-key"),
         fallback_model="env-model",

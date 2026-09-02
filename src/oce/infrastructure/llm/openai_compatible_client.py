@@ -22,7 +22,7 @@ _MAX_ATTEMPTS = 3
 _RETRY_BACKOFF_SECONDS = 20.0
 
 class OpenAICompatibleLLMClient:
-    """OpenAI 兼容的 LLM 聊天客户端（/v1/chat/completions），rerank / rewrite / intent 共用。"""
+    """OpenAI 兼容的 LLM 聊天客户端（/v1/chat/completions），rerank / rewrite 共用。"""
 
     def __init__(
         self,

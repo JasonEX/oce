@@ -38,8 +38,10 @@ _QUALIFIED_IDENTIFIER_PATTERN = re.compile(
 )
 _TYPE_IDENTIFIER_PATTERN = re.compile(
     r"([A-Z][A-Za-z0-9_$]*)\s*(?:的)?(?:前后端)?"
-    r"(?:类型|类|接口|结构|定义|(?:type|interface|struct|enum|trait|class|definition)\b)"
+    r"(?:类型|类|接口|结构|定义|"
+    r"(?:type|interface|struct|enum|trait|class|definition|defined|implemented)\b)"
 )
+_CONSTANT_IDENTIFIER_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b")
 
 # 带扩展名的文件名 token（如 config.json / lib.rs）：定位具体文件的强结构信号。
 # 扩展名首位限定为字母，避免把版本号 3.13 之类误判为文件名。
@@ -70,6 +72,14 @@ _PATH_KEYWORDS = {
     "file", "config", "where", "location", "dependency",
 }
 
+# 决定 focused PATH 意图的强信号。普通 "where/在哪里" 只说明用户想定位代码，
+# 仍可能是跨文件功能问题；它可以启用 path operator，但不应强制 focused selection。
+_EXPLICIT_PATH_KEYWORDS = {
+    "文件", "哪个文件", "路径", "配置", "依赖",
+    "file", "files", "path", "paths", "config", "configuration",
+    "dependency", "dependencies",
+}
+
 # 功能/实现类查询标记：出现这些词时，即便含“文件/配置/在哪里”也偏向功能定位而非找文件
 _FEATURE_MARKERS = {
     "功能", "实现", "逻辑", "代码", "机制", "策略",
@@ -79,16 +89,25 @@ _FEATURE_MARKERS = {
 }
 
 
-def _terms_pattern(terms: set[str]) -> re.Pattern[str]:
+def _terms_pattern(
+    terms: set[str],
+    *,
+    match_ascii_prefix: bool = True,
+) -> re.Pattern[str]:
     """把关键词集合编译成判定正则。
 
     英文（ASCII）词用前缀词边界匹配：既避免子串误命中（how 命中 show、file 命中
     profile），又能覆盖词形变化（implement→implemented、config→configuration）。
     中文无词边界概念，按子串匹配。目的是让中英查询判定对称，不偏向任一语言。
     """
-    parts = [
-        rf"\b{re.escape(t)}" if t.isascii() else re.escape(t) for t in terms
-    ]
+    parts = []
+    for term in terms:
+        if not term.isascii():
+            parts.append(re.escape(term))
+        elif match_ascii_prefix:
+            parts.append(rf"\b{re.escape(term)}")
+        else:
+            parts.append(rf"\b{re.escape(term)}\b")
     return re.compile("|".join(parts))
 
 
@@ -96,6 +115,10 @@ _CALL_VERBS_RE = _terms_pattern(_CALL_VERBS)
 _REFERENCE_VERBS_RE = _terms_pattern(_REFERENCE_VERBS)
 _OVERVIEW_KEYWORDS_RE = _terms_pattern(_OVERVIEW_KEYWORDS)
 _PATH_KEYWORDS_RE = _terms_pattern(_PATH_KEYWORDS)
+_EXPLICIT_PATH_KEYWORDS_RE = _terms_pattern(
+    _EXPLICIT_PATH_KEYWORDS,
+    match_ascii_prefix=False,
+)
 _FEATURE_MARKERS_RE = _terms_pattern(_FEATURE_MARKERS)
 
 
@@ -132,7 +155,8 @@ def classify_query_intent(query: str) -> QueryIntent:
         QueryIntent.SYMBOL  # 符号优先，不因扩展名改判为 PATH
     """
     query_lower = query.lower()
-    has_symbol = bool(_SYMBOL_PATTERN.search(query))
+    identifiers = extract_code_identifiers(query)
+    has_symbol = bool(_SYMBOL_PATTERN.search(query)) or bool(identifiers)
 
     # 分支1：有符号锚点
     if has_symbol:
@@ -148,19 +172,21 @@ def classify_query_intent(query: str) -> QueryIntent:
         if _REFERENCE_VERBS_RE.search(text_outside_backticks):
             return QueryIntent.REFERENCE
 
+        if len(identifiers) > 1:
+            return QueryIntent.COMPOUND
+
         # 默认符号定位
         return QueryIntent.SYMBOL
 
     # 分支2：无符号锚点。用结构信号（文件名 token / 通用路径词）判定，不枚举技术栈。
-    has_path_kw = bool(_PATH_KEYWORDS_RE.search(query_lower))
     has_feature_marker = bool(_FEATURE_MARKERS_RE.search(query_lower))
 
-    # 带扩展名的文件名 token（如 config.json / lib.rs）是“找文件”的强信号
-    if _FILENAME_TOKEN_PATTERN.search(query):
-        return QueryIntent.PATH
-
-    # 通用路径定位词（文件/配置/在哪里）且非功能实现类查询
-    if has_path_kw and not has_feature_marker:
+    # 显式文件名、文件/路径或配置名词才决定 focused PATH 意图；单独的
+    # where/在哪里 仍走 FEATURE/OVERVIEW 的 coverage selection。
+    if (
+        _FILENAME_TOKEN_PATTERN.search(query)
+        or _EXPLICIT_PATH_KEYWORDS_RE.search(query_lower)
+    ) and not has_feature_marker:
         return QueryIntent.PATH
 
     # 概览类：架构/机制/流程描述
@@ -169,6 +195,7 @@ def classify_query_intent(query: str) -> QueryIntent:
 
     # 默认功能定位
     return QueryIntent.FEATURE
+
 
 def extract_code_identifiers(query: str) -> tuple[str, ...]:
     """提取适合精确词法召回的代码标识符，保持查询中的出现顺序。"""
@@ -184,6 +211,7 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
     for pattern in (
         _QUALIFIED_IDENTIFIER_PATTERN,
         _SNAKE_IDENTIFIER_PATTERN,
+        _CONSTANT_IDENTIFIER_PATTERN,
         _TYPE_IDENTIFIER_PATTERN,
     ):
         for match in pattern.finditer(query):
@@ -212,4 +240,17 @@ def should_use_path_index(query: str) -> bool:
         False
     """
     intent = classify_query_intent(query)
-    return intent == QueryIntent.PATH
+    if intent in {
+        QueryIntent.SYMBOL,
+        QueryIntent.CALL_CHAIN,
+        QueryIntent.REFERENCE,
+    }:
+        return False
+    query_lower = query.lower()
+    return bool(
+        _FILENAME_TOKEN_PATTERN.search(query)
+        or (
+            _PATH_KEYWORDS_RE.search(query_lower)
+            and not _FEATURE_MARKERS_RE.search(query_lower)
+        )
+    )

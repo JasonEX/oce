@@ -11,7 +11,6 @@ from dataclasses import replace
 
 import pytest
 
-from oce.domain.services.llm.intent import QueryIntent
 from oce.domain.services.path_search import PathSearchResult
 from oce.domain.services.retrieval import RetrievalPipeline, source_priority_factor
 from oce.domain.services.search import SearchHit, SearchScope
@@ -52,14 +51,6 @@ class FakeEmbedder:
     async def embed_query(self, text):
         self.queries.append(text)
         return [float(len(text))]
-
-
-class FakeIntentClassifier:
-    def __init__(self, intent: QueryIntent):
-        self.intent = intent
-
-    async def classify(self, query: str) -> QueryIntent:
-        return self.intent
 
 
 class FakePathStore:
@@ -336,7 +327,6 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/commands/provider.rs", 0.9)]),
             path_store=path_store,
-            intent_classifier=FakeIntentClassifier(QueryIntent.SYMBOL),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
@@ -367,7 +357,6 @@ class TestRetrievalPipeline:
             store=FakeSearchStore(),
             path_store=path_store,
             path_content_store=content_store,
-            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
@@ -391,7 +380,6 @@ class TestRetrievalPipeline:
             path_content_store=FakePathContentStore(
                 error=RuntimeError("database unavailable")
             ),
-            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
@@ -439,7 +427,6 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FailingSearchStore(),
             path_store=FakePathStore(),
-            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
@@ -457,28 +444,11 @@ class TestRetrievalPipeline:
             path_content_store=FakePathContentStore(
                 error=RuntimeError("metadata unavailable")
             ),
-            intent_classifier=FakeIntentClassifier(QueryIntent.PATH),
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
         with pytest.raises(RuntimeError, match="metadata unavailable"):
             await pipe.search("Where is missing.py?")
-
-    async def test_intent_failure_falls_back_without_aborting_retrieval(self):
-        class FailingIntentClassifier:
-            async def classify(self, query: str) -> QueryIntent:
-                raise RuntimeError("intent service unavailable")
-
-        pipe = RetrievalPipeline(
-            embedder=FakeEmbedder(),
-            store=FakeSearchStore([_hit("src/core.py", 0.9)]),
-            intent_classifier=FailingIntentClassifier(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
-        )
-
-        results = await pipe.search("how is authentication implemented")
-
-        assert [result.path for result in results] == ["src/core.py"]
 
     async def test_exact_identifier_candidates_join_semantic_reranking(self):
         exact_store = FakeExactSearchStore(
@@ -533,6 +503,25 @@ class TestRetrievalPipeline:
 
         assert dense_started.is_set()
         assert exact_started.is_set()
+        assert [hit.path for hit in results] == ["src/exact.py", "src/semantic.py"]
+
+    async def test_path_branch_keeps_exact_identifier_recall(self):
+        exact = _hit("src/exact.py", 1.0)
+        exact_store = FakeExactSearchStore([exact])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
+            path_store=FakePathStore(),
+            exact_store=exact_store,
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+
+        results = await pipe.search(
+            "OCE_WORKSPACE and OCE_API_URL config files",
+            _scope("a" * 64),
+        )
+
+        assert exact_store.identifiers == ("OCE_WORKSPACE", "OCE_API_URL")
         assert [hit.path for hit in results] == ["src/exact.py", "src/semantic.py"]
 
     async def test_exact_identifier_failure_falls_back_to_semantic_results(self):

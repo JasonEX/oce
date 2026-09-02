@@ -53,7 +53,7 @@ class TestPipelineAuditFill:
             "main entry", SearchScope(frozenset({"h1", "h2"})), audit=audit
         )
 
-        # 无 intent 分类器/改写器 → 只跑核心阶段；stage() 应填充这些键
+        # 无查询改写器 → 只跑核心阶段；stage() 应填充这些键
         assert "dense" in audit.stages
         assert "select" in audit.stages
         assert all(v >= 0 for v in audit.stages.values())

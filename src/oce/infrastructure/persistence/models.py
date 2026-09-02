@@ -23,11 +23,11 @@ from oce.shared.database.session import Base
 class ModelCredentialModel(Base):
     """多用途模型凭据：一行 = 一个 (kind, 账号) 通道。
 
-    kind ∈ embed | rerank | llm_rerank | query_rewrite | intent。同一把 key 可服务多个
+    kind ∈ embed | rerank | llm_rerank | query_rewrite。同一把 key 可服务多个
     用途/模型：唯一约束是 (kind, model, api_key_hash)，故同 key 跨 kind、同 kind 下同 key
     挂不同 model 都允许，只挡住 kind+model+key 三者全同的纯重复行。endpoint 语义随 kind 变化：
-    embed/rerank 存完整 URL（/v1/embeddings、/v1/rerank），chat 三类（llm_rerank/
-    query_rewrite/intent）存 base_url（/v1）。resolve 时按 kind + status='active' +
+    embed/rerank 存完整 URL（/v1/embeddings、/v1/rerank），chat 两类（llm_rerank/
+    query_rewrite）存 base_url（/v1）。resolve 时按 kind + status='active' +
     priority 取最高优先级一条，取不到回落各自的环境变量。kind 专属参数列对其它 kind 恒为
     NULL，解析时缺失的字段回落 fallback 设置。
     """
@@ -59,7 +59,7 @@ class ModelCredentialModel(Base):
     top_n = Column(Integer)
     min_score = Column(Float)
 
-    # chat 三类专属：llm_rerank / query_rewrite / intent
+    # chat 两类专属：llm_rerank / query_rewrite
     tpm_limit = Column(Integer)
     max_candidates = Column(Integer)
     output_top_k = Column(Integer)
@@ -276,7 +276,7 @@ class ApiCallMetricModel(Base):
 
 
 class TokenUsageMetricModel(Base):
-    """每次外部模型调用一行：embed/rerank/rewrite/intent 的 token 消耗明细。"""
+    """每次外部模型调用一行：embed/rerank/rewrite 的 token 消耗明细。"""
 
     __tablename__ = "token_usage_metrics"
 
@@ -339,7 +339,6 @@ class RetrievalMetricModel(Base):
     intent = Column(String(32), nullable=True)
     path_boosted = Column(Boolean, nullable=False, server_default="false")
     query_text = Column(Text, nullable=True)
-    intent_ms = Column(Integer, nullable=True)
     rewrite_ms = Column(Integer, nullable=True)
     dense_ms = Column(Integer, nullable=True)
     exact_ms = Column(Integer, nullable=True)

@@ -250,24 +250,6 @@ class Container:
             )
             logger.info("Query rewriter enabled (kind=query_rewrite)")
 
-        self.intent_classifier = None
-        if settings.retrieval.intent_classification_enabled:
-            intent_llm = CredentialConfiguredLLMClient(
-                "intent",
-                async_session_factory,
-                settings.llm,
-                fallback_model=settings.llm.model,
-                on_usage=token_usage_cb,
-            )
-            llm_clients.append(intent_llm)
-            from oce.domain.services.llm.intent import IntentClassifier
-
-            self.intent_classifier = IntentClassifier(
-                llm_client=intent_llm,
-                model=settings.llm.model,
-            )
-            logger.info("Intent classifier enabled (kind=intent)")
-
         credential_runtime = _CredentialRuntime(
             self.embedding_runtime,
             self.reranker,
@@ -459,7 +441,6 @@ class Container:
                     path_store=self.path_index,
                     path_content_store=self.path_content_store,
                     exact_store=self.symbol_search_store,
-                    intent_classifier=self.intent_classifier,
                     settings=settings.retrieval,
                 ),
                 metrics=self.metrics,
@@ -502,9 +483,6 @@ class Container:
                     api_rerank_enabled=settings.rerank.enabled,
                     llm_rerank_enabled=settings.llm.rerank_enabled,
                     query_rewrite_enabled=settings.retrieval.query_rewrite_enabled,
-                    intent_classification_enabled=(
-                        settings.retrieval.intent_classification_enabled
-                    ),
                 ),
                 self.index_lifecycle,
             ),

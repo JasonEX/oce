@@ -55,7 +55,6 @@ class RetrievalRuntimeProfile:
     api_rerank_enabled: bool = False
     llm_rerank_enabled: bool = False
     query_rewrite_enabled: bool = False
-    intent_classification_enabled: bool = False
 
 
 @dataclass(frozen=True)

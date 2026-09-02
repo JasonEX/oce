@@ -70,7 +70,6 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # 个人模式默认关闭可选 LLM 调用；配置受信任的 LLM 后可按需开启。
 # 开启后，检索 query 和候选源码片段会发送到该 LLM。
 LLM_RERANK_ENABLED=false
-RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=false
 # LLM_API_KEY=your_llm_api_key_here
 # LLM_BASE_URL=https://openrouter.ai/api/v1
 # LLM_MODEL=inclusionai/ling-3.0-flash-fin:free

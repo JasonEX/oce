@@ -1,11 +1,11 @@
 """按 kind 从 model_credentials 解析的懒加载 chat-LLM 客户端。
 
-llm_rerank / query_rewrite / intent 各持一个实例（kind 不同），从凭证表解析自己的
+llm_rerank / query_rewrite 各持一个实例（kind 不同），从凭证表解析自己的
 active 凭证；取不到回落 LLMSettings（env）。实现 LLMClient.chat 协议，交给
-domain 层的 reranker / rewriter / intent classifier 复用。
+domain 层的 reranker / rewriter 复用。
 
 注意：底层 OpenAICompatibleLLMClient 每次 chat 内部新建 httpx client、调用间不持有
-连接，故 reload 只需原子替换 delegate，无需关闭旧实例。三个 kind 各自独立限流：若共用
+连接，故 reload 只需原子替换 delegate，无需关闭旧实例。两个 kind 各自独立限流：若共用
 同一把 key，TPM 预算不共享（可接受的取舍，换取按用途独立管理/轮换）。
 """
 from __future__ import annotations

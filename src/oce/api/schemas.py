@@ -174,7 +174,6 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     api_rerank_enabled: bool
     llm_rerank_enabled: bool
     query_rewrite_enabled: bool
-    intent_classification_enabled: bool
 
 
 class IndexProfileStatsResponse(BaseModel):
@@ -196,17 +195,16 @@ class IndexStatsResponse(BaseModel):
     profile: IndexProfileStatsResponse
 
 
-# 凭据用途：embed/rerank 走 REST（/v1/embeddings、/v1/rerank）；后三类走 chat。
-CredentialKind = Literal[
-    "embed", "rerank", "llm_rerank", "query_rewrite", "intent"
-]
+# 凭据用途：embed/rerank 走 REST；llm_rerank/query_rewrite 走 chat。
+CredentialKind = Literal["embed", "rerank", "llm_rerank", "query_rewrite"]
 
 
 class CredentialResponse(BaseModel):
     """凭据视图：脱敏，只暴露 api_key 尾 4 位。kind 专属参数对其它 kind 为 None。"""
 
     id: int
-    kind: CredentialKind
+    # 历史数据库中可能仍有已停用的 kind；列表响应保持可读，写入 DTO 只接受当前 kind。
+    kind: str
     provider: str | None = None
     name: str
     status: str

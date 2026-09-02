@@ -181,7 +181,7 @@ class ChunkingSettings(BaseSettings):
 class LLMSettings(BaseSettings):
     """LLM 功能共享的环境变量 fallback 配置。
 
-    LLM 语义重排、查询改写和意图分类分别按 kind 构造客户端；未配置对应
+    LLM 语义重排和查询改写分别按 kind 构造客户端；未配置对应
     model_credentials 行时，共同回落到这里的 LLM_* 设置。
     """
 
@@ -315,12 +315,6 @@ class RetrievalSettings(BaseSettings):
     # 路径分数与内容分数同为 COSINE 量纲，加权相加而非替换，避免挤掉正确 chunk
     path_boost_weight: float = Field(
         default=0.5, ge=0.0, le=2.0, description="路径索引命中对同文件 chunk 的加权系数"
-    )
-
-    # Intent classification (意图分类驱动的检索策略)
-    intent_classification_enabled: bool = Field(
-        default=False,
-        description="是否启用查询意图分类（LLM-based）",
     )
 
 

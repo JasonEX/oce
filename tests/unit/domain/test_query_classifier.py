@@ -1,28 +1,11 @@
 """查询分类器测试 - 验证意图判定优先级"""
 
-import pytest
-
-from oce.domain.services.llm.intent import IntentClassifier
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
     extract_code_identifiers,
     should_use_path_index,
 )
-
-
-@pytest.mark.parametrize(
-    ("label", "expected"),
-    [("S", QueryIntent.SYMBOL), ("P", QueryIntent.PATH)],
-)
-async def test_llm_classifier_returns_canonical_intent(label, expected):
-    class FakeLLM:
-        async def chat(self, **kwargs):
-            return label
-
-    classifier = IntentClassifier(FakeLLM(), "test-model")
-
-    assert await classifier.classify("query") == expected
 
 
 def test_extract_code_identifiers_preserves_explicit_anchors():
@@ -32,7 +15,16 @@ def test_extract_code_identifiers_preserves_explicit_anchors():
 
 
 def test_extract_code_identifiers_supports_type_location_queries():
-    assert extract_code_identifiers("Provider 的前后端类型定义在哪里？") == ("Provider",)
+    assert extract_code_identifiers("Provider 的前后端类型定义在哪里？") == (
+        "Provider",
+    )
+
+
+def test_extract_code_identifiers_supports_uppercase_constants():
+    assert extract_code_identifiers("OCE_WORKSPACE 和 OCE_API_URL 在哪里解析？") == (
+        "OCE_WORKSPACE",
+        "OCE_API_URL",
+    )
 
 
 def test_extract_code_identifiers_ignores_product_names():
@@ -131,10 +123,24 @@ class TestPathIndexRouting:
         assert should_use_path_index("Cargo.toml 在哪里？")
 
         # SYMBOL 意图 -> False（即使带扩展名）
-        assert not should_use_path_index("`invoke_handler` 在 lib.rs 中注册了哪些命令？")
+        assert not should_use_path_index(
+            "`invoke_handler` 在 lib.rs 中注册了哪些命令？"
+        )
 
         # FEATURE 意图 -> False
         assert not should_use_path_index("如何实现自动重连功能？")
+
+    def test_location_signal_does_not_force_focused_path_intent(self):
+        query = "Where would you diagnose pending blobs that stopped progressing?"
+
+        assert classify_query_intent(query) == QueryIntent.FEATURE
+        assert should_use_path_index(query)
+
+    def test_type_location_is_a_symbol_query(self):
+        query = "Where is WorkspaceContext defined?"
+
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
+        assert not should_use_path_index(query)
 
 
 class TestEdgeCases:

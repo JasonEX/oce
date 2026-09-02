@@ -20,7 +20,6 @@ from typing import TYPE_CHECKING, Callable, Iterator, Sequence
 from loguru import logger
 
 from oce.domain.services.embedder import Embedder
-from oce.domain.services.llm.intent import IntentClassifier
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
@@ -121,7 +120,6 @@ class RetrievalPipeline:
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
         priority_factor: Callable[[str], float] | None = None,
-        intent_classifier: IntentClassifier | None = None,  # 意图分类器
     ) -> None:
         self.embedder = embedder
         self.store = store
@@ -139,7 +137,6 @@ class RetrievalPipeline:
             if self.settings.source_priority_enabled
             else lambda _path: 1.0
         )
-        self.intent_classifier = intent_classifier  # Optional intent classifier
         self.query_planner = query_planner or HeuristicQueryPlanner(
             max_queries=(
                 self.settings.query_max_queries
@@ -185,18 +182,8 @@ class RetrievalPipeline:
         if allowed_blob_names is not None and len(allowed_blob_names) == 0:
             return []
 
-        # 廉价规则始终给出完整路由；可选 LLM classifier 只覆盖这个结果。
+        # 路由完全由可测试的确定性信号决定；模型只参与显式的 rewrite/rerank。
         detected_intent = classify_query_intent(query)
-        if self.intent_classifier is not None:
-            try:
-                with stage("intent"):
-                    detected_intent = await self.intent_classifier.classify(query)
-            except Exception as exc:
-                logger.warning(
-                    "Intent classification failed: {}; using heuristic intent {}",
-                    type(exc).__name__,
-                    detected_intent.value,
-                )
         strategy = get_strategy(detected_intent)
         logger.debug("Query intent: {}, strategy: {}", detected_intent.value, strategy)
         if audit is not None:
@@ -212,6 +199,7 @@ class RetrievalPipeline:
             return await self._search_with_path_boost(
                 query,
                 allowed_blob_names,
+                scope=scope,
                 intent=detected_intent,
                 enable_query_rewrite=strategy.enable_query_rewrite,
                 selection_mode=strategy.selection_mode,
@@ -546,6 +534,7 @@ class RetrievalPipeline:
         query: str,
         allowed_blob_names: frozenset[str] | None = None,
         *,
+        scope: SearchScope | None,
         intent: QueryIntent,
         enable_query_rewrite: bool,
         selection_mode: SelectionMode,
@@ -632,15 +621,21 @@ class RetrievalPipeline:
                 logger.warning("Content search failed: {}", type(exc).__name__)
                 return [], exc
 
+        async def recall_exact() -> list[SearchHit]:
+            with stage("exact"):
+                return await self._recall_exact(query, scope)
+
         # Both stores use the same embedding space, so the shared vectors above
         # feed independent path/content searches concurrently.
-        path_scores, (content_hits, content_error) = await asyncio.gather(
+        path_scores, (content_hits, content_error), exact_hits = await asyncio.gather(
             recall_paths(),
             recall_content(),
+            recall_exact(),
         )
 
         # 3. 融合：路径分数作为文件级加权，排序仍在 chunk 粒度上进行
         with stage("fuse"):
+            content_hits = self._merge_exact_hits(query, exact_hits, content_hits)
             if not path_scores:
                 # 路径索引失败，回退到纯内容检索
                 logger.info("No path results, using content-only")
@@ -660,9 +655,11 @@ class RetrievalPipeline:
         )
 
         path_confidence = max(path_scores.values(), default=None)
+        exact_confidence = max((hit.score for hit in exact_hits), default=None)
         if self.llm_reranker is not None and should_use_llm_rerank(
             intent,
             [hit.score for hit in hits],
+            exact_confidence=exact_confidence,
             path_confidence=path_confidence,
         ):
             with stage("llm_rerank"):

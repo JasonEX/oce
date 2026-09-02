@@ -44,7 +44,6 @@ def test_init_creates_env_template(tmp_path: pytest.TempPathFactory) -> None:
     assert "API_KEY=" in content
     assert "EMBED_API_KEY=" in content
     assert "LLM_RERANK_ENABLED=false" in content
-    assert "RETRIEVAL_INTENT_CLASSIFICATION_ENABLED=false" in content
 
 
 def test_init_refuses_overwrite_without_force(tmp_path: pytest.TempPathFactory) -> None:
