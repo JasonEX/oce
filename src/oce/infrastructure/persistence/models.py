@@ -354,6 +354,7 @@ class RetrievalMetricModel(Base):
     total_ms = Column(Integer, nullable=False)
     intent = Column(String(32), nullable=True)
     path_boosted = Column(Boolean, nullable=False, server_default="false")
+    rerank_route = Column(String(48), nullable=True)
     query_text = Column(Text, nullable=True)
     rewrite_ms = Column(Integer, nullable=True)
     dense_ms = Column(Integer, nullable=True)

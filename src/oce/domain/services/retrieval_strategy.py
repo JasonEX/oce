@@ -1,22 +1,16 @@
 """意图驱动的检索策略决策表。
 
-策略只决定确定性的召回开关；chat LLM 是否参与重排由 ``should_use_llm_rerank``
-按候选证据单独判断。
+策略决定确定性的召回开关；两种 reranker 的授权与逐查询路由由
+``plan_rerank`` 统一判断。
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.selector.protocols import SelectionMode
-
-_SEMANTIC_INTENTS = {
-    QueryIntent.CALL_CHAIN,
-    QueryIntent.FEATURE,
-    QueryIntent.OVERVIEW,
-    QueryIntent.COMPOUND,
-}
 
 
 @dataclass(frozen=True)
@@ -62,32 +56,76 @@ def get_strategy(intent: QueryIntent) -> RetrievalStrategy:
     return STRATEGY_TABLE[intent]
 
 
-def should_use_llm_rerank(
+RerankPolicy = Literal["adaptive", "always"]
+
+
+@dataclass(frozen=True)
+class RerankDecision:
+    """Which rerankers run for one candidate set, and the evidence that decided it."""
+
+    dedicated: bool
+    llm: bool
+    reason: str
+
+    @property
+    def route(self) -> str:
+        """Audit label: the rerankers applied, or the skip reason when none ran."""
+        applied = [
+            name
+            for name, on in (("dedicated", self.dedicated), ("llm", self.llm))
+            if on
+        ]
+        if applied:
+            return "+".join(applied)
+        return f"skip:{self.reason}"
+
+
+def plan_rerank(
     intent: QueryIntent,
     candidate_count: int,
     *,
-    policy: str = "adaptive",
     has_exact_hits: bool = False,
     has_path_hits: bool = False,
-) -> bool:
-    """Decide whether a candidate set benefits from global semantic judging.
+    dedicated_enabled: bool = True,
+    llm_enabled: bool = True,
+    dedicated_policy: RerankPolicy = "adaptive",
+    llm_policy: RerankPolicy = "adaptive",
+) -> RerankDecision:
+    """Decide which rerankers a candidate set benefits from.
 
-    Retrieval scores are deliberately excluded: dense cosine, RRF, exact, path, and
-    dedicated-reranker scores do not share a calibrated scale. ``adaptive`` instead
-    uses stable structural evidence. Exact symbol and path hits already have a strong
-    deterministic operator; reference queries preserve occurrence coverage. Feature,
-    flow, overview, and compound questions benefit from comparing snippet meaning.
+    Both models share the same deterministic evidence. Retrieval scores are
+    deliberately excluded: dense cosine, RRF, exact, path, and reranker scores do
+    not share a calibrated scale, so a skip is only taken when a structural
+    operator has already answered the question. ``enabled`` flags carry the data
+    egress authorization; a policy can never switch on a model that is not
+    authorized.
     """
+    for name, policy in (
+        ("dedicated rerank", dedicated_policy),
+        ("LLM rerank", llm_policy),
+    ):
+        if policy not in ("adaptive", "always"):
+            raise ValueError(f"Unsupported {name} policy: {policy}")
+
     if candidate_count < 2:
-        return False
-    if policy == "always":
-        return True
-    if policy != "adaptive":
-        raise ValueError(f"Unsupported LLM rerank policy: {policy}")
-    if intent == QueryIntent.REFERENCE:
-        return False
-    if intent == QueryIntent.SYMBOL:
-        return not has_exact_hits
-    if intent == QueryIntent.PATH:
-        return not has_path_hits
-    return intent in _SEMANTIC_INTENTS
+        return RerankDecision(False, False, "too_few_candidates")
+
+    if intent == QueryIntent.SYMBOL and has_exact_hits:
+        adaptive = (False, False, "exact_definition")
+    elif intent == QueryIntent.PATH and has_path_hits:
+        adaptive = (False, False, "path_evidence")
+    elif intent in (QueryIntent.SYMBOL, QueryIntent.PATH):
+        adaptive = (True, True, "no_structural_evidence")
+    elif intent == QueryIntent.REFERENCE:
+        # Reference questions want occurrence coverage; a global semantic judge
+        # would collapse the list onto one implementation.
+        adaptive = (True, False, "reference_keep_coverage")
+    else:
+        adaptive = (True, True, "semantic")
+
+    dedicated = dedicated_enabled and (dedicated_policy == "always" or adaptive[0])
+    llm = llm_enabled and (llm_policy == "always" or adaptive[1])
+    reason = adaptive[2]
+    if not dedicated and not llm and not (dedicated_enabled or llm_enabled):
+        reason = "no_reranker_enabled"
+    return RerankDecision(dedicated, llm, reason)

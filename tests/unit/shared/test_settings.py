@@ -10,6 +10,20 @@ def test_rerank_defaults_require_explicit_external_model_opt_in():
 
     assert llm.rerank_enabled is False
     assert rerank.enabled is False
+    assert rerank.instruction
+    assert retrieval.rerank_policy == "adaptive"
     assert retrieval.llm_rerank_policy == "adaptive"
     assert llm.rerank_timeout_seconds == 15.0
     assert rerank.top_n == 50
+
+
+def test_rerank_instruction_and_policy_read_their_documented_environment_names(
+    monkeypatch,
+):
+    monkeypatch.setenv("RERANK_INSTRUCTION", "Judge repository code relevance")
+    monkeypatch.setenv("RETRIEVAL_RERANK_POLICY", "always")
+
+    assert (
+        RerankSettings(_env_file=None).instruction == "Judge repository code relevance"
+    )
+    assert RetrievalSettings(_env_file=None).rerank_policy == "always"

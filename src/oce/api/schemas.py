@@ -176,6 +176,7 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     coverage_selection_enabled: bool
     query_decomposition_enabled: bool
     api_rerank_enabled: bool
+    rerank_policy: str
     llm_rerank_enabled: bool
     llm_rerank_policy: str
     query_rewrite_enabled: bool

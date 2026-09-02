@@ -100,6 +100,7 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
             top_n=config.top_n,
             min_score=config.min_score,
             timeout=config.timeout_seconds,
+            instruct=self._fallback.instruction or None,
             credential_id=config.credential_id,
             on_usage=self._on_usage,
         )

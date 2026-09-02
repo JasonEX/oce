@@ -53,6 +53,7 @@ class RetrievalRuntimeProfile:
     coverage_selection_enabled: bool = True
     query_decomposition_enabled: bool = True
     api_rerank_enabled: bool = False
+    rerank_policy: str = "adaptive"
     llm_rerank_enabled: bool = False
     llm_rerank_policy: str = "adaptive"
     query_rewrite_enabled: bool = False

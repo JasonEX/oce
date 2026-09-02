@@ -147,6 +147,15 @@ class RerankSettings(BaseSettings):
     )
     min_score: float = Field(default=0.05, ge=0.0, le=1.0, description="最低重排分")
     timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
+    # Qwen3-Reranker 模型卡报告：instruction-aware 任务中常见 1%~5% 提升，
+    # 且多语言场景建议用英文；其他 provider 不支持时可置空。
+    instruction: str = Field(
+        default=(
+            "Given a code search query, judge whether the code snippet implements, "
+            "defines, or directly answers what the query asks for"
+        ),
+        description="随每次请求发送的任务说明；置空则不发送",
+    )
 
 
 class ChunkingSettings(BaseSettings):
@@ -252,8 +261,13 @@ class RetrievalSettings(BaseSettings):
         description="进入模型重排前的召回置信度门槛",
     )
 
-    # chat LLM 只处理排序，不参与候选裁剪。adaptive 按稳定查询信号决定是否调用；
-    # always 用于追求全量语义判断或进行可复现对照。
+    # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED 是
+    # 数据外发授权；这里的策略只决定已授权的模型对哪些查询调用：adaptive 在
+    # exact/path 等确定性证据已经回答问题时跳过，always 用于质量优先或可复现对照。
+    rerank_policy: Literal["adaptive", "always"] = Field(
+        default="adaptive",
+        description="专用 reranker 调用策略",
+    )
     llm_rerank_policy: Literal["adaptive", "always"] = Field(
         default="adaptive",
         description="chat LLM 重排调用策略",

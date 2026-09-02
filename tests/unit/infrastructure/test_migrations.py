@@ -48,7 +48,11 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
     engine = _sync_engine(sqlite_url)
     try:
         with engine.begin() as conn:
-            tables = set(inspect(conn).get_table_names())
+            inspector = inspect(conn)
+            tables = set(inspector.get_table_names())
+            retrieval_columns = {
+                column["name"] for column in inspector.get_columns("retrieval_metrics")
+            }
             version = conn.execute(
                 text("SELECT version_num FROM oce_alembic_version")
             ).scalar()
@@ -69,6 +73,7 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "resource_samples",
         "retrieval_metrics",
     }.issubset(tables)
+    assert "rerank_route" in retrieval_columns
     assert version == _head_revision()
 
 

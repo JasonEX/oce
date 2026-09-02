@@ -16,6 +16,7 @@ from oce.domain.services.query_classifier import classify_query_intent
 from oce.domain.services.retrieval import RetrievalPipeline, source_priority_factor
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
+from oce.shared.metrics import RetrievalAudit
 
 # The store only sees vectors; the fake embedder registers each query text under
 # its vector so the store can still answer per query.
@@ -210,15 +211,15 @@ class TestRetrievalPipeline:
 
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
-            store=FakeSearchStore([_hit("src/a.py", 0.9)]),
+            store=FakeSearchStore([_hit("src/a.py", 0.9), _hit("src/b.py", 0.8)]),
             reranker=RescoringReranker(),
             settings=_settings(confidence_floor=0.5, final_select_k=10),
         )
 
         results = await pipe.search("q")
 
-        assert [result.path for result in results] == ["src/a.py"]
-        assert results[0].score == 0.1
+        assert [result.path for result in results] == ["src/a.py", "src/b.py"]
+        assert {result.score for result in results} == {0.1}
 
     async def test_final_select_k_limits_results(self):
         hits = [_hit(f"src/f{i}.py", 1.0 - i * 0.01) for i in range(10)]
@@ -782,3 +783,113 @@ class TestRetrievalPipeline:
         await pipe.search("First repository concern. Second repository concern.")
 
         assert store.queries == ["First repository concern. Second repository concern."]
+
+
+class TestRerankRouting:
+    """授权与路由分离：RERANK_ENABLED 决定能不能调，policy 决定这次调不调。"""
+
+    class CountingReranker:
+        def __init__(self):
+            self.calls = 0
+
+        async def rerank(self, query, hits):
+            self.calls += 1
+            return list(reversed(hits))
+
+    @staticmethod
+    def _exact_pipe(reranker, **overrides):
+        endpoint = SearchHit(
+            blob_name="a" * 64,
+            path="src/commands/profile.rs",
+            content="pub fn delete_profile() {}",
+            score=1.0,
+        )
+        helper = SearchHit(
+            blob_name="b" * 64,
+            path="src/services/profile.rs",
+            content="fn delete_profile_helper() {}",
+            score=0.95,
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=FakeExactSearchStore([endpoint, helper]),
+            reranker=reranker,
+            settings=_settings(confidence_floor=0.0, final_select_k=10, **overrides),
+        )
+        return pipe, _scope(endpoint.blob_name, helper.blob_name)
+
+    async def test_adaptive_skips_dedicated_reranker_on_exact_definition(self):
+        reranker = self.CountingReranker()
+        pipe, scope = self._exact_pipe(reranker)
+        audit = RetrievalAudit()
+
+        results = await pipe.search("`delete_profile` 在哪里定义？", scope, audit=audit)
+
+        assert reranker.calls == 0
+        assert audit.rerank_route == "skip:exact_definition"
+        assert results[0].path == "src/commands/profile.rs"
+
+    async def test_always_policy_still_calls_dedicated_reranker(self):
+        reranker = self.CountingReranker()
+        pipe, scope = self._exact_pipe(reranker, rerank_policy="always")
+        audit = RetrievalAudit()
+
+        await pipe.search("`delete_profile` 在哪里定义？", scope, audit=audit)
+
+        assert reranker.calls == 1
+        assert audit.rerank_route == "dedicated"
+
+    async def test_adaptive_skips_dedicated_reranker_on_path_evidence(self):
+        reranker = self.CountingReranker()
+        hits = [_hit("docs/CHANGES.rst", 0.4), _hit("src/version.py", 0.5)]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(hits),
+            path_store=FakePathStore(
+                [PathSearchResult("docs/CHANGES.rst", "a" * 64, 0.9)]
+            ),
+            reranker=reranker,
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search("Where is the CHANGES.rst file?", audit=audit)
+
+        assert reranker.calls == 0
+        assert audit.rerank_route == "skip:path_evidence"
+
+    async def test_semantic_query_uses_dedicated_reranker(self):
+        reranker = self.CountingReranker()
+        hits = [_hit("src/a.py", 0.5), _hit("src/b.py", 0.9)]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(hits),
+            reranker=reranker,
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search(
+            "how does the retry logic recover from failures?", audit=audit
+        )
+
+        assert reranker.calls == 1
+        assert audit.rerank_route == "dedicated"
+
+    async def test_unauthorized_reranker_is_reported_as_not_enabled(self):
+        hits = [_hit("src/a.py", 0.5), _hit("src/b.py", 0.9)]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(hits),
+            settings=_settings(
+                confidence_floor=0.0, final_select_k=10, rerank_policy="always"
+            ),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search(
+            "how does the retry logic recover from failures?", audit=audit
+        )
+
+        assert audit.rerank_route == "skip:no_reranker_enabled"

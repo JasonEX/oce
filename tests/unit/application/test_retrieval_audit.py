@@ -59,6 +59,7 @@ class TestPipelineAuditFill:
         assert audit.scope_size == 2
         assert audit.intent == "feature"
         assert audit.path_boosted is False
+        assert audit.rerank_route == "skip:too_few_candidates"
 
     async def test_audit_none_is_zero_overhead(self):
         # 不传 audit：不打点、不报错，行为与原来一致

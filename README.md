@@ -115,6 +115,10 @@ RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # Rank the full default candidate window; provider-omitted candidates still remain.
 RERANK_TOP_N=50
+# adaptive skips the call when exact symbol / path evidence already answers the query.
+RETRIEVAL_RERANK_POLICY=adaptive
+# Qwen reports typical gains from task instructions; clear this for unsupported providers.
+# RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
 ```
 
 A strong chat LLM can instead, or subsequently, judge cross-language meaning, implementation
@@ -131,16 +135,20 @@ LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
-`adaptive` skips the chat call when exact symbol/path evidence already answers a focused
-lookup and preserves reference occurrence coverage; it uses semantic judging for feature,
-flow, overview, and compound requests. `always` reranks every result set with at least two
-candidates and is useful for quality-first deployments and controlled comparisons. Enabling
+`RERANK_ENABLED` and `LLM_RERANK_ENABLED` are data-egress authorizations; the two
+`*_POLICY` settings only decide which queries an authorized model sees, and both models share
+one deterministic decision. `adaptive` skips a model when exact symbol/path evidence already
+answers a focused lookup, keeps the chat LLM out of reference queries to preserve occurrence
+coverage, and uses both for feature, flow, overview, and compound requests. `always` reranks
+every result set with at least two candidates and is useful for quality-first deployments and
+controlled comparisons. Each retrieval records its route (`dedicated`, `dedicated+llm`, or
+`skip:<reason>`) in `retrieval_metrics.rerank_route`. Enabling
 both backends forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an
 operational data/latency boundary, not a claim that chat-LLM ranking is lower quality.
-The current development benchmark supports dedicated reranking as the first interactive
-opt-in and the bounded cascade as a quality-first mode; chat-only behavior was more
-model-sensitive and expensive. This is a 13-issue development observation, so defaults stay
-off until replicated on the full profile. See the
+The repeated development benchmark supports dedicated reranking as the first interactive
+opt-in and the bounded cascade as a quality-first mode; chat-only behavior was slower and
+timed out more often. This is still a 13-issue development observation, so authorization
+defaults stay off until replicated on the full profile. See the
 [benchmark report](benchmarks/results/swe-explore-development-2026-09-02.md). Candidates
 outside either rerank window remain available to final selection.
 

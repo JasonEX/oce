@@ -72,6 +72,9 @@ RERANK_ENABLED=false
 # RERANK_ENDPOINT=https://api.siliconflow.cn/v1/rerank
 # RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # RERANK_TOP_N=50
+# RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
+# adaptive 在 exact/path 证据已回答问题时跳过调用；always 每次都调。
+# RETRIEVAL_RERANK_POLICY=adaptive
 
 # ==================== 可选：chat LLM 语义重排 ====================
 # 个人模式默认关闭；质量优先部署可在专用 reranker 后级联开启。

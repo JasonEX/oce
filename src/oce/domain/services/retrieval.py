@@ -28,8 +28,8 @@ from oce.domain.services.query_classifier import (
     should_use_path_index,
 )
 from oce.domain.services.query_planner import HeuristicQueryPlanner, QueryPlanner
-from oce.domain.services.reranker import NoopReranker, Reranker
-from oce.domain.services.retrieval_strategy import get_strategy, should_use_llm_rerank
+from oce.domain.services.reranker import Reranker
+from oce.domain.services.retrieval_strategy import get_strategy, plan_rerank
 from oce.domain.services.search import (
     ExactSearchStore,
     SearchHit,
@@ -118,7 +118,8 @@ class RetrievalPipeline:
     ) -> None:
         self.embedder = embedder
         self.store = store
-        self.reranker = reranker or NoopReranker()
+        # None 表示未授权专用 reranker；决策与审计据此区分「未启用」和「按策略跳过」。
+        self.reranker = reranker
         self.llm_reranker = llm_reranker
         self.query_rewriter = query_rewriter
         self.path_store = path_store
@@ -294,16 +295,23 @@ class RetrievalPipeline:
         # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
         # to a shared scale; filtering their mixture after reranking is undefined.
         hits = self._apply_confidence_floor(hits, priority_factor=priority_factor)
-        with stage("rerank"):
-            hits = await self.reranker.rerank(query, hits)
 
-        if self.llm_reranker is not None and should_use_llm_rerank(
+        decision = plan_rerank(
             intent,
             len(hits),
-            policy=self.settings.llm_rerank_policy,
             has_exact_hits=has_exact_hits,
             has_path_hits=has_path_hits,
-        ):
+            dedicated_enabled=self.reranker is not None,
+            llm_enabled=self.llm_reranker is not None,
+            dedicated_policy=self.settings.rerank_policy,
+            llm_policy=self.settings.llm_rerank_policy,
+        )
+        if audit is not None:
+            audit.rerank_route = decision.route
+        if decision.dedicated and self.reranker is not None:
+            with stage("rerank"):
+                hits = await self.reranker.rerank(query, hits)
+        if decision.llm and self.llm_reranker is not None:
             with stage("llm_rerank"):
                 hits = await self.llm_reranker.rerank(query, hits)
 

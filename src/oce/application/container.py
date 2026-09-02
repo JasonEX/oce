@@ -394,7 +394,8 @@ class Container:
                 RetrievalPipeline(
                     embedder=self.embedder,
                     store=self.search_store,
-                    reranker=self.reranker,
+                    # 未授权时不注入，pipeline 与审计据此区分「未启用」和「按策略跳过」。
+                    reranker=self.reranker if settings.rerank.enabled else None,
                     llm_reranker=self.llm_reranker,
                     query_rewriter=self.query_rewriter,
                     path_store=self.path_index,
@@ -543,6 +544,7 @@ def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
         coverage_selection_enabled=retrieval.coverage_selection_enabled,
         query_decomposition_enabled=retrieval.query_decomposition_enabled,
         api_rerank_enabled=settings.rerank.enabled,
+        rerank_policy=retrieval.rerank_policy,
         llm_rerank_enabled=settings.llm.rerank_enabled,
         llm_rerank_policy=retrieval.llm_rerank_policy,
         query_rewrite_enabled=retrieval.query_rewrite_enabled,

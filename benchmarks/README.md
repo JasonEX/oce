@@ -104,8 +104,8 @@ keep downstream agent task success as a separate evaluation. The harness does no
 strategy GO/NO-GO or protect reports against modification; provenance is supplied by fixed
 source revisions, case IDs, runtime metadata, and ordinary version control.
 
-The first five-variant development observation and the resulting deployment recommendation
-are retained in
+The repeated adaptive-rerank development study and its deployment recommendation are retained
+in
 [`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md).
 
 ## Milvus workspace scope
@@ -125,3 +125,56 @@ A raw diagnostic run from the current development environment is retained in
 [`results/milvus-lite-scope-2026-09-01.json`](results/milvus-lite-scope-2026-09-01.json).
 It is a host-specific observation, not a release threshold: all samples stayed in scope and
 returned the target, while the 50,000-member filter reached 3.4 MB and roughly 280 ms p95.
+
+## Rerank routing protocol
+
+`RETRIEVAL_RERANK_POLICY` and `RETRIEVAL_LLM_RERANK_POLICY` route authorized rerankers per
+query. Evaluate a routing change with two query sets, because they answer different
+questions:
+
+- SWE-Explore issues are long compound texts. The deterministic classifier labels all 13
+  `development` issues `compound`, so `adaptive` and `always` send them to the same rerankers.
+  Use this set to confirm that routing changes do not regress semantic ranking.
+- [`rerank_routing_cases.json`](rerank_routing_cases.json) pins 10 manually reviewed
+  definition anchors from five of the same snapshots. [`rerank_routing.py`](rerank_routing.py)
+  expands them into a balanced set of 30 short `symbol`, `path`, and `reference` queries and
+  derives reference-file truth from tracked non-test Python sources. Use it to verify the skip
+  rules: with dedicated adaptive reranking enabled, each query's
+  `retrieval_metrics.rerank_route` should read
+  `skip:exact_definition`, `skip:path_evidence`, or `dedicated` respectively, and `rerank_ms`
+  should be absent on skipped queries.
+
+Run at least `none`, `dedicated:always`, and `dedicated:adaptive`, each with and without
+`chat:adaptive`, and repeat every variant at least twice; a single chat-20 rerun moved edit
+Top-1 by 7 points in the September 2026 study. Report semantic metrics (nDCG@500, first
+useful hit) and skip-path metrics (hit rate, `rerank_ms`, p95 latency, skip rate) separately.
+The `/admin/index-stats` runtime block records both policies for every run.
+
+The routing harness deliberately does not add a benchmark-only field to the ACE response or
+an admin endpoint that exposes query text. Run a dedicated personal-mode benchmark server with
+local audit text enabled, then give the harness read-only access to that SQLite file:
+
+```bash
+MONITORING_STORE_QUERY_TEXT=true \
+MONITORING_FLUSH_INTERVAL_SECONDS=0.1 \
+uv run oce serve --data-dir ~/.cache/oce/rerank-routing-server \
+  --env-file ~/.oce/benchmark.env
+
+export OCE_API_KEY=...
+export OCE_ADMIN_API_KEY=...
+uv run python -m benchmarks.rerank_routing check
+uv run python -m benchmarks.rerank_routing run \
+  --metrics-db ~/.cache/oce/rerank-routing-server/oce.db \
+  --label dedicated-adaptive-r1 \
+  --output ~/.cache/oce/swe-explore-v1/results-routing/dedicated-adaptive-r1.json
+```
+
+The output contains case IDs, ranked paths/lines, intended and observed routes, stage timings,
+and aggregate quality/latency metrics, but not query text or source content. Raw JSON remains
+outside the repository. Use `python -m benchmarks.rerank_routing compare <results...>` for the
+paired table. This audit reader is intentionally personal-mode-only; service deployments keep
+their database boundary private and may export equivalent aggregates through their own
+observability stack.
+
+The completed six-variant, two-repeat issue and routing matrix is summarized in
+[`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md).

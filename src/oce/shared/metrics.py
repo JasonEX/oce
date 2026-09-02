@@ -63,6 +63,7 @@ class RetrievalMetricRecord:
     scope_size: int | None = None
     intent: str | None = None
     path_boosted: bool = False
+    rerank_route: str | None = None
     query_text: str | None = None
     stages: dict[str, int] = field(default_factory=dict)
     ts: datetime = field(default_factory=_now)
@@ -78,6 +79,8 @@ class RetrievalAudit:
 
     intent: str | None = None
     path_boosted: bool = False
+    # 例如 dedicated / dedicated+llm / skip:exact_definition；None 表示没有进入重排阶段。
+    rerank_route: str | None = None
     scope_size: int | None = None
     stages: dict[str, int] = field(default_factory=dict)
 

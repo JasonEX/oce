@@ -108,6 +108,10 @@ RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # 对默认 50 条候选窗完整排序；provider 未返回的候选仍保留
 RERANK_TOP_N=50
+# adaptive 在 exact symbol / path 证据已回答问题时跳过调用
+RETRIEVAL_RERANK_POLICY=adaptive
+# Qwen 报告任务 instruction 通常有增益；provider 不支持时请置空
+# RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
 ```
 
 强 chat LLM 可以替代专用 reranker，或在它之后继续判断跨语言语义、真实实现与转发代码、
@@ -123,13 +127,16 @@ LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
-`adaptive` 在 exact symbol/path 证据已足够时跳过 chat 调用，reference 查询保留 occurrence
-覆盖，而 feature/flow/overview/compound 查询启用全局语义判断。`always` 对所有至少两个
-候选的结果重排，适合质量优先部署与受控对照。同时启用两种后端时，管线按专用 reranker
+`RERANK_ENABLED` 与 `LLM_RERANK_ENABLED` 是数据外发授权；两个 `*_POLICY` 只决定已授权
+模型看到哪些查询，且两种模型共用同一份确定性判断。`adaptive` 在 exact symbol/path 证据
+已足够时跳过模型调用，reference 查询不交给 chat LLM 以保留 occurrence 覆盖，而
+feature/flow/overview/compound 查询两者都用。`always` 对所有至少两个候选的结果重排，
+适合质量优先部署与受控对照。每次检索的路由（`dedicated`、`dedicated+llm` 或
+`skip:<原因>`）记录在 `retrieval_metrics.rerank_route`。同时启用两种后端时，管线按专用 reranker
 → chat LLM 级联。默认关闭只是数据外发和延迟边界，不代表 chat LLM 的排序质量更低。
-当前 development benchmark 支持把专用 reranker 作为交互式首选增强，把有界级联作为
-质量优先模式；chat-only 对模型更敏感且成本更高。由于这仍只是 13 个 issue 的开发观察，
-在 full profile 重复前不修改默认开关。详见
+当前重复运行的 development benchmark 支持把专用 reranker 作为交互式首选增强，
+把有界级联作为质量优先模式；chat-only 更慢且超时更多。由于这仍只是 13 个
+issue 的开发观察，在 full profile 重复前不修改默认授权开关。详见
 [benchmark 报告](benchmarks/results/swe-explore-development-2026-09-02.md)。无论窗口多大，
 窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
 

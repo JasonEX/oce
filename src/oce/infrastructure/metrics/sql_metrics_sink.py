@@ -155,6 +155,7 @@ class SqlMetricsSink(PeriodicTask):
                     total_ms=r.total_ms,
                     intent=r.intent,
                     path_boosted=r.path_boosted,
+                    rerank_route=r.rerank_route,
                     query_text=r.query_text,
                     rewrite_ms=s.get("rewrite"),
                     dense_ms=s.get("dense"),

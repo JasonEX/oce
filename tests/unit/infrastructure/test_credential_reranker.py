@@ -2,7 +2,10 @@
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
+from oce.infrastructure.embed.credential_reranker import (
+    CredentialConfiguredReranker,
+    RerankRuntimeConfig,
+)
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import RerankSettings
 from oce.shared.database.session import Base
@@ -99,3 +102,25 @@ async def test_credential_id_and_usage_callback_wired_through():
     assert delegate._on_usage is _cb
     await delegate.close()
     await engine.dispose()
+
+
+async def test_dedicated_reranker_receives_task_instruction():
+    settings = RerankSettings(
+        _env_file=None, enabled=True, instruction="Judge code relevance"
+    )
+    reranker = CredentialConfiguredReranker(
+        lambda: None, settings, fallback_embedding_key="sk-embed"
+    )
+    config = RerankRuntimeConfig(
+        endpoint="https://example.test/v1/rerank",
+        api_key="sk-x",
+        model="m",
+        top_n=5,
+        min_score=0.0,
+        timeout_seconds=1.0,
+    )
+
+    delegate = reranker._build_delegate(config)
+
+    assert delegate._instruct == "Judge code relevance"
+    await delegate.close()

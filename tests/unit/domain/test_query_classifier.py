@@ -175,6 +175,32 @@ class TestBilingualSymmetry:
         assert classify_query_intent(query) == QueryIntent.PATH
         assert should_use_path_index(query)
 
+    def test_snake_case_path_is_not_a_symbol(self):
+        query = "Where is the src/pylint/message/message_definition.py file?"
+
+        assert extract_code_identifiers(query) == ()
+        assert classify_query_intent(query) == QueryIntent.PATH
+        assert should_use_path_index(query)
+
+    def test_dunder_filename_is_not_a_symbol(self):
+        query = "Where is the src/_pytest/config/__init__.py file?"
+
+        assert extract_code_identifiers(query) == ()
+        assert classify_query_intent(query) == QueryIntent.PATH
+        assert should_use_path_index(query)
+
+    def test_symbol_outside_a_path_remains_a_symbol(self):
+        query = "Where is load_config defined in src/config_loader.py?"
+
+        assert extract_code_identifiers(query) == ("load_config",)
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
+
+    def test_backticked_symbol_remains_primary_over_a_path(self):
+        query = "Where is `load_config` defined in src/config_loader.py?"
+
+        assert extract_code_identifiers(query) == ("load_config",)
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
+
     def test_english_feature_query_not_path(self):
         """英文功能查询应偏向 FEATURE/OVERVIEW，而非找文件的 PATH"""
         query = "where is the retry logic implemented?"
@@ -187,6 +213,18 @@ class TestBilingualSymmetry:
     def test_english_call_chain_query(self):
         query = "how is `add_provider` called from the frontend?"
         assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
+
+    def test_english_call_verb_requires_a_complete_token(self):
+        query = "Where is CallbackRegistry class defined?"
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
+
+    def test_two_explicit_facets_are_compound(self):
+        query = "Locate `load_config`. Explain how startup validates it."
+        assert classify_query_intent(query) == QueryIntent.COMPOUND
+
+    def test_multiple_facets_without_a_symbol_are_compound(self):
+        query = "Explain authentication behavior. Describe the retry policy."
+        assert classify_query_intent(query) == QueryIntent.COMPOUND
 
     def test_english_reference_query(self):
         query = "how is `get_providers` used in the frontend?"

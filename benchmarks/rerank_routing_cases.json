@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "anchors": [
+    {
+      "id": "flask-flask",
+      "instance_id": "pallets__flask-5014",
+      "identifier": "Flask",
+      "definition_path": "src/flask/app.py"
+    },
+    {
+      "id": "flask-blueprint",
+      "instance_id": "pallets__flask-5014",
+      "identifier": "Blueprint",
+      "definition_path": "src/flask/blueprints.py"
+    },
+    {
+      "id": "requests-prepared-request",
+      "instance_id": "psf__requests-5414",
+      "identifier": "PreparedRequest",
+      "definition_path": "requests/models.py"
+    },
+    {
+      "id": "requests-http-adapter",
+      "instance_id": "psf__requests-5414",
+      "identifier": "HTTPAdapter",
+      "definition_path": "requests/adapters.py"
+    },
+    {
+      "id": "pytest-parser",
+      "instance_id": "pytest-dev__pytest-10356",
+      "identifier": "Parser",
+      "definition_path": "src/_pytest/config/argparsing.py"
+    },
+    {
+      "id": "pytest-config",
+      "instance_id": "pytest-dev__pytest-10356",
+      "identifier": "Config",
+      "definition_path": "src/_pytest/config/__init__.py"
+    },
+    {
+      "id": "pylint-pylinter",
+      "instance_id": "pylint-dev__pylint-7080",
+      "identifier": "PyLinter",
+      "definition_path": "pylint/lint/pylinter.py"
+    },
+    {
+      "id": "pylint-message-definition",
+      "instance_id": "pylint-dev__pylint-7080",
+      "identifier": "MessageDefinition",
+      "definition_path": "pylint/message/message_definition.py"
+    },
+    {
+      "id": "xarray-dataset",
+      "instance_id": "pydata__xarray-7233",
+      "identifier": "Dataset",
+      "definition_path": "xarray/core/dataset.py"
+    },
+    {
+      "id": "xarray-data-array",
+      "instance_id": "pydata__xarray-7233",
+      "identifier": "DataArray",
+      "definition_path": "xarray/core/dataarray.py"
+    }
+  ]
+}

@@ -7,6 +7,7 @@
 
 ### Added
 
+- **evaluation**: add a pinned 30-query symbol/path/reference suite that verifies adaptive rerank routes and stage latency against the production client and local audit store
 - **evaluation**: add a source-pinned SWE-bench Verified and SWE-Explore issue-resolution benchmark with separate gold-edit diagnostics and official SWE-Explore context metrics
 - **index lifecycle**: bind persisted artifacts to the server source-admission policy version so tightened filters require a clean resync
 - **evaluation**: add production-wired ablation switches for semantic chunking, exact recall, source priority, and coverage selection
@@ -32,6 +33,8 @@
 
 ### Changed
 
+- **reranking**: separate model authorization from deterministic per-query routing, persist the chosen route, and pass a code-search task instruction to instruction-aware dedicated rerankers
+- **intent routing**: classify multi-facet issue text as compound, require complete English call-verb tokens, and exclude path tokens from exact-identifier evidence
 - **distribution**: publish releases only as the fork-owned `ghcr.io/jasonex/oce` image and stop publishing this fork to PyPI
 - **chunking**: centralize source-aligned span emission across cAST and document fallbacks, and bump the chunker profile so existing indexes require a clean resync
 - **symbols**: inject the production regex symbol provider through a domain protocol instead of constructing parsing policy inside SQL persistence

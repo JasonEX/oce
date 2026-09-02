@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from enum import StrEnum
 
+from oce.domain.services.query_planner import HeuristicQueryPlanner
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 意图枚举
 # ──────────────────────────────────────────────────────────────────────────────
@@ -26,9 +28,6 @@ class QueryIntent(StrEnum):
 # 特征模式
 # ──────────────────────────────────────────────────────────────────────────────
 
-# 符号锚点：反引号包裹、snake_case、路径限定符 ::
-_SYMBOL_PATTERN = re.compile(r"`[^`]+`|[a-z][a-z0-9]*_[a-z0-9_]+|\w+::\w+")
-
 _IDENTIFIER_PATTERN = re.compile(
     r"^[A-Za-z_$][A-Za-z0-9_$]*(?:::[A-Za-z_$][A-Za-z0-9_$]*)*$"
 )
@@ -46,8 +45,12 @@ _CONSTANT_IDENTIFIER_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b")
 # 带扩展名的文件名 token（如 config.json / lib.rs）：定位具体文件的强结构信号。
 # 扩展名首位限定为字母，避免把版本号 3.13 之类误判为文件名。
 _FILENAME_TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_\-]+\.[A-Za-z][A-Za-z0-9]{0,7}")
+# 完整路径先于 snake_case 标识符解析；否则 ``src/message_definition.py``
+# 会伪造出 ``message_definition`` 符号，``__init__.py`` 也会伪造出 ``init__``。
+_PATH_TOKEN_PATTERN = re.compile(r"(?:[A-Za-z0-9_.\-]+[/\\])+[A-Za-z0-9_.\-]+")
 
-# 调用链动词（跨边界/路径导向）
+# 调用链动词（跨边界/路径导向）。英文只保留真正表达调用关系的动词：
+# to / from / path 在 issue 文本里几乎必然出现，曾让几乎所有英文长查询都判成调用链。
 _CALL_VERBS = {
     "调用",
     "触发",
@@ -60,15 +63,31 @@ _CALL_VERBS = {
     "如何被",
     "如何从",
     "call",
+    "called",
+    "calling",
+    "calls",
     "invoke",
+    "invoked",
+    "invokes",
+    "invoking",
     "trigger",
+    "triggered",
+    "triggering",
+    "triggers",
     "execute",
-    "from",
-    "to",
-    "path",
+    "executed",
+    "executes",
+    "executing",
     "flow",
+    "flows",
     "pipeline",
+    "pipelines",
 }
+
+# issue 风格的长文本：多个标识符或 planner 能切出多个明确 facet。
+# 它描述的是复合问题，不能因为其中某个动词就按单一符号的调用链或引用来路由。
+_COMPOUND_IDENTIFIER_LIMIT = 2
+_COMPOUND_PLANNER = HeuristicQueryPlanner(max_queries=3)
 
 # 引用/使用动词（单向依赖）
 _REFERENCE_VERBS = {
@@ -184,7 +203,9 @@ def _terms_pattern(
     return re.compile("|".join(parts))
 
 
-_CALL_VERBS_RE = _terms_pattern(_CALL_VERBS)
+# 调用词必须是完整 token；显式列出常见词形，避免 ``call`` 误命中
+# ``callback`` 或 ``execute`` 误命中 ``executor``。
+_CALL_VERBS_RE = _terms_pattern(_CALL_VERBS, match_ascii_prefix=False)
 _REFERENCE_VERBS_RE = _terms_pattern(_REFERENCE_VERBS)
 _OVERVIEW_KEYWORDS_RE = _terms_pattern(_OVERVIEW_KEYWORDS)
 _PATH_KEYWORDS_RE = _terms_pattern(_PATH_KEYWORDS)
@@ -205,11 +226,13 @@ def classify_query_intent(query: str) -> QueryIntent:
     按意图分类查询，用于派发检索策略。
 
     判定优先级（从高到低）：
-    1. 有符号锚点（反引号/snake_case/::）：
+    1. 标识符超过 2 个或 planner 切出至少 2 个 facet → COMPOUND
+    2. 有符号锚点（反引号/snake_case/::）：
        - 调用类动词 → CALL_CHAIN
        - 引用类动词 → REFERENCE
+       - 标识符 2 个 → COMPOUND
        - 其余 → SYMBOL
-    2. 无符号锚点：
+    3. 无符号锚点：
        - 文件名 token（带扩展名）或通用路径词（非功能类）→ PATH
        - 概览词 → OVERVIEW
        - 其余 → FEATURE
@@ -229,7 +252,15 @@ def classify_query_intent(query: str) -> QueryIntent:
     """
     query_lower = query.lower()
     identifiers = extract_code_identifiers(query)
-    has_symbol = bool(_SYMBOL_PATTERN.search(query)) or bool(identifiers)
+    has_symbol = bool(identifiers)
+
+    # 多 facet 是查询本身的广度信号，不依赖是否能从自然语言中提取出代码符号。
+    # 放在符号分支外，避免无显式标识符的 issue 被一个 file/config 词缩成 PATH。
+    if (
+        len(identifiers) > _COMPOUND_IDENTIFIER_LIMIT
+        or len(_COMPOUND_PLANNER.plan(query)) >= 3
+    ):
+        return QueryIntent.COMPOUND
 
     # 分支1：有符号锚点
     if has_symbol:
@@ -281,13 +312,18 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
 
     for value in re.findall(r"`([^`]+)`", query):
         add(value)
+
+    # 反引号依旧从原文提取；启发式扫描则排除路径和文件名，避免把文件命名
+    # 误当成 exact-symbol 证据。路径外的 ``load_config`` 等标识符不受影响。
+    identifier_text = _PATH_TOKEN_PATTERN.sub(" ", query)
+    identifier_text = _FILENAME_TOKEN_PATTERN.sub(" ", identifier_text)
     for pattern in (
         _QUALIFIED_IDENTIFIER_PATTERN,
         _SNAKE_IDENTIFIER_PATTERN,
         _CONSTANT_IDENTIFIER_PATTERN,
         _TYPE_IDENTIFIER_PATTERN,
     ):
-        for match in pattern.finditer(query):
+        for match in pattern.finditer(identifier_text):
             add(match.group(1) if match.lastindex else match.group())
 
     return tuple(identifiers)

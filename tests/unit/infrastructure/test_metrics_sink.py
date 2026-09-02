@@ -207,6 +207,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
                 scope_size=3,
                 intent="symbol",
                 path_boosted=True,
+                rerank_route="dedicated+llm",
                 query_text="q",
                 stages={"dense": 10, "select": 5},
             )
@@ -222,6 +223,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
         assert row.select_ms == 5
         assert row.exact_ms is None  # 未跑的阶段留空，不冒充 0
         assert row.path_boosted is True
+        assert row.rerank_route == "dedicated+llm"
         assert row.query_text == "q"
     finally:
         await engine.dispose()
