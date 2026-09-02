@@ -13,9 +13,7 @@ class QueryPlanner(Protocol):
 class HeuristicQueryPlanner:
     """Keep the complete request and add only explicit sentence-level facets."""
 
-    _BOUNDARY = re.compile(
-        r"(?:\r?\n+|[!?;\u3002\uff01\uff1f\uff1b]+|\.(?=\s|$))"
-    )
+    _BOUNDARY = re.compile(r"(?:\r?\n+|[!?;\u3002\uff01\uff1f\uff1b]+|\.(?=\s|$))")
     _BULLET = re.compile(r"^\s*(?:[-*+]\s+|\d+[.)]\s*)")
 
     def __init__(self, max_queries: int = 4, min_facet_chars: int = 8) -> None:

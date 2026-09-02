@@ -1,4 +1,7 @@
-"""Admin 运维路由：独立鉴权（verify_admin_key），与 agent 数据面分离。"""
+"""Admin 运维路由：独立鉴权（verify_admin_key），与 agent 数据面分离。
+
+application 异常（凭据冲突 409、队列忙 409 等）由 api/errors.py 统一映射。
+"""
 
 from __future__ import annotations
 
@@ -6,39 +9,27 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from oce.api.router import get_application
 from oce.api.schemas import (
-    ApiCallStatsResponse,
     CredentialCreateRequest,
-    CredentialDuplicateRequest,
     CredentialListResponse,
+    CredentialPatchRequest,
     CredentialResponse,
-    CredentialUpdateRequest,
     GcRequest,
     GcResponse,
     IndexStatsResponse,
-    IndexProfileStatsResponse,
-    IndexStoreStatsResponse,
-    MetadataIndexStatsResponse,
     MonitoringStatsResponse,
     QueueResetRequest,
     QueueResetResponse,
     QueueStatusResponse,
-    QueryCacheStatsResponse,
     ReloadCredentialsResponse,
     RequeueStaleRequest,
     RequeueStaleResponse,
-    ResourceSnapshotResponse,
-    RetrievalStatsResponse,
-    RetrievalRuntimeProfileResponse,
-    TokenKindStatsResponse,
 )
 from oce.application.service import RetrievalApplication
 from oce.auth import verify_admin_key
-from oce.shared.errors import CredentialConflictError, QueueBusyError
 from oce.shared.model_credentials import (
     CredentialCreate,
-    CredentialDuplicate,
+    CredentialPatch,
     CredentialRecord,
-    CredentialUpdate,
 )
 
 admin_router = APIRouter(
@@ -68,27 +59,21 @@ async def create_credential(
     request: CredentialCreateRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> CredentialResponse:
-    try:
-        record = await application.create_credential(
-            CredentialCreate(**request.model_dump())
-        )
-    except CredentialConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    record = await application.create_credential(
+        CredentialCreate(**request.model_dump())
+    )
     return _credential_response(record)
 
 
 @admin_router.patch("/credentials/{credential_id}", response_model=CredentialResponse)
 async def update_credential(
     credential_id: int,
-    request: CredentialUpdateRequest,
+    request: CredentialPatchRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> CredentialResponse:
-    try:
-        record = await application.update_credential(
-            credential_id, CredentialUpdate(**request.model_dump())
-        )
-    except CredentialConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    record = await application.update_credential(
+        credential_id, CredentialPatch(**request.model_dump())
+    )
     if record is None:
         raise HTTPException(status_code=404, detail="credential not found")
     return _credential_response(record)
@@ -111,15 +96,12 @@ async def delete_credential(
 )
 async def duplicate_credential(
     credential_id: int,
-    request: CredentialDuplicateRequest,
+    request: CredentialPatchRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> CredentialResponse:
-    try:
-        record = await application.duplicate_credential(
-            credential_id, CredentialDuplicate(**request.model_dump())
-        )
-    except CredentialConflictError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    record = await application.duplicate_credential(
+        credential_id, CredentialPatch(**request.model_dump())
+    )
     if record is None:
         raise HTTPException(status_code=404, detail="credential not found")
     return _credential_response(record)
@@ -155,13 +137,7 @@ async def reset_queue(
     request: QueueResetRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> QueueResetResponse:
-    try:
-        result = await application.reset_queue(
-            mode=request.mode,
-            requeue=request.requeue,
-        )
-    except QueueBusyError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    result = await application.reset_queue(mode=request.mode, requeue=request.requeue)
     return QueueResetResponse(
         removed=result.removed,
         requeued=result.requeued,
@@ -207,46 +183,7 @@ async def admin_stats(
     application: RetrievalApplication = Depends(get_application),
 ) -> MonitoringStatsResponse:
     stats = await application.monitoring_stats(window_hours=window_hours)
-    return MonitoringStatsResponse(
-        window_hours=stats.window_hours,
-        api_calls=ApiCallStatsResponse(
-            count=stats.api_calls.count,
-            error_count=stats.api_calls.error_count,
-            avg_latency_ms=stats.api_calls.avg_latency_ms,
-            p50_latency_ms=stats.api_calls.p50_latency_ms,
-            p95_latency_ms=stats.api_calls.p95_latency_ms,
-            max_latency_ms=stats.api_calls.max_latency_ms,
-        ),
-        tokens=[
-            TokenKindStatsResponse(
-                kind=token.kind,
-                calls=token.calls,
-                prompt_tokens=token.prompt_tokens,
-                completion_tokens=token.completion_tokens,
-                total_tokens=token.total_tokens,
-            )
-            for token in stats.tokens
-        ],
-        tokens_total=stats.tokens_total,
-        retrieval=RetrievalStatsResponse(
-            count=stats.retrieval.count,
-            empty_count=stats.retrieval.empty_count,
-            empty_rate=stats.retrieval.empty_rate,
-        ),
-        resource=(
-            ResourceSnapshotResponse(
-                ts=stats.resource.ts,
-                mem_rss_bytes=stats.resource.mem_rss_bytes,
-                mem_percent=stats.resource.mem_percent,
-                cpu_percent=stats.resource.cpu_percent,
-                disk_free_bytes=stats.resource.disk_free_bytes,
-                disk_total_bytes=stats.resource.disk_total_bytes,
-                disk_data_bytes=stats.resource.disk_data_bytes,
-            )
-            if stats.resource is not None
-            else None
-        ),
-    )
+    return MonitoringStatsResponse.model_validate(stats, from_attributes=True)
 
 
 @admin_router.get("/index-stats", response_model=IndexStatsResponse)
@@ -254,29 +191,4 @@ async def admin_index_stats(
     application: RetrievalApplication = Depends(get_application),
 ) -> IndexStatsResponse:
     stats = await application.index_stats()
-    return IndexStatsResponse(
-        metadata=MetadataIndexStatsResponse.model_validate(
-            stats.metadata,
-            from_attributes=True,
-        ),
-        dense=IndexStoreStatsResponse.model_validate(
-            stats.dense,
-            from_attributes=True,
-        ),
-        path=IndexStoreStatsResponse.model_validate(
-            stats.path,
-            from_attributes=True,
-        ),
-        query_cache=QueryCacheStatsResponse.model_validate(
-            stats.query_cache,
-            from_attributes=True,
-        ),
-        runtime=RetrievalRuntimeProfileResponse.model_validate(
-            stats.runtime,
-            from_attributes=True,
-        ),
-        profile=IndexProfileStatsResponse.model_validate(
-            stats.profile,
-            from_attributes=True,
-        ),
-    )
+    return IndexStatsResponse.model_validate(stats, from_attributes=True)

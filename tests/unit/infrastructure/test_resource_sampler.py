@@ -1,4 +1,5 @@
 """ResourceSampler 单测：注入假采集器验证 tick/启停/禁用/容错，不依赖 psutil。"""
+
 from __future__ import annotations
 
 import asyncio
@@ -32,7 +33,7 @@ def _fake_record() -> ResourceSampleRecord:
 async def test_tick_records_one_sample():
     sink = _RecordingSink()
     sampler = ResourceSampler(sink, interval_seconds=999, collector=_fake_record)
-    sampler._tick()
+    await sampler._tick()
     assert len(sink.samples) == 1
     assert sink.samples[0].disk_total_bytes == 3
 
@@ -62,7 +63,7 @@ async def test_tick_swallows_collector_error():
         raise RuntimeError("x")
 
     sampler = ResourceSampler(sink, interval_seconds=999, collector=_boom)
-    sampler._tick()  # 旁路容错：不抛即通过
+    await sampler._tick()  # 旁路容错：不抛即通过
     assert sink.samples == []
 
 

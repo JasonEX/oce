@@ -22,10 +22,9 @@ from oce.application.commands.ingest import (
     DeleteBlobsCommandHandler,
     EmbedPendingCommand,
     EmbedPendingCommandHandler,
-    IngestBlobCommand,
-    IngestBlobCommandHandler,
     IngestBlobsCommand,
     IngestBlobsCommandHandler,
+    build_pipeline_factory,
 )
 from oce.application.commands.queue_admin import (
     ResetQueueCommand,
@@ -47,11 +46,9 @@ from oce.application.credential_admin import (
     UpdateCredentialCommand,
     UpdateCredentialCommandHandler,
 )
-from oce.application.queries.queue import (
-    QueueStatusQuery,
-    QueueStatusQueryHandler,
-)
+from oce.application.index_lifecycle import IndexLifecycleManager
 from oce.application.queries.index_stats import IndexStatsQuery, IndexStatsQueryHandler
+from oce.application.queries.queue import QueueStatusQuery, QueueStatusQueryHandler
 from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.application.queries.stats import (
     MonitoringStatsQuery,
@@ -66,27 +63,15 @@ from oce.application.queries.status import (
     ResolveScopeQueryHandler,
 )
 from oce.application.service import RetrievalApplication
-from oce.application.index_lifecycle import IndexLifecycleManager
 from oce.application.worker import EmbedWorker
+from oce.domain.services.llm.reranker import LLMReranker
+from oce.domain.services.llm.rewriter import QueryRewriter
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
-from oce.infrastructure.embed.query_cache import QueryCachingEmbedder
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
+from oce.infrastructure.embed.query_cache import QueryCachingEmbedder
 from oce.infrastructure.llm.credential_llm_client import CredentialConfiguredLLMClient
-from oce.infrastructure.milvus3 import Milvus3SearchStore
-from oce.infrastructure.milvus3.path_index import PathIndexClient
-from oce.infrastructure.persistence.credential_admin_store import (
-    SqlCredentialAdminStore,
-)
-from oce.infrastructure.persistence.index_stats_reader import (
-    SqlMetadataIndexStatsReader,
-)
-from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileStore
-from oce.infrastructure.persistence.path_content_store import SqlPathContentStore
-from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
-from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
-from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from oce.infrastructure.metrics.cleanup import MonitoringCleaner
 from oce.infrastructure.metrics.resource_sampler import (
     ResourceSampler,
@@ -94,22 +79,65 @@ from oce.infrastructure.metrics.resource_sampler import (
 )
 from oce.infrastructure.metrics.sql_metrics_sink import SqlMetricsSink
 from oce.infrastructure.metrics.stats_store import SqlMonitoringStatsReader
+from oce.infrastructure.milvus3.path_index import PathIndexClient
+from oce.infrastructure.milvus3.search_store import Milvus3SearchStore
+from oce.infrastructure.persistence.credential_admin_store import (
+    SqlCredentialAdminStore,
+)
+from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileStore
+from oce.infrastructure.persistence.index_stats_reader import (
+    SqlMetadataIndexStatsReader,
+)
+from oce.infrastructure.persistence.path_content_store import SqlPathContentStore
+from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
+from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from oce.infrastructure.queue.redis_queue import RedisQueue
-from oce.shared.config import get_settings
+from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
+from oce.shared.config import Settings, get_settings
 from oce.shared.database.session import async_session_factory
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_stats import RetrievalRuntimeProfile
 from oce.shared.logging import DATA_DIR_ENV
-from oce.shared.metrics import NoopMetricsSink, TokenUsageRecord
+from oce.shared.metrics import MetricsSink, NoopMetricsSink, TokenUsageRecord
+
+
+def record_token_usage(
+    metrics: MetricsSink,
+    credential_id: int,
+    kind: str,
+    model: str,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> None:
+    """把 embedder/reranker/llm 的真实用量桥接到 sink。
+
+    credential_id=0（无凭证，如 env 回落）归一为 None；旁路容错：任何异常只记日志，
+    绝不抛回主链路。
+    """
+    try:
+        metrics.record_token_usage(
+            TokenUsageRecord(
+                kind=kind,
+                model=model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=prompt_tokens + completion_tokens,
+                credential_id=credential_id or None,
+            )
+        )
+    except Exception as exc:
+        logger.warning("record token usage failed: {}", exc)
 
 
 class _CredentialRuntime:
+    """Reload embedder and reranker credentials as one unit, then refresh LLM clients."""
+
     def __init__(
         self,
-        embedder,
-        reranker,
-        llm_clients=(),
-        query_cache=None,
+        embedder: CredentialConfiguredEmbedder,
+        reranker: CredentialConfiguredReranker,
+        llm_clients: tuple[CredentialConfiguredLLMClient, ...] | list = (),
+        query_cache: QueryCachingEmbedder | None = None,
     ) -> None:
         self._embedder = embedder
         self._reranker = reranker
@@ -150,28 +178,45 @@ class _CredentialRuntime:
 class Container:
     def __init__(self) -> None:
         settings = get_settings()
-        if settings.embedding.dimensions != settings.milvus.dense_dim:
-            raise ValueError("EMBED_DIMENSIONS must equal MILVUS_DENSE_DIM")
-
-        # token 用量回调：监控开启时把 embedder/reranker/llm 的真实 usage 桥接到 sink，
-        # 关闭时传 None，采集侧 if 判空直接跳过（零开销）。
         monitoring = settings.monitoring
-        token_usage_cb = self._record_token_usage if monitoring.enabled else None
+        dense_dim = settings.embedding.dimensions
 
-        embedding_key = (
-            settings.embedding.api_key.get_secret_value()
-            if settings.embedding.api_key is not None
+        self.metrics: MetricsSink = (
+            SqlMetricsSink(
+                async_session_factory,
+                flush_interval_seconds=monitoring.flush_interval_seconds,
+                max_buffer=monitoring.flush_max_buffer,
+            )
+            if monitoring.enabled
+            else NoopMetricsSink()
+        )
+        self.resource_sampler = (
+            ResourceSampler(
+                self.metrics,
+                interval_seconds=monitoring.resource_sample_interval_seconds,
+                collector=build_psutil_collector(os.environ.get(DATA_DIR_ENV)),
+            )
+            if monitoring.enabled
             else None
         )
-        self.search_store = Milvus3SearchStore(settings.milvus)
+        self.monitoring_cleaner = (
+            MonitoringCleaner(
+                async_session_factory,
+                retention_days=monitoring.retention_days,
+                interval_seconds=monitoring.cleanup_interval_seconds,
+            )
+            if monitoring.enabled
+            else None
+        )
+        # 监控关闭时传 None，采集侧判空直接跳过（零开销）。
+        token_usage_cb = self._record_token_usage if monitoring.enabled else None
 
-        # Initialize path index for filename queries
-        self.path_index = None
-        self.path_content_store = None
+        self.search_store = Milvus3SearchStore(settings.milvus, dense_dim=dense_dim)
+        self.path_index: PathIndexClient | None = None
+        self.path_content_store: SqlPathContentStore | None = None
         if settings.retrieval.path_index_enabled:
-            self.path_index = PathIndexClient(settings.milvus)
+            self.path_index = PathIndexClient(settings.milvus, dense_dim=dense_dim)
             self.path_content_store = SqlPathContentStore(async_session_factory)
-            logger.info("Path index enabled for filename queries")
 
         artifact_probes = [self.search_store]
         if self.path_index is not None:
@@ -181,10 +226,11 @@ class Container:
             settings,
             artifact_probes,
         )
+
         self.embedding_runtime = CredentialConfiguredEmbedder(
             async_session_factory,
             settings.embedding,
-            expected_dimensions=settings.milvus.dense_dim,
+            expected_dimensions=dense_dim,
             on_usage=token_usage_cb,
             on_index_profile=self.index_lifecycle.ensure_compatible,
         )
@@ -193,24 +239,20 @@ class Container:
             max_entries=settings.embedding.query_cache_max_entries,
             ttl_seconds=settings.embedding.query_cache_ttl_seconds,
         )
-        self.symbol_search_store = SymbolSearchStore(
-            async_session_factory,
-            timeout_seconds=settings.retrieval.exact_timeout_seconds,
-        )
-
         self.reranker = CredentialConfiguredReranker(
             async_session_factory,
             settings.rerank,
-            fallback_embedding_key=embedding_key,
+            fallback_embedding_key=(
+                settings.embedding.api_key.get_secret_value()
+                if settings.embedding.api_key is not None
+                else None
+            ),
             on_usage=token_usage_cb,
         )
 
-        # LLM 重排与查询改写各自按 kind 从 model_credentials 解析
-        # 凭证（env 兜底），不再共用单一 client，可分别配置 key/base_url/model/tpm。
-        # reload 命令会一并刷新它们（credential_runtime 持有列表）。
+        # LLM 重排与查询改写各自按 kind 解析凭证（env 兜底），可分别配置。
         llm_clients: list[CredentialConfiguredLLMClient] = []
-
-        self.llm_reranker = None
+        self.llm_reranker: LLMReranker | None = None
         if settings.llm.rerank_enabled:
             rerank_llm = CredentialConfiguredLLMClient(
                 "llm_rerank",
@@ -220,8 +262,6 @@ class Container:
                 on_usage=token_usage_cb,
             )
             llm_clients.append(rerank_llm)
-            from oce.domain.services.llm.reranker import LLMReranker
-
             self.llm_reranker = LLMReranker(
                 client=rerank_llm,
                 model=settings.llm.model,
@@ -230,9 +270,7 @@ class Container:
                 snippet_chars=settings.llm.snippet_chars,
                 timeout_seconds=settings.llm.rerank_timeout_seconds,
             )
-            logger.info("LLM reranker enabled (kind=llm_rerank)")
-
-        self.query_rewriter = None
+        self.query_rewriter: QueryRewriter | None = None
         if settings.retrieval.query_rewrite_enabled:
             rewrite_llm = CredentialConfiguredLLMClient(
                 "query_rewrite",
@@ -242,15 +280,11 @@ class Container:
                 on_usage=token_usage_cb,
             )
             llm_clients.append(rewrite_llm)
-            from oce.domain.services.llm.rewriter import QueryRewriter
-
             self.query_rewriter = QueryRewriter(
                 client=rewrite_llm,
                 model=settings.retrieval.query_rewrite_model,
                 num_rewrites=settings.retrieval.query_rewrite_num,
             )
-            logger.info("Query rewriter enabled (kind=query_rewrite)")
-
         credential_runtime = _CredentialRuntime(
             self.embedding_runtime,
             self.reranker,
@@ -258,130 +292,57 @@ class Container:
             query_cache=self.embedder,
         )
 
+        self.symbol_provider = RegexSymbolProvider()
+        self._uow_factory = lambda: SqlAlchemyUnitOfWork(
+            async_session_factory,
+            self.symbol_provider,
+        )
         self.chunker = build_chunker(
             semantic_enabled=settings.chunking.semantic_enabled,
             semantic_max_chunk_chars=settings.chunking.semantic_max_chunk_chars,
             recursive_chunk_size=settings.chunking.recursive_chunk_size,
             recursive_chunk_overlap=settings.chunking.recursive_chunk_overlap,
         )
-        self.symbol_provider = RegexSymbolProvider()
-        self._uow_factory = lambda: SqlAlchemyUnitOfWork(
-            async_session_factory,
-            self.symbol_provider,
+        pipeline_factory = build_pipeline_factory(
+            chunker=self.chunker,
+            embedder=self.embedder,
+            vector_index=self.search_store,
+            path_store=self.path_index,
+            embedding_enabled=settings.embedding.enabled,
         )
 
-        # 监控 sink：启用时异步落库，否则空实现（monitoring 已在前面解析）
-        if monitoring.enabled:
-            self.metrics = SqlMetricsSink(
-                async_session_factory,
-                flush_interval_seconds=monitoring.flush_interval_seconds,
-                max_buffer=monitoring.flush_max_buffer,
-            )
-        else:
-            self.metrics = NoopMetricsSink()
-
-        # 资源采样器：监控开启且 psutil 可用时后台周期采样，否则禁用
-        if monitoring.enabled:
-            self.resource_sampler = ResourceSampler(
-                self.metrics,
-                interval_seconds=monitoring.resource_sample_interval_seconds,
-                collector=build_psutil_collector(os.environ.get(DATA_DIR_ENV)),
-            )
-        else:
-            self.resource_sampler = None
-
-        # 监控数据清理：监控开启时按 retention_days 周期清过期行（GC 另作独立流程）
-        if monitoring.enabled:
-            self.monitoring_cleaner = MonitoringCleaner(
-                async_session_factory,
-                retention_days=monitoring.retention_days,
-                interval_seconds=monitoring.cleanup_interval_seconds,
-            )
-        else:
-            self.monitoring_cleaner = None
-
-        # 初始化 Redis 队列和 Worker（可选）
-        self.queue = None
-        self.worker = None
+        self.queue: RedisQueue | None = None
+        self.worker: EmbedWorker | None = None
         if settings.worker.enabled:
-            import redis.asyncio as redis
-
-            redis_client = redis.from_url(
-                settings.redis.url,
-                decode_responses=True,
-                encoding="utf-8",
-                max_connections=20,  # 连接池大小（8 workers + 余量）
-                socket_timeout=10.0,  # socket 超时 10 秒
-                socket_connect_timeout=5.0,  # 连接超时 5 秒
-                socket_keepalive=True,  # TCP keepalive
-                health_check_interval=30,  # 健康检查间隔 30 秒
-                retry_on_timeout=True,  # 超时自动重试
-            )
-            self.queue = RedisQueue(redis_client, settings.redis.queue_name)
-
-            db_worker_capacity = max(1, settings.database.pool_size - 1)
-            worker_concurrency = min(
-                settings.worker.concurrency,
-                db_worker_capacity,
-                settings.embedding.max_concurrency,
-            )
-            if worker_concurrency != settings.worker.concurrency:
-                logger.warning(
-                    "Worker concurrency reduced from {} to {} to match DB and embedding limits",
-                    settings.worker.concurrency,
-                    worker_concurrency,
-                )
-
+            self.queue = _build_redis_queue(settings)
             self.worker = EmbedWorker(
                 queue=self.queue,
                 uow_factory=self._uow_factory,
-                chunker=self.chunker,
-                embedder=self.embedder,
-                vector_index=self.search_store,
-                path_store=self.path_index,
-                embedding_enabled=settings.embedding.enabled,
-                concurrency=worker_concurrency,
+                pipeline_factory=pipeline_factory,
+                concurrency=_worker_concurrency(settings),
                 blob_batch_size=settings.worker.blob_batch_size,
                 max_retries=settings.worker.max_retries,
             )
 
+        delete_blobs_handler = DeleteBlobsCommandHandler(
+            self._uow_factory,
+            self.search_store,
+            path_store=self.path_index,
+        )
+        credential_admin_store = SqlCredentialAdminStore(async_session_factory)
+
         command_bus = CommandBus()
         command_bus.register(
-            IngestBlobCommand,
-            IngestBlobCommandHandler(
-                self._uow_factory,
-                self.chunker,
-                self.embedder,
-                self.search_store,
-                self.queue,
-            ),
-        )
-        command_bus.register(
             IngestBlobsCommand,
-            IngestBlobsCommandHandler(
-                self._uow_factory,
-                self.chunker,
-                self.embedder,
-                self.search_store,
-                self.queue,
-            ),
+            IngestBlobsCommandHandler(self._uow_factory, pipeline_factory, self.queue),
         )
         command_bus.register(
             EmbedPendingCommand,
             EmbedPendingCommandHandler(
                 self._uow_factory,
-                self.chunker,
-                self.embedder,
-                self.search_store,
-                path_store=self.path_index,
-                blob_batch_size=32,
-                embedding_enabled=settings.embedding.enabled,
+                pipeline_factory,
+                blob_batch_size=settings.worker.blob_batch_size,
             ),
-        )
-        delete_blobs_handler = DeleteBlobsCommandHandler(
-            self._uow_factory,
-            self.search_store,
-            path_store=self.path_index,
         )
         command_bus.register(DeleteBlobsCommand, delete_blobs_handler)
         command_bus.register(
@@ -389,8 +350,7 @@ class Container:
             ReloadEmbeddingCredentialsCommandHandler(credential_runtime),
         )
         command_bus.register(
-            CheckpointCommand,
-            CheckpointCommandHandler(self._uow_factory),
+            CheckpointCommand, CheckpointCommandHandler(self._uow_factory)
         )
         command_bus.register(
             RequeueStaleCommand,
@@ -406,8 +366,6 @@ class Container:
                 ),
             ),
         )
-
-        credential_admin_store = SqlCredentialAdminStore(async_session_factory)
         command_bus.register(
             CreateCredentialCommand,
             CreateCredentialCommandHandler(credential_admin_store),
@@ -441,7 +399,10 @@ class Container:
                     query_rewriter=self.query_rewriter,
                     path_store=self.path_index,
                     path_content_store=self.path_content_store,
-                    exact_store=self.symbol_search_store,
+                    exact_store=SymbolSearchStore(
+                        async_session_factory,
+                        timeout_seconds=settings.retrieval.exact_timeout_seconds,
+                    ),
                     settings=settings.retrieval,
                 ),
                 metrics=self.metrics,
@@ -469,23 +430,7 @@ class Container:
                 self.search_store,
                 self.path_index,
                 self.embedder,
-                RetrievalRuntimeProfile(
-                    embedding_enabled=settings.embedding.enabled,
-                    semantic_chunking_enabled=settings.chunking.semantic_enabled,
-                    exact_enabled=settings.retrieval.exact_enabled,
-                    path_index_enabled=settings.retrieval.path_index_enabled,
-                    source_priority_enabled=settings.retrieval.source_priority_enabled,
-                    coverage_selection_enabled=(
-                        settings.retrieval.coverage_selection_enabled
-                    ),
-                    query_decomposition_enabled=(
-                        settings.retrieval.query_decomposition_enabled
-                    ),
-                    api_rerank_enabled=settings.rerank.enabled,
-                    llm_rerank_enabled=settings.llm.rerank_enabled,
-                    llm_rerank_policy=settings.retrieval.llm_rerank_policy,
-                    query_rewrite_enabled=settings.retrieval.query_rewrite_enabled,
-                ),
+                _runtime_profile(settings),
                 self.index_lifecycle,
             ),
         )
@@ -498,8 +443,6 @@ class Container:
             QueueStatusQueryHandler(self._uow_factory, self.queue),
         )
 
-        self.command_bus = command_bus
-        self.query_bus = query_bus
         self.application = RetrievalApplication(
             command_bus,
             query_bus,
@@ -534,24 +477,9 @@ class Container:
         prompt_tokens: int,
         completion_tokens: int,
     ) -> None:
-        """把 embedder/reranker/llm 的真实用量桥接到 sink。
-
-        credential_id=0（无凭证，如 LLM）归一为 None；旁路容错：任何异常只记日志，
-        绝不抛回主链路。
-        """
-        try:
-            self.metrics.record_token_usage(
-                TokenUsageRecord(
-                    kind=kind,
-                    model=model,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    total_tokens=prompt_tokens + completion_tokens,
-                    credential_id=credential_id or None,
-                )
-            )
-        except Exception as exc:  # 监控旁路：绝不影响主链路
-            logger.warning("record token usage failed: {}", exc)
+        record_token_usage(
+            self.metrics, credential_id, kind, model, prompt_tokens, completion_tokens
+        )
 
     async def close(self) -> None:
         if self.worker is not None:
@@ -568,6 +496,57 @@ class Container:
         await self.reranker.close()
         if self.queue is not None:
             await self.queue.close()
+
+
+def _build_redis_queue(settings: Settings) -> RedisQueue:
+    import redis.asyncio as redis
+
+    client = redis.from_url(
+        settings.redis.url,
+        decode_responses=True,
+        encoding="utf-8",
+        max_connections=20,  # 8 workers + 余量
+        socket_timeout=10.0,
+        socket_connect_timeout=5.0,
+        socket_keepalive=True,
+        health_check_interval=30,
+        retry_on_timeout=True,
+    )
+    return RedisQueue(client, settings.redis.queue_name)
+
+
+def _worker_concurrency(settings: Settings) -> int:
+    """Worker 并发不能超过 DB 连接池（留一条给请求）和 embedding 并发上限。"""
+    db_worker_capacity = max(1, settings.database.pool_size - 1)
+    concurrency = min(
+        settings.worker.concurrency,
+        db_worker_capacity,
+        settings.embedding.max_concurrency,
+    )
+    if concurrency != settings.worker.concurrency:
+        logger.warning(
+            "Worker concurrency reduced from {} to {} to match DB and embedding limits",
+            settings.worker.concurrency,
+            concurrency,
+        )
+    return concurrency
+
+
+def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
+    retrieval = settings.retrieval
+    return RetrievalRuntimeProfile(
+        embedding_enabled=settings.embedding.enabled,
+        semantic_chunking_enabled=settings.chunking.semantic_enabled,
+        exact_enabled=retrieval.exact_enabled,
+        path_index_enabled=retrieval.path_index_enabled,
+        source_priority_enabled=retrieval.source_priority_enabled,
+        coverage_selection_enabled=retrieval.coverage_selection_enabled,
+        query_decomposition_enabled=retrieval.query_decomposition_enabled,
+        api_rerank_enabled=settings.rerank.enabled,
+        llm_rerank_enabled=settings.llm.rerank_enabled,
+        llm_rerank_policy=retrieval.llm_rerank_policy,
+        query_rewrite_enabled=retrieval.query_rewrite_enabled,
+    )
 
 
 @lru_cache

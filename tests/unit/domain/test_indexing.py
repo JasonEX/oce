@@ -1,6 +1,6 @@
 """IndexingPipeline 领域服务测试
 
-用内存 Fake repo 验证：切块入库、懒嵌入、状态转换、事件发布。
+用内存 Fake repo 验证：切块入库、懒嵌入、状态转换。
 """
 
 from __future__ import annotations
@@ -10,14 +10,9 @@ import hashlib
 import pytest
 
 from oce.domain.blob.blob import BlobStatus
-from oce.domain.chunk import Chunk, RecursiveChunker, LocatedChunk
-from oce.domain.services.indexing import (
-    EVENT_BLOB_CREATED,
-    EVENT_BLOB_FAILED,
-    EVENT_BLOB_READY,
-    IndexingPipeline,
-)
-from oce.shared.events import DomainEvent, EventBus
+from oce.domain.chunk import Chunk, LocatedChunk, RecursiveChunker
+from oce.domain.services.indexing import IndexingPipeline
+from oce.domain.services.search import VectorRecord
 
 
 class FakeBlobRepo:
@@ -47,7 +42,8 @@ class FakeBlobRepo:
     async def find_pending(self, blob_names=None) -> list:
         names = set(blob_names) if blob_names is not None else None
         return [
-            b for b in self.blobs.values()
+            b
+            for b in self.blobs.values()
             if b.status == BlobStatus.PENDING
             and (names is None or b.blob_name in names)
         ]
@@ -77,7 +73,9 @@ class FakeChunkRepo:
             )
             self.pending.append(located)
 
-    async def find_pending_for_blobs(self, blob_names, limit=None) -> list[LocatedChunk]:
+    async def find_pending_for_blobs(
+        self, blob_names, limit=None
+    ) -> list[LocatedChunk]:
         # 返回所有 pending 块（测试简化，实际应该按 blob_names 过滤）
         result = list(self.pending)
         if limit:
@@ -91,10 +89,10 @@ class FakeChunkRepo:
 
 class FakeVectorIndex:
     def __init__(self):
-        self.items: list[dict] = []
+        self.items: list[VectorRecord] = []
 
-    async def upsert(self, items: list[dict]) -> None:
-        self.items.extend(items)
+    async def upsert(self, records) -> None:
+        self.items.extend(records)
 
     async def delete(self, blob_names: list[str]) -> None:
         return None
@@ -142,27 +140,15 @@ def indexing_pipeline():
     blob_repo = FakeBlobRepo()
     chunk_repo = FakeChunkRepo()
     embedder = FakeEmbedder()
-    event_bus = EventBus()
-    events: list[DomainEvent] = []
 
-    async def _collect(event: DomainEvent) -> None:
-        events.append(event)
-
-    event_bus.subscribe(EVENT_BLOB_CREATED, _collect)
-    event_bus.subscribe(EVENT_BLOB_FAILED, _collect)
-    event_bus.subscribe(EVENT_BLOB_READY, _collect)
-
-    pipe = IndexingPipeline(
+    return IndexingPipeline(
         chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
         embedder=embedder,
         vector_index=FakeVectorIndex(),
         blob_repo=blob_repo,
         chunk_repo=chunk_repo,
         symbol_projection=FakeSymbolProjection(),
-        event_bus=event_bus,
     )
-    pipe._events = events  # type: ignore[attr-defined]
-    return pipe
 
 
 class TestIngest:
@@ -237,15 +223,6 @@ class TestIngest:
         assert count == 0
         assert indexing_pipeline.blob_repo.blobs[name].file_type == "binary"
 
-    async def test_ingest_publishes_created_event(self, indexing_pipeline):
-        content = "print('hi')\n"
-        name = _blob_name("src/hi.py", content)
-        await indexing_pipeline.ingest(name, "src/hi.py", content)
-
-        types = [e.event_type for e in indexing_pipeline._events]
-        assert EVENT_BLOB_CREATED in types
-        assert any(e.data.get("blob_name") == name for e in indexing_pipeline._events)
-
     async def test_ingest_same_blob_is_idempotent(self, indexing_pipeline):
         content = "print('same')\n"
         name = _blob_name("src/same.py", content)
@@ -254,12 +231,7 @@ class TestIngest:
         second = await indexing_pipeline.ingest(name, "src/same.py", content)
 
         assert first == second
-        created = [
-            event
-            for event in indexing_pipeline._events
-            if event.event_type == EVENT_BLOB_CREATED
-        ]
-        assert len(created) == 1
+        assert indexing_pipeline.blob_repo.staging[name] == content
 
 
 class TestEmbedPending:
@@ -285,6 +257,7 @@ class TestEmbedPending:
 
         # 创建 blob（pending 状态，已有 chunks）
         from oce.domain.blob.blob import Blob, BlobStatus
+
         blob = Blob(
             blob_name=name,
             path="src/hello.py",
@@ -308,7 +281,9 @@ class TestEmbedPending:
         assert blob.status == BlobStatus.READY
         # 验证嵌入的 chunk
         assert len(indexing_pipeline.vector_index.items) == 1
-        assert indexing_pipeline.vector_index.items[0]["content_hash"] == chunk.content_hash
+        assert (
+            indexing_pipeline.vector_index.items[0].content_hash == chunk.content_hash
+        )
 
     async def test_path_index_is_written_before_blob_becomes_ready(
         self, indexing_pipeline
@@ -341,9 +316,6 @@ class TestEmbedPending:
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.PENDING
         assert name in indexing_pipeline.blob_repo.staging
-        assert EVENT_BLOB_READY not in [
-            event.event_type for event in indexing_pipeline._events
-        ]
 
     async def test_embed_pending_disabled_keeps_pending_and_staging(
         self, indexing_pipeline
@@ -356,6 +328,7 @@ class TestEmbedPending:
         待开关恢复重新入队即可无损补嵌。
         """
         from oce.domain.blob.blob import Blob, BlobStatus
+
         indexing_pipeline.chunk_repo.pending.clear()
         indexing_pipeline.chunk_repo.chunks.clear()
         indexing_pipeline.vector_index.items.clear()
@@ -393,7 +366,6 @@ class TestEmbedPending:
             blob_repo=indexing_pipeline.blob_repo,
             chunk_repo=indexing_pipeline.chunk_repo,
             symbol_projection=indexing_pipeline.symbol_projection,
-            event_bus=indexing_pipeline.event_bus,
             path_store=indexing_pipeline.path_store,
             embedding_enabled=False,
         )
@@ -402,12 +374,9 @@ class TestEmbedPending:
         assert embedded == 0
         assert indexing_pipeline.vector_index.items == []  # 未写任何向量
         blob = indexing_pipeline.blob_repo.blobs[name]
-        assert blob.status == BlobStatus.PENDING            # 核心：不再假 READY
+        assert blob.status == BlobStatus.PENDING  # 核心：不再假 READY
         assert name in indexing_pipeline.blob_repo.staging  # 原文保留，供恢复后补嵌
         assert len(indexing_pipeline.chunk_repo.pending) == 1  # chunk 未被消费
-        assert EVENT_BLOB_READY not in [
-            e.event_type for e in indexing_pipeline._events
-        ]
 
     async def test_embed_pending_no_pending_returns_zero(self, indexing_pipeline):
         name = _blob_name("src/x.py", "print(1)\n")
@@ -447,4 +416,3 @@ class TestEmbedPending:
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.ERROR
         assert blob.error_message == "provider rejected input"
-        assert EVENT_BLOB_FAILED in [event.event_type for event in indexing_pipeline._events]

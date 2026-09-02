@@ -1,4 +1,5 @@
 """SqlMonitoringStatsReader 单测：窗口内聚合 + 分位/空回率/最新资源快照，窗口外排除。"""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -25,7 +26,9 @@ async def _make_factory():
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    return async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False), engine
+    return async_sessionmaker(
+        engine, class_=AsyncSession, expire_on_commit=False
+    ), engine
 
 
 def _recent() -> datetime:
@@ -38,24 +41,79 @@ def _old() -> datetime:
 
 async def _seed(factory) -> None:
     async with factory() as session:
-        session.add_all([
-            ApiCallMetricModel(ts=_recent(), endpoint="/a", method="GET", status_code=200, latency_ms=10),
-            ApiCallMetricModel(ts=_recent(), endpoint="/a", method="GET", status_code=200, latency_ms=20),
-            ApiCallMetricModel(ts=_recent(), endpoint="/a", method="GET", status_code=500, latency_ms=30),
-            ApiCallMetricModel(ts=_old(), endpoint="/a", method="GET", status_code=200, latency_ms=999),
-            TokenUsageMetricModel(ts=_recent(), kind="embed", model="m", prompt_tokens=100, total_tokens=100),
-            TokenUsageMetricModel(ts=_recent(), kind="embed", model="m", prompt_tokens=50, total_tokens=50),
-            TokenUsageMetricModel(ts=_recent(), kind="rerank", model="r", total_tokens=20),
-            TokenUsageMetricModel(ts=_old(), kind="embed", model="m", total_tokens=777),
-            RetrievalMetricModel(ts=_recent(), source="retrieval", hit_count=3, total_ms=5),
-            RetrievalMetricModel(ts=_recent(), source="retrieval", hit_count=0, total_ms=4),
-            RetrievalMetricModel(ts=_recent(), source="overview", hit_count=2, total_ms=6),
-            RetrievalMetricModel(ts=_old(), source="retrieval", hit_count=0, total_ms=1),
-            ResourceSampleModel(
-                ts=_recent(), disk_data_bytes=11, disk_free_bytes=22, disk_total_bytes=33,
-                mem_rss_bytes=44, mem_percent=5.5, cpu_percent=6.6,
-            ),
-        ])
+        session.add_all(
+            [
+                ApiCallMetricModel(
+                    ts=_recent(),
+                    endpoint="/a",
+                    method="GET",
+                    status_code=200,
+                    latency_ms=10,
+                ),
+                ApiCallMetricModel(
+                    ts=_recent(),
+                    endpoint="/a",
+                    method="GET",
+                    status_code=200,
+                    latency_ms=20,
+                ),
+                ApiCallMetricModel(
+                    ts=_recent(),
+                    endpoint="/a",
+                    method="GET",
+                    status_code=500,
+                    latency_ms=30,
+                ),
+                ApiCallMetricModel(
+                    ts=_old(),
+                    endpoint="/a",
+                    method="GET",
+                    status_code=200,
+                    latency_ms=999,
+                ),
+                TokenUsageMetricModel(
+                    ts=_recent(),
+                    kind="embed",
+                    model="m",
+                    prompt_tokens=100,
+                    total_tokens=100,
+                ),
+                TokenUsageMetricModel(
+                    ts=_recent(),
+                    kind="embed",
+                    model="m",
+                    prompt_tokens=50,
+                    total_tokens=50,
+                ),
+                TokenUsageMetricModel(
+                    ts=_recent(), kind="rerank", model="r", total_tokens=20
+                ),
+                TokenUsageMetricModel(
+                    ts=_old(), kind="embed", model="m", total_tokens=777
+                ),
+                RetrievalMetricModel(
+                    ts=_recent(), source="retrieval", hit_count=3, total_ms=5
+                ),
+                RetrievalMetricModel(
+                    ts=_recent(), source="retrieval", hit_count=0, total_ms=4
+                ),
+                RetrievalMetricModel(
+                    ts=_recent(), source="overview", hit_count=2, total_ms=6
+                ),
+                RetrievalMetricModel(
+                    ts=_old(), source="retrieval", hit_count=0, total_ms=1
+                ),
+                ResourceSampleModel(
+                    ts=_recent(),
+                    disk_data_bytes=11,
+                    disk_free_bytes=22,
+                    disk_total_bytes=33,
+                    mem_rss_bytes=44,
+                    mem_percent=5.5,
+                    cpu_percent=6.6,
+                ),
+            ]
+        )
         await session.commit()
 
 

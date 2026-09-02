@@ -8,13 +8,11 @@ from collections.abc import Iterable
 from loguru import logger
 from tree_sitter_language_pack import get_parser
 
-from oce.domain.chunk.recursive_chunker import is_meaningful
 from oce.domain.chunk.protocols import Chunker
-from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
+from oce.domain.chunk.spans import DEFAULT_MAX_CHUNK_CHARS, emit_chunks, is_meaningful
 from oce.domain.chunk.types import Chunk
 from oce.infrastructure.astchunk.compat import CompatNode, compat_parse
 
-DEFAULT_MAX_CHUNK_CHARS = 6_000
 _JSP_BLOCK = re.compile(r"<%.*?%>", re.DOTALL)
 _JSP_XML_CODE = re.compile(
     r"(?P<open><jsp:(?P<kind>scriptlet|expression|declaration)\b[^>]*>)"
@@ -88,9 +86,7 @@ class JspChunker:
                 return boundaries
 
         top_level = [
-            child
-            for child in root.children
-            if child.type in _CONTENT_NODE_TYPES
+            child for child in root.children if child.type in _CONTENT_NODE_TYPES
         ]
         if len(top_level) == 1 and self._tag_name(top_level[0]) in {
             "html",
@@ -142,7 +138,7 @@ class JspChunker:
         lines: list[str],
         path: str,
     ) -> list[Chunk]:
-        chunks: list[Chunk] = []
+        ranges: list[tuple[int, int, str]] = []
         for index, (boundary_start, tag) in enumerate(boundaries):
             start = 1 if index == 0 else boundary_start
             end = (
@@ -150,23 +146,5 @@ class JspChunker:
                 if index + 1 < len(boundaries)
                 else len(lines)
             )
-            end = trim_trailing_blank_lines(lines, start, end)
-            for span_start, span_end, text in cap_span(
-                lines,
-                start,
-                end,
-                self.max_chunk_chars,
-            ):
-                if not text.strip():
-                    continue
-                chunks.append(
-                    Chunk(
-                        content_hash=Chunk.compute_hash(text),
-                        path=path,
-                        content=text,
-                        start_line=span_start,
-                        end_line=span_end,
-                        chunk_type=f"jsp:{tag}",
-                    )
-                )
-        return chunks
+            ranges.append((start, end, f"jsp:{tag}"))
+        return emit_chunks(ranges, lines, path, max_chars=self.max_chunk_chars)

@@ -12,9 +12,14 @@ from dataclasses import replace
 import pytest
 
 from oce.domain.services.path_search import PathSearchResult
+from oce.domain.services.query_classifier import classify_query_intent
 from oce.domain.services.retrieval import RetrievalPipeline, source_priority_factor
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
+
+# The store only sees vectors; the fake embedder registers each query text under
+# its vector so the store can still answer per query.
+_TEXT_BY_VECTOR: dict[tuple[float, ...], str] = {}
 
 
 class FakeSearchStore:
@@ -30,12 +35,12 @@ class FakeSearchStore:
     async def search(
         self,
         *,
-        query,
         query_vector,
         allowed_blob_names=None,
         top_k=50,
-        vector_threshold=0.1,
+        vector_threshold=0.0,
     ):
+        query = _TEXT_BY_VECTOR.get(tuple(query_vector), "")
         self.last_query = query
         self.last_vector = query_vector
         self.queries.append(query)
@@ -50,7 +55,9 @@ class FakeEmbedder:
 
     async def embed_query(self, text):
         self.queries.append(text)
-        return [float(len(text))]
+        vector = [float(len(text)), float(sum(map(ord, text)) % 9973)]
+        _TEXT_BY_VECTOR[tuple(vector)] = text
+        return vector
 
 
 class FakePathStore:
@@ -655,7 +662,7 @@ class TestRetrievalPipeline:
         )
 
         merged = pipe._merge_exact_hits(
-            "`target_symbol` 的完整调用链？",
+            classify_query_intent("`target_symbol` 的完整调用链？"),
             [duplicate, exact_only],
             semantic,
         )

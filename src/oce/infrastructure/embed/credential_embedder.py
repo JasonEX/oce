@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Awaitable, Callable
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.infrastructure.delegate_runtime import SwappableDelegate
 from oce.infrastructure.embed.openai_embedder import OpenAIEmbedder, UsageCallback
-from oce.infrastructure.persistence.models import ModelCredentialModel
+from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import EmbeddingSettings
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_profile import EmbeddingIndexProfile, profile_value_hash
@@ -32,6 +31,23 @@ class EmbeddingRuntimeConfig:
     query_instruction: str
     credential_id: int = 0
 
+    def normalized_endpoint(self) -> str:
+        """The API base without the ``/embeddings`` resource suffix."""
+        endpoint = self.endpoint.rstrip("/")
+        if endpoint.endswith("/embeddings"):
+            endpoint = endpoint[: -len("/embeddings")]
+        return endpoint
+
+    def indexed_vector_identity(self) -> tuple[object, ...]:
+        """Fields whose change invalidates every stored document vector."""
+        return (
+            self.normalized_endpoint(),
+            self.model,
+            self.dimensions,
+            self.max_input_chars,
+            self.input_overlap_chars,
+        )
+
 
 @dataclass(frozen=True)
 class PreparedEmbeddingReload:
@@ -39,7 +55,7 @@ class PreparedEmbeddingReload:
     config: EmbeddingRuntimeConfig
 
 
-class CredentialConfiguredEmbedder:
+class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
     """Resolve one active credential, then reuse its OpenAI-compatible client."""
 
     def __init__(
@@ -53,59 +69,37 @@ class CredentialConfiguredEmbedder:
             Callable[[EmbeddingIndexProfile], Awaitable[object]] | None
         ) = None,
     ) -> None:
+        super().__init__()
         self._session_factory = session_factory
         self._fallback = fallback
         self._expected_dimensions = expected_dimensions
         self._on_usage = on_usage
         self._on_index_profile = on_index_profile
-        self._delegate: OpenAIEmbedder | None = None
         self._config: EmbeddingRuntimeConfig | None = None
-        self._lock = asyncio.Lock()
-        self._active_calls: dict[OpenAIEmbedder, int] = {}
-        self._retired: set[OpenAIEmbedder] = set()
 
     @property
     def enabled(self) -> bool:
         return self._fallback.enabled
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        delegate = await self._acquire_delegate()
+        delegate = await self._acquire()
         try:
             return await delegate.embed_documents(texts)
         finally:
-            await self._release_delegate(delegate)
+            await self._release(delegate)
 
     async def embed_query(self, text: str) -> list[float]:
-        delegate = await self._acquire_delegate()
+        delegate = await self._acquire()
         try:
             return await delegate.embed_query(text)
         finally:
-            await self._release_delegate(delegate)
+            await self._release(delegate)
 
-    async def _acquire_delegate(self) -> OpenAIEmbedder:
-        async with self._lock:
-            if self._delegate is None:
-                config = await self._resolve_config()
-                await self._validate_index_profile(config)
-                self._delegate = self._build_delegate(config)
-                self._config = config
-            delegate = self._delegate
-            self._active_calls[delegate] = self._active_calls.get(delegate, 0) + 1
-            return delegate
-
-    async def _release_delegate(self, delegate: OpenAIEmbedder) -> None:
-        close_delegate = False
-        async with self._lock:
-            remaining = self._active_calls[delegate] - 1
-            if remaining:
-                self._active_calls[delegate] = remaining
-            else:
-                del self._active_calls[delegate]
-                if delegate in self._retired:
-                    self._retired.remove(delegate)
-                    close_delegate = True
-        if close_delegate:
-            await delegate.close()
+    async def _create_delegate(self) -> OpenAIEmbedder:
+        config = await self._resolve_config()
+        await self._validate_index_profile(config)
+        self._config = config
+        return self._build_delegate(config)
 
     def _build_delegate(self, config: EmbeddingRuntimeConfig) -> OpenAIEmbedder:
         return OpenAIEmbedder.from_endpoint(
@@ -126,83 +120,47 @@ class CredentialConfiguredEmbedder:
         )
 
     async def _resolve_config(self) -> EmbeddingRuntimeConfig:
-        async with self._session_factory() as session:
-            credential = (
-                (
-                    await session.execute(
-                        select(ModelCredentialModel)
-                        .where(
-                            ModelCredentialModel.kind == "embed",
-                            ModelCredentialModel.status == "active",
-                            ModelCredentialModel.endpoint.is_not(None),
-                            ModelCredentialModel.model.is_not(None),
-                        )
-                        .order_by(
-                            ModelCredentialModel.priority,
-                            ModelCredentialModel.id,
-                        )
-                        .limit(1)
-                    )
-                )
-                .scalars()
-                .first()
-            )
-
+        fb = self._fallback
+        credential = await resolve_active_credential(
+            self._session_factory,
+            "embed",
+            require_endpoint_and_model=True,
+        )
         if credential is None:
-            key = (
-                self._fallback.api_key.get_secret_value()
-                if self._fallback.api_key is not None
-                else ""
-            )
+            key = fb.api_key.get_secret_value() if fb.api_key is not None else ""
             if not key:
                 raise ServiceNotReadyError(
                     "No active embedding credential or EMBED_API_KEY is configured"
                 )
             config = EmbeddingRuntimeConfig(
-                endpoint=self._fallback.endpoint,
+                endpoint=fb.endpoint,
                 api_key=key,
-                model=self._fallback.model,
-                dimensions=self._fallback.dimensions,
-                max_batch_size=self._fallback.max_batch_size,
-                max_batch_chars=self._fallback.max_batch_chars,
-                max_input_chars=self._fallback.max_input_chars,
-                input_overlap_chars=self._fallback.input_overlap_chars,
-                max_concurrency=self._fallback.max_concurrency,
-                timeout_seconds=self._fallback.timeout_seconds,
-                proxy=self._fallback.proxy,
-                query_instruction=self._fallback.query_instruction,
+                model=fb.model,
+                dimensions=fb.dimensions,
+                max_batch_size=fb.max_batch_size,
+                max_batch_chars=fb.max_batch_chars,
+                max_input_chars=fb.max_input_chars,
+                input_overlap_chars=fb.input_overlap_chars,
+                max_concurrency=fb.max_concurrency,
+                timeout_seconds=fb.timeout_seconds,
+                proxy=fb.proxy,
+                query_instruction=fb.query_instruction,
             )
         else:
-            fb = self._fallback
             # kind 专属参数列可能为空（如仅填 endpoint/model 的最简嵌入行），逐字段回落。
+            def pick(value: int | None, default: int) -> int:
+                return value if value is not None else default
+
             config = EmbeddingRuntimeConfig(
                 endpoint=credential.endpoint,
                 api_key=credential.api_key,
                 model=credential.model,
-                dimensions=(
-                    credential.dimensions
-                    if credential.dimensions is not None
-                    else fb.dimensions
-                ),
-                max_batch_size=(
-                    credential.max_batch_size
-                    if credential.max_batch_size is not None
-                    else fb.max_batch_size
-                ),
-                max_batch_chars=(
-                    credential.max_batch_chars
-                    if credential.max_batch_chars is not None
-                    else fb.max_batch_chars
-                ),
-                max_input_chars=(
-                    credential.max_input_chars
-                    if credential.max_input_chars is not None
-                    else fb.max_input_chars
-                ),
-                input_overlap_chars=(
-                    credential.input_overlap_chars
-                    if credential.input_overlap_chars is not None
-                    else fb.input_overlap_chars
+                dimensions=pick(credential.dimensions, fb.dimensions),
+                max_batch_size=pick(credential.max_batch_size, fb.max_batch_size),
+                max_batch_chars=pick(credential.max_batch_chars, fb.max_batch_chars),
+                max_input_chars=pick(credential.max_input_chars, fb.max_input_chars),
+                input_overlap_chars=pick(
+                    credential.input_overlap_chars, fb.input_overlap_chars
                 ),
                 max_concurrency=fb.max_concurrency,
                 timeout_seconds=float(credential.timeout_seconds),
@@ -213,19 +171,13 @@ class CredentialConfiguredEmbedder:
 
         if config.dimensions != self._expected_dimensions:
             raise ServiceNotReadyError(
-                "Embedding credential dimensions do not match MILVUS_DENSE_DIM"
+                "Embedding credential dimensions do not match EMBED_DIMENSIONS"
             )
         return config
 
     async def close(self) -> None:
-        async with self._lock:
-            delegates = set(self._retired)
-            if self._delegate is not None:
-                delegates.add(self._delegate)
-            self._delegate = None
-            self._config = None
-            self._retired.clear()
-        await asyncio.gather(*(delegate.close() for delegate in delegates))
+        self._config = None
+        await super().close()
 
     async def reload(self) -> int:
         replacement = await self.prepare_reload()
@@ -236,10 +188,7 @@ class CredentialConfiguredEmbedder:
             raise
         return await self.activate_prepared(replacement)
 
-    async def validate_prepared(
-        self,
-        replacement: PreparedEmbeddingReload,
-    ) -> None:
+    async def validate_prepared(self, replacement: PreparedEmbeddingReload) -> None:
         await self._validate_index_profile(replacement.config)
 
     async def _validate_index_profile(self, config: EmbeddingRuntimeConfig) -> None:
@@ -255,12 +204,9 @@ class CredentialConfiguredEmbedder:
     def index_profile_for_config(
         config: EmbeddingRuntimeConfig,
     ) -> EmbeddingIndexProfile:
-        endpoint = config.endpoint.rstrip("/")
-        if endpoint.endswith("/embeddings"):
-            endpoint = endpoint[: -len("/embeddings")]
         return EmbeddingIndexProfile(
             enabled=True,
-            endpoint_hash=profile_value_hash(endpoint),
+            endpoint_hash=profile_value_hash(config.normalized_endpoint()),
             model=config.model,
             dimensions=config.dimensions,
             query_instruction_hash=profile_value_hash(config.query_instruction),
@@ -268,25 +214,10 @@ class CredentialConfiguredEmbedder:
             input_overlap_chars=config.input_overlap_chars,
         )
 
-    @staticmethod
-    def _indexed_vector_config(config: EmbeddingRuntimeConfig) -> tuple[object, ...]:
-        endpoint = config.endpoint.rstrip("/")
-        if endpoint.endswith("/embeddings"):
-            endpoint = endpoint[: -len("/embeddings")]
-        return (
-            endpoint,
-            config.model,
-            config.dimensions,
-            config.max_input_chars,
-            config.input_overlap_chars,
-        )
-
     def _ensure_reload_compatible(self, config: EmbeddingRuntimeConfig) -> None:
         if self._config is None:
             return
-        if self._indexed_vector_config(config) != self._indexed_vector_config(
-            self._config
-        ):
+        if config.indexed_vector_identity() != self._config.indexed_vector_identity():
             raise ServiceNotReadyError(
                 "Embedding model or document preprocessing changed; rebuild from clean "
                 "metadata and vector storage, then resync clients before reloading"
@@ -299,18 +230,8 @@ class CredentialConfiguredEmbedder:
         return PreparedEmbeddingReload(self._build_delegate(config), config)
 
     async def activate_prepared(self, replacement: PreparedEmbeddingReload) -> int:
-        close_previous: OpenAIEmbedder | None = None
-        async with self._lock:
-            previous = self._delegate
-            self._delegate = replacement.delegate
-            self._config = replacement.config
-            if previous is not None:
-                if self._active_calls.get(previous, 0):
-                    self._retired.add(previous)
-                else:
-                    close_previous = previous
-        if close_previous is not None:
-            await close_previous.close()
+        self._config = replacement.config
+        await self._activate(replacement.delegate)
         return 1
 
     async def discard_prepared(self, replacement: PreparedEmbeddingReload) -> None:

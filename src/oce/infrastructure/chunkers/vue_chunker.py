@@ -6,12 +6,10 @@ import os
 import re
 from bisect import bisect_right
 
-from oce.domain.chunk.recursive_chunker import is_meaningful
 from oce.domain.chunk.protocols import Chunker
-from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
+from oce.domain.chunk.spans import DEFAULT_MAX_CHUNK_CHARS, emit_chunks, is_meaningful
 from oce.domain.chunk.types import Chunk
 
-DEFAULT_MAX_CHUNK_CHARS = 6_000
 _SECTION_TAG = re.compile(
     r"<\s*(?P<closing>/)?\s*(?P<tag>template|script|style)\b[^>]*>",
     re.IGNORECASE,
@@ -49,7 +47,9 @@ class VueChunker:
         except ValueError:
             return self.fallback.chunk(content, path)
         if language == "svelte":
-            sections = [section for section in sections if section[0] in {"script", "style"}]
+            sections = [
+                section for section in sections if section[0] in {"script", "style"}
+            ]
             sections.extend(self._locate_svelte_markup(lines, sections))
         if not sections:
             return self.fallback.chunk(content, path)
@@ -137,29 +137,15 @@ class VueChunker:
         groups = self._primary_groups(primary, styles, lines, language)
         groups.extend((start, end, "style") for _, start, end in styles)
         groups.sort(key=lambda group: group[0])
-
-        chunks: list[Chunk] = []
-        for start, end, section_type in groups:
-            trimmed = trim_trailing_blank_lines(lines, start, end)
-            for span_start, span_end, text in cap_span(
-                lines,
-                start,
-                trimmed,
-                self.max_chunk_chars,
-            ):
-                if not text.strip():
-                    continue
-                chunks.append(
-                    Chunk(
-                        content_hash=Chunk.compute_hash(text),
-                        path=path,
-                        content=text,
-                        start_line=span_start,
-                        end_line=span_end,
-                        chunk_type=f"{language}:{section_type}",
-                    )
-                )
-        return chunks
+        return emit_chunks(
+            (
+                (start, end, f"{language}:{section_type}")
+                for start, end, section_type in groups
+            ),
+            lines,
+            path,
+            max_chars=self.max_chunk_chars,
+        )
 
     def _primary_groups(
         self,
@@ -172,7 +158,10 @@ class VueChunker:
             return []
         start = min(section[1] for section in primary)
         end = max(section[2] for section in primary)
-        crosses_style = any(style_start <= end and style_end >= start for _, style_start, style_end in styles)
+        crosses_style = any(
+            style_start <= end and style_end >= start
+            for _, style_start, style_end in styles
+        )
         tags = {section[0] for section in primary}
         if len(tags) == 1:
             combined_type = next(iter(tags))
@@ -183,4 +172,7 @@ class VueChunker:
         combined_chars = len("\n".join(lines[start - 1 : end]))
         if not crosses_style and combined_chars <= self.max_chunk_chars:
             return [(start, end, combined_type)]
-        return [(section_start, section_end, tag) for tag, section_start, section_end in primary]
+        return [
+            (section_start, section_end, tag)
+            for tag, section_start, section_end in primary
+        ]

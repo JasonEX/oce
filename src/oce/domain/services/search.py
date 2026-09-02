@@ -7,8 +7,9 @@ SearchStore 是向量检索的存储抽象，
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol, Sequence
+from typing import Protocol
 
 
 @dataclass(frozen=True)
@@ -42,7 +43,11 @@ class SearchScope:
     deleted_blob_names: frozenset[str] = frozenset()
 
 
-def search_hit_key(hit: SearchHit) -> tuple[str, str, int, int, str]:
+# One source occurrence: (blob_name, path, start_line, end_line, content identity).
+SearchHitKey = tuple[str, str, int, int, str]
+
+
+def search_hit_key(hit: SearchHit) -> SearchHitKey:
     """Identify one source occurrence, including legacy hits without a hash."""
     return (
         hit.blob_name,
@@ -59,11 +64,10 @@ class SearchStore(Protocol):
     async def search(
         self,
         *,
-        query: str,
         query_vector: list[float],
         allowed_blob_names: Sequence[str] | None = None,
         top_k: int = 50,
-        vector_threshold: float = 0.1,
+        vector_threshold: float = 0.0,
     ) -> list[SearchHit]:
         """向量检索，返回按相似度降序的命中列表
 
@@ -84,9 +88,23 @@ class ExactSearchStore(Protocol):
     ) -> list[SearchHit]: ...
 
 
+@dataclass(frozen=True)
+class VectorRecord:
+    """One chunk occurrence with its vector, ready for the vector index."""
+
+    chunk_id: str
+    content_hash: str
+    blob_name: str
+    path: str
+    content: str
+    start_line: int
+    end_line: int
+    vector: list[float]
+
+
 class VectorIndex(Protocol):
     """向量索引写路径。"""
 
-    async def upsert(self, items: list[dict[str, Any]]) -> None: ...
+    async def upsert(self, records: Sequence[VectorRecord]) -> None: ...
 
-    async def delete(self, blob_names: list[str]) -> None: ...
+    async def delete(self, blob_names: Sequence[str]) -> None: ...

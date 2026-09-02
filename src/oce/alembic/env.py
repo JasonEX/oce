@@ -15,9 +15,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from oce.shared.database.session import Base
-from oce.shared.config import get_settings
 import oce.infrastructure.persistence.models  # noqa: F401
+from oce.shared.config import get_settings
+from oce.shared.database.session import Base
 
 config = context.config
 config.set_main_option("sqlalchemy.url", get_settings().database.url)

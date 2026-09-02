@@ -30,7 +30,7 @@ class TestSpans:
         spans = cap_span(lines, 1, 10, 20)
         assert spans[0][0] == 1
         assert spans[-1][1] == 10
-        for previous, current in zip(spans, spans[1:]):
+        for previous, current in zip(spans, spans[1:], strict=False):
             assert current[0] == previous[1] + 1
 
     def test_cap_span_text_matches_claimed_lines(self):
@@ -75,7 +75,9 @@ class TestFixedChunkerAlignment:
     def test_windows_stay_aligned_across_a_large_file(self):
         content = "\n".join(f"row {index}" for index in range(1, 201))
         # 使用小块以测试分块行为（200 行每行约 10 字符 = 2000 字符，分成多块）
-        chunks = RecursiveChunker(chunk_size=800, chunk_overlap=100).chunk(content, "big.md")
+        chunks = RecursiveChunker(chunk_size=800, chunk_overlap=100).chunk(
+            content, "big.md"
+        )
         assert len(chunks) > 1
         for chunk in chunks:
             assert_aligned(chunk, content)
@@ -117,7 +119,6 @@ class TestCastChunkerAlignment:
         # alignment check would never see a boundary.
         chunker = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
             max_chunk_chars=1_000,
         )
@@ -127,12 +128,13 @@ class TestCastChunkerAlignment:
             assert_aligned(chunk, content)
 
     def test_ast_chunks_respect_the_character_budget(self):
-        content = "function build() {\n" + "\n".join(
-            f"  const item{index} = {'z' * 120};" for index in range(200)
-        ) + "\n}\n"
+        content = (
+            "function build() {\n"
+            + "\n".join(f"  const item{index} = {'z' * 120};" for index in range(200))
+            + "\n}\n"
+        )
         chunker = CastChunker(
             max_chunk_size=100_000,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
             max_chunk_chars=5_000,
         )
@@ -146,7 +148,6 @@ class TestCastChunkerAlignment:
         with pytest.raises(ValueError):
             CastChunker(
                 max_chunk_size=1_500,
-                chunk_overlap=0,
                 fallback=RecursiveChunker(),
                 max_chunk_chars=0,
             )
@@ -155,7 +156,6 @@ class TestCastChunkerAlignment:
         with pytest.raises(ValueError):
             CastChunker(
                 max_chunk_size=1_500,
-                chunk_overlap=0,
                 fallback=RecursiveChunker(),
                 max_chunk_chars=1_000,
                 min_chunk_chars=1_000,
@@ -165,13 +165,16 @@ class TestCastChunkerAlignment:
         """单行生成产物解析得动，但每行都超预算，不能退回按字符切。"""
         content = (
             "const RAW = [\n"
-            + "  '" + "a" * 8_000 + "',\n"
-            + "  '" + "b" * 8_000 + "',\n"
+            + "  '"
+            + "a" * 8_000
+            + "',\n"
+            + "  '"
+            + "b" * 8_000
+            + "',\n"
             + "].join('');\n"
         )
         chunker = CastChunker(
             max_chunk_size=1_500,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
             max_chunk_chars=6_000,
         )

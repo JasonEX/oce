@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, Sequence
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Protocol
 
 if TYPE_CHECKING:
     from oce.domain.blob.blob import Blob
@@ -38,8 +39,6 @@ class BlobRepository(Protocol):
     async def find_expired(self, ttl_days: int, batch_size: int = 1000) -> list[str]:
         """返回超过 TTL 且未被任何 checkpoint chain 引用的 blob。"""
         ...
-
-    async def touch_last_seen(self, blob_names: Sequence[str]) -> None: ...
 
     # blob_staging 操作（worker 消费用原文缓冲区）
     async def get_staging(self, blob_name: str) -> str | None: ...
@@ -80,8 +79,6 @@ class ChainRepository(Protocol):
 
 
 class ChunkRepository(Protocol):
-    async def get(self, content_hash: str) -> Chunk | None: ...
-
     async def get_many(self, content_hashes: Sequence[str]) -> dict[str, Chunk]: ...
 
     async def save(self, chunk: Chunk) -> None: ...

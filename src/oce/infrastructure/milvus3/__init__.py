@@ -1,10 +1,1 @@
-"""Milvus 3.0 向量数据库集成
-
-提供基于 Milvus 3.0 的 dense 向量存储和检索能力：
-- 密集向量检索
-- 标量过滤：blob_name 索引级过滤
-"""
-
-from .client import Milvus3Client as Milvus3Client
-from .schema import create_oce_collection_schema as create_oce_collection_schema
-from .search_store import Milvus3SearchStore as Milvus3SearchStore
+"""Milvus 3.0 dense 向量存储：内容 collection 与路径 collection 共用一套连接与生命周期。"""

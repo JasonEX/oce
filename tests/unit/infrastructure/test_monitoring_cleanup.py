@@ -2,6 +2,7 @@
 
 用 StaticPool 内存库让多个 session 共享一条连接（默认 :memory: 每连接独立库）。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -51,23 +52,46 @@ async def test_cleanup_deletes_expired_keeps_recent():
     factory, engine = await _make_factory()
     try:
         async with factory() as session:
-            session.add_all([
-                ApiCallMetricModel(ts=_old(), endpoint="/x", method="GET", status_code=200, latency_ms=1),
-                ApiCallMetricModel(ts=_recent(), endpoint="/y", method="GET", status_code=200, latency_ms=1),
-                TokenUsageMetricModel(ts=_old(), kind="embed", model="m", total_tokens=1),
-                ResourceSampleModel(
-                    ts=_old(), disk_data_bytes=1, disk_free_bytes=2, disk_total_bytes=3,
-                    mem_rss_bytes=4, mem_percent=5.0, cpu_percent=6.0,
-                ),
-                RetrievalMetricModel(ts=_recent(), source="retrieval", hit_count=1, total_ms=5),
-            ])
+            session.add_all(
+                [
+                    ApiCallMetricModel(
+                        ts=_old(),
+                        endpoint="/x",
+                        method="GET",
+                        status_code=200,
+                        latency_ms=1,
+                    ),
+                    ApiCallMetricModel(
+                        ts=_recent(),
+                        endpoint="/y",
+                        method="GET",
+                        status_code=200,
+                        latency_ms=1,
+                    ),
+                    TokenUsageMetricModel(
+                        ts=_old(), kind="embed", model="m", total_tokens=1
+                    ),
+                    ResourceSampleModel(
+                        ts=_old(),
+                        disk_data_bytes=1,
+                        disk_free_bytes=2,
+                        disk_total_bytes=3,
+                        mem_rss_bytes=4,
+                        mem_percent=5.0,
+                        cpu_percent=6.0,
+                    ),
+                    RetrievalMetricModel(
+                        ts=_recent(), source="retrieval", hit_count=1, total_ms=5
+                    ),
+                ]
+            )
             await session.commit()
 
         cleaner = MonitoringCleaner(factory, retention_days=30, interval_seconds=999)
         removed = await cleaner._cleanup_once()
 
         assert removed == 3  # 三条 40 天前的（api/token/resource）
-        assert await _count(factory, ApiCallMetricModel) == 1   # recent 保留
+        assert await _count(factory, ApiCallMetricModel) == 1  # recent 保留
         assert await _count(factory, TokenUsageMetricModel) == 0
         assert await _count(factory, ResourceSampleModel) == 0
         assert await _count(factory, RetrievalMetricModel) == 1  # recent 保留
@@ -77,6 +101,7 @@ async def test_cleanup_deletes_expired_keeps_recent():
 
 async def test_cleanup_swallows_errors():
     """session_factory 抛错 → 清理返回 0，不上抛（旁路容错）。"""
+
     def _boom():
         raise RuntimeError("db down")
 

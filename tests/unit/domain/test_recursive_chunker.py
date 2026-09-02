@@ -1,4 +1,5 @@
 """RecursiveChunker 测试"""
+
 import pytest
 
 from oce.domain.chunk import RecursiveChunker, is_meaningful
@@ -66,7 +67,7 @@ class TestRecursiveChunker:
         chunks = chunker.chunk(content, "notes.txt")
 
         assert len(chunks) > 1
-        for previous, current in zip(chunks, chunks[1:]):
+        for previous, current in zip(chunks, chunks[1:], strict=False):
             assert current.start_line > previous.end_line
 
     def test_python_language_aware(self):
@@ -81,7 +82,7 @@ def func2():
 def func3():
     pass"""
         chunks = chunker.chunk(content, "test.py")
-        
+
         # Python 分隔符应该优先在函数之间切分
         assert len(chunks) >= 1
         for chunk in chunks:
@@ -92,7 +93,7 @@ def func3():
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
         chunks1 = chunker.chunk("content A", "test.txt")
         chunks2 = chunker.chunk("content B", "test.txt")
-        
+
         assert chunks1[0].content_hash != chunks2[0].content_hash
 
     def test_line_number_accuracy(self):
@@ -100,7 +101,7 @@ def func3():
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
         content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
         chunks = chunker.chunk(content, "test.txt")
-        
+
         assert len(chunks) == 1
         assert chunks[0].start_line == 1
         assert chunks[0].end_line == 5
@@ -110,7 +111,7 @@ def func3():
         chunker = RecursiveChunker(chunk_size=100, chunk_overlap=10)
         content = "Some random content\n\nMore content"
         chunks = chunker.chunk(content, "unknown.xyz")
-        
+
         assert len(chunks) >= 1
         assert all(isinstance(c, Chunk) for c in chunks)
 
@@ -145,7 +146,10 @@ def func3():
                 + ",\n".join(f'  "key{index}": "value{index}"' for index in range(60))
                 + "\n}\n",
             ),
-            ("notes.txt", "\n\n".join(f"段落 {index} 的正文内容。" for index in range(30))),
+            (
+                "notes.txt",
+                "\n\n".join(f"段落 {index} 的正文内容。" for index in range(30)),
+            ),
         ],
     )
     def test_chunks_match_their_declared_lines(self, path, content):

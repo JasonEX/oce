@@ -1,21 +1,18 @@
-﻿"""OpenAIReranker 单测：注入 mock httpx client 验 body shape 和过滤逻辑。"""
+"""OpenAIReranker 单测：注入 mock httpx client 验 body shape 和过滤逻辑。"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
-from oce.infrastructure.embed.openai_reranker import OpenAIReranker
 from oce.domain.services.search import SearchHit
+from oce.infrastructure.embed.openai_reranker import OpenAIReranker
 
 
-@dataclass
-class _Hit:
-    """模拟 retrieval/store/vector_store.Hit 的最小字段（content + 可写 score）。"""
-    content: str
-    score: float = 0.0
+def _Hit(content: str, score: float = 0.0) -> SearchHit:
+    return SearchHit(blob_name="a" * 64, path="", content=content, score=score)
 
 
 def _fake_response(payload: dict, status_code: int = 200):
@@ -23,22 +20,34 @@ def _fake_response(payload: dict, status_code: int = 200):
     resp = MagicMock()
     resp.json = MagicMock(return_value=payload)
     resp.raise_for_status = MagicMock(
-        side_effect=None if 200 <= status_code < 400 else httpx.HTTPStatusError(
-            "fake", request=MagicMock(), response=resp,
+        side_effect=None
+        if 200 <= status_code < 400
+        else httpx.HTTPStatusError(
+            "fake",
+            request=MagicMock(),
+            response=resp,
         )
     )
     resp.status_code = status_code
     return resp
 
 
-def _make_reranker(*, top_n=10, min_score=0.1, response_payload=None,
-                   raise_exc: Exception | None = None, instruct=None):
+def _make_reranker(
+    *,
+    top_n=10,
+    min_score=0.1,
+    response_payload=None,
+    raise_exc: Exception | None = None,
+    instruct=None,
+):
     """构造一个 OpenAIReranker，注入 mock httpx client。"""
     fake_client = MagicMock(spec=httpx.AsyncClient)
     if raise_exc:
         fake_client.post = AsyncMock(side_effect=raise_exc)
     else:
-        fake_client.post = AsyncMock(return_value=_fake_response(response_payload or {}))
+        fake_client.post = AsyncMock(
+            return_value=_fake_response(response_payload or {})
+        )
 
     reranker = OpenAIReranker(
         endpoint="https://dashscope.aliyuncs.com/compatible-api/v1/reranks",
@@ -118,7 +127,9 @@ async def test_rerank_body_shape_includes_instruction_when_set():
     )
     await reranker.rerank("q", [_Hit(content="d1")])
     body = client.post.call_args.kwargs["json"]
-    assert body["instruction"] == "Given a web search query, retrieve relevant passages."
+    assert (
+        body["instruction"] == "Given a web search query, retrieve relevant passages."
+    )
 
 
 @pytest.mark.asyncio
@@ -138,11 +149,13 @@ async def test_rerank_filters_below_min_score():
     """relevance_score < min_score 的候选不提升，但不丢失。"""
     reranker, _ = _make_reranker(
         min_score=0.5,
-        response_payload={"results": [
-            {"index": 0, "relevance_score": 0.9},
-            {"index": 1, "relevance_score": 0.3},   # < 0.5 应被丢
-            {"index": 2, "relevance_score": 0.6},
-        ]},
+        response_payload={
+            "results": [
+                {"index": 0, "relevance_score": 0.9},
+                {"index": 1, "relevance_score": 0.3},  # < 0.5 应被丢
+                {"index": 2, "relevance_score": 0.6},
+            ]
+        },
     )
     hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
     result = await reranker.rerank("q", hits)
@@ -156,11 +169,13 @@ async def test_rerank_promotes_top_n_without_truncating_candidates():
     """API 多返了，只提升 top_n，其余候选交给 selector。"""
     reranker, _ = _make_reranker(
         top_n=2,
-        response_payload={"results": [
-            {"index": 0, "relevance_score": 0.9},
-            {"index": 1, "relevance_score": 0.8},
-            {"index": 2, "relevance_score": 0.7},
-        ]},
+        response_payload={
+            "results": [
+                {"index": 0, "relevance_score": 0.9},
+                {"index": 1, "relevance_score": 0.8},
+                {"index": 2, "relevance_score": 0.7},
+            ]
+        },
     )
     hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
     result = await reranker.rerank("q", hits)
@@ -224,18 +239,32 @@ async def test_rerank_on_usage_callback_invoked_on_success():
         captured.append((cid, kind, model, prompt, completion))
 
     fake_client = MagicMock(spec=httpx.AsyncClient)
-    fake_client.post = AsyncMock(return_value=_fake_response({
-        "results": [{"index": 0, "relevance_score": 0.9}],
-        "meta": {"tokens": {"input_tokens": 40, "output_tokens": 2}},
-    }))
+    fake_client.post = AsyncMock(
+        return_value=_fake_response(
+            {
+                "results": [{"index": 0, "relevance_score": 0.9}],
+                "meta": {"tokens": {"input_tokens": 40, "output_tokens": 2}},
+            }
+        )
+    )
     rk = OpenAIReranker(
-        endpoint="https://x/rerank", api_key="sk", model="qwen3-rerank",
-        client=fake_client, credential_id=7, on_usage=_on_usage,
+        endpoint="https://x/rerank",
+        api_key="sk",
+        model="qwen3-rerank",
+        client=fake_client,
+        credential_id=7,
+        on_usage=_on_usage,
     )
     await rk.rerank("q", [_Hit(content="d1")])
     assert captured, "on_usage 应至少被调用一次"
     cid, kind, model, prompt, completion = captured[0]
-    assert (cid, kind, model, prompt, completion) == (7, "rerank", "qwen3-rerank", 42, 0)
+    assert (cid, kind, model, prompt, completion) == (
+        7,
+        "rerank",
+        "qwen3-rerank",
+        42,
+        0,
+    )
 
 
 @pytest.mark.asyncio
@@ -249,8 +278,12 @@ async def test_rerank_on_usage_not_invoked_on_http_failure():
     fake_client = MagicMock(spec=httpx.AsyncClient)
     fake_client.post = AsyncMock(side_effect=httpx.ConnectError("down"))
     rk = OpenAIReranker(
-        endpoint="https://x/rerank", api_key="sk", model="qwen3-rerank",
-        client=fake_client, credential_id=7, on_usage=_on_usage,
+        endpoint="https://x/rerank",
+        api_key="sk",
+        model="qwen3-rerank",
+        client=fake_client,
+        credential_id=7,
+        on_usage=_on_usage,
     )
     await rk.rerank("q", [_Hit(content="d1")])
     assert captured == [], "失败路径不应该触发 usage 上报"

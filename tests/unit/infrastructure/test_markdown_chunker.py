@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from oce.domain.chunk import RecursiveChunker, LanguageChunker
+from oce.domain.chunk import LanguageChunker, RecursiveChunker
 from oce.infrastructure.chunkers.markdown_chunker import MarkdownChunker
 
 DOC = """# Guide
@@ -89,9 +89,7 @@ class TestMarkdownChunker:
             for line_no in range(chunk.start_line, chunk.end_line + 1):
                 seen[line_no] = seen.get(line_no, 0) + 1
         meaningful = [
-            index
-            for index, line in enumerate(DOC.splitlines(), 1)
-            if line.strip()
+            index for index, line in enumerate(DOC.splitlines(), 1) if line.strip()
         ]
         assert all(seen.get(line_no) == 1 for line_no in meaningful)
 
@@ -114,10 +112,7 @@ class TestMarkdownChunker:
         with_heading = [
             chunk
             for chunk in chunks
-            if any(
-                line.lstrip().startswith("#")
-                for line in chunk.content.splitlines()
-            )
+            if any(line.lstrip().startswith("#") for line in chunk.content.splitlines())
         ]
         assert len(with_heading) == len(chunks)
 

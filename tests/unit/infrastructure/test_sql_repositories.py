@@ -24,19 +24,20 @@ def _blob_repository(session):
 async def sqlite_session():
     """创建 SQLite 内存数据库 session"""
     from sqlalchemy.ext.asyncio import (
-        create_async_engine,
         AsyncSession,
         async_sessionmaker,
-    )
-    from oce.infrastructure.persistence.models import (
-        BlobModel,
-        ChunkModel,
-        BlobChunkModel,
-        ChainModel,
-        ChainMemberModel,
-        SymbolOccurrenceModel,
+        create_async_engine,
     )
     from sqlalchemy.orm import declarative_base
+
+    from oce.infrastructure.persistence.models import (
+        BlobChunkModel,
+        BlobModel,
+        ChainMemberModel,
+        ChainModel,
+        ChunkModel,
+        SymbolOccurrenceModel,
+    )
 
     Base = declarative_base()
 
@@ -173,8 +174,7 @@ async def test_chunk_repository_crud(sqlite_session):
     await sqlite_session.commit()
 
     # 读取
-    loaded = await repo.get(chunk.content_hash)
-    assert loaded is not None
+    loaded = (await repo.get_many([chunk.content_hash]))[chunk.content_hash]
     assert loaded.content_hash == chunk.content_hash
     assert loaded.content == "print('hello')"
 
@@ -526,5 +526,5 @@ async def test_blob_delete_only_removes_unreferenced_chunks(sqlite_session):
     await blob_repo.delete(first_name)
     await sqlite_session.commit()
 
-    assert await chunk_repo.get(shared.content_hash) is not None
-    assert await chunk_repo.get(unique.content_hash) is None
+    remaining = await chunk_repo.get_many([shared.content_hash, unique.content_hash])
+    assert set(remaining) == {shared.content_hash}

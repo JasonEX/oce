@@ -46,7 +46,9 @@ async def test_admin_key_is_exclusive_once_configured(monkeypatch):
 
 async def test_admin_key_missing_header_rejected(monkeypatch):
     monkeypatch.setattr(
-        auth, "get_settings", lambda: _settings(api_key="sk-main", admin_api_key="sk-admin")
+        auth,
+        "get_settings",
+        lambda: _settings(api_key="sk-main", admin_api_key="sk-admin"),
     )
     with pytest.raises(HTTPException) as exc:
         await verify_admin_key(None)

@@ -15,7 +15,7 @@ from oce.domain.services.search import SearchHit
 
 def blob_name(path: str, content: str) -> str:
     """与生产一致的内容寻址 blob_name（SHA256）"""
-    return hashlib.sha256(f"{path}{content}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{path}{content}".encode()).hexdigest()
 
 
 class FakeBlobRepo:
@@ -52,11 +52,6 @@ class FakeBlobRepo:
     async def delete_many(self, blob_names) -> None:
         for name in blob_names:
             self.blobs.pop(name, None)
-
-    async def touch_last_seen(self, blob_names) -> None:
-        for n in blob_names:
-            if n in self.blobs:
-                self.blobs[n].touch()
 
     async def save_staging(self, blob_name: str, content: str) -> None:
         """保存 staging 原文（测试替身）"""

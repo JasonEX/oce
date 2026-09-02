@@ -13,7 +13,6 @@ class TestCASTChunker:
         """文档格式（markdown/jsp/vue/svelte）不应该在 CastChunker 的 languages 中"""
         cast_chunker = CastChunker(
             max_chunk_size=500,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         )
 
@@ -24,28 +23,34 @@ class TestCASTChunker:
         """编程语言（python/java/ts等）应该在 CastChunker 的 languages 中"""
         cast_chunker = CastChunker(
             max_chunk_size=500,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         )
 
         # 有 tree-sitter parser 的编程语言
-        programming_languages = {"python", "java", "javascript", "typescript", "go", "rust", "swift", "kotlin"}
+        programming_languages = {
+            "python",
+            "java",
+            "javascript",
+            "typescript",
+            "go",
+            "rust",
+            "swift",
+            "kotlin",
+        }
         assert programming_languages.issubset(cast_chunker.languages)
 
     def test_unsupported_language_falls_back_to_recursive(self):
         content = "\n".join(f"line{i}" for i in range(100))
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
-        chunker = CastChunker(max_chunk_size=1500, chunk_overlap=0, fallback=fallback)
+        chunker = CastChunker(max_chunk_size=1500, fallback=fallback)
         chunks = chunker.chunk(content, "notes.unknown_ext")
         # 回退 recursive：应该被切分
         assert len(chunks) >= 1
 
     def test_python_file_chunks_with_ast(self):
-        content = "\n".join(
-            f"def func_{i}():\n    return {i}" for i in range(50)
-        )
+        content = "\n".join(f"def func_{i}():\n    return {i}" for i in range(50))
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
-        chunker = CastChunker(max_chunk_size=500, chunk_overlap=0, fallback=fallback)
+        chunker = CastChunker(max_chunk_size=500, fallback=fallback)
         chunks = chunker.chunk(content, "src/demo.py")
         assert len(chunks) >= 1
         # 行号 1-based
@@ -61,7 +66,6 @@ class TestCASTChunker:
 """
         chunks = CastChunker(
             max_chunk_size=500,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         ).chunk(content, "src/main/java/com/example/UserService.java")
 
@@ -74,7 +78,6 @@ class TestCASTChunker:
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
         chunks = CastChunker(
             max_chunk_size=1500,
-            chunk_overlap=0,
             fallback=fallback,
         ).chunk(content, "src/hello.py")
 
@@ -85,13 +88,17 @@ class TestCASTChunker:
 
     def test_empty_content(self):
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
-        assert CastChunker(max_chunk_size=1500, chunk_overlap=0, fallback=fallback).chunk("", "src/empty.py") == []
+        assert (
+            CastChunker(max_chunk_size=1500, fallback=fallback).chunk(
+                "", "src/empty.py"
+            )
+            == []
+        )
 
     def test_whitespace_only_content_does_not_emit_invalid_eof_range(self):
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
         chunker = CastChunker(
             max_chunk_size=1500,
-            chunk_overlap=0,
             fallback=fallback,
         )
 
@@ -100,6 +107,8 @@ class TestCASTChunker:
     def test_chunk_path_preserved(self):
         content = "def hello():\n    return 'world'\n"
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
-        chunks = CastChunker(max_chunk_size=1500, chunk_overlap=0, fallback=fallback).chunk(content, "src/hello.py")
+        chunks = CastChunker(max_chunk_size=1500, fallback=fallback).chunk(
+            content, "src/hello.py"
+        )
         assert chunks
         assert all(c.path == "src/hello.py" for c in chunks)

@@ -7,7 +7,9 @@ from dataclasses import dataclass
 
 
 def _is_sha256(value: str) -> bool:
-    return len(value) == 64 and all(char in "0123456789abcdef" for char in value.lower())
+    return len(value) == 64 and all(
+        char in "0123456789abcdef" for char in value.lower()
+    )
 
 
 @dataclass
@@ -24,9 +26,7 @@ class ChunkRef:
         if self.start_line < 1:
             raise ValueError(f"Invalid start_line: {self.start_line}")
         if self.end_line < self.start_line:
-            raise ValueError(
-                f"Invalid line range: {self.start_line} - {self.end_line}"
-            )
+            raise ValueError(f"Invalid line range: {self.start_line} - {self.end_line}")
 
 
 @dataclass
@@ -48,9 +48,7 @@ class Chunk:
         if not _is_sha256(self.content_hash):
             raise ValueError(f"Invalid content_hash: {self.content_hash}")
         if self.start_line < 1 or self.end_line < self.start_line:
-            raise ValueError(
-                f"Invalid line range: {self.start_line} - {self.end_line}"
-            )
+            raise ValueError(f"Invalid line range: {self.start_line} - {self.end_line}")
 
     @staticmethod
     def compute_hash(content: str) -> str:
@@ -58,13 +56,6 @@ class Chunk:
 
     def to_ref(self) -> ChunkRef:
         return ChunkRef(self.content_hash, self.start_line, self.end_line)
-
-    def line_count(self) -> int:
-        return self.end_line - self.start_line + 1
-
-    @staticmethod
-    def make_id(path: str, start_line: int, end_line: int) -> str:
-        return f"{path}#{start_line}-{end_line}"
 
 
 @dataclass(frozen=True)
@@ -80,7 +71,9 @@ class LocatedChunk:
 
     @property
     def chunk_id(self) -> str:
-        raw = f"{self.blob_name}\n{self.content_hash}\n{self.start_line}:{self.end_line}"
+        raw = (
+            f"{self.blob_name}\n{self.content_hash}\n{self.start_line}:{self.end_line}"
+        )
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def embedding_text(self) -> str:

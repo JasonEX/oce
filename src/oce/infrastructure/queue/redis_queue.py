@@ -19,6 +19,7 @@ batch_upload 客户端反复上传同一文件会反复 enqueue —— 旧实现
 ``SADD pending → 新加才 LPUSH``，保证 (主队列 ∪ 处理中) 内同一 blob_name 至多
 一份。ack / fail 时 SREM；未达重试上限时 worker 再次 enqueue。
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -43,7 +44,7 @@ class RedisQueue:
         self._redis = redis
         self._name = name
         self._processing = f"{name}:processing"
-        self._pending = f"{name}:pending"   # 在飞哨兵 SET（去重防幽灵消息）
+        self._pending = f"{name}:pending"  # 在飞哨兵 SET（去重防幽灵消息）
 
     async def close(self) -> None:
         """Release the Redis connection pool owned by this queue."""
@@ -56,7 +57,11 @@ class RedisQueue:
         Lua 脚本原子地：SADD pending 成功 → LPUSH 主队列；已在 pending → 跳过。
         """
         await self._redis.eval(
-            _ENQUEUE_DEDUP_LUA, 2, self._pending, self._name, blob_name,
+            _ENQUEUE_DEDUP_LUA,
+            2,
+            self._pending,
+            self._name,
+            blob_name,
         )
 
     async def dequeue_many(
@@ -91,12 +96,11 @@ class RedisQueue:
         await self._redis.srem(self._pending, blob_name)
 
     async def fail(self, blob_name: str) -> None:
-        """失败：从处理中队列移除 + 摘 pending。
-        
-        worker 提交 DB retry_count 后可再次 enqueue；Redis 只清理本次在飞状态。
+        """失败与完成对 Redis 是同一件事：清掉本次在飞状态。
+
+        重试由 worker 更新 DB retry_count 后再次 enqueue 决定。
         """
-        await self._redis.lrem(self._processing, 1, blob_name)
-        await self._redis.srem(self._pending, blob_name)
+        await self.ack(blob_name)
 
     async def size(self) -> int:
         """主队列待处理条数。"""

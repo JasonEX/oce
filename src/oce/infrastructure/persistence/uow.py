@@ -23,7 +23,7 @@ class SqlAlchemyUnitOfWork:
         self._symbol_provider = symbol_provider
         self.session: AsyncSession | None = None
 
-    async def __aenter__(self) -> "SqlAlchemyUnitOfWork":
+    async def __aenter__(self) -> SqlAlchemyUnitOfWork:
         self.session = self._session_factory()
         self.blobs = SqlBlobRepository(self.session)
         self.chunks = SqlChunkRepository(self.session)

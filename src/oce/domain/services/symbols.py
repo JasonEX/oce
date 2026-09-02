@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, Protocol, Sequence
+from typing import TYPE_CHECKING, Literal, Protocol
 
 if TYPE_CHECKING:
     from oce.domain.blob.blob import Blob
     from oce.domain.chunk import Chunk
 
 
-SymbolKind = Literal["endpoint", "definition", "reference"]
+SymbolKind = Literal["endpoint", "definition"]
 
 
 @dataclass(frozen=True)

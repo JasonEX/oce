@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from types import MappingProxyType
-from typing import Mapping
 
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES, detect_language
 from oce.domain.chunk.protocols import Chunker, LanguageChunker
@@ -43,7 +42,10 @@ class LanguageChunkerRouter:
             if not chunker.languages:
                 raise ValueError("LanguageChunker.languages 不能为空")
             for language in chunker.languages:
-                if not isinstance(language, str) or language != language.strip().lower():
+                if (
+                    not isinstance(language, str)
+                    or language != language.strip().lower()
+                ):
                     raise ValueError(
                         f"LanguageChunker 语言标识必须是规范化字符串: {language!r}"
                     )

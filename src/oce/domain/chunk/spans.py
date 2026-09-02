@@ -19,8 +19,27 @@ every one of them misreport its source range.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
+
+from oce.domain.chunk.types import Chunk
+
+# Keeps chunk text inside the embedding client's per-input window and the vector
+# store's text field. Above it the client re-splits and pools the pieces and the
+# store truncates, so the indexed text stops matching the reported line range.
+DEFAULT_MAX_CHUNK_CHARS = 6_000
+
 # (start_line, end_line, text) with 1-based inclusive line numbers.
 Span = tuple[int, int, str]
+
+# (start_line, end_line, chunk_type) handed to ``emit_chunks``.
+TypedRange = tuple[int, int, str]
+
+
+def is_meaningful(text: str | bytes) -> bool:
+    """是否含有效信息（至少一个字母/数字）。"""
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", errors="ignore")
+    return any(ch.isalnum() for ch in text)
 
 
 def slice_lines(lines: list[str], start_line: int, end_line: int) -> str:
@@ -37,6 +56,57 @@ def trim_trailing_blank_lines(lines: list[str], start_line: int, end_line: int) 
     while end_line > start_line and not lines[end_line - 1].strip():
         end_line -= 1
     return end_line
+
+
+def line_offsets(lines: list[str]) -> list[int]:
+    """Character offset of each line's first character."""
+    offsets: list[int] = []
+    position = 0
+    for line in lines:
+        offsets.append(position)
+        position += len(line) + 1
+    return offsets
+
+
+def line_of(offsets: list[int], position: int) -> int:
+    """Binary-search the 1-based line owning a character offset."""
+    low, high = 0, len(offsets) - 1
+    while low < high:
+        mid = (low + high + 1) // 2
+        if offsets[mid] <= position:
+            low = mid
+        else:
+            high = mid - 1
+    return low + 1
+
+
+def tile_spans(
+    starts: Iterable[int],
+    total_lines: int,
+    *,
+    fold_preamble: bool,
+) -> list[tuple[int, int]]:
+    """Turn start lines into contiguous, non-overlapping line ranges.
+
+    Each range runs until the line before the next start. Lines above the first
+    start are covered either by folding them into the first range
+    (``fold_preamble=True``, so a heading opens the chunk it belongs to) or by
+    emitting them as their own range.
+    """
+    ordered = sorted({start for start in starts if 1 <= start <= total_lines})
+    if not ordered:
+        ordered = [1]
+    if ordered[0] != 1:
+        if fold_preamble:
+            ordered[0] = 1
+        else:
+            ordered.insert(0, 1)
+    spans: list[tuple[int, int]] = []
+    for index, start in enumerate(ordered):
+        end = ordered[index + 1] - 1 if index + 1 < len(ordered) else total_lines
+        if end >= start:
+            spans.append((start, end))
+    return spans
 
 
 def cap_span(
@@ -82,3 +152,39 @@ def cap_span(
     if buffer:
         spans.append((current_start, end_line, "\n".join(buffer)))
     return spans
+
+
+def _has_text(text: str) -> bool:
+    return bool(text.strip())
+
+
+def emit_chunks(
+    ranges: Iterable[TypedRange],
+    lines: list[str],
+    path: str,
+    *,
+    max_chars: int,
+    keep: Callable[[str], bool] = _has_text,
+) -> list[Chunk]:
+    """Cut verbatim chunks for typed line ranges: trim, cap, then hash.
+
+    ``keep`` decides whether a capped piece is worth indexing; the default drops
+    whitespace-only text.
+    """
+    chunks: list[Chunk] = []
+    for start, end, chunk_type in ranges:
+        trimmed = trim_trailing_blank_lines(lines, start, end)
+        for span_start, span_end, text in cap_span(lines, start, trimmed, max_chars):
+            if not keep(text):
+                continue
+            chunks.append(
+                Chunk(
+                    content_hash=Chunk.compute_hash(text),
+                    path=path,
+                    content=text,
+                    start_line=span_start,
+                    end_line=span_end,
+                    chunk_type=chunk_type,
+                )
+            )
+    return chunks

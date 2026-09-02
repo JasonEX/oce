@@ -10,7 +10,8 @@
   4. uv build 构建 dist/
   5. git commit + annotated tag
 
---dry-run 只打印计划，不做任何修改。push 与 PyPI 发布保持手动。
+--dry-run 只打印计划，不做任何修改。push tag 后由 GitHub Actions 发布 fork GHCR 镜像；
+首次发布后需在 GitHub Package settings 中确认可见性。
 """
 
 from __future__ import annotations
@@ -40,8 +41,13 @@ def _stdout() -> None:
 
 def ensure_clean() -> None:
     out = subprocess.run(
-        ["git", "status", "--porcelain"], cwd=REPO_ROOT, capture_output=True,
-        text=True, encoding="utf-8", errors="replace", check=True,
+        ["git", "status", "--porcelain"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=True,
     )
     dirty = [line for line in out.stdout.splitlines() if line.strip()]
     if dirty:
@@ -55,9 +61,13 @@ def run(cmd: list[str]) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="发布新版本（bump + changelog + build + tag）")
+    parser = argparse.ArgumentParser(
+        description="发布新版本（bump + changelog + build + tag）"
+    )
     parser.add_argument("version_or_part", help="major|minor|patch 或具体版本号")
-    parser.add_argument("--dry-run", action="store_true", help="只打印计划，不做任何修改")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="只打印计划，不做任何修改"
+    )
     args = parser.parse_args(argv)
 
     ensure_clean()
@@ -87,7 +97,9 @@ def main(argv: list[str] | None = None) -> int:
     run(["uv", "lock"])
     print("uv.lock 已同步")
 
-    section = generate_changelog.build_section(target, since=generate_changelog.latest_tag())
+    section = generate_changelog.build_section(
+        target, since=generate_changelog.latest_tag()
+    )
     if "### " not in section:
         raise SystemExit("ERROR: 从最近 tag 到 HEAD 没有可发布的变更提交")
     generate_changelog.prepend(section)
@@ -96,12 +108,22 @@ def main(argv: list[str] | None = None) -> int:
     run(["uv", "build"])
     run(["git", "add", *BUNDLED_FILES])
     run(["git", "commit", "-m", f"chore(release): v{target}"])
-    run(["git", "tag", "-a", f"v{target}", "-m", f"v{target} ({datetime.now(timezone.utc).date().isoformat()})"])
+    run(
+        [
+            "git",
+            "tag",
+            "-a",
+            f"v{target}",
+            "-m",
+            f"v{target} ({datetime.now(timezone.utc).date().isoformat()})",
+        ]
+    )
 
     print(f"\n发布完成: v{target}")
     print("后续手动步骤:")
     print("  git push && git push --tags")
-    print("  uv publish   # 可选，上传 PyPI")
+    print("  等待 GitHub Actions 发布 ghcr.io/jasonex/oce")
+    print("  首次公开发布：在 Package settings 中将 visibility 设为 Public")
     return 0
 
 

@@ -9,7 +9,7 @@
 - 元数据：metadata（JSON）
 """
 
-from pymilvus import CollectionSchema, FieldSchema, DataType
+from pymilvus import CollectionSchema, DataType, FieldSchema
 
 
 def create_oce_collection_schema(dense_dim: int = 1024) -> CollectionSchema:

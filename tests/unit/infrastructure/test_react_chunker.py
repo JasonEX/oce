@@ -22,7 +22,6 @@ export const Footer: React.FC = () => {
 def make_chunker(**kwargs) -> CastChunker:
     return CastChunker(
         max_chunk_size=40,
-        chunk_overlap=0,
         fallback=RecursiveChunker(),
         **kwargs,
     )

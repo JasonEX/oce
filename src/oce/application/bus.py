@@ -52,6 +52,7 @@ class CommandBus:
             raise CommandNotRegisteredError(type(command))
         return await handler.handle(command)
 
+
 class QueryBus:
     """查询总线"""
 

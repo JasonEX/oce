@@ -1,12 +1,6 @@
-"""RecursiveChunker — 基于 LangChain RecursiveCharacterTextSplitter 的智能兜底切块器。
+"""RecursiveChunker — 基于 LangChain RecursiveCharacterTextSplitter 的兜底切块器。
 
-用于：
-1. 无法识别语言的文件（无扩展名、未知格式）
-2. 各专用 chunker 的 fallback（当 AST 解析失败时）
-
-相比 FixedChunker 的优势：
-- 递归尝试分隔符：优先在段落边界（\n\n）切分，其次行边界（\n），最后空格和字符
-- 语言感知：支持 Python/JS/Go/Rust 等语言的特定分隔符
+用于无法识别语言的文件，以及各专用 chunker 解析失败时的 fallback。
 
 The splitter decides where boundaries fall; the text of a chunk is always cut
 from the source lines, the same contract ``CastChunker`` and ``MarkdownChunker``
@@ -16,6 +10,7 @@ the line number derived from it points at the wrong place. Measured on the
 OpenClaw tree, 13.3% of the chunks produced that way reported a range whose
 source text differed from the chunk itself.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -23,29 +18,20 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from oce.domain.chunk.lang import detect_language
-from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
+from oce.domain.chunk.spans import (
+    DEFAULT_MAX_CHUNK_CHARS,
+    emit_chunks,
+    is_meaningful,
+    line_of,
+    line_offsets,
+    tile_spans,
+)
 from oce.domain.chunk.types import Chunk
 
 if TYPE_CHECKING:
     from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-DEFAULT_MAX_CHUNK_CHARS = 6_000
 DEFAULT_CHUNK_OVERLAP = 200
-
-# Hard ceiling on a chunk's text, independent of ``chunk_size``. The two differ
-# in kind: ``chunk_size`` is how large a chunk should be, this is how large one
-# may be before the embedding client re-splits it and the vector store truncates
-# its text field. A single line longer than this is dropped, so tying the
-# ceiling to ``chunk_size`` would discard ordinary long lines whenever a caller
-# asked for small chunks.
-MAX_SPAN_CHARS = 6_000
-
-
-def is_meaningful(text: str | bytes) -> bool:
-    """是否含有效信息（至少一个字母/数字）。"""
-    if isinstance(text, bytes):
-        text = text.decode("utf-8", errors="ignore")
-    return any(ch.isalnum() for ch in text)
 
 
 class RecursiveChunker:
@@ -69,13 +55,8 @@ class RecursiveChunker:
         self.chunk_overlap = chunk_overlap
 
     def chunk(self, content: str, path: str) -> list[Chunk]:
-        # 处理 bytes 输入（从 staging 读取的内容）
-        if isinstance(content, bytes):
-            content = content.decode("utf-8", errors="ignore")
-
         if not is_meaningful(content):
             return []
-
         lines = content.splitlines()
         if not lines:
             return []
@@ -87,44 +68,46 @@ class RecursiveChunker:
         try:
             pieces = splitter.create_documents([content])
         except Exception as error:
-            logger.debug(f"RecursiveCharacterTextSplitter failed for {path}: {error}")
+            logger.debug(
+                "RecursiveCharacterTextSplitter failed for {}: {}", path, error
+            )
             return []
         starts = self._start_lines(content, lines, pieces)
-        if not starts:
-            return []
-        return self._emit(self._tile(starts, len(lines)), lines, path)
+        spans = tile_spans(starts, len(lines), fold_preamble=False)
+        # ``chunk_size`` says how large a chunk should be; the cap says how large
+        # one may be before the embedding client re-splits it. A caller asking
+        # for small chunks must not lose ordinary long lines to the cap.
+        return emit_chunks(
+            ((start, end, "recursive") for start, end in spans),
+            lines,
+            path,
+            max_chars=max(self.chunk_size, DEFAULT_MAX_CHUNK_CHARS),
+            keep=is_meaningful,
+        )
 
     def _create_splitter(self, language: str | None) -> RecursiveCharacterTextSplitter:
-        """创建适合语言的 splitter。"""
         from langchain_text_splitters import RecursiveCharacterTextSplitter
         from langchain_text_splitters.base import Language
 
-        if language:
-            try:
-                # LangChain 的语言映射
-                lang_map = {
-                    "python": Language.PYTHON,
-                    "javascript": Language.JS,
-                    "typescript": Language.TS,
-                    "java": Language.JAVA,
-                    "cpp": Language.CPP,
-                    "go": Language.GO,
-                    "rust": Language.RUST,
-                    "markdown": Language.MARKDOWN,
-                    "html": Language.HTML,
-                }
-                lang_enum = lang_map.get(language.lower())
-                if lang_enum:
-                    return RecursiveCharacterTextSplitter.from_language(
-                        language=lang_enum,
-                        chunk_size=self.chunk_size,
-                        chunk_overlap=self.chunk_overlap,
-                        add_start_index=True,
-                    )
-            except Exception as e:
-                logger.debug(f"Failed to use language-specific splitter for {language}: {e}")
-
-        # 默认通用分隔符
+        lang_map = {
+            "python": Language.PYTHON,
+            "javascript": Language.JS,
+            "typescript": Language.TS,
+            "java": Language.JAVA,
+            "cpp": Language.CPP,
+            "go": Language.GO,
+            "rust": Language.RUST,
+            "markdown": Language.MARKDOWN,
+            "html": Language.HTML,
+        }
+        lang_enum = lang_map.get(language) if language else None
+        if lang_enum is not None:
+            return RecursiveCharacterTextSplitter.from_language(
+                language=lang_enum,
+                chunk_size=self.chunk_size,
+                chunk_overlap=self.chunk_overlap,
+                add_start_index=True,
+            )
         return RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
@@ -132,12 +115,8 @@ class RecursiveChunker:
             add_start_index=True,
         )
 
-    def _start_lines(
-        self,
-        content: str,
-        lines: list[str],
-        pieces: list,
-    ) -> list[int]:
+    @staticmethod
+    def _start_lines(content: str, lines: list[str], pieces: list) -> list[int]:
         """Map each piece's start offset onto the 1-based line that owns it.
 
         A boundary landing mid-line is pulled back to that line's start: a chunk
@@ -146,7 +125,7 @@ class RecursiveChunker:
         exhausted its line-based separators, on input with no line structure
         left to respect.
         """
-        offsets = self._line_offsets(lines)
+        offsets = line_offsets(lines)
         starts: list[int] = []
         for piece in pieces:
             position = piece.metadata.get("start_index")
@@ -154,75 +133,5 @@ class RecursiveChunker:
             # 找不到都意味着无从确定行号，此时宁可少切一刀，也不能报错的位置。
             if position is None or position < 0:
                 continue
-            starts.append(self._line_of(offsets, min(position, len(content))))
+            starts.append(line_of(offsets, min(position, len(content))))
         return starts or [1]
-
-    @staticmethod
-    def _line_offsets(lines: list[str]) -> list[int]:
-        """Character offset of each line's first character."""
-        offsets: list[int] = []
-        position = 0
-        for line in lines:
-            offsets.append(position)
-            position += len(line) + 1
-        return offsets
-
-    @staticmethod
-    def _line_of(offsets: list[int], position: int) -> int:
-        """Binary-search the 1-based line owning a character offset."""
-        low, high = 0, len(offsets) - 1
-        while low < high:
-            mid = (low + high + 1) // 2
-            if offsets[mid] <= position:
-                low = mid
-            else:
-                high = mid - 1
-        return low + 1
-
-    @staticmethod
-    def _tile(starts: list[int], total_lines: int) -> list[tuple[int, int]]:
-        """Turn start lines into contiguous, non-overlapping line ranges.
-
-        Overlap is dropped here. The splitter is configured to repeat text
-        between neighbours, which is meaningless once chunks carry line numbers:
-        two chunks claiming the same lines index the same source twice and take
-        two retrieval slots to say one thing.
-        """
-        ordered = sorted({start for start in starts if 1 <= start <= total_lines})
-        if not ordered or ordered[0] != 1:
-            ordered.insert(0, 1)
-        spans: list[tuple[int, int]] = []
-        for index, start in enumerate(ordered):
-            end = ordered[index + 1] - 1 if index + 1 < len(ordered) else total_lines
-            if end >= start:
-                spans.append((start, end))
-        return spans
-
-    def _emit(
-        self,
-        spans: list[tuple[int, int]],
-        lines: list[str],
-        path: str,
-    ) -> list[Chunk]:
-        chunks: list[Chunk] = []
-        for start, end in spans:
-            trimmed = trim_trailing_blank_lines(lines, start, end)
-            for span_start, span_end, text in cap_span(
-                lines,
-                start,
-                trimmed,
-                max(self.chunk_size, MAX_SPAN_CHARS),
-            ):
-                if not is_meaningful(text):
-                    continue
-                chunks.append(
-                    Chunk(
-                        content_hash=Chunk.compute_hash(text),
-                        path=path,
-                        content=text,
-                        start_line=span_start,
-                        end_line=span_end,
-                        chunk_type="recursive",
-                    )
-                )
-        return chunks

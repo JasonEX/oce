@@ -49,43 +49,116 @@ _FILENAME_TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_\-]+\.[A-Za-z][A-Za-z0-9]{0,7}
 
 # 调用链动词（跨边界/路径导向）
 _CALL_VERBS = {
-    "调用", "触发", "执行", "从", "到", "路径", "流程", "完整", "如何被", "如何从",
-    "call", "invoke", "trigger", "execute", "from", "to", "path", "flow", "pipeline",
+    "调用",
+    "触发",
+    "执行",
+    "从",
+    "到",
+    "路径",
+    "流程",
+    "完整",
+    "如何被",
+    "如何从",
+    "call",
+    "invoke",
+    "trigger",
+    "execute",
+    "from",
+    "to",
+    "path",
+    "flow",
+    "pipeline",
 }
 
 # 引用/使用动词（单向依赖）
 _REFERENCE_VERBS = {
-    "使用", "引用", "导入", "依赖", "消费", "接收",
-    "use", "reference", "import", "depend", "consume", "receive",
+    "使用",
+    "引用",
+    "导入",
+    "依赖",
+    "消费",
+    "接收",
+    "use",
+    "reference",
+    "import",
+    "depend",
+    "consume",
+    "receive",
 }
 
 # 概览/架构关键词
 _OVERVIEW_KEYWORDS = {
-    "架构", "实现", "事件处理", "状态管理", "调度", "机制", "流程",
-    "architecture", "implementation", "event handling", "state management",
-    "scheduling", "dispatch", "mechanism", "workflow",
+    "架构",
+    "实现",
+    "事件处理",
+    "状态管理",
+    "调度",
+    "机制",
+    "流程",
+    "architecture",
+    "implementation",
+    "event handling",
+    "state management",
+    "scheduling",
+    "dispatch",
+    "mechanism",
+    "workflow",
 }
 
 # 通用路径定位词（指向“文件/配置”实体，对任意仓库成立）
 _PATH_KEYWORDS = {
-    "文件", "配置", "在哪里", "在哪", "哪个文件", "翻译文件", "依赖",
-    "file", "config", "where", "location", "dependency",
+    "文件",
+    "配置",
+    "在哪里",
+    "在哪",
+    "哪个文件",
+    "翻译文件",
+    "依赖",
+    "file",
+    "config",
+    "where",
+    "location",
+    "dependency",
 }
 
 # 决定 focused PATH 意图的强信号。普通 "where/在哪里" 只说明用户想定位代码，
 # 仍可能是跨文件功能问题；它可以启用 path operator，但不应强制 focused selection。
 _EXPLICIT_PATH_KEYWORDS = {
-    "文件", "哪个文件", "路径", "配置", "依赖",
-    "file", "files", "path", "paths", "config", "configuration",
-    "dependency", "dependencies",
+    "文件",
+    "哪个文件",
+    "路径",
+    "配置",
+    "依赖",
+    "file",
+    "files",
+    "path",
+    "paths",
+    "config",
+    "configuration",
+    "dependency",
+    "dependencies",
 }
 
 # 功能/实现类查询标记：出现这些词时，即便含“文件/配置/在哪里”也偏向功能定位而非找文件
 _FEATURE_MARKERS = {
-    "功能", "实现", "逻辑", "代码", "机制", "策略",
-    "如何", "怎样", "怎么",
-    "feature", "implement", "implementation", "logic", "code",
-    "mechanism", "strategy", "behavior", "how",
+    "功能",
+    "实现",
+    "逻辑",
+    "代码",
+    "机制",
+    "策略",
+    "如何",
+    "怎样",
+    "怎么",
+    "feature",
+    "implement",
+    "implementation",
+    "logic",
+    "code",
+    "mechanism",
+    "strategy",
+    "behavior",
+    "how",
 }
 
 
@@ -220,17 +293,11 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
     return tuple(identifiers)
 
 
-def should_use_path_index(query: str) -> bool:
-    """
-    判断是否应该使用路径索引（基于意图分类）。
+def should_use_path_index(query: str, intent: QueryIntent | None = None) -> bool:
+    """判断是否应该使用路径索引；``intent`` 已知时传入，避免重复分类。
 
     符号查询不路由到 path index：带符号锚点的查询（即便含扩展名）优先判为 SYMBOL，
     因为它要找的是符号定义而非文件本身。
-
-    Args:
-        query: 用户查询
-    Returns:
-        是否使用路径索引
 
     Examples:
         >>> should_use_path_index("config.json 在哪里？")
@@ -239,7 +306,8 @@ def should_use_path_index(query: str) -> bool:
         >>> should_use_path_index("`parse_config` 在 server.py 中注册了哪些路由？")
         False
     """
-    intent = classify_query_intent(query)
+    if intent is None:
+        intent = classify_query_intent(query)
     if intent in {
         QueryIntent.SYMBOL,
         QueryIntent.CALL_CHAIN,

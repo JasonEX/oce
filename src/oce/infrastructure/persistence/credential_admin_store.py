@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
+from dataclasses import fields
 from datetime import datetime, timezone
-from typing import Callable
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -14,39 +15,14 @@ from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.errors import CredentialConflictError
 from oce.shared.model_credentials import (
     CredentialCreate,
-    CredentialDuplicate,
+    CredentialPatch,
     CredentialRecord,
-    CredentialUpdate,
 )
 
-# CredentialCreate/Update 中可直接透传到模型的标量字段（api_key 单独处理以同步 hash）。
-_SCALAR_FIELDS = (
-    "kind",
-    "provider",
-    "name",
-    "status",
-    "priority",
-    "endpoint",
-    "model",
-    "timeout_seconds",
-    "rate_limit",
-    "note",
-    "dimensions",
-    "max_batch_size",
-    "max_batch_chars",
-    "max_input_chars",
-    "input_overlap_chars",
-    "top_n",
-    "min_score",
-    "tpm_limit",
-    "max_candidates",
-    "output_top_k",
-    "snippet_chars",
-    "num_rewrites",
+# 可直接透传到模型的标量列；api_key 单独处理以同步 hash。
+_SCALAR_FIELDS = tuple(
+    field.name for field in fields(CredentialPatch) if field.name != "api_key"
 )
-
-# update 场景不允许把 kind 之外的主键类字段清空为默认；name/kind 必填不可置 None。
-_UPDATABLE_FIELDS = _SCALAR_FIELDS
 
 
 def _hash_key(api_key: str) -> str:
@@ -56,32 +32,10 @@ def _hash_key(api_key: str) -> str:
 def _to_record(model: ModelCredentialModel) -> CredentialRecord:
     return CredentialRecord(
         id=model.id,
-        kind=model.kind,
-        provider=model.provider,
-        name=model.name,
-        status=model.status,
-        priority=model.priority,
-        endpoint=model.endpoint,
-        model=model.model,
-        timeout_seconds=model.timeout_seconds,
-        rate_limit=model.rate_limit,
-        note=model.note,
-        dimensions=model.dimensions,
-        max_batch_size=model.max_batch_size,
-        max_batch_chars=model.max_batch_chars,
-        max_input_chars=model.max_input_chars,
-        input_overlap_chars=model.input_overlap_chars,
-        top_n=model.top_n,
-        min_score=model.min_score,
-        tpm_limit=model.tpm_limit,
-        max_candidates=model.max_candidates,
-        output_top_k=model.output_top_k,
-        snippet_chars=model.snippet_chars,
-        num_rewrites=model.num_rewrites,
         api_key_last4=(model.api_key or "")[-4:],
-        last_used_at=model.last_used_at,
         created_at=model.created_at,
         updated_at=model.updated_at,
+        **{field: getattr(model, field) for field in _SCALAR_FIELDS},
     )
 
 
@@ -115,13 +69,13 @@ class SqlCredentialAdminStore:
         return await self._persist_new(model)
 
     async def update(
-        self, credential_id: int, changes: CredentialUpdate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
         async with self._session_factory() as session:
             model = await session.get(ModelCredentialModel, credential_id)
             if model is None:
                 return None
-            for field in _UPDATABLE_FIELDS:
+            for field in _SCALAR_FIELDS:
                 value = getattr(changes, field)
                 if value is not None:
                     setattr(model, field, value)
@@ -147,7 +101,7 @@ class SqlCredentialAdminStore:
             return True
 
     async def duplicate(
-        self, credential_id: int, changes: CredentialDuplicate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
         async with self._session_factory() as session:
             src = await session.get(ModelCredentialModel, credential_id)

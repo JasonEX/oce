@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from oce import __version__
 from oce.api.admin_router import admin_router
+from oce.api.errors import register_error_handlers
 from oce.api.middleware import ApiCallMetricsMiddleware
 from oce.api.router import router
 from oce.application.container import get_container
@@ -74,6 +75,7 @@ if cors_origins:
         max_age=600,
     )
 
+register_error_handlers(app)
 app.include_router(router)
 app.include_router(admin_router)
 

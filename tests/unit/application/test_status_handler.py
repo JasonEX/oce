@@ -19,7 +19,6 @@ from oce.shared.errors import (
     NeedsResetError,
     ScopeRequiredError,
 )
-
 from tests.unit.application.fakes import FakeUnitOfWorkFactory, blob_name
 
 

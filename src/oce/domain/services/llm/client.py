@@ -4,6 +4,7 @@
 此前该协议在 llm_reranker 与 query_rewriter 中各定义一份，此处收敛为单一来源，
 避免重复。基础设施层的 OpenAI 兼容客户端实现它。
 """
+
 from __future__ import annotations
 
 from typing import Protocol

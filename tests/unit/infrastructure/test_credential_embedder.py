@@ -8,10 +8,10 @@ from dataclasses import replace
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from oce.shared.database.session import Base
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import EmbeddingSettings
+from oce.shared.database.session import Base
 from oce.shared.errors import ServiceNotReadyError
 
 
@@ -81,12 +81,18 @@ async def test_environment_settings_are_used_without_active_credential():
     assert profile.endpoint_hash is not None
     assert settings.endpoint not in str(profile)
     assert settings.query_instruction not in str(profile)
-    assert profile.fingerprint == embedder.index_profile_for_config(
-        replace(config, api_key="rotated-key")
-    ).fingerprint
-    assert profile.fingerprint != embedder.index_profile_for_config(
-        replace(config, model="different-model")
-    ).fingerprint
+    assert (
+        profile.fingerprint
+        == embedder.index_profile_for_config(
+            replace(config, api_key="rotated-key")
+        ).fingerprint
+    )
+    assert (
+        profile.fingerprint
+        != embedder.index_profile_for_config(
+            replace(config, model="different-model")
+        ).fingerprint
+    )
     delegate = embedder._build_delegate(config)
     assert delegate._query_instruction == "Represent this query: "
     await delegate.close()

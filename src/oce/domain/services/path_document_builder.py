@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import re
 
+from oce.domain.services.source_filter import is_ignored_source_path
+
 # 目录分隔、点、下划线、连字符，以及 camelCase 边界，用于把路径拆成可匹配 token
 _TOKEN_SPLIT = re.compile(r"[/\\._\-]+")
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
@@ -86,27 +88,5 @@ def build_path_document(path: str) -> str:
 
 
 def is_indexable_path(path: str) -> bool:
-    """判断路径是否应被索引：排除依赖 / 构建目录与二进制、媒体等非文本文件。"""
-    exclude_patterns = [
-        "node_modules/",
-        ".git/",
-        "dist/",
-        "build/",
-        "target/",
-        "__pycache__/",
-        ".pytest_cache/",
-        ".venv/",
-    ]
-    exclude_extensions = [
-        ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
-        ".woff", ".woff2", ".ttf", ".eot",
-        ".zip", ".tar", ".gz",
-        ".exe", ".dll", ".so", ".dylib",
-    ]
-    for pattern in exclude_patterns:
-        if pattern in path:
-            return False
-    for ext in exclude_extensions:
-        if path.endswith(ext):
-            return False
-    return True
+    """路径索引与源码准入共用一份排除规则：依赖/构建目录、二进制与敏感文件。"""
+    return not is_ignored_source_path(path)

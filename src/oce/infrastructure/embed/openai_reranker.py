@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Awaitable, Callable
 from dataclasses import replace
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import httpx
 from loguru import logger
+
+from oce.domain.services.search import SearchHit
 
 # 用量回调：(credential_id, kind, model, prompt_tokens, completion_tokens)
 UsageCallback = Callable[[int, str, str, int, int], Awaitable[None]]
@@ -39,7 +42,7 @@ class OpenAIReranker:
         self._owns_client = client is None
         self._client = client or httpx.AsyncClient(timeout=httpx.Timeout(timeout))
 
-    async def rerank(self, query: str, hits: list[Any]) -> list[Any]:
+    async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
         if not hits:
             return []
         body: dict[str, Any] = {
@@ -94,17 +97,7 @@ class OpenAIReranker:
         ranked.sort(key=lambda pair: pair[1], reverse=True)
 
         promoted = ranked[: self._top_n]
-        output: list[Any] = []
-        for index, score in promoted:
-            hit = hits[index]
-            try:
-                hit = replace(hit, score=score)
-            except TypeError:
-                try:
-                    hit.score = score
-                except (AttributeError, TypeError):
-                    pass
-            output.append(hit)
+        output = [replace(hits[index], score=score) for index, score in promoted]
 
         if self._on_usage is not None:
             meta = payload.get("meta") or {}
@@ -138,16 +131,12 @@ class OpenAIReranker:
         return output
 
     @staticmethod
-    def _document_text(hit: Any) -> str:
-        path = getattr(hit, "path", "")
-        start_line = getattr(hit, "start_line", None)
-        end_line = getattr(hit, "end_line", None)
-        if path and isinstance(start_line, int) and isinstance(end_line, int):
-            return (
-                f"File: {path}\nLines: {start_line}-{end_line}\n\n"
-                f"{hit.content}"
-            )
-        return hit.content
+    def _document_text(hit: SearchHit) -> str:
+        if not hit.path:
+            return hit.content
+        return (
+            f"File: {hit.path}\nLines: {hit.start_line}-{hit.end_line}\n\n{hit.content}"
+        )
 
     @staticmethod
     def _token_count(value: Any) -> int:

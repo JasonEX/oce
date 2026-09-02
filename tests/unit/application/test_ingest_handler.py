@@ -5,16 +5,17 @@ from __future__ import annotations
 import pytest
 
 from oce.application.commands.ingest import (
+    BlobIngest,
     DeleteBlobsCommand,
     DeleteBlobsCommandHandler,
     EmbedPendingCommand,
     EmbedPendingCommandHandler,
-    IngestBlobCommand,
-    IngestBlobCommandHandler,
+    IngestBlobsCommand,
+    IngestBlobsCommandHandler,
+    build_pipeline_factory,
 )
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import RecursiveChunker
-
 from tests.unit.application.fakes import (
     FakeEmbedder,
     FakeSearchStore,
@@ -26,10 +27,13 @@ from tests.unit.application.fakes import (
 @pytest.fixture
 def dependencies():
     factory = FakeUnitOfWorkFactory()
-    chunker = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
-    embedder = FakeEmbedder()
     index = FakeSearchStore()
-    return factory, chunker, embedder, index
+    pipelines = build_pipeline_factory(
+        chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
+        embedder=FakeEmbedder(),
+        vector_index=index,
+    )
+    return factory, pipelines, index
 
 
 class RecordingQueue:
@@ -43,43 +47,44 @@ class RecordingQueue:
         self.commit_counts.append(self.factory.uow.commits)
 
 
-async def test_ingest_returns_blob_name_and_count(dependencies):
-    """异步模式：ingest 返回 0，embed_pending 完成切块后才有 chunk 数量"""
-    factory, chunker, embedder, index = dependencies
+async def _ingest(factory, pipelines, name, path, content, queue=None):
+    await IngestBlobsCommandHandler(factory, pipelines, queue).handle(
+        IngestBlobsCommand((BlobIngest(name, path, content),))
+    )
+
+
+async def test_ingest_stages_pending_blob(dependencies):
+    """异步模式：ingest 只写元数据和 staging，切块留给 embed_pending"""
+    factory, pipelines, _ = dependencies
     content = "\n".join(f"line{i}" for i in range(100))
     name = blob_name("src/a.py", content)
-    handler = IngestBlobCommandHandler(factory, chunker, embedder, index)
 
-    result = await handler.handle(IngestBlobCommand(name, "src/a.py", content))
+    await _ingest(factory, pipelines, name, "src/a.py", content)
 
-    assert result.blob_name == name
-    assert result.chunk_count == 0  # 异步模式返回 0
     assert factory.uow.blobs.blobs[name].status == BlobStatus.PENDING
     assert factory.uow.blobs.staging[name] == content
     assert factory.uow.commits == 1
 
 
 async def test_ingest_enqueues_pending_blob_after_commit(dependencies):
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, _ = dependencies
     queue = RecordingQueue(factory)
     content = "print('queued')"
     name = blob_name("src/queued.py", content)
-    handler = IngestBlobCommandHandler(factory, chunker, embedder, index, queue)
 
-    await handler.handle(IngestBlobCommand(name, "src/queued.py", content))
+    await _ingest(factory, pipelines, name, "src/queued.py", content, queue)
 
     assert queue.enqueued == [name]
     assert queue.commit_counts == [1]
 
 
 async def test_ingest_does_not_stage_or_enqueue_ignored_blob(dependencies):
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, _ = dependencies
     queue = RecordingQueue(factory)
     content = '{"version": 3}'
     name = blob_name("dist/app.js.map", content)
-    handler = IngestBlobCommandHandler(factory, chunker, embedder, index, queue)
 
-    await handler.handle(IngestBlobCommand(name, "dist/app.js.map", content))
+    await _ingest(factory, pipelines, name, "dist/app.js.map", content, queue)
 
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
     assert name not in factory.uow.blobs.staging
@@ -88,64 +93,53 @@ async def test_ingest_does_not_stage_or_enqueue_ignored_blob(dependencies):
 
 async def test_ingest_blank_content_is_ready(dependencies):
     """空内容在 embed_pending 后直接标记 READY"""
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, _ = dependencies
     content = "\n\n   \n"
     name = blob_name("src/blank.py", content)
 
-    # ingest 返回 PENDING
-    ingest = IngestBlobCommandHandler(factory, chunker, embedder, index)
-    result = await ingest.handle(IngestBlobCommand(name, "src/blank.py", content))
-    assert result.chunk_count == 0
+    await _ingest(factory, pipelines, name, "src/blank.py", content)
     assert factory.uow.blobs.blobs[name].status == BlobStatus.PENDING
 
-    # embed_pending 处理空内容，标记 READY
-    handler = EmbedPendingCommandHandler(
-        factory, chunker, embedder, index, embedding_enabled=True
+    await EmbedPendingCommandHandler(factory, pipelines).handle(
+        EmbedPendingCommand((name,))
     )
-    await handler.handle(EmbedPendingCommand((name,)))
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
 
 
 async def test_embed_pending_writes_vector_and_marks_ready(dependencies):
     """embed_pending 完成切块、嵌入，并标记 blob 为 ready"""
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, index = dependencies
     content = "print('hello')"
     path = "src/hello.py"
     name = blob_name(path, content)
 
-    # 先 ingest 写元数据和 staging
-    ingest = IngestBlobCommandHandler(factory, chunker, embedder, index)
-    await ingest.handle(IngestBlobCommand(name, path, content))
-
-    # embed_pending 完成切块和嵌入
-    handler = EmbedPendingCommandHandler(
-        factory, chunker, embedder, index, embedding_enabled=True
+    await _ingest(factory, pipelines, name, path, content)
+    result = await EmbedPendingCommandHandler(factory, pipelines).handle(
+        EmbedPendingCommand((name,))
     )
-    result = await handler.handle(EmbedPendingCommand((name,)))
 
     assert result.embedded_count == 1
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
     assert len(index.upserted) == 1
-    assert index.upserted[0]["blob_name"] == name
+    assert index.upserted[0].blob_name == name
 
 
 async def test_embed_handler_propagates_disabled_runtime_state(dependencies):
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, index = dependencies
     content = "print('later')"
     path = "src/later.py"
     name = blob_name(path, content)
-    await IngestBlobCommandHandler(factory, chunker, embedder, index).handle(
-        IngestBlobCommand(name, path, content)
-    )
-    handler = EmbedPendingCommandHandler(
-        factory,
-        chunker,
-        embedder,
-        index,
+    await _ingest(factory, pipelines, name, path, content)
+    disabled = build_pipeline_factory(
+        chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
+        embedder=FakeEmbedder(),
+        vector_index=index,
         embedding_enabled=False,
     )
 
-    result = await handler.handle(EmbedPendingCommand((name,)))
+    result = await EmbedPendingCommandHandler(factory, disabled).handle(
+        EmbedPendingCommand((name,))
+    )
 
     assert result.embedded_count == 0
     assert factory.uow.blobs.blobs[name].status == BlobStatus.PENDING
@@ -155,60 +149,50 @@ async def test_embed_handler_propagates_disabled_runtime_state(dependencies):
 
 async def test_embed_pending_limits_vector_batches(dependencies):
     """embed_pending 成功处理多块内容"""
-    factory, chunker, embedder, index = dependencies
+    factory, pipelines, _ = dependencies
     path = "src/large.py"
-    # 生成足够大的内容确保切成多块（每行约 10 字符，1000 行 > 6000 chunk_size）
+    # 每行约 10 字符，1000 行 > 6000 chunk_size，确保切成多块
     content = "\n".join(f"line{i}" for i in range(1000))
     name = blob_name(path, content)
 
-    # ingest + embed_pending
-    ingest = IngestBlobCommandHandler(factory, chunker, embedder, index)
-    await ingest.handle(IngestBlobCommand(name, path, content))
-
-    handler = EmbedPendingCommandHandler(
-        factory, chunker, embedder, index, embedding_enabled=True
+    await _ingest(factory, pipelines, name, path, content)
+    result = await EmbedPendingCommandHandler(factory, pipelines).handle(
+        EmbedPendingCommand((name,))
     )
-    result = await handler.handle(EmbedPendingCommand((name,)))
 
-    assert result.embedded_count > 1  # 验证确实切了多块
+    assert result.embedded_count > 1
     assert factory.uow.blobs.blobs[name].status == BlobStatus.READY
 
 
 async def test_embed_failure_commits_error_state(dependencies):
-    """嵌入失败时，blob 状态标记为 ERROR"""
+    """嵌入失败时，blob 状态标记为 ERROR 并提交"""
+
     class FailingEmbedder:
         async def embed_documents(self, _texts):
             raise RuntimeError("provider failed")
 
-    factory, chunker, _, index = dependencies
-    # 用足够长的内容保证会切块
+    factory, pipelines, index = dependencies
     content = "\n".join(f"print({i})" for i in range(50))
     path = "src/broken.py"
     name = blob_name(path, content)
-
-    # ingest 正常完成
-    await IngestBlobCommandHandler(
-        factory, chunker, FakeEmbedder(), index
-    ).handle(IngestBlobCommand(name, path, content))
-
-    # embed_pending 使用失败的 embedder
-    handler = EmbedPendingCommandHandler(
-        factory,
-        chunker,
-        FailingEmbedder(),
-        index,
-        embedding_enabled=True,
+    await _ingest(factory, pipelines, name, path, content)
+    failing = build_pipeline_factory(
+        chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
+        embedder=FailingEmbedder(),
+        vector_index=index,
     )
 
     with pytest.raises(RuntimeError, match="provider failed"):
-        await handler.handle(EmbedPendingCommand((name,)))
+        await EmbedPendingCommandHandler(factory, failing).handle(
+            EmbedPendingCommand((name,))
+        )
 
     assert factory.uow.blobs.blobs[name].status == BlobStatus.ERROR
     assert factory.uow.commits == 2  # ingest + error commit
 
 
 async def test_delete_commits_metadata_before_deleting_vectors(dependencies):
-    factory, _, _, index = dependencies
+    factory, _, index = dependencies
     name = blob_name("src/deleted.py", "content")
     factory.uow.blobs.blobs[name] = Blob(
         blob_name=name,
@@ -216,9 +200,7 @@ async def test_delete_commits_metadata_before_deleting_vectors(dependencies):
         status=BlobStatus.READY,
     )
 
-    await DeleteBlobsCommandHandler(factory, index).handle(
-        DeleteBlobsCommand((name,))
-    )
+    await DeleteBlobsCommandHandler(factory, index).handle(DeleteBlobsCommand((name,)))
 
     assert name not in factory.uow.blobs.blobs
     assert factory.uow.commits == 1

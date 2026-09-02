@@ -51,6 +51,7 @@ class TestCommandBus:
         with pytest.raises(CommandNotRegisteredError):
             await bus.execute(DummyCommand())
 
+
 class TestQueryBus:
     async def test_ask_dispatches_to_registered_handler(self, marker):
         bus = QueryBus()

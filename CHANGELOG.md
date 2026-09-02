@@ -7,6 +7,7 @@
 
 ### Added
 
+- **evaluation**: add a source-pinned SWE-bench Verified and SWE-Explore issue-resolution benchmark with separate gold-edit diagnostics and official SWE-Explore context metrics
 - **index lifecycle**: bind persisted artifacts to the server source-admission policy version so tightened filters require a clean resync
 - **evaluation**: add production-wired ablation switches for semantic chunking, exact recall, source priority, and coverage selection
 - **indexing**: persist a secret-free model/chunker/vector-store fingerprint and fail closed on incompatible reuse
@@ -31,13 +32,15 @@
 
 ### Changed
 
+- **distribution**: publish releases only as the fork-owned `ghcr.io/jasonex/oce` image and stop publishing this fork to PyPI
+- **chunking**: centralize source-aligned span emission across cAST and document fallbacks, and bump the chunker profile so existing indexes require a clean resync
 - **symbols**: inject the production regex symbol provider through a domain protocol instead of constructing parsing policy inside SQL persistence
-- **config**: default intent classification off and keep all optional LLM calls off in newly generated personal configurations
+- **config**: remove mandatory LLM intent classification and keep all optional LLM calls off in newly generated personal configurations
 - **compose**: keep the Milvus data port internal to the service network
 - **retrieval**: use one canonical intent model and remove strategy options not connected to the pipeline
 - **retrieval**: preserve exact identifier recall for large checkpoints through relational or bounded-batch scope filtering
 - **retrieval**: route queries from deterministic signals instead of a mandatory LLM intent classifier
-- **retrieval**: compose candidate-preserving dedicated and chat-LLM rerankers with structural adaptive routing, bounded fallback, and task-aware selection
+- **retrieval**: compose candidate-preserving dedicated and chat-LLM rerankers with structural adaptive routing, bounded fallback, task-aware selection, and benchmark-backed interactive/quality deployment guidance
 
 ## [0.2.0] - 2026-08-30
 

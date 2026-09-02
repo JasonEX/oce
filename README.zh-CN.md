@@ -10,11 +10,9 @@ dense + exact + path 混合召回 · cAST 语义切块 · 按需重排 · 任务
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/oce-ai/oce/ci.yml?branch=master&logo=github&label=CI)](https://github.com/oce-ai/oce/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/opencontextengine?logo=pypi&logoColor=white)](https://pypi.org/project/opencontextengine/)
-[![Python](https://img.shields.io/pypi/pyversions/opencontextengine?logo=python&logoColor=white)](https://pypi.org/project/opencontextengine/)
+[![CI](https://img.shields.io/github/actions/workflow/status/JasonEX/oce/ci.yml?branch=master&logo=github&label=CI)](https://github.com/JasonEX/oce/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/oce-ai/oce/pkgs/container/oce)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/JasonEX/oce/pkgs/container/oce)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Milvus](https://img.shields.io/badge/Vectors-Milvus%203.0-00A1EA.svg)](https://milvus.io/)
 [![ACE](https://img.shields.io/badge/ACE-compatible-success.svg)](#api)
@@ -30,7 +28,7 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 
 项目完全开源，服务端和客户端分别维护：
 
-- 服务端：<https://github.com/oce-ai/oce>
+- 服务端：<https://github.com/JasonEX/oce>
 - 客户端：<https://github.com/oce-ai/oce-client>
 
 这是此前 ACE 服务的重构版本，相关背景和早期实现见
@@ -48,7 +46,7 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 - **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
 - **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
 - **运维 admin API + 监控** —— 独立 admin key 的接口面管理模型凭据、嵌入队列与垃圾回收；旁路 metrics 管线记录调用/token/资源指标与检索各阶段审计。
-- **[可复现的评测框架](https://github.com/oce-ai/oce-client/tree/master/benchmarks)** —— 复用真实 client 同步与检索链路，在固定仓库版本上运行 50 条审阅过的查询，并记录质量、延迟、返回上下文、可选模型成本、失败样本和独立提供的 agent 任务结果。
+- **[固定数据版本的真实 issue 评测](benchmarks/README.md)** —— 复用生产 API 与真实 client 的 checkpoint/retrieval 链路，在 SWE-bench Verified 的 base commit 上运行 issue 查询，分别评价 gold edit 位置与 SWE-Explore 成功轨迹上下文，同时记录延迟、返回上下文、模型用量和失败样本。
 
 <details>
 <summary><strong>目录</strong></summary>
@@ -80,9 +78,12 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 填好嵌入 key，然后启动：
 
 ```powershell
-uv tool install opencontextengine
+uv tool install "git+https://github.com/JasonEX/oce.git"
 oce init                    # 生成 ~/.oce/data/.env
 ```
+
+本 fork 不发布 PyPI。正式版本请使用带版本号的 GHCR 镜像；也可以像上面一样直接从 Git
+源码安装当前版本。
 
 编辑 `~/.oce/data/.env`。嵌入服务是建库和检索所需的唯一必填项；默认配置使用 SiliconFlow
 和 Qwen3-Embedding-4B（输出 1024 维向量）：
@@ -110,7 +111,7 @@ RERANK_TOP_N=50
 ```
 
 强 chat LLM 可以替代专用 reranker，或在它之后继续判断跨语言语义、真实实现与转发代码、
-多文件行为：
+多文件行为。质量优先的级联建议先把第二阶段限制为 20 个候选，再在自己的 workload 上测量：
 
 ```dotenv
 LLM_RERANK_ENABLED=true
@@ -118,6 +119,7 @@ LLM_API_KEY=你的 LLM 服务密钥
 LLM_BASE_URL=https://provider.example.com/v1
 LLM_MODEL=deepseek-v4-flash
 RETRIEVAL_LLM_RERANK_POLICY=adaptive
+LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
@@ -125,8 +127,11 @@ LLM_RERANK_TIMEOUT_SECONDS=15
 覆盖，而 feature/flow/overview/compound 查询启用全局语义判断。`always` 对所有至少两个
 候选的结果重排，适合质量优先部署与受控对照。同时启用两种后端时，管线按专用 reranker
 → chat LLM 级联。默认关闭只是数据外发和延迟边界，不代表 chat LLM 的排序质量更低。
-`LLM_MAX_CANDIDATES=50` 偏向多文件覆盖；交互部署若更在意延迟或 TPM，可降到 `20`。
-无论窗口多大，窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
+当前 development benchmark 支持把专用 reranker 作为交互式首选增强，把有界级联作为
+质量优先模式；chat-only 对模型更敏感且成本更高。由于这仍只是 13 个 issue 的开发观察，
+在 full profile 重复前不修改默认开关。详见
+[benchmark 报告](benchmarks/results/swe-explore-development-2026-09-02.md)。无论窗口多大，
+窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
 
 然后启动服务：
 
@@ -148,7 +153,8 @@ oce serve                   # http://127.0.0.1:8986
 `oce version`（或 `oce --version`）打印当前版本；`oce -v serve` 把日志级别提到 INFO，
 `-vv` 提到 DEBUG（默认 WARNING，让检索管线的 info 日志保持安静）。
 
-想临时试跑而不安装：`uvx --from opencontextengine oce serve`。
+想临时试跑而不安装：
+`uvx --from "git+https://github.com/JasonEX/oce.git" oce serve`。
 
 ## 服务模式
 
@@ -156,7 +162,7 @@ oce serve                   # http://127.0.0.1:8986
 仓库自带的 Docker Compose：
 
 ```powershell
-git clone https://github.com/oce-ai/oce.git
+git clone https://github.com/JasonEX/oce.git
 Set-Location oce
 Copy-Item .env.example .env
 # 编辑 .env：至少设置 API_KEY、ADMIN_API_KEY、EMBED_API_KEY；按需设置 LLM_API_KEY
@@ -174,11 +180,11 @@ docker compose up -d
 也可以直接使用已经发布的镜像：
 
 ```powershell
-docker pull ghcr.io/oce-ai/oce:latest
+docker pull ghcr.io/jasonex/oce:latest
 ```
 
 在自己的 Compose、Kubernetes 或其它编排文件中，将应用服务镜像设为
-`ghcr.io/oce-ai/oce:latest`，并提供下面三个服务连接配置：`DB_URL`、`REDIS_URL` 和
+`ghcr.io/jasonex/oce:latest`，并提供下面三个服务连接配置：`DB_URL`、`REDIS_URL` 和
 `MILVUS_ENDPOINT`。镜像入口默认监听容器内的 `8986` 端口。
 
 ### Admin 管理面板

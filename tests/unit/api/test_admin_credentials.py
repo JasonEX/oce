@@ -6,10 +6,10 @@ import httpx
 from fastapi import Header
 
 from oce.api.router import get_application
-from oce.shared.model_credentials import CredentialRecord
 from oce.auth import _unauthorized, verify_admin_key
 from oce.main import app
 from oce.shared.errors import CredentialConflictError
+from oce.shared.model_credentials import CredentialRecord
 
 
 async def _mock_admin_auth(authorization: str | None = Header(default=None)) -> str:
@@ -32,7 +32,6 @@ def _record(
         endpoint="https://example.test/v1/embeddings",
         model="embedding-model",
         timeout_seconds=30,
-        rate_limit=None,
         note=None,
         dimensions=1024,
         max_batch_size=32,
@@ -42,12 +41,7 @@ def _record(
         top_n=None,
         min_score=None,
         tpm_limit=None,
-        max_candidates=None,
-        output_top_k=None,
-        snippet_chars=None,
-        num_rewrites=None,
         api_key_last4=last4,
-        last_used_at=None,
         created_at=None,
         updated_at=None,
     )

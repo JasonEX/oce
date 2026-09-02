@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter
 
-from oce.domain.services.search import SearchHit, search_hit_key
+from oce.domain.services.search import SearchHit, SearchHitKey, search_hit_key
 from oce.domain.services.selector.protocols import SelectionMode
 
 
@@ -44,7 +44,7 @@ class CoverageSelector:
 
         selected: list[SearchHit] = []
         path_counts: Counter[str] = Counter()
-        seen: set[tuple[str, str, int, int, str]] = set()
+        seen: set[SearchHitKey] = set()
         used_chars = 0
 
         passes: tuple[bool | None, ...]

@@ -13,7 +13,9 @@ Python 的 try/except 无法捕获此类原生层段错误。
 之后不再触碰原生 Node。同时持有 _tree 引用防 GC（虽然实验表明不持有也崩，但保险起见保留）。
 text 属性通过快照的字节范围从 _source 切片，避免调用原生 .text 方法。
 """
+
 from __future__ import annotations
+
 
 class _Point:
     """tree-sitter Point 的轻量快照（row, column）。"""
@@ -30,7 +32,7 @@ class _Point:
 
 class CompatNode:
     """包装新版 tree-sitter Node，暴露旧版属性接口。
-    
+
     **关键改动（P0 修复）**：
     - 构造时 eager 快照所有标量为 Python int/str，彻底脱离原生内存
     - 持有 _tree 引用防 GC（保险措施）
@@ -39,15 +41,15 @@ class CompatNode:
 
     __slots__ = (
         "_child_refs",  # 父节点有效时一次性取得的原生子节点
-        "_source",      # bytes：完整源码
-        "_tree",        # 持有 tree 引用防 GC
+        "_source",  # bytes：完整源码
+        "_tree",  # 持有 tree 引用防 GC
         # --- 以下为 eager 快照的标量 ---
-        "type",         # str
-        "start_byte",   # int
-        "end_byte",     # int
+        "type",  # str
+        "start_byte",  # int
+        "end_byte",  # int
         "start_point",  # _Point
-        "end_point",    # _Point
-        "is_named",     # bool
+        "end_point",  # _Point
+        "is_named",  # bool
         "_field_names",  # tuple[str | None, ...]：与 _child_refs 同序
         "_children_cache",  # Optional[list[CompatNode]]：延迟构造+缓存
     )
@@ -94,7 +96,7 @@ class CompatNode:
     @property
     def text(self) -> bytes:
         """通过快照的字节范围切片，不调用原生 .text。"""
-        return self._source[self.start_byte:self.end_byte]
+        return self._source[self.start_byte : self.end_byte]
 
     @property
     def children(self) -> list[CompatNode]:
@@ -120,7 +122,7 @@ class CompatNode:
 
         字段名在构造时快照（原生节点此后不可访问），与 children 同序。
         """
-        for child, name in zip(self.children, self._field_names):
+        for child, name in zip(self.children, self._field_names, strict=True):
             if name == field:
                 return child
         return None
@@ -146,7 +148,7 @@ def compat_parse(parser, code: str) -> CompatTree:
 
     tree-sitter 0.25+ 的 parse() 只接受 bytes（0.25 曾接受 str，0.26 改回 bytes）。
     本函数统一接受 str，内部编码为 bytes 再解析。
-    
+
     返回的 CompatTree.root_node 及其所有子孙节点都已 eager 快照标量，
     避免 P0 的 access violation。
     """

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import math
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 import httpx
 from openai import AsyncOpenAI
@@ -65,8 +65,7 @@ class OpenAIEmbedder:
         on_usage: UsageCallback | None = None,
         proxy: str | None = None,
         query_instruction: str = "",
-        **_: object,
-    ) -> "OpenAIEmbedder":
+    ) -> OpenAIEmbedder:
         base_url = endpoint.rstrip("/")
         if base_url.endswith("/embeddings"):
             base_url = base_url[: -len("/embeddings")]
@@ -185,7 +184,10 @@ class OpenAIEmbedder:
         weights = [max(1, len(segment)) for segment in segments]
         total_weight = sum(weights)
         pooled = [
-            sum(vector[index] * weight for vector, weight in zip(vectors, weights))
+            sum(
+                vector[index] * weight
+                for vector, weight in zip(vectors, weights, strict=True)
+            )
             / total_weight
             for index in range(self._dimensions)
         ]

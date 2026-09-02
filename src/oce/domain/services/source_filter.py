@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 IGNORED_DIRECTORY_NAMES = frozenset(
     {
         ".cache",

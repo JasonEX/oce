@@ -3,6 +3,7 @@
 只验证纯映射逻辑（credential_id=0 归一 None、total=prompt+completion），无需构造
 完整 Container——直接以裸对象充当 self 调用未绑定方法即可。
 """
+
 from __future__ import annotations
 
 from types import SimpleNamespace

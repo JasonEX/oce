@@ -143,9 +143,7 @@ async def test_combined_reload_discards_candidates_on_index_profile_mismatch():
             if self.validation_error is not None:
                 raise self.validation_error
 
-    embedder = Runtime(
-        validation_error=ServiceNotReadyError("index profile mismatch")
-    )
+    embedder = Runtime(validation_error=ServiceNotReadyError("index profile mismatch"))
     reranker = Runtime()
 
     with pytest.raises(ServiceNotReadyError, match="index profile mismatch"):

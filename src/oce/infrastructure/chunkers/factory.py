@@ -28,7 +28,6 @@ def build_chunker(
         language_chunkers=(
             CastChunker(
                 max_chunk_size=semantic_max_chunk_chars,
-                chunk_overlap=0,
                 fallback=recursive_chunker,
             ),
             MarkdownChunker(fallback=recursive_chunker),

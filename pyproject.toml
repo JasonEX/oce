@@ -39,7 +39,6 @@ dependencies = [
     # AST 解析（cAST 切块）
     "tree-sitter==0.25.2", # 0.26 在 Windows 深层遍历时会触发 native access violation
     "tree-sitter-language-pack>=0.1.0",
-    "pyrsistent>=0.19.0",
     "numpy>=1.24.0",
     # SQLite 异步支持（测试用）
     "aiosqlite>=0.19.0",
@@ -48,10 +47,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/oce-ai/oce"
-Repository = "https://github.com/oce-ai/oce"
-Documentation = "https://github.com/oce-ai/oce/blob/master/README.md"
-Issues = "https://github.com/oce-ai/oce/issues"
+Homepage = "https://github.com/JasonEX/oce"
+Repository = "https://github.com/JasonEX/oce"
+Documentation = "https://github.com/JasonEX/oce/blob/master/README.md"
+Issues = "https://github.com/JasonEX/oce/issues"
 
 [project.optional-dependencies]
 dev = [
@@ -62,6 +61,7 @@ dev = [
     "pytest-env>=1.1.0",
     "freezegun>=1.4.0",
     "faker>=22.0.0",
+    "pyarrow>=21.0.0",
     "ruff==0.14.2",
 ]
 
@@ -110,3 +110,17 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+# ==================== Ruff ====================
+[tool.ruff]
+target-version = "py311"
+extend-exclude = ["src/oce/alembic/versions"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
+# B008：FastAPI 的 Depends()/Header() 就是设计成写在参数默认值里的。
+# UP017：项目统一使用语义更明确的 timezone.utc。
+ignore = ["B008", "UP017"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["oce", "tests"]

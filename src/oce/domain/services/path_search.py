@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import Any, Protocol
 
 from oce.domain.services.search import SearchHit
 
 
+@dataclass(frozen=True)
 class PathSearchResult:
     """路径搜索结果"""
 
-    def __init__(
-        self,
-        path: str,
-        blob_name: str,
-        score: float,
-    ):
-        self.path = path
-        self.blob_name = blob_name
-        self.score = score
+    path: str
+    blob_name: str
+    score: float
 
 
 class PathSearchStore(Protocol):

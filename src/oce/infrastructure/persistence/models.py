@@ -45,7 +45,6 @@ class ModelCredentialModel(Base):
     status = Column(String(16), nullable=False, default="active")
     priority = Column(Integer, nullable=False, default=100)
     timeout_seconds = Column(Integer, nullable=False, default=30)
-    rate_limit = Column(Integer)
     note = Column(Text)
 
     # embed 专属
@@ -61,14 +60,13 @@ class ModelCredentialModel(Base):
 
     # chat 两类专属：llm_rerank / query_rewrite
     tpm_limit = Column(Integer)
-    max_candidates = Column(Integer)
-    output_top_k = Column(Integer)
-    snippet_chars = Column(Integer)
-    num_rewrites = Column(Integer)
 
-    last_used_at = Column(DateTime(timezone=True))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
     __table_args__ = (
         UniqueConstraint(
@@ -109,8 +107,12 @@ class BlobModel(Base):
     file_type = Column(String(16), nullable=False, default="text")
     status = Column(String(16), nullable=False, default="pending")
     retry_count = Column(Integer, nullable=False, server_default="0")
-    last_seen = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    last_seen = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     error_message = Column(Text)
 
     __table_args__ = (
@@ -130,7 +132,9 @@ class BlobStagingModel(Base):
         primary_key=True,
     )
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
     __table_args__ = (Index("ix_blob_staging_created_at", "created_at"),)
 
@@ -142,7 +146,9 @@ class ChunkModel(Base):
     content = Column(Text, nullable=False)
     content_size = Column(Integer, nullable=False)
     chunk_type = Column(String(32))
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     embedded = Column(Boolean, server_default="false", nullable=False)
 
     __table_args__ = (
@@ -195,7 +201,9 @@ class ChainModel(Base):
     description = Column(String(512))
     total_blobs = Column(Integer, nullable=False, default=0)
     total_chunks = Column(Integer, nullable=False, default=0)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,
@@ -241,14 +249,22 @@ class SymbolOccurrenceModel(Base):
     kind = Column(String(16), nullable=False)
     start_line = Column(Integer, nullable=False)
     end_line = Column(Integer, nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
     __table_args__ = (
         Index("idx_so_identifier", "identifier"),
         Index("idx_so_blob_name", "blob_name"),
         Index("idx_so_identifier_kind", "identifier", "kind"),
         Index("idx_so_content_hash", "content_hash"),
-        UniqueConstraint("identifier", "blob_name", "content_hash", "kind", name="uq_symbol_occurrences_key"),
+        UniqueConstraint(
+            "identifier",
+            "blob_name",
+            "content_hash",
+            "kind",
+            name="uq_symbol_occurrences_key",
+        ),
     )
 
 

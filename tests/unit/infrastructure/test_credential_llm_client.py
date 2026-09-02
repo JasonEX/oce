@@ -99,7 +99,9 @@ async def test_missing_database_and_environment_credential_fails_locally():
         fallback_model="env-model",
     )
 
-    with pytest.raises(ServiceNotReadyError, match="No active query_rewrite credential"):
+    with pytest.raises(
+        ServiceNotReadyError, match="No active query_rewrite credential"
+    ):
         await client._resolve_config()
 
     await engine.dispose()

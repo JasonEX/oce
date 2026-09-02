@@ -1,25 +1,28 @@
 """cAST chunker adapter with a configurable fallback.
 
 The AST decides where chunk boundaries fall; the text of a chunk is always cut
-from the source lines. astchunk rebuilds text from node coordinates and pads
-gaps with spaces, so its output is not byte-identical to the file and cannot be
-trusted to line up with the line numbers the formatter prints.
+from the source lines, so it lines up with the line numbers the formatter
+prints.
 """
 
 from __future__ import annotations
 
+from loguru import logger
+
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES, detect_language
 from oce.domain.chunk.protocols import Chunker
-from oce.domain.chunk.recursive_chunker import is_meaningful
-from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
+from oce.domain.chunk.spans import (
+    DEFAULT_MAX_CHUNK_CHARS,
+    emit_chunks,
+    is_meaningful,
+    trim_trailing_blank_lines,
+)
 from oce.domain.chunk.types import Chunk
-from oce.infrastructure.astchunk.astchunk_builder import ASTChunkBuilder, LANGUAGE_MAP
-
-
-# Keeps chunk text inside the embedding client's per-input window and the vector
-# store's text field. Above it the client re-splits and pools the pieces and the
-# store truncates, so the indexed text stops matching the reported line range.
-DEFAULT_MAX_CHUNK_CHARS = 6_000
+from oce.infrastructure.astchunk.astchunk_builder import (
+    LANGUAGE_MAP,
+    ASTChunkBuilder,
+    AstWindow,
+)
 
 # Non-whitespace characters per character of source, at the low end. Measured
 # over the supported grammars on the OpenClaw tree: Swift sits lowest at 0.67,
@@ -40,15 +43,11 @@ DEFAULT_MIN_CHUNK_CHARS = 300
 class CastChunker:
     """AST implementation for programming languages with semantic parsers.
 
-    架构说明：
-    - 有语言识别 → 交给 ASTChunkBuilder（内部自动 fallback 到 RecursiveCharacterTextSplitter）
-    - 无语言识别 → 使用外层 RecursiveChunker fallback
-    - 不再在外层捕获异常，信任 ASTChunkBuilder 的处理
-
-    排除有专用 chunker 的语言（markdown、jsp、vue、svelte）
+    Languages with a dedicated chunker (markdown, jsp, vue, svelte) are excluded
+    here. Files whose grammar cannot be loaded, or that resolve to no window,
+    go to ``fallback``.
     """
 
-    # 排除有专用 chunker 的语言
     _EXCLUDED_LANGUAGES = frozenset({"markdown", "jsp", "vue", "svelte"})
     languages = frozenset(
         SUPPORTED_LANGUAGES.intersection(LANGUAGE_MAP) - _EXCLUDED_LANGUAGES
@@ -58,8 +57,7 @@ class CastChunker:
         self,
         *,
         max_chunk_size: int,
-        chunk_overlap: int,
-        fallback: Chunker | None = None,
+        fallback: Chunker,
         max_chunk_chars: int = DEFAULT_MAX_CHUNK_CHARS,
         min_chunk_chars: int = DEFAULT_MIN_CHUNK_CHARS,
     ):
@@ -70,66 +68,45 @@ class CastChunker:
         if min_chunk_chars < 0 or min_chunk_chars >= max_chunk_chars:
             raise ValueError("min_chunk_chars 必须 ∈ [0, max_chunk_chars)")
         self.max_chunk_size = max_chunk_size
-        self.chunk_overlap = chunk_overlap
         self.fallback = fallback
         self.max_chunk_chars = max_chunk_chars
         self.min_chunk_chars = min_chunk_chars
-        self._builders: dict[str, ASTChunkBuilder] = {}
+        self._builders: dict[str, ASTChunkBuilder | None] = {}
 
     def chunk(self, content: str, path: str) -> list[Chunk]:
         if not is_meaningful(content):
             return []
         language = detect_language(path)
-        if language is None:
-            # 完全无法识别的文件（无扩展名且非特殊文件名）
+        builder = self._get_builder(language) if language is not None else None
+        if builder is None:
             return self.fallback.chunk(content, path)
-        # ASTChunkBuilder 内部会自动判断语言是否支持以及是否需要 fallback
-        return self._chunk_ast(content, path, language)
+        return self._chunk_ast(builder, content, path)
 
-    def _chunk_ast(self, content: str, path: str, language: str) -> list[Chunk]:
-        raw_chunks = self._get_builder(language).chunkify(
-            content,
-            repo_level_metadata={"filepath": path},
-            chunk_overlap=self.chunk_overlap,
-        )
+    def _chunk_ast(
+        self, builder: ASTChunkBuilder, content: str, path: str
+    ) -> list[Chunk]:
+        windows = builder.chunkify(content)
         lines = content.splitlines()
-        line_count = len(lines)
-        ranges = [
-            (*self._resolve_range(item.get("metadata", {}), lines, line_count),
-             item.get("metadata", {}).get("type", "ast"))
-            for item in raw_chunks
-        ]
-        chunks: list[Chunk] = []
-        for start, end, chunk_type in self._merge_small(ranges, lines):
-            for span_start, span_end, text in cap_span(
-                lines,
-                start,
-                end,
-                self.max_chunk_chars,
-            ):
-                chunks.append(
-                    Chunk(
-                        content_hash=Chunk.compute_hash(text),
-                        path=path,
-                        content=text,
-                        start_line=span_start,
-                        end_line=span_end,
-                        chunk_type=chunk_type,
-                    )
-                )
+        ranges = [self._resolve_range(window, lines) for window in windows]
+        chunks = emit_chunks(
+            ((start, end, "ast") for start, end in self._merge_small(ranges, lines)),
+            lines,
+            path,
+            max_chars=self.max_chunk_chars,
+        )
         if chunks:
             return chunks
         # 解析成功但所有行都超出字符预算：文件是压缩包或单行生成产物。
         # 回退到 RecursiveChunker 只会把同样的内容按字符切回来，所以不产出。
-        if raw_chunks:
+        if windows:
             return []
         return self.fallback.chunk(content, path)
 
     def _merge_small(
         self,
-        ranges: list[tuple[int, int, str]],
+        ranges: list[tuple[int, int]],
         lines: list[str],
-    ) -> list[tuple[int, int, str]]:
+    ) -> list[tuple[int, int]]:
         """Fold undersized ranges into a neighbour, keeping coverage in order.
 
         astchunk measures a window in non-whitespace characters and cuts on
@@ -146,28 +123,22 @@ class CastChunker:
         """
         if self.min_chunk_chars == 0:
             return ranges
-        merged: list[tuple[int, int, str]] = []
-        for start, end, chunk_type in sorted(ranges):
+        merged: list[tuple[int, int]] = []
+        for start, end in sorted(ranges):
             if merged:
-                prev_start, prev_end, _ = merged[-1]
+                prev_start, prev_end = merged[-1]
                 # 已被前一个区间覆盖：重复起点或完全内含，不产出新块。
                 if end <= prev_end:
                     continue
-                # 前一个区间还没达到下限，把当前区间并进去补足它。类型取自
-                # 被吞并的区间：过小的那一半通常只是签名前缀，描述这段代码的
-                # 是带上了主体的这一个。
+                # 前一个区间还没达到下限，把当前区间并进去补足它。
                 if self._span_chars(lines, prev_start, prev_end) < self.min_chunk_chars:
-                    merged[-1] = (prev_start, end, chunk_type)
+                    merged[-1] = (prev_start, end)
                     continue
-            if (
-                merged
-                and self._span_chars(lines, start, end) < self.min_chunk_chars
-            ):
+            if merged and self._span_chars(lines, start, end) < self.min_chunk_chars:
                 # 自身过小且前一个已达标：向前贴，避免留下孤立的收尾括号。
-                prev_start, _, prev_type = merged[-1]
-                merged[-1] = (prev_start, end, prev_type)
+                merged[-1] = (merged[-1][0], end)
                 continue
-            merged.append((start, end, chunk_type))
+            merged.append((start, end))
         return merged
 
     @staticmethod
@@ -175,41 +146,43 @@ class CastChunker:
         """Character count of a 1-based inclusive line range, newlines included."""
         return sum(len(lines[row]) + 1 for row in range(start - 1, end)) - 1
 
-    def _resolve_range(
-        self,
-        metadata: dict,
-        lines: list[str],
-        line_count: int,
-    ) -> tuple[int, int]:
-        """Convert astchunk's 0-based rows into a 1-based inclusive line range.
+    @staticmethod
+    def _resolve_range(window: AstWindow, lines: list[str]) -> tuple[int, int]:
+        """Convert a window's 0-based rows into a 1-based inclusive line range.
 
-        astchunk reports the row of the node's last byte. When a node ends at
-        column 0 it stopped at the line break, so that row belongs to the next
-        chunk; otherwise the row is part of this one. Trailing blank lines are
-        dropped because joined text would never reach them.
+        The window reports the row of its last byte. When it ends at column 0
+        it stopped at the line break, so that row belongs to the next chunk;
+        otherwise the row is part of this one. Trailing blank lines are dropped
+        because joined text would never reach them.
         """
-        start_row = int(metadata.get("start_line_no", 0))
-        end_row = int(metadata.get("end_line_no", start_row))
-        end_column = metadata.get("end_column")
-        start = start_row + 1
-        if end_column is not None and int(end_column) == 0 and end_row > start_row:
-            end = end_row
+        start = window.start_row + 1
+        if window.end_column == 0 and window.end_row > window.start_row:
+            end = window.end_row
         else:
-            end = end_row + 1
+            end = window.end_row + 1
+        line_count = len(lines)
         if start < 1 or end < start or end > line_count:
             raise ValueError(
                 f"astchunk 返回无效行号: {start}-{end}，文件共 {line_count} 行"
             )
         return start, trim_trailing_blank_lines(lines, start, end)
 
-    def _get_builder(self, language: str) -> ASTChunkBuilder:
+    def _get_builder(self, language: str) -> ASTChunkBuilder | None:
+        """One parser per language; a grammar that fails to load routes to fallback."""
         if language not in self._builders:
-            self._builders[language] = ASTChunkBuilder(
-                max_chunk_size=self.max_chunk_size,
-                language=language,
-                metadata_template="default",
-                intact_node_size=self._intact_node_size(),
-            )
+            try:
+                self._builders[language] = ASTChunkBuilder(
+                    max_chunk_size=self.max_chunk_size,
+                    language=language,
+                    intact_node_size=self._intact_node_size(),
+                )
+            except Exception as exc:
+                logger.warning(
+                    "tree-sitter grammar unavailable for {}; using text fallback: {}",
+                    language,
+                    exc,
+                )
+                self._builders[language] = None
         return self._builders[language]
 
     def _intact_node_size(self) -> int:

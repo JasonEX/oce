@@ -20,12 +20,17 @@ from __future__ import annotations
 
 from loguru import logger
 
-from oce.domain.chunk.recursive_chunker import is_meaningful
 from oce.domain.chunk.protocols import Chunker
-from oce.domain.chunk.spans import cap_span, trim_trailing_blank_lines
+from oce.domain.chunk.spans import (
+    DEFAULT_MAX_CHUNK_CHARS,
+    emit_chunks,
+    is_meaningful,
+    line_of,
+    line_offsets,
+    tile_spans,
+)
 from oce.domain.chunk.types import Chunk
 
-DEFAULT_MAX_CHUNK_CHARS = 6_000
 # Sections below this size are merged forward. Splitting on every heading level
 # otherwise shatters reference docs into one- and two-line fragments that carry
 # a title but no answer.
@@ -67,15 +72,16 @@ class MarkdownChunker:
         try:
             spans = self._section_spans(content, lines)
         except Exception as exc:
-            logger.warning(
-                "markdown 结构切块失败，退回行窗口: {}: {}",
-                path,
-                exc,
-            )
+            logger.warning("markdown 结构切块失败，退回行窗口: {}: {}", path, exc)
             return self.fallback.chunk(content, path)
         if not spans:
             return self.fallback.chunk(content, path)
-        return self._emit(spans, lines, path)
+        return emit_chunks(
+            ((start, end, "markdown") for start, end in spans),
+            lines,
+            path,
+            max_chars=self.max_chunk_chars,
+        )
 
     def _section_spans(
         self,
@@ -86,7 +92,13 @@ class MarkdownChunker:
         starts = self._section_start_lines(content, lines)
         if not starts:
             return []
-        spans = self._tile(self._drop_code_starts(starts, lines), len(lines))
+        # Any preamble above the first heading folds into the first section so
+        # a heading always opens the chunk it belongs to.
+        spans = tile_spans(
+            self._drop_code_starts(starts, lines),
+            len(lines),
+            fold_preamble=True,
+        )
         return self._merge_short(spans, lines)
 
     def _merge_short(
@@ -152,7 +164,7 @@ class MarkdownChunker:
         splitter = ExperimentalMarkdownSyntaxTextSplitter(
             headers_to_split_on=_HEADERS_TO_SPLIT_ON,
         )
-        offsets = self._line_offsets(lines)
+        offsets = line_offsets(lines)
         starts: list[int] = []
         cursor = 0
         for section in splitter.split_text(content):
@@ -163,9 +175,7 @@ class MarkdownChunker:
             if found < 0:
                 raise ValueError("section text is not a substring of the source")
             cursor = found + len(text)
-            starts.append(
-                self._claim_heading(lines, self._line_of(offsets, found))
-            )
+            starts.append(self._claim_heading(lines, line_of(offsets, found)))
         return starts
 
     @staticmethod
@@ -177,75 +187,3 @@ class MarkdownChunker:
         if candidate >= 1 and lines[candidate - 1].lstrip().startswith("#"):
             return candidate
         return body_line
-
-    @staticmethod
-    def _line_offsets(lines: list[str]) -> list[int]:
-        """Character offset of each line's first character."""
-        offsets: list[int] = []
-        position = 0
-        for line in lines:
-            offsets.append(position)
-            position += len(line) + 1
-        return offsets
-
-    @staticmethod
-    def _line_of(offsets: list[int], position: int) -> int:
-        """Binary-search the 1-based line owning a character offset."""
-        low, high = 0, len(offsets) - 1
-        while low < high:
-            mid = (low + high + 1) // 2
-            if offsets[mid] <= position:
-                low = mid
-            else:
-                high = mid - 1
-        return low + 1
-
-    @staticmethod
-    def _tile(starts: list[int], total_lines: int) -> list[tuple[int, int]]:
-        """Turn section start lines into contiguous, non-overlapping spans.
-
-        Each section runs until the line before the next section starts, so a
-        heading opens the chunk it belongs to. Any preamble above the first
-        heading is folded into the first span, which keeps every line covered
-        exactly once.
-        """
-        ordered = sorted({start for start in starts if 1 <= start <= total_lines})
-        if not ordered:
-            return []
-        spans: list[tuple[int, int]] = []
-        for index, start in enumerate(ordered):
-            if index == 0:
-                start = 1
-            end = ordered[index + 1] - 1 if index + 1 < len(ordered) else total_lines
-            if end >= start:
-                spans.append((start, end))
-        return spans
-
-    def _emit(
-        self,
-        spans: list[tuple[int, int]],
-        lines: list[str],
-        path: str,
-    ) -> list[Chunk]:
-        chunks: list[Chunk] = []
-        for start, end in spans:
-            trimmed = trim_trailing_blank_lines(lines, start, end)
-            for span_start, span_end, text in cap_span(
-                lines,
-                start,
-                trimmed,
-                self.max_chunk_chars,
-            ):
-                if not text.strip():
-                    continue
-                chunks.append(
-                    Chunk(
-                        content_hash=Chunk.compute_hash(text),
-                        path=path,
-                        content=text,
-                        start_line=span_start,
-                        end_line=span_end,
-                        chunk_type="markdown",
-                    )
-                )
-        return chunks

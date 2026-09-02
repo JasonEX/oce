@@ -8,16 +8,23 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# 所有配置组读同一组文件：.env.local 覆盖 .env，避免某些组读不到本地覆盖值。
+_ENV_FILES = (".env", ".env.local")
+
+
+def _settings_config(env_prefix: str = "") -> SettingsConfigDict:
+    return SettingsConfigDict(
+        env_prefix=env_prefix,
+        env_file=_ENV_FILES,
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
 
 class DatabaseSettings(BaseSettings):
     """数据库配置（PostgreSQL / SQLite 元数据存储）"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="DB_",
-        env_file=[".env", ".env.local"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("DB_")
 
     url: str = Field(
         default="postgresql+asyncpg://oce:oce@localhost:5432/oce",
@@ -34,14 +41,9 @@ class DatabaseSettings(BaseSettings):
 
 
 class MilvusSettings(BaseSettings):
-    """Milvus 3.0 配置（向量存储 + 混合检索）"""
+    """Milvus 3.0 配置（dense 向量存储）。向量维度取自 EmbeddingSettings.dimensions。"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="MILVUS_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("MILVUS_")
 
     # 连接
     endpoint: str = Field(
@@ -56,7 +58,6 @@ class MilvusSettings(BaseSettings):
         default="oce_paths_v1",
         description="路径索引 Collection 名称",
     )
-    dense_dim: int = Field(default=1024, description="密集向量维度")
 
     # 索引
     dense_index_type: str = Field(default="HNSW", description="密集向量索引类型")
@@ -75,12 +76,7 @@ class MilvusSettings(BaseSettings):
 class EmbeddingSettings(BaseSettings):
     """嵌入模型配置"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="EMBED_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("EMBED_")
 
     enabled: bool = Field(default=True, description="是否启用嵌入(关闭时只切块不嵌入)")
     endpoint: str = Field(
@@ -89,7 +85,11 @@ class EmbeddingSettings(BaseSettings):
     )
     api_key: SecretStr | None = Field(default=None, description="Embedding API 密钥")
     model: str = Field(default="Qwen/Qwen3-Embedding-4B", description="嵌入模型")
-    dimensions: int = Field(default=1024, ge=1, description="向量维度")
+    dimensions: int = Field(
+        default=1024,
+        ge=1,
+        description="向量维度；同时是 Milvus collection 的向量维度",
+    )
     max_batch_size: int = Field(default=32, ge=1, le=256, description="单请求文本数")
     max_batch_chars: int = Field(
         default=32_000,
@@ -125,12 +125,7 @@ class EmbeddingSettings(BaseSettings):
 class RerankSettings(BaseSettings):
     """重排模型配置。"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="RERANK_",
-        env_file=[".env", ".env.local"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("RERANK_")
 
     enabled: bool = Field(
         default=False,
@@ -157,12 +152,7 @@ class RerankSettings(BaseSettings):
 class ChunkingSettings(BaseSettings):
     """Source chunking composition."""
 
-    model_config = SettingsConfigDict(
-        env_prefix="CHUNKING_",
-        env_file=[".env", ".env.local"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("CHUNKING_")
 
     semantic_enabled: bool = Field(
         default=True,
@@ -192,12 +182,7 @@ class LLMSettings(BaseSettings):
     model_credentials 行时，共同回落到这里的 LLM_* 设置。
     """
 
-    model_config = SettingsConfigDict(
-        env_prefix="LLM_",
-        env_file=[".env", ".env.local"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("LLM_")
 
     rerank_enabled: bool = Field(
         default=False,
@@ -244,12 +229,7 @@ class LLMSettings(BaseSettings):
 class RetrievalSettings(BaseSettings):
     """检索配置"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="RETRIEVAL_",
-        env_file=[".env", ".env.local"],
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("RETRIEVAL_")
 
     # 向量检索
     default_top_k: int = Field(default=50, ge=1, le=200, description="向量召回条数")
@@ -311,7 +291,7 @@ class RetrievalSettings(BaseSettings):
         default=0.75, gt=0.0, le=1.0, description="子查询融合权重"
     )
     per_query_top_k: int = Field(
-        default=20, ge=1, le=100, description="单查询模式下覆盖 default_top_k"
+        default=20, ge=1, le=100, description="多子查询融合时每个子查询的召回条数"
     )
 
     # 上下文剪枝与覆盖度（字符预算为硬限制，final_select_k 为软上限）
@@ -356,12 +336,7 @@ class RetrievalSettings(BaseSettings):
 class RedisSettings(BaseSettings):
     """Redis 配置（任务队列）"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="REDIS_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("REDIS_")
 
     url: str = Field(default="redis://localhost:6379/0", description="Redis 连接 URL")
     queue_name: str = Field(default="oce:embed_queue", description="嵌入队列名称")
@@ -370,12 +345,7 @@ class RedisSettings(BaseSettings):
 class WorkerSettings(BaseSettings):
     """Worker 配置（后台嵌入消费者）"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="WORKER_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("WORKER_")
 
     enabled: bool = Field(default=True, description="是否启用后台 worker")
     concurrency: int = Field(default=2, ge=1, le=32, description="并发消费协程数")
@@ -391,12 +361,7 @@ class WorkerSettings(BaseSettings):
 class LogSettings(BaseSettings):
     """日志配置"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="LOG_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("LOG_")
 
     file_enabled: bool = Field(default=False, description="是否启用日志落盘")
     file_path: str | None = Field(
@@ -417,12 +382,7 @@ class LogSettings(BaseSettings):
 class MonitoringSettings(BaseSettings):
     """监控配置（调用 / token / 资源采集与落库）"""
 
-    model_config = SettingsConfigDict(
-        env_prefix="MONITORING_",
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    model_config = _settings_config("MONITORING_")
 
     enabled: bool = Field(default=True, description="是否启用监控采集与落库")
     flush_interval_seconds: float = Field(
@@ -451,12 +411,7 @@ class MonitoringSettings(BaseSettings):
 class Settings(BaseSettings):
     """全局配置 - 聚合所有配置组"""
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
-    )
+    model_config = _settings_config()
 
     # API
     api_key: str = Field(

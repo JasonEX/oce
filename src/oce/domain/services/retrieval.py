@@ -12,10 +12,10 @@ rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余
 from __future__ import annotations
 
 import asyncio
-import re
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import replace
-from typing import TYPE_CHECKING, Callable, Iterator, Sequence
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
@@ -33,6 +33,7 @@ from oce.domain.services.retrieval_strategy import get_strategy, should_use_llm_
 from oce.domain.services.search import (
     ExactSearchStore,
     SearchHit,
+    SearchHitKey,
     SearchScope,
     SearchStore,
     search_hit_key,
@@ -107,8 +108,8 @@ class RetrievalPipeline:
         settings: RetrievalSettings,
         reranker: Reranker | None = None,
         llm_reranker: Reranker | None = None,
-        query_rewriter: "QueryRewriter | None" = None,
-        path_store: PathSearchStore | None = None,  # 路径索引
+        query_rewriter: QueryRewriter | None = None,
+        path_store: PathSearchStore | None = None,
         path_content_store: PathContentStore | None = None,
         exact_store: ExactSearchStore | None = None,
         selector: Selector | None = None,
@@ -118,11 +119,9 @@ class RetrievalPipeline:
         self.embedder = embedder
         self.store = store
         self.reranker = reranker or NoopReranker()
-        self.llm_reranker = llm_reranker  # Optional LLM-based semantic reranker
-        self.query_rewriter = (
-            query_rewriter  # Optional query rewriter for better recall
-        )
-        self.path_store = path_store  # Optional path index for filename queries
+        self.llm_reranker = llm_reranker
+        self.query_rewriter = query_rewriter
+        self.path_store = path_store
         self.path_content_store = path_content_store
         self.settings = settings
         self.exact_store = exact_store
@@ -177,71 +176,99 @@ class RetrievalPipeline:
             return []
 
         # 路由完全由可测试的确定性信号决定；模型只参与显式的 rewrite/rerank。
-        detected_intent = classify_query_intent(query)
-        strategy = get_strategy(detected_intent)
-        logger.debug("Query intent: {}, strategy: {}", detected_intent.value, strategy)
-        if audit is not None:
-            audit.intent = detected_intent.value
-
-        # 路径索引增强：根据意图或启发式判断
-        use_path_index = strategy.enable_path_index or (
-            self.path_store and should_use_path_index(query)
+        intent = classify_query_intent(query)
+        strategy = get_strategy(intent)
+        logger.debug("Query intent: {}, strategy: {}", intent.value, strategy)
+        # 路径索引回答「哪个文件」，内容索引回答「文件里哪一段」；两者只在
+        # 文件定位类查询上并行召回，再按 chunk 粒度合并。
+        use_path_index = self.path_store is not None and (
+            strategy.enable_path_index or should_use_path_index(query, intent)
         )
-        if use_path_index and self.path_store:
-            if audit is not None:
-                audit.path_boosted = True
-            return await self._search_with_path_boost(
-                query,
-                allowed_blob_names,
-                scope=scope,
-                intent=detected_intent,
-                enable_query_rewrite=strategy.enable_query_rewrite,
-                selection_mode=strategy.selection_mode,
-                audit=audit,
-            )
+        if audit is not None:
+            audit.intent = intent.value
+            audit.path_boosted = use_path_index
 
-        # Query rewrite: 根据意图决定是否启用
+        # QueryRewriter 内部已容错：失败时返回原查询，不会抛到这里。
         queries_to_search = [query]
-        use_query_rewrite = strategy.enable_query_rewrite
-        if use_query_rewrite and self.query_rewriter is not None:
+        if strategy.enable_query_rewrite and self.query_rewriter is not None:
             with stage("rewrite"):
                 rewritten_queries = await self.query_rewriter.rewrite(query)
-            # 使用改写的查询替换原查询
             if rewritten_queries:
                 queries_to_search = rewritten_queries
 
         planned_queries = self._plan_queries(queries_to_search)
+        # 路径索引用原查询 + 改写变体分别检索：中文查询直接 embedding 常匹配不到
+        # 英文路径文档，改写变体（含文件名如 CHANGES.rst）才能命中。
+        path_queries = (
+            tuple(dict.fromkeys((query, *queries_to_search))) if use_path_index else ()
+        )
+        with stage("dense"):
+            query_vectors = await self._embed_query_vectors(
+                [*path_queries, *(item[0] for item in planned_queries)]
+            )
 
-        async def recall_dense() -> list[list[SearchHit]]:
-            with stage("dense"):
-                return await self._recall_planned(
-                    planned_queries,
-                    allowed_blob_names,
-                )
+        # Exact SQL, dense vector I/O and the path index are independent after
+        # routing and rewrite, so they run together; fusion order is unchanged.
+        async def recall_dense() -> tuple[list[SearchHit], Exception | None]:
+            try:
+                with stage("dense"):
+                    result_lists = await asyncio.gather(
+                        *(
+                            self._recall_with_vector(
+                                query_vectors[planned_query],
+                                allowed_blob_names,
+                                num_queries,
+                            )
+                            for planned_query, num_queries in planned_queries
+                        )
+                    )
+                return (self._fuse(list(result_lists)) if result_lists else []), None
+            except Exception as exc:
+                if not use_path_index:
+                    raise
+                logger.warning("Content search failed: {}", type(exc).__name__)
+                return [], exc
 
         async def recall_exact() -> list[SearchHit]:
             with stage("exact"):
                 return await self._recall_exact(query, scope)
 
-        # Exact SQL and dense model/vector I/O are independent after routing and
-        # rewrite. Running them together removes one full backend RTT from symbol
-        # queries without changing fusion order or failure semantics.
-        all_result_lists, exact_hits = await asyncio.gather(
+        async def recall_paths() -> dict[str, float]:
+            if not use_path_index:
+                return {}
+            with stage("path"):
+                return await self._recall_paths(
+                    [query_vectors[variant] for variant in path_queries],
+                    allowed_blob_names,
+                )
+
+        (content_hits, content_error), exact_hits, path_scores = await asyncio.gather(
             recall_dense(),
             recall_exact(),
+            recall_paths(),
         )
-        if not all_result_lists and not exact_hits:
-            return []
 
         with stage("fuse"):
-            hits = self._fuse(all_result_lists) if all_result_lists else []
-            hits = self._merge_exact_hits(query, exact_hits, hits)
+            hits = self._merge_exact_hits(intent, exact_hits, content_hits)
+            if path_scores:
+                hits = await self._merge_path_and_content(path_scores, hits)
+            elif use_path_index:
+                logger.info("No path results, using content-only")
+            # 路径索引失败且内容检索也失败：没有任何候选时才把内容错误抛出。
+            if not hits and content_error is not None:
+                raise content_error
+        if not hits:
+            return []
+
         return await self._rank_and_select(
             query,
             hits,
-            intent=detected_intent,
+            intent=intent,
             selection_mode=strategy.selection_mode,
             has_exact_hits=bool(exact_hits),
+            has_path_hits=bool(path_scores),
+            # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）。
+            priority_factor=path_query_priority_factor if use_path_index else None,
             audit=audit,
         )
 
@@ -266,10 +293,7 @@ class RetrievalPipeline:
         # This optional floor belongs to recall, before model scores can enter the
         # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
         # to a shared scale; filtering their mixture after reranking is undefined.
-        hits = self._apply_confidence_floor(
-            hits,
-            priority_factor=priority_factor,
-        )
+        hits = self._apply_confidence_floor(hits, priority_factor=priority_factor)
         with stage("rerank"):
             hits = await self.reranker.rerank(query, hits)
 
@@ -283,7 +307,6 @@ class RetrievalPipeline:
             with stage("llm_rerank"):
                 hits = await self.llm_reranker.rerank(query, hits)
 
-        hits = self._promote_symbol_endpoints(query, hits)
         with stage("select"):
             return await self.selector.select(
                 hits,
@@ -309,33 +332,8 @@ class RetrievalPipeline:
         )
         return dict(zip(unique_queries, vectors, strict=True))
 
-    async def _recall_planned(
-        self,
-        planned_queries: Sequence[tuple[str, int]],
-        allowed_blob_names: set[str] | frozenset[str] | None,
-    ) -> list[list[SearchHit]]:
-        if not planned_queries:
-            return []
-        vectors = await self._embed_query_vectors(
-            [query for query, _count in planned_queries]
-        )
-        return list(
-            await asyncio.gather(
-                *(
-                    self._recall_with_vector(
-                        query,
-                        vectors[query],
-                        allowed_blob_names,
-                        num_queries,
-                    )
-                    for query, num_queries in planned_queries
-                )
-            )
-        )
-
     async def _recall_with_vector(
         self,
-        query: str,
         query_vector: list[float],
         allowed_blob_names: set[str] | frozenset[str] | None,
         num_queries: int = 1,
@@ -348,7 +346,6 @@ class RetrievalPipeline:
         )
 
         return await self.store.search(
-            query=query,
             query_vector=query_vector,
             allowed_blob_names=(
                 sorted(allowed_blob_names) if allowed_blob_names is not None else None
@@ -386,11 +383,11 @@ class RetrievalPipeline:
 
     def _merge_exact_hits(
         self,
-        query: str,
+        intent: QueryIntent,
         exact_hits: list[SearchHit],
         semantic_hits: list[SearchHit],
     ) -> list[SearchHit]:
-        if classify_query_intent(query) == QueryIntent.CALL_CHAIN and semantic_hits:
+        if intent == QueryIntent.CALL_CHAIN and semantic_hits:
             semantic_keys = {search_hit_key(hit) for hit in semantic_hits}
             exact_only = [
                 hit for hit in exact_hits if search_hit_key(hit) not in semantic_keys
@@ -416,7 +413,7 @@ class RetrievalPipeline:
             return merged[: self.settings.default_top_k]
 
         merged: list[SearchHit] = []
-        positions: dict[tuple[str, str, int, int, str], int] = {}
+        positions: dict[SearchHitKey, int] = {}
         for hit in [*exact_hits, *semantic_hits]:
             key = search_hit_key(hit)
             position = positions.get(key)
@@ -424,54 +421,9 @@ class RetrievalPipeline:
                 positions[key] = len(merged)
                 merged.append(hit)
             elif hit.score > merged[position].score:
-                merged[position] = replace(hit, score=hit.score)
+                merged[position] = hit
         merged.sort(key=lambda hit: hit.score, reverse=True)
         return merged[: self.settings.default_top_k]
-
-    @staticmethod
-    def _promote_symbol_endpoints(
-        query: str,
-        hits: list[SearchHit],
-    ) -> list[SearchHit]:
-        """符号定位时，框架 endpoint 定义稳定优先于同名内部实现。"""
-        if classify_query_intent(query) != QueryIntent.SYMBOL:
-            return hits
-        location_markers = (
-            "实现位置",
-            "实现文件",
-            "源码位置",
-            "哪个文件",
-            "在哪个文件",
-            "在哪里定义",
-            "哪里定义",
-            "函数在哪",
-            "defined",
-            "definition",
-            "implementation",
-        )
-        if not any(marker in query.casefold() for marker in location_markers):
-            return hits
-        identifiers = extract_code_identifiers(query)
-        if not identifiers:
-            return hits
-
-        endpoint_patterns = [
-            re.compile(
-                rf"(?ms)(?:#\[(?:tauri::command|pytauri::command)[^]]*\]|"
-                rf"@(?:app|router)\.(?:get|post|put|patch|delete)\([^\n]*\))"
-                rf"\s*(?:(?:pub|export)(?:\([^)]*\))?\s+)?"
-                rf"(?:(?:async|default)\s+)?(?:fn|def|function)\s+"
-                rf"{re.escape(identifier.rsplit('::', 1)[-1])}\b"
-            )
-            for identifier in identifiers
-        ]
-        return sorted(
-            hits,
-            key=lambda hit: any(
-                pattern.search(hit.content) for pattern in endpoint_patterns
-            ),
-            reverse=True,
-        )
 
     def _fuse(self, result_lists: list[list[SearchHit]]) -> list[SearchHit]:
         if len(result_lists) == 1:
@@ -480,11 +432,11 @@ class RetrievalPipeline:
         rrf_k = self.settings.rrf_k  # 统一使用 rrf_k
         weights = [1.0] + [self.settings.query_facet_weight] * (len(result_lists) - 1)
         max_score = sum(weight / (rrf_k + 1) for weight in weights)
-        scores: dict[tuple[str, str, int, int, str], float] = {}
-        hits_by_key: dict[tuple[str, str, int, int, str], SearchHit] = {}
-        first_seen: dict[tuple[str, str, int, int, str], int] = {}
+        scores: dict[SearchHitKey, float] = {}
+        hits_by_key: dict[SearchHitKey, SearchHit] = {}
+        first_seen: dict[SearchHitKey, int] = {}
         ordinal = 0
-        for weight, hits in zip(weights, result_lists):
+        for weight, hits in zip(weights, result_lists, strict=True):
             for rank, hit in enumerate(hits, 1):
                 key = search_hit_key(hit)
                 if key not in first_seen:
@@ -510,8 +462,6 @@ class RetrievalPipeline:
         文档中立的 factor（path_query_priority_factor）。
         """
         factor = priority_factor or self.priority_factor
-        if not hits:
-            return hits
         return sorted(
             hits,
             key=lambda h: h.score * factor(h.path),
@@ -528,134 +478,38 @@ class RetrievalPipeline:
         floor = self.settings.confidence_floor
         return [h for h in hits if h.score * factor(h.path) >= floor]
 
-    async def _search_with_path_boost(
+    async def _recall_paths(
         self,
-        query: str,
-        allowed_blob_names: frozenset[str] | None = None,
-        *,
-        scope: SearchScope | None,
-        intent: QueryIntent,
-        enable_query_rewrite: bool,
-        selection_mode: SelectionMode,
-        audit: RetrievalAudit | None = None,
-    ) -> list[SearchHit]:
-        """
-        使用路径索引增强的检索（用于文件名查询）
-
-        路径索引回答「哪个文件」，内容索引回答「文件里哪一段」，两者按 chunk 粒度
-        合并：路径命中的文件若已有内容命中则加权提分，不替换，否则会把真正含目标
-        符号的 chunk 挤掉（回填的文件首个 chunk 通常只是 use / import 语句）。
-        """
-        logger.info("Path-boosted search: query_chars={}", len(query))
-        stage = audit.stage if audit is not None else _noop_stage
-
-        # 0. 查询改写变体（路径索引与内容索引共用，解决中文查询 vs 英文文件名）
-        queries_to_search = [query]
-        if enable_query_rewrite and self.query_rewriter is not None:
-            with stage("rewrite"):
-                try:
-                    rewritten_queries = await self.query_rewriter.rewrite(query)
-                    if rewritten_queries:
-                        queries_to_search = rewritten_queries
-                except Exception as exc:
-                    logger.warning("Query rewrite failed: {}", type(exc).__name__)
-
-        path_queries = tuple(dict.fromkeys((query, *queries_to_search)))
-        content_queries = self._plan_queries(queries_to_search)
-        with stage("embed"):
-            query_vectors = await self._embed_query_vectors(
-                [*path_queries, *(item[0] for item in content_queries)]
-            )
-
-        # 1. 路径索引检索：原查询 + 改写变体分别检索，每个 blob 取最高路径分。
-        #    中文查询（如「版本变更历史记录文件在哪里」）直接 embedding 常匹配不到
-        #    英文路径文档，改写变体（含文件名如 CHANGES.rst）才能命中路径索引。
-        async def recall_paths() -> dict[str, float]:
-            path_scores: dict[str, float] = {}
-            try:
-                blob_filter = list(allowed_blob_names) if allowed_blob_names else None
-                with stage("path"):
-                    result_lists = await asyncio.gather(
-                        *(
-                            self.path_store.search_paths(
-                                query_vector=query_vectors[variant],
-                                allowed_blob_names=blob_filter,
-                                top_k=20,
-                            )
-                            for variant in path_queries
-                        )
+        query_vectors: Sequence[list[float]],
+        allowed_blob_names: frozenset[str] | None,
+    ) -> dict[str, float]:
+        """Best path score per blob over every query variant; failures degrade to none."""
+        assert self.path_store is not None
+        path_scores: dict[str, float] = {}
+        blob_filter = list(allowed_blob_names) if allowed_blob_names else None
+        try:
+            result_lists = await asyncio.gather(
+                *(
+                    self.path_store.search_paths(
+                        query_vector=vector,
+                        allowed_blob_names=blob_filter,
+                        top_k=20,
                     )
-                for path_results in result_lists:
-                    for r in path_results:
-                        if (
-                            r.blob_name not in path_scores
-                            or r.score > path_scores[r.blob_name]
-                        ):
-                            path_scores[r.blob_name] = r.score
-                logger.info(f"Path index returned {len(path_scores)} results")
-            except Exception as exc:
-                logger.warning(
-                    "Path index search failed: {}; falling back to content-only",
-                    type(exc).__name__,
+                    for vector in query_vectors
                 )
+            )
+        except Exception as exc:
+            logger.warning(
+                "Path index search failed: {}; falling back to content-only",
+                type(exc).__name__,
+            )
             return path_scores
-
-        # 2. 内容索引检索（常规流程，但减少 top_k）
-        async def recall_content() -> tuple[list[SearchHit], Exception | None]:
-            try:
-                with stage("dense"):
-                    result_lists = await asyncio.gather(
-                        *(
-                            self._recall_with_vector(
-                                planned_query,
-                                query_vectors[planned_query],
-                                allowed_blob_names,
-                                num_queries,
-                            )
-                            for planned_query, num_queries in content_queries
-                        )
-                    )
-                return (self._fuse(list(result_lists)) if result_lists else []), None
-            except Exception as exc:
-                logger.warning("Content search failed: {}", type(exc).__name__)
-                return [], exc
-
-        async def recall_exact() -> list[SearchHit]:
-            with stage("exact"):
-                return await self._recall_exact(query, scope)
-
-        # Both stores use the same embedding space, so the shared vectors above
-        # feed independent path/content searches concurrently.
-        path_scores, (content_hits, content_error), exact_hits = await asyncio.gather(
-            recall_paths(),
-            recall_content(),
-            recall_exact(),
-        )
-
-        # 3. 融合：路径分数作为文件级加权，排序仍在 chunk 粒度上进行
-        with stage("fuse"):
-            content_hits = self._merge_exact_hits(query, exact_hits, content_hits)
-            if not path_scores:
-                # 路径索引失败，回退到纯内容检索
-                logger.info("No path results, using content-only")
-                hits = content_hits
-            else:
-                hits = await self._merge_path_and_content(path_scores, content_hits)
-            if not hits and content_error is not None:
-                raise content_error
-
-        # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）；之后与
-        # 普通分支进入同一重排/选择状态机，避免两条路径的候选语义漂移。
-        return await self._rank_and_select(
-            query,
-            hits,
-            intent=intent,
-            selection_mode=selection_mode,
-            has_exact_hits=bool(exact_hits),
-            has_path_hits=bool(path_scores),
-            priority_factor=path_query_priority_factor,
-            audit=audit,
-        )
+        for path_results in result_lists:
+            for result in path_results:
+                if result.score > path_scores.get(result.blob_name, float("-inf")):
+                    path_scores[result.blob_name] = result.score
+        logger.info("Path index returned {} results", len(path_scores))
+        return path_scores
 
     async def _merge_path_and_content(
         self,
@@ -695,8 +549,11 @@ class RetrievalPipeline:
                 )
 
         logger.info(
-            f"Merged {len(content_hits)} content hits with {len(path_scores)} path hits "
-            f"(boosted={len(covered)}, backfilled={len(missing)})"
+            "Merged {} content hits with {} path hits (boosted={}, backfilled={})",
+            len(content_hits),
+            len(path_scores),
+            len(covered),
+            len(missing),
         )
         merged.sort(key=lambda hit: hit.score, reverse=True)
         return merged

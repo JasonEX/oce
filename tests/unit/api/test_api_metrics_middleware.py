@@ -1,4 +1,5 @@
 """ApiCallMetricsMiddleware 单测：记账 endpoint/method/status/latency，豁免 /health，旁路容错。"""
+
 from __future__ import annotations
 
 import httpx

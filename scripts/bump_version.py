@@ -87,11 +87,17 @@ def _replace_in_file(path: Path, pattern: re.Pattern, new: str) -> None:
 
 def update_pyproject(version: str) -> None:
     """替换 [project] 段内的 version 行（行首锚定，避免误伤 minversion 等字段）。"""
-    _replace_in_file(PYPROJECT, re.compile(r'^version\s*=\s*"[^"]*"'), f'version = "{version}"')
+    _replace_in_file(
+        PYPROJECT, re.compile(r'^version\s*=\s*"[^"]*"'), f'version = "{version}"'
+    )
 
 
 def update_init(version: str) -> None:
-    _replace_in_file(INIT_FILE, re.compile(r'^__version__\s*=\s*"[^"]*"'), f'__version__ = "{version}"')
+    _replace_in_file(
+        INIT_FILE,
+        re.compile(r'^__version__\s*=\s*"[^"]*"'),
+        f'__version__ = "{version}"',
+    )
 
 
 def verify_sync() -> None:
@@ -100,16 +106,28 @@ def verify_sync() -> None:
     m = re.search(r'__version__\s*=\s*"([^"]+)"', init_text)
     init_version = m.group(1) if m else None
     if init_version != read_current_version():
-        raise SystemExit(f"ERROR: 版本号不同步 pyproject={read_current_version()} __init__={init_version!r}")
+        raise SystemExit(
+            f"ERROR: 版本号不同步 pyproject={read_current_version()} __init__={init_version!r}"
+        )
 
 
 def git_commit(version: str) -> None:
-    subprocess.run(["git", "add", "pyproject.toml", "src/oce/__init__.py"], cwd=REPO_ROOT, check=True)
-    subprocess.run(["git", "commit", "-m", f"chore(release): v{version}"], cwd=REPO_ROOT, check=True)
+    subprocess.run(
+        ["git", "add", "pyproject.toml", "src/oce/__init__.py"],
+        cwd=REPO_ROOT,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", f"chore(release): v{version}"],
+        cwd=REPO_ROOT,
+        check=True,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="更新版本号（pyproject.toml + src/oce/__init__.py）")
+    parser = argparse.ArgumentParser(
+        description="更新版本号（pyproject.toml + src/oce/__init__.py）"
+    )
     parser.add_argument("version_or_part", help="major|minor|patch 或具体版本号")
     parser.add_argument("--commit", action="store_true", help="更新后自动 git commit")
     parser.add_argument("--dry-run", action="store_true", help="只打印将执行的修改")

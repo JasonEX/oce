@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from loguru import logger
 
 from oce.application.messages import Command
-from oce.application.uow import UnitOfWorkFactory
+from oce.application.queue import Queue
+from oce.application.uow import UnitOfWork, UnitOfWorkFactory
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import Chunker
 from oce.domain.services.embedder import Embedder
@@ -15,100 +17,68 @@ from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.search import VectorIndex
 
+# 每个用例在自己的 UoW 内构造 pipeline，仓储绑定当前事务，协程间不共享可变状态。
+PipelineFactory = Callable[[UnitOfWork], IndexingPipeline]
+
+
+def build_pipeline_factory(
+    *,
+    chunker: Chunker,
+    embedder: Embedder,
+    vector_index: VectorIndex,
+    path_store: PathSearchStore | None = None,
+    embedding_enabled: bool = True,
+) -> PipelineFactory:
+    def build(uow: UnitOfWork) -> IndexingPipeline:
+        return IndexingPipeline(
+            chunker=chunker,
+            embedder=embedder,
+            vector_index=vector_index,
+            blob_repo=uow.blobs,
+            chunk_repo=uow.chunks,
+            symbol_projection=uow.symbols,
+            path_store=path_store,
+            embedding_enabled=embedding_enabled,
+        )
+
+    return build
+
 
 @dataclass(frozen=True)
-class IngestBlobCommand(Command):
+class BlobIngest:
+    """One uploaded file inside an ``IngestBlobsCommand``."""
+
     blob_name: str
     path: str
     content: str
 
 
 @dataclass(frozen=True)
-class IngestBlobResult:
-    blob_name: str
-    chunk_count: int
-
-
-class IngestBlobCommandHandler:
-    def __init__(
-        self,
-        uow_factory: UnitOfWorkFactory,
-        chunker: Chunker,
-        embedder: Embedder,
-        vector_index: VectorIndex,
-        queue=None,  # 可选：启用异步时传入 RedisQueue
-    ) -> None:
-        self._uow_factory = uow_factory
-        self._chunker = chunker
-        self._embedder = embedder
-        self._vector_index = vector_index
-        self._queue = queue
-
-    async def handle(self, command: IngestBlobCommand) -> IngestBlobResult:
-        should_enqueue = False
-        async with self._uow_factory() as uow:
-            pipeline = IndexingPipeline(
-                chunker=self._chunker,
-                embedder=self._embedder,
-                vector_index=self._vector_index,
-                blob_repo=uow.blobs,
-                chunk_repo=uow.chunks,
-                symbol_projection=uow.symbols,
-            )
-            count = await pipeline.ingest(command.blob_name, command.path, command.content)
-            stored = await uow.blobs.get(command.blob_name)
-            should_enqueue = stored is not None and stored.status == BlobStatus.PENDING
-            await uow.commit()
-        if self._queue is not None and should_enqueue:
-            await self._queue.enqueue(command.blob_name)
-        return IngestBlobResult(command.blob_name, count)
-
-
-@dataclass(frozen=True)
 class IngestBlobsCommand(Command):
-    blobs: tuple[IngestBlobCommand, ...]
-
-
-@dataclass(frozen=True)
-class IngestBlobsResult:
-    chunk_count: int
+    blobs: tuple[BlobIngest, ...]
 
 
 class IngestBlobsCommandHandler:
+    """Write metadata and staging for a batch in one transaction, then enqueue."""
+
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
-        chunker: Chunker,
-        embedder: Embedder,
-        vector_index: VectorIndex,
-        queue=None,  # 可选：启用异步时传入 RedisQueue
+        pipeline_factory: PipelineFactory,
+        queue: Queue | None = None,
     ) -> None:
         self._uow_factory = uow_factory
-        self._chunker = chunker
-        self._embedder = embedder
-        self._vector_index = vector_index
+        self._pipeline_factory = pipeline_factory
         self._queue = queue
 
-    async def handle(self, command: IngestBlobsCommand) -> IngestBlobsResult:
+    async def handle(self, command: IngestBlobsCommand) -> None:
         if not command.blobs:
-            return IngestBlobsResult(0)
+            return
         pending_names: list[str] = []
         async with self._uow_factory() as uow:
-            pipeline = IndexingPipeline(
-                chunker=self._chunker,
-                embedder=self._embedder,
-                vector_index=self._vector_index,
-                blob_repo=uow.blobs,
-                chunk_repo=uow.chunks,
-                symbol_projection=uow.symbols,
-            )
-            chunk_count = 0
+            pipeline = self._pipeline_factory(uow)
             for blob in command.blobs:
-                chunk_count += await pipeline.ingest(
-                    blob.blob_name,
-                    blob.path,
-                    blob.content,
-                )
+                await pipeline.ingest(blob.blob_name, blob.path, blob.content)
                 stored = await uow.blobs.get(blob.blob_name)
                 if stored is not None and stored.status == BlobStatus.PENDING:
                     pending_names.append(blob.blob_name)
@@ -116,7 +86,6 @@ class IngestBlobsCommandHandler:
         if self._queue is not None:
             for blob_name in pending_names:
                 await self._queue.enqueue(blob_name)
-        return IngestBlobsResult(chunk_count)
 
 
 @dataclass(frozen=True)
@@ -133,23 +102,15 @@ class EmbedPendingCommandHandler:
     def __init__(
         self,
         uow_factory: UnitOfWorkFactory,
-        chunker: Chunker,
-        embedder: Embedder,
-        vector_index: VectorIndex,
-        path_store: PathSearchStore | None = None,
-        blob_batch_size: int = 32,
+        pipeline_factory: PipelineFactory,
         *,
-        embedding_enabled: bool,
+        blob_batch_size: int = 32,
     ) -> None:
         if blob_batch_size < 1:
             raise ValueError("blob_batch_size must be positive")
         self._uow_factory = uow_factory
-        self._chunker = chunker
-        self._embedder = embedder
-        self._vector_index = vector_index
-        self._path_store = path_store
+        self._pipeline_factory = pipeline_factory
         self._blob_batch_size = blob_batch_size
-        self._embedding_enabled = embedding_enabled
 
     async def handle(self, command: EmbedPendingCommand) -> EmbedPendingResult:
         names = command.blob_names
@@ -157,7 +118,7 @@ class EmbedPendingCommandHandler:
             groups: list[tuple[str, ...] | None] = [None]
         else:
             groups = [
-                names[offset:offset + self._blob_batch_size]
+                names[offset : offset + self._blob_batch_size]
                 for offset in range(0, len(names), self._blob_batch_size)
             ]
 
@@ -166,22 +127,11 @@ class EmbedPendingCommandHandler:
             if group == ():
                 continue
             async with self._uow_factory() as uow:
-                pipeline = IndexingPipeline(
-                    chunker=self._chunker,
-                    embedder=self._embedder,
-                    vector_index=self._vector_index,
-                    blob_repo=uow.blobs,
-                    chunk_repo=uow.chunks,
-                    symbol_projection=uow.symbols,
-                    path_store=self._path_store,
-                    embedding_enabled=self._embedding_enabled,
-                )
+                pipeline = self._pipeline_factory(uow)
+                # 失败时 pipeline 已把 blob 置 error，提交后再抛出，错误状态才可见。
                 try:
                     embedded += await pipeline.embed_pending(group)
-                except Exception:
-                    await uow.commit()
-                    raise
-                else:
+                finally:
                     await uow.commit()
         return EmbedPendingResult(embedded)
 
@@ -214,4 +164,8 @@ class DeleteBlobsCommandHandler:
                 await self._path_store.delete_by_blob_names(list(command.blob_names))
             except Exception as exc:
                 # 路径索引删除失败不阻塞删除主流程，仅记日志
-                logger.warning("path index delete failed for {} blobs: {}", len(command.blob_names), exc)
+                logger.warning(
+                    "path index delete failed for {} blobs: {}",
+                    len(command.blob_names),
+                    exc,
+                )

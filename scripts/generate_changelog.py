@@ -60,11 +60,19 @@ def _stdout() -> None:
 def git_log(since: str | None, to: str) -> list[tuple[str, str, str]]:
     """返回 (hash, subject, body) 列表，新提交在前。"""
     fmt = "%H%x1f%s%x1f%b%x1e"
-    args = ["git", "log", "--no-merges", f"--format={fmt}", to] if since is None else \
-        ["git", "log", "--no-merges", f"--format={fmt}", f"{since}..{to}"]
+    args = (
+        ["git", "log", "--no-merges", f"--format={fmt}", to]
+        if since is None
+        else ["git", "log", "--no-merges", f"--format={fmt}", f"{since}..{to}"]
+    )
     out = subprocess.run(
-        args, cwd=REPO_ROOT, check=True, capture_output=True, text=True,
-        encoding="utf-8", errors="replace",
+        args,
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     ).stdout
     commits: list[tuple[str, str, str]] = []
     for rec in out.split("\x1e"):
@@ -80,16 +88,25 @@ def git_log(since: str | None, to: str) -> list[tuple[str, str, str]]:
 
 def latest_tag() -> str | None:
     out = subprocess.run(
-        ["git", "describe", "--tags", "--abbrev=0"], cwd=REPO_ROOT,
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        ["git", "describe", "--tags", "--abbrev=0"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
     )
     return out.stdout.strip() if out.returncode == 0 else None
 
 
 def group_commits(commits: list[tuple[str, str, str]]) -> dict[str, list[str]]:
     groups: dict[str, list[str]] = {
-        "Added": [], "Fixed": [], "Changed": [], "Deprecated": [],
-        "Removed": [], "Security": [], "Breaking Changes": [],
+        "Added": [],
+        "Fixed": [],
+        "Changed": [],
+        "Deprecated": [],
+        "Removed": [],
+        "Security": [],
+        "Breaking Changes": [],
     }
     for _, subject, body in commits:
         m = _HEADER_RE.match(subject)
@@ -122,7 +139,9 @@ def render(title: str, groups: dict[str, list[str]]) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_section(version: str | None, since: str | None = None, to: str = "HEAD") -> str:
+def build_section(
+    version: str | None, since: str | None = None, to: str = "HEAD"
+) -> str:
     """生成完整版本段；version=None 表示 Unreleased。"""
     if since is None:
         since = latest_tag()
@@ -147,10 +166,14 @@ def prepend(section: str) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="从 git 提交生成 CHANGELOG 段")
-    parser.add_argument("--version", help="生成指定版本段（例如 0.2.0），缺省为 Unreleased")
+    parser.add_argument(
+        "--version", help="生成指定版本段（例如 0.2.0），缺省为 Unreleased"
+    )
     parser.add_argument("--since", help="起始 ref（tag/commit），缺省为最近 tag")
     parser.add_argument("--to", default="HEAD", help="结束 ref，默认 HEAD")
-    parser.add_argument("--prepend", action="store_true", help="写入并插入 CHANGELOG.md 顶部")
+    parser.add_argument(
+        "--prepend", action="store_true", help="写入并插入 CHANGELOG.md 顶部"
+    )
     args = parser.parse_args(argv)
 
     section = build_section(args.version, args.since, args.to)

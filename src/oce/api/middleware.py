@@ -6,6 +6,7 @@
 监控是旁路：采集失败只记日志、绝不影响请求本身；``sink_provider`` 返回 None 时
 （如应用尚未完成装配）直接跳过，避免误触发容器构建。
 """
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable

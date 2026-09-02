@@ -2,32 +2,28 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Sequence
 
-from sqlalchemy import delete, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import ChunkRef
+from oce.domain.repositories import BlobRepository
+from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
+    BlobStagingModel,
     ChainMemberModel,
     ChunkModel,
 )
-from oce.domain.repositories import BlobRepository
 
 
 class SqlBlobRepository(BlobRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    def _insert(self):
-        bind = self.session.get_bind()
-        return sqlite_insert if bind.dialect.name == "sqlite" else pg_insert
 
     async def get(self, blob_name: str) -> Blob | None:
         row = (
@@ -95,7 +91,7 @@ class SqlBlobRepository(BlobRepository):
             }
             for blob in blobs
         ]
-        stmt = self._insert()(BlobModel).values(values)
+        stmt = upsert_insert(self.session)(BlobModel).values(values)
         stmt = stmt.on_conflict_do_update(
             index_elements=["blob_name"],
             set_={
@@ -170,55 +166,28 @@ class SqlBlobRepository(BlobRepository):
         )
         return list(rows.scalars())
 
-    async def touch_last_seen(self, blob_names: Sequence[str]) -> None:
-        if blob_names:
-            await self.session.execute(
-                update(BlobModel)
-                .where(BlobModel.blob_name.in_(blob_names))
-                .values(last_seen=datetime.now(timezone.utc))
-            )
-
     # ── blob_staging 操作 ────────────────────────────────────────────────
 
     async def get_staging(self, blob_name: str) -> str | None:
-        """读取 staging 原文，不存在返回 None"""
-        from oce.infrastructure.persistence.models import BlobStagingModel
-
+        """读取 staging 原文；空文件存的是空串，只有缺行才返回 None。"""
         result = await self.session.execute(
             select(BlobStagingModel.content).where(
                 BlobStagingModel.blob_name == blob_name
             )
         )
-        row = result.scalar_one_or_none()
-        # 空文件保存的是空串，不能把空串当成“不存在”（否则空文件会被误判为 staging 丢失）
-        return row if row is not None else None
+        return result.scalar_one_or_none()
 
     async def save_staging(self, blob_name: str, content: str) -> None:
         """保存 staging 原文，已存在则跳过（UPSERT 幂等）"""
-        from oce.infrastructure.persistence.models import BlobStagingModel
-        from sqlalchemy.dialects.postgresql import insert as pg_insert
-        from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-
-        # 根据 dialect 选择 insert 语句
-        if self.session.bind.dialect.name == "postgresql":
-            stmt = (
-                pg_insert(BlobStagingModel)
-                .values(blob_name=blob_name, content=content)
-                .on_conflict_do_nothing(index_elements=["blob_name"])
-            )
-        else:  # SQLite
-            stmt = (
-                sqlite_insert(BlobStagingModel)
-                .values(blob_name=blob_name, content=content)
-                .on_conflict_do_nothing()
-            )
-
+        stmt = (
+            upsert_insert(self.session)(BlobStagingModel)
+            .values(blob_name=blob_name, content=content)
+            .on_conflict_do_nothing(index_elements=["blob_name"])
+        )
         await self.session.execute(stmt)
 
     async def delete_staging(self, blob_name: str) -> None:
         """删除 staging 原文（worker 消费完后调用）"""
-        from oce.infrastructure.persistence.models import BlobStagingModel
-
         await self.session.execute(
             delete(BlobStagingModel).where(BlobStagingModel.blob_name == blob_name)
         )
@@ -260,7 +229,7 @@ class SqlBlobRepository(BlobRepository):
             }
             for index, chunk in enumerate(chunks)
         ]
-        stmt = self._insert()(BlobChunkModel).values(values)
+        stmt = upsert_insert(self.session)(BlobChunkModel).values(values)
         stmt = stmt.on_conflict_do_nothing(
             index_elements=["blob_name", "content_hash", "start_line", "end_line"]
         )
@@ -269,7 +238,9 @@ class SqlBlobRepository(BlobRepository):
     async def list_pending_names(self) -> list[str]:
         """全部 pending blob 名。队列对账要全集，且只需要标识不需要聚合。"""
         result = await self.session.execute(
-            select(BlobModel.blob_name).where(BlobModel.status == "pending")
+            select(BlobModel.blob_name).where(
+                BlobModel.status == BlobStatus.PENDING.value
+            )
         )
         return list(result.scalars())
 
@@ -279,15 +250,12 @@ class SqlBlobRepository(BlobRepository):
         limit: int = 100,
     ) -> list[str]:
         """查找有 staging 但长时间未处理的 pending blob(用于重新入队或清理)"""
-        from oce.infrastructure.persistence.models import BlobStagingModel
-        from datetime import datetime, timedelta, timezone
-
         cutoff = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         result = await self.session.execute(
             select(BlobModel.blob_name)
             .join(BlobStagingModel, BlobStagingModel.blob_name == BlobModel.blob_name)
             .where(
-                BlobModel.status == "pending",
+                BlobModel.status == BlobStatus.PENDING.value,
                 BlobStagingModel.created_at < cutoff,
             )
             .limit(limit)

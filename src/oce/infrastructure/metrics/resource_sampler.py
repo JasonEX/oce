@@ -3,15 +3,16 @@
 psutil 惰性导入：缺失时优雅降级（记一次日志、不采样），绝不拖垮启动。采样与写库都
 走旁路，异常只记日志。collector 为 None（psutil 缺失或监控关闭）时 start() 直接跳过。
 """
+
 from __future__ import annotations
 
-import asyncio
 import os
 import shutil
 from collections.abc import Callable
 
 from loguru import logger
 
+from oce.infrastructure.metrics.periodic import PeriodicTask
 from oce.shared.metrics import MetricsSink, ResourceSampleRecord
 
 ResourceCollector = Callable[[], ResourceSampleRecord]
@@ -58,7 +59,7 @@ def build_psutil_collector(data_dir: str | None) -> ResourceCollector | None:
     return _collect
 
 
-class ResourceSampler:
+class ResourceSampler(PeriodicTask):
     """后台周期采样。个人 / 服务模式都跑；collector 为 None 时整体禁用。"""
 
     def __init__(
@@ -68,39 +69,16 @@ class ResourceSampler:
         interval_seconds: float,
         collector: ResourceCollector | None,
     ) -> None:
+        super().__init__(interval_seconds=interval_seconds, name="resource sample")
         self._sink = sink
-        self._interval = interval_seconds
         self._collector = collector
-        self._task: asyncio.Task | None = None
-        self._running = False
 
     async def start(self) -> None:
-        if self._running or self._collector is None:
+        if self._collector is None:
             return
-        self._running = True
-        self._task = asyncio.create_task(self._loop())
+        await super().start()
 
-    async def stop(self) -> None:
-        self._running = False
-        if self._task is not None:
-            self._task.cancel()
-            try:
-                await self._task
-            except (asyncio.CancelledError, Exception):
-                pass
-            self._task = None
-
-    async def _loop(self) -> None:
-        while self._running:
-            try:
-                await asyncio.sleep(self._interval)
-                self._tick()
-            except asyncio.CancelledError:
-                break
-            except Exception as exc:
-                logger.warning("resource sample loop error: {}", exc)
-
-    def _tick(self) -> None:
+    async def _tick(self) -> None:
         if self._collector is None:
             return
         try:

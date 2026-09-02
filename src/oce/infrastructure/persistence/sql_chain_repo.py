@@ -3,22 +3,20 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
-from typing import Sequence
 
 from sqlalchemy import delete, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.chain.chain import Chain
+from oce.domain.repositories import ChainRepository
+from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.models import (
     BlobModel,
     ChainMemberModel,
     ChainModel,
 )
-from oce.domain.repositories import ChainRepository
-
 
 _MEMBER_WRITE_BATCH_SIZE = 1_000
 
@@ -26,10 +24,6 @@ _MEMBER_WRITE_BATCH_SIZE = 1_000
 class SqlChainRepository(ChainRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    def _insert(self):
-        bind = self.session.get_bind()
-        return sqlite_insert if bind.dialect.name == "sqlite" else pg_insert
 
     async def get(self, chain_id: str) -> Chain | None:
         row = (
@@ -61,7 +55,7 @@ class SqlChainRepository(ChainRepository):
         unique_members = sorted(set(members))
         now = datetime.now(timezone.utc)
         await self.session.execute(
-            self._insert()(ChainModel).values(
+            upsert_insert(self.session)(ChainModel).values(
                 chain_id=chain_id,
                 version=1,
                 total_blobs=len(unique_members),
@@ -139,7 +133,7 @@ class SqlChainRepository(ChainRepository):
                 {"chain_id": chain_id, "blob_name": name}
                 for name in members[offset : offset + _MEMBER_WRITE_BATCH_SIZE]
             ]
-            stmt = self._insert()(ChainMemberModel).values(values)
+            stmt = upsert_insert(self.session)(ChainMemberModel).values(values)
             await self.session.execute(
                 stmt.on_conflict_do_nothing(index_elements=["chain_id", "blob_name"])
             )

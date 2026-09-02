@@ -1,8 +1,8 @@
-"""ACE 兼容 retrieval 路由。"""
+"""ACE 兼容 retrieval 路由。application 异常由 api/errors.py 统一映射。"""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from oce.api.schemas import (
     BatchUploadRequest,
@@ -19,21 +19,12 @@ from oce.api.schemas import (
 from oce.application.container import get_container
 from oce.application.service import BlobUpload, RetrievalApplication
 from oce.auth import verify_api_key
-from oce.shared.errors import (
-    InvalidCheckpointTokenError,
-    NeedsResetError,
-    ScopeRequiredError,
-    ServiceNotReadyError,
-)
 
 router = APIRouter(tags=["Retrieval"], dependencies=[Depends(verify_api_key)])
 
+
 def get_application() -> RetrievalApplication:
     return get_container().application
-
-
-def _service_unavailable(exc: ServiceNotReadyError) -> HTTPException:
-    return HTTPException(status_code=503, detail=str(exc), headers={"Retry-After": "0"})
 
 
 @router.post("/find-missing", response_model=FindMissingResponse)
@@ -53,35 +44,11 @@ async def batch_upload(
     request: BatchUploadRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> BatchUploadResponse:
-    try:
-        result = await application.batch_upload(
-            [BlobUpload(blob.path, blob.content) for blob in request.blobs],
-            checkpoint_id=request.checkpoint_id or None,
-        )
-    except ServiceNotReadyError as exc:
-        raise _service_unavailable(exc) from exc
-    except InvalidCheckpointTokenError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except NeedsResetError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    result = await application.batch_upload(
+        [BlobUpload(blob.path, blob.content) for blob in request.blobs],
+        checkpoint_id=request.checkpoint_id or None,
+    )
     return BatchUploadResponse(blob_names=list(result.blob_names))
-
-
-async def _retrieve(application: RetrievalApplication, request: CodebaseRetrievalRequest):
-    payload = request.blobs
-    try:
-        return await application.retrieve(
-            request.information_request,
-            checkpoint_id=payload.checkpoint_id or None,
-            added_blobs=payload.added_blobs,
-            deleted_blobs=payload.deleted_blobs,
-        )
-    except ServiceNotReadyError as exc:
-        raise _service_unavailable(exc) from exc
-    except (ScopeRequiredError, InvalidCheckpointTokenError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except NeedsResetError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @router.post("/agents/codebase-retrieval", response_model=CodebaseRetrievalResponse)
@@ -89,7 +56,13 @@ async def codebase_retrieval(
     request: CodebaseRetrievalRequest,
     application: RetrievalApplication = Depends(get_application),
 ) -> CodebaseRetrievalResponse:
-    result = await _retrieve(application, request)
+    payload = request.blobs
+    result = await application.retrieve(
+        request.information_request,
+        checkpoint_id=payload.checkpoint_id or None,
+        added_blobs=payload.added_blobs,
+        deleted_blobs=payload.deleted_blobs,
+    )
     return CodebaseRetrievalResponse(
         formatted_retrieval=result.formatted_retrieval,
         codebase_retrieval_elapsed_ms=result.elapsed_ms,
@@ -102,16 +75,11 @@ async def checkpoint_blobs(
     application: RetrievalApplication = Depends(get_application),
 ) -> CheckpointBlobsResponse:
     payload = request.blobs
-    try:
-        result = await application.checkpoint(
-            checkpoint_id=payload.checkpoint_id or None,
-            added_blobs=payload.added_blobs,
-            deleted_blobs=payload.deleted_blobs,
-        )
-    except InvalidCheckpointTokenError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except NeedsResetError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    result = await application.checkpoint(
+        checkpoint_id=payload.checkpoint_id or None,
+        added_blobs=payload.added_blobs,
+        deleted_blobs=payload.deleted_blobs,
+    )
     return CheckpointBlobsResponse(new_checkpoint_id=result.new_checkpoint_id)
 
 

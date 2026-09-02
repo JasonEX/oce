@@ -16,7 +16,6 @@ from oce.infrastructure.astchunk.cast_chunker import CastChunker
 def make_chunker(min_chunk_chars: int = 300) -> CastChunker:
     return CastChunker(
         max_chunk_size=1_500,
-        chunk_overlap=0,
         fallback=RecursiveChunker(),
         min_chunk_chars=min_chunk_chars,
     )
@@ -30,56 +29,50 @@ class TestMergeSmall:
     def test_range_sharing_a_start_line_is_absorbed(self):
         """astchunk 对同一构造给出的前缀 window 不应单独成块。"""
         lines = lines_of(40)
-        ranges = [(1, 1, "ast"), (1, 20, "ast"), (21, 40, "ast")]
+        ranges = [(1, 1), (1, 20), (21, 40)]
         merged = make_chunker()._merge_small(ranges, lines)
-        assert (1, 1, "ast") not in merged
-        assert merged == [(1, 20, "ast"), (21, 40, "ast")]
+        assert (1, 1) not in merged
+        assert merged == [(1, 20), (21, 40)]
 
     def test_fully_contained_range_is_dropped(self):
         lines = lines_of(40)
-        ranges = [(1, 30, "ast"), (5, 12, "ast"), (31, 40, "ast")]
+        ranges = [(1, 30), (5, 12), (31, 40)]
         merged = make_chunker()._merge_small(ranges, lines)
-        assert merged == [(1, 30, "ast"), (31, 40, "ast")]
+        assert merged == [(1, 30), (31, 40)]
 
     def test_trailing_fragment_attaches_to_previous_range(self):
         """孤立的收尾括号并入前一块，而不是自成一块。"""
         lines = lines_of(41)
-        ranges = [(1, 40, "ast"), (41, 41, "ast")]
+        ranges = [(1, 40), (41, 41)]
         merged = make_chunker()._merge_small(ranges, lines)
-        assert merged == [(1, 41, "ast")]
+        assert merged == [(1, 41)]
 
     def test_leading_fragment_absorbs_the_next_range(self):
         """首块过小时向后吞并，保证第一块也带够上下文。"""
         lines = lines_of(40)
-        ranges = [(1, 2, "ast"), (3, 30, "ast"), (31, 40, "ast")]
+        ranges = [(1, 2), (3, 30), (31, 40)]
         merged = make_chunker()._merge_small(ranges, lines)
-        assert merged[0] == (1, 30, "ast")
+        assert merged[0] == (1, 30)
 
     def test_merging_preserves_line_coverage(self):
         lines = lines_of(60)
         ranges = [
-            (1, 1, "ast"),
-            (2, 3, "ast"),
-            (4, 25, "ast"),
-            (26, 26, "ast"),
-            (27, 60, "ast"),
+            (1, 1),
+            (2, 3),
+            (4, 25),
+            (26, 26),
+            (27, 60),
         ]
         merged = make_chunker()._merge_small(ranges, lines)
         covered: set[int] = set()
-        for start, end, _ in merged:
+        for start, end in merged:
             covered.update(range(start, end + 1))
         assert covered == set(range(1, 61))
 
     def test_zero_floor_disables_merging(self):
         lines = lines_of(40)
-        ranges = [(1, 1, "ast"), (1, 20, "ast")]
+        ranges = [(1, 1), (1, 20)]
         assert make_chunker(min_chunk_chars=0)._merge_small(ranges, lines) == ranges
-
-    def test_chunk_type_of_the_kept_range_wins(self):
-        lines = lines_of(40)
-        ranges = [(1, 1, "class_declaration"), (1, 20, "function_declaration")]
-        merged = make_chunker()._merge_small(ranges, lines)
-        assert merged == [(1, 20, "function_declaration")]
 
 
 class TestMergeThroughPublicApi:
@@ -113,12 +106,13 @@ class TestMergeThroughPublicApi:
             assert chunk.content == expected
 
     def test_merged_chunks_stay_within_the_char_budget(self):
-        content = "function run() {\n" + "\n".join(
-            f"  const value{index} = {'q' * 90};" for index in range(200)
-        ) + "\n}\n"
+        content = (
+            "function run() {\n"
+            + "\n".join(f"  const value{index} = {'q' * 90};" for index in range(200))
+            + "\n}\n"
+        )
         chunker = CastChunker(
             max_chunk_size=100_000,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
             max_chunk_chars=4_000,
             min_chunk_chars=300,
@@ -148,7 +142,6 @@ class TestIntactDeclarations:
         )
         chunker = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         )
         chunks = chunker.chunk(content, "src/suite.test.ts")
@@ -165,13 +158,11 @@ class TestIntactDeclarations:
         推导出的那张表里，超窗后被静默拆开。
         """
         members = "\n".join(
-            f'    fun member{index}(): String = "value{index}"'
-            for index in range(40)
+            f'    fun member{index}(): String = "value{index}"' for index in range(40)
         )
         content = f"class Repository {{\n{members}\n}}\n"
         chunker = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         )
         chunks = chunker.chunk(content, "src/Repository.kt")
@@ -188,12 +179,10 @@ class TestIntactDeclarations:
         )
         roomy = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         ).chunk(content, "src/suite.test.ts")
         tight = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
             max_chunk_chars=800,
         ).chunk(content, "src/suite.test.ts")
@@ -208,7 +197,6 @@ class TestIntactDeclarations:
         )
         chunker = CastChunker(
             max_chunk_size=300,
-            chunk_overlap=0,
             fallback=RecursiveChunker(),
         )
         chunks = chunker.chunk(content, "src/giant.test.ts")

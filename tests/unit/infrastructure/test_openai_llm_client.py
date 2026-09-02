@@ -3,6 +3,7 @@
 mock httpx，验证 chat 成功后按响应真实 usage 旁路上报；缺 usage 字段不臆造、
 无回调时零开销。LLM 无 DB 凭证，credential_id 恒为 0。
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -27,7 +28,7 @@ class _FakeAsyncClient:
     def __init__(self, payload: dict, **_: object) -> None:
         self._payload = payload
 
-    async def __aenter__(self) -> "_FakeAsyncClient":
+    async def __aenter__(self) -> _FakeAsyncClient:
         return self
 
     async def __aexit__(self, *_: object) -> bool:
@@ -50,10 +51,13 @@ async def test_chat_reports_usage_on_success(monkeypatch):
     async def _on_usage(cid, kind, model, prompt, completion):
         captured.append((cid, kind, model, prompt, completion))
 
-    _patch_httpx(monkeypatch, {
-        "choices": [{"message": {"content": "hello"}}],
-        "usage": {"prompt_tokens": 12, "completion_tokens": 5},
-    })
+    _patch_httpx(
+        monkeypatch,
+        {
+            "choices": [{"message": {"content": "hello"}}],
+            "usage": {"prompt_tokens": 12, "completion_tokens": 5},
+        },
+    )
     client = OpenAICompatibleLLMClient(api_key="sk", on_usage=_on_usage)
 
     content = await client.chat([{"role": "user", "content": "hi"}], model="test-llm")
@@ -80,15 +84,18 @@ async def test_chat_without_usage_does_not_report(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_chat_without_callback_is_inert(monkeypatch):
-    _patch_httpx(monkeypatch, {
-        "choices": [{"message": {"content": "hi"}}],
-        "usage": {"prompt_tokens": 1, "completion_tokens": 1},
-    })
+    _patch_httpx(
+        monkeypatch,
+        {
+            "choices": [{"message": {"content": "hi"}}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+        },
+    )
     client = OpenAICompatibleLLMClient(api_key="sk")  # on_usage=None
 
-    assert await client.chat(
-        [{"role": "user", "content": "hi"}], model="test-llm"
-    ) == "hi"
+    assert (
+        await client.chat([{"role": "user", "content": "hi"}], model="test-llm") == "hi"
+    )
 
 
 @pytest.mark.asyncio
@@ -96,10 +103,13 @@ async def test_usage_failure_does_not_fail_successful_chat(monkeypatch):
     async def _on_usage(*_args):
         raise RuntimeError("metrics unavailable")
 
-    _patch_httpx(monkeypatch, {
-        "choices": [{"message": {"content": "answer"}}],
-        "usage": {"prompt_tokens": 12, "completion_tokens": "malformed"},
-    })
+    _patch_httpx(
+        monkeypatch,
+        {
+            "choices": [{"message": {"content": "answer"}}],
+            "usage": {"prompt_tokens": 12, "completion_tokens": "malformed"},
+        },
+    )
     client = OpenAICompatibleLLMClient(
         api_key="sk",
         on_usage=_on_usage,
@@ -129,6 +139,6 @@ async def test_proxy_does_not_disable_tls_verification(monkeypatch):
         proxy="http://proxy.test:8080",
     )
 
-    assert await client.chat([{"role": "user", "content": "hi"}]) == "hi"
+    assert await client.chat([{"role": "user", "content": "hi"}], model="m") == "hi"
     assert captured["proxy"] == "http://proxy.test:8080"
     assert "verify" not in captured

@@ -46,7 +46,9 @@ jobs:
 
       - name: Run Ruff
         if: matrix.python-version == '3.13'
-        run: uv run ruff check .
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
 
       # 关键约束：每个测试文件独立进程运行。tree-sitter 语言包 + Milvus Lite
       # 在同一进程累积会吃掉 10GB+ 内存，禁止一次性跑整个 tests/unit/infrastructure。

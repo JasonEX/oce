@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 
 from oce import __version__
 
-
 _DEFAULT_DATA_DIR = Path.home() / ".oce" / "data"
 
 # -v 次数 → loguru / uvicorn 级别；默认 WARNING 避免检索管线 info 日志刷屏
@@ -67,7 +66,7 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # EMBED_QUERY_CACHE_TTL_SECONDS=600
 
 # ==================== 可选：专用 reranker ====================
-# 专用相关性模型延迟较低；默认关闭，启用后会外发 query 和候选源码。
+# 专用相关性模型是交互式检索优先评估的增强；默认关闭，启用后会外发 query 和候选源码。
 RERANK_ENABLED=false
 # RERANK_API_KEY=your_rerank_api_key_here
 # RERANK_ENDPOINT=https://api.siliconflow.cn/v1/rerank
@@ -75,12 +74,13 @@ RERANK_ENABLED=false
 # RERANK_TOP_N=50
 
 # ==================== 可选：chat LLM 语义重排 ====================
-# 个人模式默认关闭；配置受信任的 LLM 后可按需开启。
+# 个人模式默认关闭；质量优先部署可在专用 reranker 后级联开启。
 # 开启后，检索 query 和候选源码片段会发送到该 LLM。
 LLM_RERANK_ENABLED=false
 # adaptive 仅对需要全局语义判断的查询调用；always 对所有多候选查询调用。
 # RETRIEVAL_LLM_RERANK_POLICY=adaptive
-# 50 偏覆盖；交互延迟或 TPM 受限时可降到 20。
+# 单独评估 chat 时默认窗口为 50；与专用 reranker 级联时建议先从 20 起测。
+# 模型差异很大，调整前应使用 paired benchmark 验证质量、超时和 token 成本。
 # LLM_MAX_CANDIDATES=50
 # 超时时无损回退到原候选顺序。
 # LLM_RERANK_TIMEOUT_SECONDS=15
@@ -176,7 +176,10 @@ def _version(args: argparse.Namespace) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="oce", description="OpenContextEngine CLI")
     parser.add_argument(
-        "-v", "--verbose", action="count", default=0,
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
         help="increase log verbosity: -v info, -vv debug",
     )
     parser.add_argument(
@@ -202,9 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
         "init", help="Create a personal-mode .env in the data dir"
     )
     init.add_argument("--data-dir", default=str(_DEFAULT_DATA_DIR))
-    init.add_argument(
-        "--force", action="store_true", help="Overwrite an existing .env"
-    )
+    init.add_argument("--force", action="store_true", help="Overwrite an existing .env")
     init.set_defaults(handler=_init)
 
     version = subparsers.add_parser("version", help="Print the oce version")

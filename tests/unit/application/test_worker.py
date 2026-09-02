@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from oce.application.commands.ingest import (
+    BlobIngest,
+    IngestBlobsCommand,
+    IngestBlobsCommandHandler,
+    build_pipeline_factory,
+)
 from oce.application.worker import EmbedWorker
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import RecursiveChunker
@@ -67,18 +73,15 @@ async def _ingest(
     path: str,
     content: str,
 ) -> str:
-    from oce.application.commands.ingest import (
-        IngestBlobCommand,
-        IngestBlobCommandHandler,
-    )
-
     name = blob_name(path, content)
-    await IngestBlobCommandHandler(
-        factory,
-        RecursiveChunker(),
-        FakeEmbedder(),
-        FakeSearchStore(),
-    ).handle(IngestBlobCommand(name, path, content))
+    pipelines = build_pipeline_factory(
+        chunker=RecursiveChunker(),
+        embedder=FakeEmbedder(),
+        vector_index=FakeSearchStore(),
+    )
+    await IngestBlobsCommandHandler(factory, pipelines).handle(
+        IngestBlobsCommand((BlobIngest(name, path, content),))
+    )
     return name
 
 
@@ -91,10 +94,11 @@ async def _run_failure(max_retries: int):
     worker = EmbedWorker(
         queue=queue,
         uow_factory=factory,
-        chunker=RecursiveChunker(),
-        embedder=FailingEmbedder(),
-        vector_index=FakeSearchStore(),
-        embedding_enabled=True,
+        pipeline_factory=build_pipeline_factory(
+            chunker=RecursiveChunker(),
+            embedder=FailingEmbedder(),
+            vector_index=FakeSearchStore(),
+        ),
         max_retries=max_retries,
     )
     queue.worker = worker
@@ -114,10 +118,11 @@ async def test_worker_embeds_multiple_blobs_in_one_model_batch():
     worker = EmbedWorker(
         queue=queue,
         uow_factory=factory,
-        chunker=RecursiveChunker(),
-        embedder=embedder,
-        vector_index=FakeSearchStore(),
-        embedding_enabled=True,
+        pipeline_factory=build_pipeline_factory(
+            chunker=RecursiveChunker(),
+            embedder=embedder,
+            vector_index=FakeSearchStore(),
+        ),
         blob_batch_size=16,
     )
     queue.worker = worker
@@ -142,10 +147,11 @@ async def test_worker_isolates_failed_batch_without_penalizing_healthy_blob():
     worker = EmbedWorker(
         queue=queue,
         uow_factory=factory,
-        chunker=RecursiveChunker(),
-        embedder=embedder,
-        vector_index=FakeSearchStore(),
-        embedding_enabled=True,
+        pipeline_factory=build_pipeline_factory(
+            chunker=RecursiveChunker(),
+            embedder=embedder,
+            vector_index=FakeSearchStore(),
+        ),
         blob_batch_size=16,
         max_retries=2,
     )

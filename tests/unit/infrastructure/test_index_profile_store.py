@@ -2,12 +2,12 @@
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from oce.application.index_lifecycle import build_index_profile
 from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileStore
 from oce.infrastructure.persistence.models import BlobModel
 from oce.shared.config.settings import Settings
 from oce.shared.database.session import Base
 from oce.shared.index_profile import EmbeddingIndexProfile
-from oce.application.index_lifecycle import build_index_profile
 
 
 async def _store():

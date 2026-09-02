@@ -13,6 +13,7 @@
 - chunk 原文直接取自 SearchHit.content（已随检索从存储 JOIN 出来）。
 - 加行号、按 Path + 行号区间标注，每个 hit 独立片段，保留 score 排序。
 """
+
 from __future__ import annotations
 
 from oce.domain.services.search import SearchHit

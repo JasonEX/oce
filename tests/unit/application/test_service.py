@@ -95,7 +95,7 @@ async def test_batch_upload_does_not_embed_synchronously_with_background_worker(
         async def execute(self, command):
             self.commands.append(command)
             if isinstance(command, IngestBlobsCommand):
-                return SimpleNamespace(chunk_count=0)
+                return None
             if isinstance(command, EmbedPendingCommand):
                 raise AssertionError("background mode must not embed synchronously")
             raise AssertionError(f"Unexpected command: {command!r}")
@@ -120,7 +120,7 @@ class UploadCommandBus(SpyCommandBus):
     async def execute(self, command):
         self.commands.append(command)
         if isinstance(command, IngestBlobsCommand):
-            return SimpleNamespace(chunk_count=0)
+            return None
         if isinstance(command, EmbedPendingCommand):
             return SimpleNamespace(embedded_count=0)
         if isinstance(command, CheckpointCommand):

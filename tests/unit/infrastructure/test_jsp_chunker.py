@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from oce.domain.chunk import RecursiveChunker, LanguageChunker
+from oce.domain.chunk import LanguageChunker, RecursiveChunker
 from oce.infrastructure.chunkers.jsp_chunker import JspChunker
 
 JSP_PAGE = """<%@ page contentType="text/html;charset=UTF-8" %>
@@ -72,7 +72,7 @@ def test_body_top_level_elements_get_independent_chunks():
         "jsp:main",
         "jsp:footer",
     ]
-    assert "<main id=\"users\">" not in chunks[0].content
+    assert '<main id="users">' not in chunks[0].content
     assert "<footer>" not in chunks[1].content
     for chunk in chunks:
         assert_aligned(chunk, JSP_PAGE)
@@ -120,9 +120,11 @@ def test_fragment_and_tag_file_extensions_are_supported(path):
 
 
 def test_oversized_section_respects_the_character_budget():
-    content = "<html>\n<body>\n<main>\n" + "\n".join(
-        f"  <p>Record {index}: {'x' * 100}</p>" for index in range(100)
-    ) + "\n</main>\n</body>\n</html>\n"
+    content = (
+        "<html>\n<body>\n<main>\n"
+        + "\n".join(f"  <p>Record {index}: {'x' * 100}</p>" for index in range(100))
+        + "\n</main>\n</body>\n</html>\n"
+    )
     chunks = make_chunker(max_chunk_chars=800).chunk(content, "large.jsp")
 
     assert len(chunks) > 1

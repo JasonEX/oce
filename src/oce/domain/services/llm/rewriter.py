@@ -2,6 +2,7 @@
 
 将用户查询改写为多个不同角度的查询，特别是解决中文查询 vs 英文文件名的问题。
 """
+
 from __future__ import annotations
 
 from loguru import logger
@@ -36,13 +37,13 @@ class QueryRewriter:
     def __init__(
         self,
         client: LLMClient,
-        model: str = "deepseek-v4-flash",
+        model: str | None = None,
         num_rewrites: int = 3,
     ):
         """
         Args:
             client: LLM 客户端
-            model: 模型名称
+            model: 模型名称；None 时由客户端按凭证/配置决定
             num_rewrites: 生成的改写查询数量
         """
         self.client = client
@@ -66,11 +67,8 @@ class QueryRewriter:
 
         try:
             rewritten_queries = await self._llm_rewrite(query)
-            
-            # 确保原查询在列表中
             if query not in rewritten_queries:
                 rewritten_queries.insert(0, query)
-            
             logger.info("Query rewrite generated {} queries", len(rewritten_queries))
             return rewritten_queries
 

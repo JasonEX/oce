@@ -8,9 +8,8 @@ from oce.application.messages import Command, Query
 from oce.shared.model_credentials import (
     CredentialAdminStore,
     CredentialCreate,
-    CredentialDuplicate,
+    CredentialPatch,
     CredentialRecord,
-    CredentialUpdate,
 )
 
 
@@ -27,7 +26,7 @@ class CreateCredentialCommand(Command):
 @dataclass(frozen=True)
 class UpdateCredentialCommand(Command):
     credential_id: int
-    changes: CredentialUpdate
+    changes: CredentialPatch
 
 
 @dataclass(frozen=True)
@@ -38,7 +37,7 @@ class DeleteCredentialCommand(Command):
 @dataclass(frozen=True)
 class DuplicateCredentialCommand(Command):
     credential_id: int
-    changes: CredentialDuplicate
+    changes: CredentialPatch
 
 
 class ListCredentialsQueryHandler:

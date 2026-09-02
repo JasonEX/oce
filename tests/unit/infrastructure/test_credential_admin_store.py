@@ -11,11 +11,7 @@ from oce.infrastructure.persistence.credential_admin_store import (
 )
 from oce.shared.database.session import Base
 from oce.shared.errors import CredentialConflictError
-from oce.shared.model_credentials import (
-    CredentialCreate,
-    CredentialDuplicate,
-    CredentialUpdate,
-)
+from oce.shared.model_credentials import CredentialCreate, CredentialPatch
 
 
 async def _store():
@@ -64,7 +60,7 @@ async def test_update_changes_fields_and_rehashes_key():
     engine, store = await _store()
     created = await store.create(_create())
     updated = await store.update(
-        created.id, CredentialUpdate(status="disabled", api_key="sk-new-9999")
+        created.id, CredentialPatch(status="disabled", api_key="sk-new-9999")
     )
     assert updated is not None
     assert updated.status == "disabled"
@@ -74,7 +70,7 @@ async def test_update_changes_fields_and_rehashes_key():
 
 async def test_update_missing_returns_none():
     engine, store = await _store()
-    assert await store.update(999, CredentialUpdate(status="disabled")) is None
+    assert await store.update(999, CredentialPatch(status="disabled")) is None
     await engine.dispose()
 
 
@@ -93,7 +89,7 @@ async def test_duplicate_copies_channel_config():
         _create(kind="rerank", endpoint="https://r.test", model="rr")
     )
     clone = await store.duplicate(
-        src.id, CredentialDuplicate(name="secondary", api_key="sk-clone-5678")
+        src.id, CredentialPatch(name="secondary", api_key="sk-clone-5678")
     )
     assert clone is not None
     assert clone.id != src.id
@@ -111,7 +107,7 @@ async def test_duplicate_overrides_kind_and_reuses_source_key():
     src = await store.create(_create(api_key="sk-shared-1234"))
     clone = await store.duplicate(
         src.id,
-        CredentialDuplicate(
+        CredentialPatch(
             name="as-rerank",
             kind="rerank",
             model="reranker-model",
@@ -131,7 +127,7 @@ async def test_duplicate_pure_copy_conflicts():
     engine, store = await _store()
     src = await store.create(_create())
     with pytest.raises(CredentialConflictError):
-        await store.duplicate(src.id, CredentialDuplicate(name="dup"))
+        await store.duplicate(src.id, CredentialPatch(name="dup"))
     await engine.dispose()
 
 
@@ -166,10 +162,7 @@ async def test_same_key_same_kind_allowed_across_models():
 
 async def test_duplicate_missing_source_returns_none():
     engine, store = await _store()
-    assert (
-        await store.duplicate(999, CredentialDuplicate(name="x", api_key="sk-x"))
-        is None
-    )
+    assert await store.duplicate(999, CredentialPatch(name="x", api_key="sk-x")) is None
     await engine.dispose()
 
 

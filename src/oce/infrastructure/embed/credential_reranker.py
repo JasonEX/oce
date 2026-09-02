@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.services.reranker import NoopReranker, Reranker
+from oce.domain.services.search import SearchHit
+from oce.infrastructure.delegate_runtime import SwappableDelegate
 from oce.infrastructure.embed.openai_reranker import OpenAIReranker, UsageCallback
-from oce.infrastructure.persistence.models import ModelCredentialModel
+from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import RerankSettings
 
 
@@ -26,7 +26,7 @@ class RerankRuntimeConfig:
     credential_id: int = 0
 
 
-class CredentialConfiguredReranker:
+class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
     def __init__(
         self,
         session_factory: Callable[[], AsyncSession],
@@ -35,69 +35,30 @@ class CredentialConfiguredReranker:
         fallback_embedding_key: str | None,
         on_usage: UsageCallback | None = None,
     ) -> None:
+        super().__init__()
         self._session_factory = session_factory
         self._fallback = fallback
         self._fallback_embedding_key = fallback_embedding_key
         self._on_usage = on_usage
-        self._delegate: Reranker | None = None
-        self._lock = asyncio.Lock()
-        self._active_calls: dict[Reranker, int] = {}
-        self._retired: set[Reranker] = set()
 
-    async def rerank(self, query: str, hits):
-        delegate = await self._acquire_delegate()
+    async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
+        delegate = await self._acquire()
         try:
             return await delegate.rerank(query, hits)
         finally:
-            await self._release_delegate(delegate)
+            await self._release(delegate)
 
-    async def _acquire_delegate(self) -> Reranker:
-        async with self._lock:
-            if self._delegate is None:
-                self._delegate = self._build_delegate(await self._resolve_config())
-            delegate = self._delegate
-            self._active_calls[delegate] = self._active_calls.get(delegate, 0) + 1
-            return delegate
-
-    async def _release_delegate(self, delegate: Reranker) -> None:
-        close_delegate = False
-        async with self._lock:
-            remaining = self._active_calls[delegate] - 1
-            if remaining:
-                self._active_calls[delegate] = remaining
-            else:
-                del self._active_calls[delegate]
-                if delegate in self._retired:
-                    self._retired.remove(delegate)
-                    close_delegate = True
-        if close_delegate:
-            await self._close_delegate(delegate)
+    async def _create_delegate(self) -> Reranker:
+        return self._build_delegate(await self._resolve_config())
 
     async def _resolve_config(self) -> RerankRuntimeConfig | None:
         if not self._fallback.enabled:
             return None
-        async with self._session_factory() as session:
-            credential = (
-                (
-                    await session.execute(
-                        select(ModelCredentialModel)
-                        .where(
-                            ModelCredentialModel.kind == "rerank",
-                            ModelCredentialModel.status == "active",
-                            ModelCredentialModel.endpoint.is_not(None),
-                            ModelCredentialModel.model.is_not(None),
-                        )
-                        .order_by(
-                            ModelCredentialModel.priority,
-                            ModelCredentialModel.id,
-                        )
-                        .limit(1)
-                    )
-                )
-                .scalars()
-                .first()
-            )
-
+        credential = await resolve_active_credential(
+            self._session_factory,
+            "rerank",
+            require_endpoint_and_model=True,
+        )
         if credential is not None:
             return RerankRuntimeConfig(
                 endpoint=credential.endpoint,
@@ -143,40 +104,14 @@ class CredentialConfiguredReranker:
             on_usage=self._on_usage,
         )
 
-    @staticmethod
-    async def _close_delegate(delegate: Reranker) -> None:
-        close = getattr(delegate, "close", None)
-        if close is not None:
-            await close()
-
     async def reload(self) -> None:
-        replacement = await self.prepare_reload()
-        await self.activate_prepared(replacement)
+        await self.activate_prepared(await self.prepare_reload())
 
     async def prepare_reload(self) -> Reranker:
         return self._build_delegate(await self._resolve_config())
 
     async def activate_prepared(self, replacement: Reranker) -> None:
-        close_previous: Reranker | None = None
-        async with self._lock:
-            previous = self._delegate
-            self._delegate = replacement
-            if previous is not None:
-                if self._active_calls.get(previous, 0):
-                    self._retired.add(previous)
-                else:
-                    close_previous = previous
-        if close_previous is not None:
-            await self._close_delegate(close_previous)
+        await self._activate(replacement)
 
     async def discard_prepared(self, replacement: Reranker) -> None:
         await self._close_delegate(replacement)
-
-    async def close(self) -> None:
-        async with self._lock:
-            delegates = set(self._retired)
-            if self._delegate is not None:
-                delegates.add(self._delegate)
-            self._delegate = None
-            self._retired.clear()
-        await asyncio.gather(*(self._close_delegate(item) for item in delegates))

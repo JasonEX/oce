@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from oce.domain.chunk import RecursiveChunker, LanguageChunkerRouter
+from oce.domain.chunk import LanguageChunkerRouter, RecursiveChunker
 
 
 class RecordingChunker:
@@ -54,9 +54,7 @@ def test_registry_is_immutable_after_validation():
     )
 
     with pytest.raises(TypeError):
-        router.language_chunkers["svelte"] = RecordingChunker(
-            frozenset({"svelte"})
-        )
+        router.language_chunkers["svelte"] = RecordingChunker(frozenset({"svelte"}))
 
 
 def test_unknown_language_uses_the_fallback():

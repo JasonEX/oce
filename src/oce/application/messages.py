@@ -9,6 +9,7 @@ CQRS 约定：
 
 from __future__ import annotations
 
+
 class Command:
     """命令标记基类（写操作）"""
 

@@ -11,37 +11,27 @@
 每个协程一个消费循环，stop() 置标志后协程在下次 dequeue 超时自然退出。
 每个批次在自己的 UoW 内构造独立 IndexingPipeline，协程间不共享可变状态。
 """
+
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
 
 from loguru import logger
 
-from oce.domain.services.indexing import IndexingPipeline
-
-if TYPE_CHECKING:
-    from oce.application.queue import Queue
-    from oce.application.uow import UnitOfWorkFactory
-    from oce.domain.chunk import Chunker
-    from oce.domain.services.embedder import Embedder
-    from oce.domain.services.path_search import PathSearchStore
-    from oce.domain.services.search import VectorIndex
+from oce.application.commands.ingest import PipelineFactory
+from oce.application.queue import Queue
+from oce.application.uow import UnitOfWorkFactory
 
 
 class EmbedWorker:
-    """异步嵌入 worker（持有 queue + uow_factory + pipeline 依赖）"""
+    """异步嵌入 worker（持有 queue + uow_factory + pipeline 工厂）"""
 
     def __init__(
         self,
         *,
         queue: Queue,
         uow_factory: UnitOfWorkFactory,
-        chunker: Chunker,
-        embedder: Embedder,
-        vector_index: VectorIndex,
-        path_store: PathSearchStore | None = None,
-        embedding_enabled: bool,
+        pipeline_factory: PipelineFactory,
         concurrency: int = 2,
         blob_batch_size: int = 16,
         max_retries: int = 3,
@@ -50,11 +40,7 @@ class EmbedWorker:
             raise ValueError("blob_batch_size must be positive")
         self._queue = queue
         self._uow_factory = uow_factory
-        self._chunker = chunker
-        self._embedder = embedder
-        self._vector_index = vector_index
-        self._path_store = path_store
-        self._embedding_enabled = embedding_enabled
+        self._pipeline_factory = pipeline_factory
         self._concurrency = max(1, concurrency)
         self._blob_batch_size = blob_batch_size
         self._max_retries = max_retries
@@ -70,10 +56,9 @@ class EmbedWorker:
         if self._running:
             return
         self._running = True
-        if hasattr(self._queue, "recover_processing"):
-            recovered = await self._queue.recover_processing()
-            if recovered:
-                logger.info("EmbedWorker: 恢复 {} 条处理中残留任务", recovered)
+        recovered = await self._queue.recover_processing()
+        if recovered:
+            logger.info("EmbedWorker: 恢复 {} 条处理中残留任务", recovered)
         self._tasks = [
             asyncio.create_task(self._loop(i)) for i in range(self._concurrency)
         ]
@@ -91,19 +76,6 @@ class EmbedWorker:
                 pass
         self._tasks = []
         logger.info("EmbedWorker 已停止")
-
-    def _build_pipeline(self, uow) -> IndexingPipeline:
-        """每条消息一个 pipeline，repo 绑定当前 UoW，避免协程间竞态"""
-        return IndexingPipeline(
-            chunker=self._chunker,
-            embedder=self._embedder,
-            vector_index=self._vector_index,
-            blob_repo=uow.blobs,
-            chunk_repo=uow.chunks,
-            symbol_projection=uow.symbols,
-            path_store=self._path_store,
-            embedding_enabled=self._embedding_enabled,
-        )
 
     async def _loop(self, worker_id: int) -> None:
         """单个消费协程：取任务 → 嵌入 → ack/fail"""
@@ -178,7 +150,7 @@ class EmbedWorker:
     async def _embed(self, blob_names: list[str]) -> int:
         # 外部向量写入是内容寻址幂等的；事务失败后的逐条回退可安全重复 upsert。
         async with self._uow_factory() as uow:
-            pipeline = self._build_pipeline(uow)
+            pipeline = self._pipeline_factory(uow)
             embedded = await pipeline.embed_pending(
                 blob_names,
                 mark_failures=False,

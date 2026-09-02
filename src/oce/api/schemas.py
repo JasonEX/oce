@@ -8,6 +8,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+def _none_to_empty_string(value: Any) -> Any:
+    return "" if value is None else value
+
+
+def _none_to_empty_list(value: Any) -> Any:
+    return [] if value is None else value
+
+
 class FindMissingRequest(BaseModel):
     mem_object_names: list[str] = Field(default_factory=list)
 
@@ -26,10 +34,9 @@ class BatchUploadRequest(BaseModel):
     blobs: list[BlobInput] = Field(default_factory=list)
     checkpoint_id: str = ""
 
-    @field_validator("checkpoint_id", mode="before")
-    @classmethod
-    def none_to_empty_string(cls, value: Any) -> Any:
-        return "" if value is None else value
+    _normalize_checkpoint = field_validator("checkpoint_id", mode="before")(
+        _none_to_empty_string
+    )
 
 
 class BatchUploadResponse(BaseModel):
@@ -47,15 +54,12 @@ class BlobsPayload(BaseModel):
     added_blobs: list[str] = Field(default_factory=list)
     deleted_blobs: list[str] = Field(default_factory=list)
 
-    @field_validator("checkpoint_id", mode="before")
-    @classmethod
-    def none_to_empty_string(cls, value: Any) -> Any:
-        return "" if value is None else value
-
-    @field_validator("added_blobs", "deleted_blobs", mode="before")
-    @classmethod
-    def none_to_empty_list(cls, value: Any) -> Any:
-        return [] if value is None else value
+    _normalize_checkpoint = field_validator("checkpoint_id", mode="before")(
+        _none_to_empty_string
+    )
+    _normalize_lists = field_validator("added_blobs", "deleted_blobs", mode="before")(
+        _none_to_empty_list
+    )
 
 
 class CodebaseRetrievalRequest(BaseModel):
@@ -213,7 +217,6 @@ class CredentialResponse(BaseModel):
     endpoint: str | None = None
     model: str | None = None
     timeout_seconds: int
-    rate_limit: int | None = None
     note: str | None = None
     dimensions: int | None = None
     max_batch_size: int | None = None
@@ -223,12 +226,7 @@ class CredentialResponse(BaseModel):
     top_n: int | None = None
     min_score: float | None = None
     tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
     api_key_last4: str
-    last_used_at: datetime | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
@@ -237,90 +235,40 @@ class CredentialListResponse(BaseModel):
     credentials: list[CredentialResponse] = Field(default_factory=list)
 
 
-class CredentialCreateRequest(BaseModel):
+class CredentialPatchRequest(BaseModel):
+    """字段覆盖：省略即不改（更新）或继承源行（复制）；api_key 提供则同步刷新 hash。
+
+    复制时省略 api_key 即复用源 key，配合覆盖 kind/model 可把某把 key 的通道复制成
+    别的用途（如复制 embed 行改成 rerank），不再撞唯一约束。
+    """
+
+    kind: CredentialKind | None = None
+    name: str | None = Field(default=None, min_length=1)
+    api_key: str | None = Field(default=None, min_length=1)
+    provider: str | None = None
+    status: Literal["active", "disabled"] | None = None
+    priority: int | None = None
+    endpoint: str | None = None
+    model: str | None = None
+    timeout_seconds: int | None = None
+    note: str | None = None
+    dimensions: int | None = None
+    max_batch_size: int | None = None
+    max_batch_chars: int | None = None
+    max_input_chars: int | None = None
+    input_overlap_chars: int | None = None
+    top_n: int | None = None
+    min_score: float | None = None
+    tpm_limit: int | None = None
+
+
+class CredentialCreateRequest(CredentialPatchRequest):
     kind: CredentialKind
     name: str = Field(min_length=1)
     api_key: str = Field(min_length=1)
-    provider: str | None = None
     status: Literal["active", "disabled"] = "active"
     priority: int = 100
-    endpoint: str | None = None
-    model: str | None = None
     timeout_seconds: int = 30
-    rate_limit: int | None = None
-    note: str | None = None
-    dimensions: int | None = None
-    max_batch_size: int | None = None
-    max_batch_chars: int | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    top_n: int | None = None
-    min_score: float | None = None
-    tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
-
-
-class CredentialUpdateRequest(BaseModel):
-    """部分更新：省略的字段不改；api_key 提供则同步刷新 hash。"""
-
-    kind: CredentialKind | None = None
-    name: str | None = None
-    api_key: str | None = None
-    provider: str | None = None
-    status: Literal["active", "disabled"] | None = None
-    priority: int | None = None
-    endpoint: str | None = None
-    model: str | None = None
-    timeout_seconds: int | None = None
-    rate_limit: int | None = None
-    note: str | None = None
-    dimensions: int | None = None
-    max_batch_size: int | None = None
-    max_batch_chars: int | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    top_n: int | None = None
-    min_score: float | None = None
-    tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
-
-
-class CredentialDuplicateRequest(BaseModel):
-    """从源凭据克隆一个新通道：所有字段可选，提供即覆盖，省略即继承源行。
-
-    省略 api_key 即复用源 key，配合覆盖 kind/model 可把某把 key 的通道复制成别的用途
-    （如复制 embed 行改成 rerank），不再撞唯一约束。
-    """
-
-    name: str | None = Field(default=None, min_length=1)
-    api_key: str | None = Field(default=None, min_length=1)
-    kind: CredentialKind | None = None
-    provider: str | None = None
-    status: Literal["active", "disabled"] | None = None
-    priority: int | None = None
-    endpoint: str | None = None
-    model: str | None = None
-    timeout_seconds: int | None = None
-    rate_limit: int | None = None
-    note: str | None = None
-    dimensions: int | None = None
-    max_batch_size: int | None = None
-    max_batch_chars: int | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    top_n: int | None = None
-    min_score: float | None = None
-    tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
 
 
 class QueueStatusResponse(BaseModel):

@@ -11,6 +11,7 @@ from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+from oce.domain.blob.blob import BlobStatus
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.infrastructure.persistence.models import (
     BlobModel,
@@ -19,7 +20,6 @@ from oce.infrastructure.persistence.models import (
     ChunkModel,
     SymbolOccurrenceModel,
 )
-
 
 _SCOPE_BATCH_SIZE = 500
 _RELATIONAL_DELTA_LIMIT = 500
@@ -154,7 +154,7 @@ class SymbolSearchStore:
             .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
             .where(
                 SymbolOccurrenceModel.identifier.in_(identifiers),
-                BlobModel.status == "ready",
+                BlobModel.status == BlobStatus.READY.value,
                 scope_predicate,
             )
             .order_by(

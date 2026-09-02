@@ -2,16 +2,15 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from loguru import logger
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob
 from oce.domain.chunk import Chunk
 from oce.domain.services.symbols import SymbolProvider
+from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.models import SymbolOccurrenceModel
 
 
@@ -21,10 +20,6 @@ class SqlSymbolProjection:
     def __init__(self, session: AsyncSession, provider: SymbolProvider) -> None:
         self._session = session
         self._provider = provider
-
-    def _insert(self):
-        bind = self._session.get_bind()
-        return sqlite_insert if bind.dialect.name == "sqlite" else pg_insert
 
     async def index(self, blob: Blob, chunks: Sequence[Chunk]) -> None:
         values = []
@@ -49,7 +44,7 @@ class SqlSymbolProjection:
 
         if not values:
             return
-        stmt = self._insert()(SymbolOccurrenceModel).values(values)
+        stmt = upsert_insert(self._session)(SymbolOccurrenceModel).values(values)
         stmt = stmt.on_conflict_do_nothing(
             index_elements=["identifier", "blob_name", "content_hash", "kind"]
         )

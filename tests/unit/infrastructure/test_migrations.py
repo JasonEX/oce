@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import oce
 import pytest
 from sqlalchemy import create_engine, inspect, text
 
+import oce
 
 _SCRIPT_LOCATION = Path(oce.__file__).resolve().parent / "alembic"
 
@@ -23,7 +23,9 @@ def _head_revision() -> str:
 
 
 @pytest.fixture
-def sqlite_url(tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> str:
+def sqlite_url(
+    tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> str:
     """临时 SQLite 文件库；让 settings 与环境变量指向它（env.py 从 settings 读 URL）。"""
     url = f"sqlite+aiosqlite:///{(tmp_path / 'oce.db').as_posix()}"
     monkeypatch.setenv("DB_URL", url)
@@ -147,9 +149,7 @@ def test_symbol_occurrences_insert_auto_id_on_sqlite(sqlite_url: str) -> None:
                     "VALUES ('parse_document', 'blob-1', 'hash-1', 'definition', 1, 5)"
                 )
             )
-            row = conn.execute(
-                text("SELECT id FROM symbol_occurrences")
-            ).fetchone()
+            row = conn.execute(text("SELECT id FROM symbol_occurrences")).fetchone()
     finally:
         engine.dispose()
 

@@ -13,8 +13,9 @@ worker 取到只能白跑；更糟的是 pending 哨兵里的残留会让同名 
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 from oce.application.messages import Command
 from oce.application.queue import Queue

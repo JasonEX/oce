@@ -2,7 +2,7 @@
 
 import pytest
 
-from oce.domain.chunk import RecursiveChunker, LanguageChunker
+from oce.domain.chunk import LanguageChunker, RecursiveChunker
 from oce.infrastructure.chunkers.vue_chunker import VueChunker
 
 SIMPLE = """<template>
@@ -81,9 +81,7 @@ class TestVueChunker:
         assert chunks[0].chunk_type == "vue:template"
 
     def test_oversized_section_is_split(self):
-        chunks = make_chunker(max_chunk_chars=1_000).chunk(
-            LARGE_TEMPLATE, "Big.vue"
-        )
+        chunks = make_chunker(max_chunk_chars=1_000).chunk(LARGE_TEMPLATE, "Big.vue")
         assert len(chunks) > 1
         assert all(len(c.content) <= 1_000 for c in chunks)
         for chunk in chunks:
@@ -128,10 +126,12 @@ class TestVueChunker:
     def test_svelte_root_markup_and_script_are_combined(self):
         chunks = make_chunker().chunk(SVELTE_COMPONENT, "App.svelte")
 
-        primary = next(chunk for chunk in chunks if chunk.chunk_type == "svelte:markup+script")
+        primary = next(
+            chunk for chunk in chunks if chunk.chunk_type == "svelte:markup+script"
+        )
         assert primary.start_line == 1
         assert primary.end_line == 7
-        assert "<script lang=\"ts\">" in primary.content
+        assert '<script lang="ts">' in primary.content
         assert "<main>" in primary.content
         assert_aligned(primary, SVELTE_COMPONENT)
 
@@ -152,9 +152,11 @@ class TestVueChunker:
         assert_aligned(chunks[0], content)
 
     def test_svelte_oversized_markup_respects_the_budget(self):
-        content = "<main>\n" + "\n".join(
-            f"  <p>Result {index}</p>" for index in range(200)
-        ) + "\n</main>\n"
+        content = (
+            "<main>\n"
+            + "\n".join(f"  <p>Result {index}</p>" for index in range(200))
+            + "\n</main>\n"
+        )
         chunks = make_chunker(max_chunk_chars=800).chunk(content, "Results.svelte")
 
         assert len(chunks) > 1

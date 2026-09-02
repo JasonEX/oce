@@ -10,7 +10,6 @@ from oce.application.commands.checkpoint import (
 )
 from oce.domain.chain.chain import Chain
 from oce.shared.errors import InvalidCheckpointTokenError, NeedsResetError
-
 from tests.unit.application.fakes import FakeUnitOfWorkFactory
 
 

@@ -23,7 +23,6 @@ class CredentialRecord:
     endpoint: str | None
     model: str | None
     timeout_seconds: int
-    rate_limit: int | None
     note: str | None
     dimensions: int | None
     max_batch_size: int | None
@@ -33,12 +32,7 @@ class CredentialRecord:
     top_n: int | None
     min_score: float | None
     tpm_limit: int | None
-    max_candidates: int | None
-    output_top_k: int | None
-    snippet_chars: int | None
-    num_rewrites: int | None
     api_key_last4: str
-    last_used_at: datetime | None
     created_at: datetime | None
     updated_at: datetime | None
 
@@ -54,7 +48,6 @@ class CredentialCreate:
     endpoint: str | None = None
     model: str | None = None
     timeout_seconds: int = 30
-    rate_limit: int | None = None
     note: str | None = None
     dimensions: int | None = None
     max_batch_size: int | None = None
@@ -64,46 +57,14 @@ class CredentialCreate:
     top_n: int | None = None
     min_score: float | None = None
     tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
 
 
 @dataclass(frozen=True)
-class CredentialUpdate:
-    """Partial update in which ``None`` leaves the stored field unchanged."""
+class CredentialPatch:
+    """Field overrides in which ``None`` keeps the existing value.
 
-    kind: str | None = None
-    name: str | None = None
-    api_key: str | None = None
-    provider: str | None = None
-    status: str | None = None
-    priority: int | None = None
-    endpoint: str | None = None
-    model: str | None = None
-    timeout_seconds: int | None = None
-    rate_limit: int | None = None
-    note: str | None = None
-    dimensions: int | None = None
-    max_batch_size: int | None = None
-    max_batch_chars: int | None = None
-    max_input_chars: int | None = None
-    input_overlap_chars: int | None = None
-    top_n: int | None = None
-    min_score: float | None = None
-    tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
-
-
-@dataclass(frozen=True)
-class CredentialDuplicate:
-    """Optional overrides applied while cloning an existing credential.
-
-    ``None`` inherits the source value, including reuse of the source API key.
+    Used both for partial updates and for cloning: when duplicating, ``None``
+    inherits the source row, including reuse of the source API key.
     """
 
     kind: str | None = None
@@ -115,7 +76,6 @@ class CredentialDuplicate:
     endpoint: str | None = None
     model: str | None = None
     timeout_seconds: int | None = None
-    rate_limit: int | None = None
     note: str | None = None
     dimensions: int | None = None
     max_batch_size: int | None = None
@@ -125,19 +85,15 @@ class CredentialDuplicate:
     top_n: int | None = None
     min_score: float | None = None
     tpm_limit: int | None = None
-    max_candidates: int | None = None
-    output_top_k: int | None = None
-    snippet_chars: int | None = None
-    num_rewrites: int | None = None
 
 
 class CredentialAdminStore(Protocol):
     async def list(self) -> list[CredentialRecord]: ...
     async def create(self, data: CredentialCreate) -> CredentialRecord: ...
     async def update(
-        self, credential_id: int, changes: CredentialUpdate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None: ...
     async def delete(self, credential_id: int) -> bool: ...
     async def duplicate(
-        self, credential_id: int, changes: CredentialDuplicate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None: ...

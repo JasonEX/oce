@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import os
 import uuid
+from datetime import timezone
 
 import pytest
 
@@ -61,7 +62,7 @@ def make_sha256(text: str = "") -> str:
 
 @pytest.fixture
 def freezed_time():
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from freezegun import freeze_time
 

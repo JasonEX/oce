@@ -7,8 +7,8 @@ from dataclasses import dataclass
 
 from oce.application.messages import Query
 from oce.shared.index_stats import (
-    IndexStats,
     IndexProfileStatsProvider,
+    IndexStats,
     IndexStoreStats,
     IndexStoreStatsProvider,
     MetadataIndexStatsReader,

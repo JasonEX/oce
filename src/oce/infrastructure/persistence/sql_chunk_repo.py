@@ -2,32 +2,21 @@
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import Chunk, LocatedChunk
-from oce.infrastructure.persistence.models import BlobChunkModel, BlobModel, ChunkModel
 from oce.domain.repositories import ChunkRepository
+from oce.infrastructure.persistence.dialect import upsert_insert
+from oce.infrastructure.persistence.models import BlobChunkModel, BlobModel, ChunkModel
 
 
 class SqlChunkRepository(ChunkRepository):
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
-
-    def _insert(self):
-        bind = self.session.get_bind()
-        return sqlite_insert if bind.dialect.name == "sqlite" else pg_insert
-
-    async def get(self, content_hash: str) -> Chunk | None:
-        result = await self.session.execute(
-            select(ChunkModel).where(ChunkModel.content_hash == content_hash)
-        )
-        row = result.scalar_one_or_none()
-        return self._row_to_domain(row) if row else None
 
     async def get_many(self, content_hashes: Sequence[str]) -> dict[str, Chunk]:
         if not content_hashes:
@@ -53,15 +42,12 @@ class SqlChunkRepository(ChunkRepository):
             }
             for chunk in chunks
         ]
-        stmt = self._insert()(ChunkModel).values(values)
+        stmt = upsert_insert(self.session)(ChunkModel).values(values)
         stmt = stmt.on_conflict_do_nothing(index_elements=["content_hash"])
         await self.session.execute(stmt)
 
     async def mark_embedded(self, content_hashes: Sequence[str]) -> None:
         """标记 chunks 已嵌入到 Milvus"""
-        from oce.infrastructure.persistence.models import ChunkModel
-        from sqlalchemy import update
-
         if not content_hashes:
             return
         stmt = (
@@ -92,7 +78,7 @@ class SqlChunkRepository(ChunkRepository):
             .join(BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name)
             .where(
                 BlobChunkModel.blob_name.in_(blob_names),
-                BlobModel.status == "pending",
+                BlobModel.status == BlobStatus.PENDING.value,
             )
             .order_by(BlobChunkModel.blob_name, BlobChunkModel.chunk_index)
         )

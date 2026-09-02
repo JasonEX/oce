@@ -7,9 +7,8 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
-
 INDEX_SCHEMA_VERSION = 2
-CHUNKER_VERSION = 2
+CHUNKER_VERSION = 3
 EMBEDDING_PIPELINE_VERSION = 1
 SYMBOL_EXTRACTION_VERSION = 1
 PATH_DOCUMENT_VERSION = 1

@@ -3,6 +3,7 @@
 使用轻量级 LLM 对检索结果重新排序，弥补 embedding 模型的语义理解不足，
 特别是中文查询 vs 英文文件名的跨语言匹配问题。
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -21,7 +22,7 @@ class LLMReranker:
     def __init__(
         self,
         client: LLMClient,
-        model: str = "deepseek-v4-flash",
+        model: str | None = None,
         max_candidates: int = 50,
         output_top_k: int = 10,
         snippet_chars: int = 1600,
@@ -30,7 +31,7 @@ class LLMReranker:
         """
         Args:
             client: LLM 客户端
-            model: 模型名称
+            model: 模型名称；None 时由客户端按凭证/配置决定
             max_candidates: 最多重排序的候选数量（控制成本）
             output_top_k: 由 LLM 提升到队首的最大候选数
             snippet_chars: 每个候选送入 LLM 的代码字符上限。只给路径会让重排

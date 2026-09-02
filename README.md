@@ -10,11 +10,9 @@ Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking 
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-[![CI](https://img.shields.io/github/actions/workflow/status/oce-ai/oce/ci.yml?branch=master&logo=github&label=CI)](https://github.com/oce-ai/oce/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/opencontextengine?logo=pypi&logoColor=white)](https://pypi.org/project/opencontextengine/)
-[![Python](https://img.shields.io/pypi/pyversions/opencontextengine?logo=python&logoColor=white)](https://pypi.org/project/opencontextengine/)
+[![CI](https://img.shields.io/github/actions/workflow/status/JasonEX/oce/ci.yml?branch=master&logo=github&label=CI)](https://github.com/JasonEX/oce/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/oce-ai/oce/pkgs/container/oce)
+[![Docker](https://img.shields.io/badge/Docker-ghcr.io-2496ED?logo=docker&logoColor=white)](https://github.com/JasonEX/oce/pkgs/container/oce)
 [![FastAPI](https://img.shields.io/badge/API-FastAPI-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Milvus](https://img.shields.io/badge/Vectors-Milvus%203.0-00A1EA.svg)](https://milvus.io/)
 [![ACE](https://img.shields.io/badge/ACE-compatible-success.svg)](#api)
@@ -32,7 +30,7 @@ Milvus Lite, background worker disabled) for a single machine, and a **service m
 
 The project is fully open source, with the server and client maintained separately:
 
-- Server: <https://github.com/oce-ai/oce>
+- Server: <https://github.com/JasonEX/oce>
 - Client: <https://github.com/oce-ai/oce-client>
 
 This is the refactored successor to the earlier ACE service. See the original
@@ -51,7 +49,7 @@ machines need to share one index.
 - **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
 - **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
 - **Operational admin API + monitoring** — an admin-key-scoped surface manages model credentials, the embedding queue, and garbage collection, while a bypass metrics pipeline records call/token/resource stats and per-stage retrieval audits.
-- **[Reproducible evaluation harness](https://github.com/oce-ai/oce-client/tree/master/benchmarks)** — the real client sync/retrieval path runs 50 reviewed queries on pinned repositories and records quality, latency, returned context, optional model cost, failures, and separately supplied agent outcomes.
+- **[Source-pinned issue-resolution evaluation](benchmarks/README.md)** — production APIs and the real client checkpoint/retrieval path run SWE-bench Verified issues against their base commits, scoring gold edit locations separately from successful SWE-Explore trajectory context, along with latency, returned context, model usage, and failures.
 
 <details>
 <summary><strong>Table of contents</strong></summary>
@@ -84,9 +82,12 @@ Personal mode is intended for local use and does not require separate PostgreSQL
 or Redis services. Install the CLI, generate a config, set the embedding key, and serve:
 
 ```powershell
-uv tool install opencontextengine
+uv tool install "git+https://github.com/JasonEX/oce.git"
 oce init                    # writes ~/.oce/data/.env
 ```
+
+This fork does not publish to PyPI. Use a versioned GHCR image for releases, or install
+the current source directly with `uv` as shown above.
 
 Edit `~/.oce/data/.env`. The embedding service is the only required setting for indexing
 and retrieval. The defaults use SiliconFlow and Qwen3-Embedding-4B (1024-dimensional
@@ -117,7 +118,8 @@ RERANK_TOP_N=50
 ```
 
 A strong chat LLM can instead, or subsequently, judge cross-language meaning, implementation
-versus forwarding code, and multi-file behavior:
+versus forwarding code, and multi-file behavior. For a bounded quality-first cascade, start
+with a 20-candidate second stage and measure the model on your workload:
 
 ```dotenv
 LLM_RERANK_ENABLED=true
@@ -125,6 +127,7 @@ LLM_API_KEY=your_llm_service_key
 LLM_BASE_URL=https://provider.example.com/v1
 LLM_MODEL=deepseek-v4-flash
 RETRIEVAL_LLM_RERANK_POLICY=adaptive
+LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
@@ -134,9 +137,12 @@ flow, overview, and compound requests. `always` reranks every result set with at
 candidates and is useful for quality-first deployments and controlled comparisons. Enabling
 both backends forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an
 operational data/latency boundary, not a claim that chat-LLM ranking is lower quality.
-`LLM_MAX_CANDIDATES=50` favors multi-file coverage; reducing it to `20` is a useful
-latency/TPM tradeoff for interactive deployments. In either case, candidates outside the
-chat window remain available to final selection.
+The current development benchmark supports dedicated reranking as the first interactive
+opt-in and the bounded cascade as a quality-first mode; chat-only behavior was more
+model-sensitive and expensive. This is a 13-issue development observation, so defaults stay
+off until replicated on the full profile. See the
+[benchmark report](benchmarks/results/swe-explore-development-2026-09-02.md). Candidates
+outside either rerank window remain available to final selection.
 
 Then start the service:
 
@@ -161,7 +167,8 @@ the data directory and is loaded on every start. Useful flags:
 log level to INFO and `-vv` to DEBUG; the default WARNING keeps retrieval-path info logs
 quiet.
 
-For a throwaway run without installing: `uvx --from opencontextengine oce serve`.
+For a throwaway run without installing:
+`uvx --from "git+https://github.com/JasonEX/oce.git" oce serve`.
 
 ## Service mode
 
@@ -170,7 +177,7 @@ by PostgreSQL, Milvus 3.0, and Redis. The repository's Docker Compose setup is t
 recommended starting point:
 
 ```powershell
-git clone https://github.com/oce-ai/oce.git
+git clone https://github.com/JasonEX/oce.git
 Set-Location oce
 Copy-Item .env.example .env
 # Edit .env: set API_KEY, ADMIN_API_KEY, and EMBED_API_KEY; add LLM_API_KEY as needed.
@@ -191,11 +198,11 @@ The development file publishes PostgreSQL on `25432`, Redis on `26379`, and Milv
 You can also use the published image directly:
 
 ```powershell
-docker pull ghcr.io/oce-ai/oce:latest
+docker pull ghcr.io/jasonex/oce:latest
 ```
 
 In your own Compose, Kubernetes, or other deployment, set the application image to
-`ghcr.io/oce-ai/oce:latest` and provide `DB_URL`, `REDIS_URL`, and `MILVUS_ENDPOINT`.
+`ghcr.io/jasonex/oce:latest` and provide `DB_URL`, `REDIS_URL`, and `MILVUS_ENDPOINT`.
 The image listens on port `8986` inside the container.
 
 ### Admin panel

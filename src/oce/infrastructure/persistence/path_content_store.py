@@ -7,6 +7,7 @@ from collections.abc import Callable, Sequence
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.domain.blob.blob import BlobStatus
 from oce.domain.services.search import SearchHit
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
@@ -53,7 +54,10 @@ class SqlPathContentStore:
             )
             .join(ranked_links, ranked_links.c.blob_name == BlobModel.blob_name)
             .join(ChunkModel, ChunkModel.content_hash == ranked_links.c.content_hash)
-            .where(BlobModel.status == "ready", ranked_links.c.position == 1)
+            .where(
+                BlobModel.status == BlobStatus.READY.value,
+                ranked_links.c.position == 1,
+            )
         )
         async with self._session_factory() as session:
             rows = (await session.execute(statement)).all()

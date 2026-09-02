@@ -12,12 +12,12 @@ from oce.application.commands.credentials import (
     ReloadEmbeddingCredentialsCommand,
     ReloadEmbeddingCredentialsResult,
 )
+from oce.application.commands.gc import GcCommand, GcResult
 from oce.application.commands.ingest import (
+    BlobIngest,
     EmbedPendingCommand,
-    IngestBlobCommand,
     IngestBlobsCommand,
 )
-from oce.application.commands.gc import GcCommand, GcResult
 from oce.application.commands.queue_admin import ResetQueueCommand, ResetQueueResult
 from oce.application.commands.requeue import RequeueStaleCommand, RequeueStaleResult
 from oce.application.credential_admin import (
@@ -27,8 +27,8 @@ from oce.application.credential_admin import (
     ListCredentialsQuery,
     UpdateCredentialCommand,
 )
-from oce.application.queries.queue import QueueStatusQuery, QueueStatusResult
 from oce.application.queries.index_stats import IndexStatsQuery
+from oce.application.queries.queue import QueueStatusQuery, QueueStatusResult
 from oce.application.queries.search import SearchQuery
 from oce.application.queries.stats import MonitoringStatsQuery
 from oce.application.queries.status import (
@@ -45,15 +45,14 @@ from oce.shared.index_stats import IndexStats
 from oce.shared.metrics_read import MonitoringStats
 from oce.shared.model_credentials import (
     CredentialCreate,
-    CredentialDuplicate,
+    CredentialPatch,
     CredentialRecord,
-    CredentialUpdate,
 )
 
 
 def compute_blob_name(path: str, content: str) -> str:
     """生成与 ACE 客户端一致的内容地址：``sha256(path + content)``。"""
-    return hashlib.sha256(f"{path}{content}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(f"{path}{content}".encode()).hexdigest()
 
 
 @dataclass(frozen=True)
@@ -65,7 +64,6 @@ class BlobUpload:
 @dataclass(frozen=True)
 class BatchUploadResult:
     blob_names: tuple[str, ...]
-    chunk_count: int
     embedded_count: int
 
 
@@ -104,16 +102,16 @@ class RetrievalApplication:
         *,
         checkpoint_id: str | None = None,
     ) -> BatchUploadResult:
-        commands = tuple(
-            IngestBlobCommand(
+        items = tuple(
+            BlobIngest(
                 compute_blob_name(blob.path, blob.content),
                 blob.path,
                 blob.content,
             )
             for blob in blobs
         )
-        names = [command.blob_name for command in commands]
-        result = await self._commands.execute(IngestBlobsCommand(commands))
+        names = [item.blob_name for item in items]
+        await self._commands.execute(IngestBlobsCommand(items))
         embedded_count = 0
         if not self._background_indexing:
             embedded = await self._commands.execute(EmbedPendingCommand(tuple(names)))
@@ -124,7 +122,7 @@ class RetrievalApplication:
             await self._commands.execute(
                 CheckpointCommand(checkpoint_id, tuple(names), ())
             )
-        return BatchUploadResult(tuple(names), result.chunk_count, embedded_count)
+        return BatchUploadResult(tuple(names), embedded_count)
 
     async def retrieve(
         self,
@@ -216,7 +214,7 @@ class RetrievalApplication:
         return await self._commands.execute(CreateCredentialCommand(data))
 
     async def update_credential(
-        self, credential_id: int, changes: CredentialUpdate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
         return await self._commands.execute(
             UpdateCredentialCommand(credential_id, changes)
@@ -226,7 +224,7 @@ class RetrievalApplication:
         return await self._commands.execute(DeleteCredentialCommand(credential_id))
 
     async def duplicate_credential(
-        self, credential_id: int, changes: CredentialDuplicate
+        self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
         return await self._commands.execute(
             DuplicateCredentialCommand(credential_id, changes)

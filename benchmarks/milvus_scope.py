@@ -18,7 +18,9 @@ from typing import Any
 
 from loguru import logger
 
-from oce.infrastructure.milvus3.client import Milvus3Client, build_blob_filter
+from oce.domain.services.search import VectorRecord
+from oce.infrastructure.milvus3.base import build_blob_filter
+from oce.infrastructure.milvus3.client import Milvus3Client
 from oce.infrastructure.milvus3.path_index import PathIndexClient
 from oce.shared.config.settings import MilvusSettings
 
@@ -124,18 +126,16 @@ async def _populate(
     for start in range(0, total, batch_size):
         stop = min(start + batch_size, total)
         dense_rows = [
-            {
-                "chunk_id": _chunk_id(index),
-                "content_hash": _content_hash(index),
-                "content": f"def symbol_{index}(): pass",
-                "embedding": _row_vector(index, total),
-                "blob_name": blob_names[index],
-                "metadata": {
-                    "path": f"src/module_{index}.py",
-                    "start_line": 1,
-                    "end_line": 1,
-                },
-            }
+            VectorRecord(
+                chunk_id=_chunk_id(index),
+                content_hash=_content_hash(index),
+                blob_name=blob_names[index],
+                path=f"src/module_{index}.py",
+                content=f"def symbol_{index}(): pass",
+                start_line=1,
+                end_line=1,
+                vector=_row_vector(index, total),
+            )
             for index in range(start, stop)
         ]
         path_rows = [
@@ -178,10 +178,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             endpoint=str(database),
             collection_name="scope_chunks",
             path_collection_name="scope_paths",
-            dense_dim=_DIMENSION,
         )
-        dense = Milvus3Client(settings)
-        paths = PathIndexClient(settings)
+        dense = Milvus3Client(settings, dense_dim=_DIMENSION)
+        paths = PathIndexClient(settings, dense_dim=_DIMENSION)
         setup_started = time.perf_counter()
         try:
             await _populate(dense, paths, blob_names, args.insert_batch_size)
@@ -196,14 +195,13 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
 
                 dense_metrics = await _measure(
                     lambda allowed=allowed: dense.search(
-                        "symbol zero",
                         query_vector,
                         blob_filter=allowed,
                         top_k=10,
                     ),
-                    lambda hits: any(hit.get("blob_name") == target for hit in hits),
-                    lambda hits: all(
-                        hit.get("blob_name") in allowed_set for hit in hits
+                    lambda hits: any(hit.blob_name == target for hit in hits),
+                    lambda hits, allowed_set=allowed_set: all(
+                        hit.blob_name in allowed_set for hit in hits
                     ),
                     warmups=args.warmups,
                     iterations=args.iterations,
@@ -215,7 +213,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                         top_k=10,
                     ),
                     lambda hits: any(hit.blob_name == target for hit in hits),
-                    lambda hits: all(hit.blob_name in allowed_set for hit in hits),
+                    lambda hits, allowed_set=allowed_set: all(
+                        hit.blob_name in allowed_set for hit in hits
+                    ),
                     warmups=args.warmups,
                     iterations=args.iterations,
                 )

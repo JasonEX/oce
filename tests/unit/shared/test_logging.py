@@ -34,7 +34,9 @@ def test_file_disabled_keeps_console_only(tmp_path: Path) -> None:
 
 
 def test_level_filter_applies_to_file(tmp_path: Path) -> None:
-    configure_logging(LogSettings(file_enabled=True), level="WARNING", data_dir=tmp_path)
+    configure_logging(
+        LogSettings(file_enabled=True), level="WARNING", data_dir=tmp_path
+    )
     logger.info("should be filtered")
     logger.warning("should be written")
     content = (tmp_path / "logs" / "oce.log").read_text(encoding="utf-8")

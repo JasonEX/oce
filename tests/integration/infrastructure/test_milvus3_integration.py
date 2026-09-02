@@ -4,12 +4,15 @@
 无需 Docker，数据存储在 ./test_data/milvus.db
 """
 
-import pytest
 import shutil
 
-from oce.shared.config.settings import MilvusSettings
-from oce.infrastructure.milvus3 import Milvus3Client, Milvus3SearchStore
+import pytest
+
+from oce.domain.services.search import VectorRecord
+from oce.infrastructure.milvus3.client import Milvus3Client
 from oce.infrastructure.milvus3.path_index import PathIndexClient
+from oce.infrastructure.milvus3.search_store import Milvus3SearchStore
+from oce.shared.config.settings import MilvusSettings
 
 
 @pytest.fixture(scope="module")
@@ -22,6 +25,7 @@ def test_db_path(tmp_path_factory):
     # 测试结束后清理（忽略 Windows 文件锁错误）
     try:
         import time
+
         time.sleep(0.5)  # 等待 Milvus Lite 释放文件
         if db_dir.exists():
             shutil.rmtree(db_dir, ignore_errors=True)
@@ -36,14 +40,13 @@ def milvus_settings(test_db_path):
         endpoint=test_db_path,  # Milvus Lite：直接传文件路径
         token=None,
         collection_name="test_oce_chunks",
-        dense_dim=128,  # 使用小维度加快测试
     )
 
 
 @pytest.fixture
 async def milvus_client(milvus_settings):
     """初始化 Milvus 客户端（每个测试独立）"""
-    client = Milvus3Client(milvus_settings)
+    client = Milvus3Client(milvus_settings, dense_dim=128)  # 小维度加快测试
 
     await client.initialize()
 
@@ -64,110 +67,117 @@ async def milvus_client(milvus_settings):
 @pytest.mark.asyncio
 class TestMilvus3Integration:
     """Milvus 3.0 集成测试（使用 Milvus Lite）"""
-    
+
     async def test_insert_and_search(self, milvus_client):
         """测试完整的插入和检索流程"""
         # 插入测试数据
         chunks = [
-            {
-                "chunk_id": "1" * 64,
-                "content_hash": "hash1",
-                "content": "def calculate_sum(a, b): return a + b",
-                "embedding": [0.1] * 128,
-                "blob_name": "a" * 64,
-                "metadata": {"path": "src/math.py", "start_line": 1, "end_line": 1},
-            },
-            {
-                "chunk_id": "2" * 64,
-                "content_hash": "hash2",
-                "content": "def calculate_product(a, b): return a * b",
-                "embedding": [0.2] * 128,
-                "blob_name": "a" * 64,
-                "metadata": {"path": "src/math.py", "start_line": 3, "end_line": 3},
-            },
-            {
-                "chunk_id": "3" * 64,
-                "content_hash": "hash3",
-                "content": "class Calculator: pass",
-                "embedding": [0.3] * 128,
-                "blob_name": "b" * 64,
-                "metadata": {"path": "src/calculator.py", "start_line": 1, "end_line": 1},
-            },
+            VectorRecord(
+                chunk_id="1" * 64,
+                content_hash="hash1",
+                blob_name="a" * 64,
+                path="src/math.py",
+                content="def calculate_sum(a, b): return a + b",
+                start_line=1,
+                end_line=1,
+                vector=[0.1] * 128,
+            ),
+            VectorRecord(
+                chunk_id="2" * 64,
+                content_hash="hash2",
+                blob_name="a" * 64,
+                path="src/math.py",
+                content="def calculate_product(a, b): return a * b",
+                start_line=3,
+                end_line=3,
+                vector=[0.2] * 128,
+            ),
+            VectorRecord(
+                chunk_id="3" * 64,
+                content_hash="hash3",
+                blob_name="b" * 64,
+                path="src/calculator.py",
+                content="class Calculator: pass",
+                start_line=1,
+                end_line=1,
+                vector=[0.3] * 128,
+            ),
         ]
-        
-        result = await milvus_client.insert(chunks)
-        assert result["inserted"] == 3
-        
+
+        assert await milvus_client.insert(chunks) == 3
+
         # dense 向量检索
         results = await milvus_client.search(
-            query_text="calculate sum function",
-            query_embedding=[0.15] * 128,  # 接近 hash1
+            [0.15] * 128,  # 接近 hash1
             blob_filter=["a" * 64],
             top_k=2,
         )
-        
+
         assert len(results) >= 1
-        assert results[0]["content_hash"] in ["hash1", "hash2"]
-        assert results[0]["blob_name"] == "a" * 64
-    
+        assert results[0].content_hash in ["hash1", "hash2"]
+        assert results[0].blob_name == "a" * 64
+
     async def test_blob_filter(self, milvus_client):
         """测试 blob_name 过滤"""
         # 插入测试数据（两个不同的 blob）
         chunks = [
-            {
-                "chunk_id": "4" * 64,
-                "content_hash": "filter_hash1",
-                "content": "class Calculator: pass",
-                "embedding": [0.3] * 128,
-                "blob_name": "b" * 64,
-                "metadata": {"path": "src/calculator.py"},
-            },
-            {
-                "chunk_id": "5" * 64,
-                "content_hash": "filter_hash2",
-                "content": "def add(a, b): return a + b",
-                "embedding": [0.2] * 128,
-                "blob_name": "a" * 64,
-                "metadata": {"path": "src/math.py"},
-            },
+            VectorRecord(
+                chunk_id="4" * 64,
+                content_hash="filter_hash1",
+                blob_name="b" * 64,
+                path="src/calculator.py",
+                content="class Calculator: pass",
+                start_line=1,
+                end_line=1,
+                vector=[0.3] * 128,
+            ),
+            VectorRecord(
+                chunk_id="5" * 64,
+                content_hash="filter_hash2",
+                blob_name="a" * 64,
+                path="src/math.py",
+                content="def add(a, b): return a + b",
+                start_line=1,
+                end_line=1,
+                vector=[0.2] * 128,
+            ),
         ]
         await milvus_client.insert(chunks)
 
         # 只搜索 calculator.py
         results = await milvus_client.search(
-            query_text="calculator",
-            query_embedding=[0.3] * 128,
+            [0.3] * 128,
             blob_filter=["b" * 64],
             top_k=10,
         )
 
         assert len(results) >= 1
         for result in results:
-            assert result["blob_name"] == "b" * 64
+            assert result.blob_name == "b" * 64
 
     async def test_delete_by_blob(self, milvus_client):
         """测试按 blob 删除"""
         # 插入测试数据
         chunks = [
-            {
-                "chunk_id": "6" * 64,
-                "content_hash": "delete_hash1",
-                "content": "class ToDelete: pass",
-                "embedding": [0.4] * 128,
-                "blob_name": "c" * 64,
-                "metadata": {"path": "src/delete_me.py"},
-            },
+            VectorRecord(
+                chunk_id="6" * 64,
+                content_hash="delete_hash1",
+                blob_name="c" * 64,
+                path="src/delete_me.py",
+                content="class ToDelete: pass",
+                start_line=1,
+                end_line=1,
+                vector=[0.4] * 128,
+            ),
         ]
         await milvus_client.insert(chunks)
 
         # 删除
-        deleted = await milvus_client.delete_by_blob("c" * 64)
-        assert deleted >= 1
+        await milvus_client.delete_by_blob_names(["c" * 64])
 
         # 验证删除后搜索不到
         results = await milvus_client.search(
-            query_text="delete",
-            query_embedding=[0.4] * 128,
+            [0.4] * 128,
             blob_filter=["c" * 64],
             top_k=10,
         )
@@ -179,39 +189,41 @@ class TestMilvus3Integration:
 @pytest.mark.asyncio
 class TestMilvus3SearchStoreIntegration:
     """Milvus3SearchStore 集成测试"""
-    
+
     @pytest.fixture
     async def search_store(self, milvus_settings):
         """初始化 SearchStore"""
-        store = Milvus3SearchStore(milvus_settings)
-        await store._ensure_initialized()
+        store = Milvus3SearchStore(milvus_settings, dense_dim=128)
+        await store.client.initialize()
         yield store
         await store.close()
-    
+
     async def test_search_store_upsert_and_search(self, search_store):
         """测试 SearchStore 的 upsert 和 search"""
         # Upsert 数据
         items = [
-            {
-                "chunk_id": "test_hash_1",
-                "blob_name": "d" * 64,
-                "vector": [0.5] * 128,
-                "content": "def test_function(): pass",
-                "metadata": {"path": "test.py"},
-            }
+            VectorRecord(
+                chunk_id="test_hash_1",
+                content_hash="test_hash_1",
+                blob_name="d" * 64,
+                path="test.py",
+                content="def test_function(): pass",
+                start_line=1,
+                end_line=1,
+                vector=[0.5] * 128,
+            )
         ]
-        
+
         await search_store.upsert(items)
-        
+
         # 搜索
         results = await search_store.search(
-            query="test function",
             query_vector=[0.5] * 128,
             allowed_blob_names=["d" * 64],
             top_k=5,
             vector_threshold=0.0,
         )
-        
+
         assert len(results) >= 1
         assert results[0].blob_name == "d" * 64
         assert results[0].path == "test.py"
@@ -223,9 +235,8 @@ async def test_path_index_lite_lifecycle(tmp_path):
     settings = MilvusSettings(
         endpoint=str(tmp_path / "paths.db"),
         path_collection_name="test_oce_paths",
-        dense_dim=8,
     )
-    client = PathIndexClient(settings)
+    client = PathIndexClient(settings, dense_dim=8)
     first_blob = "a" * 64
     second_blob = "b" * 64
     try:
@@ -263,10 +274,13 @@ async def test_path_index_lite_lifecycle(tmp_path):
         assert stats.entities == 2
 
         await client.delete_by_blob_names([first_blob])
-        assert await client.search_paths(
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            allowed_blob_names=[first_blob],
-            top_k=2,
-        ) == []
+        assert (
+            await client.search_paths(
+                [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                allowed_blob_names=[first_blob],
+                top_k=2,
+            )
+            == []
+        )
     finally:
         await client.close()

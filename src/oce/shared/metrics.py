@@ -6,6 +6,7 @@ Protocol 与 record 数据结构，不关心落库细节；具体 sink 由 compo
 约束：``record_*`` 必须同步、非阻塞、绝不把异常抛回调用方——监控是旁路，任何情况下
 都不能拖慢或中断主链路。
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator

@@ -1,6 +1,6 @@
 """Production language chunker composition."""
 
-from oce.domain.chunk import RecursiveChunker, LanguageChunkerRouter
+from oce.domain.chunk import LanguageChunkerRouter, RecursiveChunker
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES
 from oce.infrastructure.astchunk.cast_chunker import CastChunker
 from oce.infrastructure.chunkers.factory import build_chunker

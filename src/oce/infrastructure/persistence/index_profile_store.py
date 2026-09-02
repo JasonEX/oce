@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.models import (
     BlobModel,
     ChainMemberModel,
@@ -16,7 +15,6 @@ from oce.infrastructure.persistence.models import (
     SymbolOccurrenceModel,
 )
 from oce.shared.index_profile import IndexProfile, StoredIndexProfile
-
 
 _ACTIVE_PROFILE_KEY = "active"
 
@@ -51,9 +49,7 @@ class SqlIndexProfileStore:
             "profile_json": profile.canonical_json(),
         }
         async with self._session_factory() as session:
-            dialect = session.get_bind().dialect.name
-            insert = sqlite_insert if dialect == "sqlite" else pg_insert
-            statement = insert(IndexProfileModel).values(values)
+            statement = upsert_insert(session)(IndexProfileModel).values(values)
             statement = statement.on_conflict_do_nothing(index_elements=["profile_key"])
             await session.execute(statement)
             await session.commit()

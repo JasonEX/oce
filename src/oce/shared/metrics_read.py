@@ -3,6 +3,7 @@
 采集侧（metrics.py）负责写入；本模块只定义读出聚合的结果结构与 reader Protocol。
 infra 实现 SQL 聚合、application 编排、api 映射 DTO——三层都只依赖这里的纯数据结构。
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field

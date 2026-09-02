@@ -47,4 +47,4 @@ class CheckpointCommandHandler:
                     raise NeedsResetError("checkpoint 链不存在或版本已过期")
             await uow.chains.touch_members(chain_id)
             await uow.commit()
-        return CheckpointResult(f"{chain_id}:{version}")
+        return CheckpointResult(Chain.format_checkpoint_token(chain_id, version))

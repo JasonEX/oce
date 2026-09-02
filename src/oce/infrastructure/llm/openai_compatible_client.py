@@ -1,8 +1,9 @@
 """OpenAI-compatible LLM client implementation."""
+
 from __future__ import annotations
 
 import asyncio
-from typing import Awaitable, Callable
+from collections.abc import Awaitable, Callable
 
 import httpx
 from loguru import logger
@@ -20,6 +21,7 @@ _OUTPUT_TOKEN_ALLOWANCE = 256
 # 限流器按估算值排队，估算偏松时仍可能 429，退避重试兜底
 _MAX_ATTEMPTS = 3
 _RETRY_BACKOFF_SECONDS = 20.0
+
 
 class OpenAICompatibleLLMClient:
     """OpenAI 兼容的 LLM 聊天客户端（/v1/chat/completions），rerank / rewrite 共用。"""
@@ -56,7 +58,7 @@ class OpenAICompatibleLLMClient:
     async def chat(
         self,
         messages: list[dict[str, str]],
-        model: str = "deepseek-v4-flash",
+        model: str,
         temperature: float = 0.1,
         max_tokens: int = 8000,
         **kwargs,
@@ -90,11 +92,14 @@ class OpenAICompatibleLLMClient:
         }
 
         # 统一关闭思维链；调用方显式传 thinking 时（kwargs 已合并进 payload）不覆盖。
-        if 'openrouter.ai' in self.base_url:
-            payload.setdefault("reasoning", {
-                "enabled": False,
-                "effort": 'none',
-            })
+        if "openrouter.ai" in self.base_url:
+            payload.setdefault(
+                "reasoning",
+                {
+                    "enabled": False,
+                    "effort": "none",
+                },
+            )
         else:
             payload.setdefault("thinking", {"type": "disabled"})
 

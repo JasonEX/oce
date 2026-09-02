@@ -5,14 +5,14 @@
 
 from __future__ import annotations
 
-import asyncio
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.infrastructure.metrics.periodic import PeriodicTask
 from oce.infrastructure.persistence.models import (
     ApiCallMetricModel,
     ResourceSampleModel,
@@ -40,7 +40,7 @@ class _MetricBatch:
         )
 
 
-class SqlMetricsSink:
+class SqlMetricsSink(PeriodicTask):
     """采集到的指标先入内存 deque，后台协程按间隔批量写库。
 
     ``deque(maxlen)`` 满时自动丢弃最旧样本，防止事件循环阻塞时缓冲无界增长。
@@ -53,14 +53,12 @@ class SqlMetricsSink:
         flush_interval_seconds: float = 5.0,
         max_buffer: int = 500,
     ) -> None:
+        super().__init__(interval_seconds=flush_interval_seconds, name="metrics flush")
         self._session_factory = session_factory
-        self._flush_interval = flush_interval_seconds
         self._api: deque[ApiCallRecord] = deque(maxlen=max_buffer)
         self._token: deque[TokenUsageRecord] = deque(maxlen=max_buffer)
         self._resource: deque[ResourceSampleRecord] = deque(maxlen=max_buffer)
         self._retrieval: deque[RetrievalMetricRecord] = deque(maxlen=max_buffer)
-        self._task: asyncio.Task | None = None
-        self._running = False
 
     def record_api_call(self, record: ApiCallRecord) -> None:
         self._api.append(record)
@@ -74,32 +72,12 @@ class SqlMetricsSink:
     def record_retrieval(self, record: RetrievalMetricRecord) -> None:
         self._retrieval.append(record)
 
-    async def start(self) -> None:
-        if self._running:
-            return
-        self._running = True
-        self._task = asyncio.create_task(self._loop())
-
     async def stop(self) -> None:
-        self._running = False
-        if self._task is not None:
-            self._task.cancel()
-            try:
-                await self._task
-            except (asyncio.CancelledError, Exception):
-                pass
-            self._task = None
+        await super().stop()
         await self._flush_once()
 
-    async def _loop(self) -> None:
-        while self._running:
-            try:
-                await asyncio.sleep(self._flush_interval)
-                await self._flush_once()
-            except asyncio.CancelledError:
-                break
-            except Exception as exc:
-                logger.warning("metrics flush loop error: {}", exc)
+    async def _tick(self) -> None:
+        await self._flush_once()
 
     def _drain(self) -> _MetricBatch:
         """原子取出缓冲；失败时可按原始 record 安全放回。"""

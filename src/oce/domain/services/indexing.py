@@ -1,37 +1,28 @@
 """IndexingPipeline 领域服务 - 索引编排
 
-职责（对应旧三表生产架构的领域抽象）：
-- ingest:        切块 → Blob/Chunk 入库（embedding 留空，懒嵌入）
-- embed_pending: 待嵌入 chunk → 向量化 → 写回 → Blob 置 ready
-
-事件（经 EventBus 发布，event_type 常量见下）：
-- blob.created / blob.ready / blob.failed
+- ingest:        只写 Blob 元数据与 staging 原文，切块和嵌入留给 embed_pending
+- embed_pending: 切块（如需）→ 向量化 → 写回 → 路径索引 → Blob 置 ready
 """
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from loguru import logger
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunker
 from oce.domain.chunk.lang import detect_language
+from oce.domain.repositories import BlobRepository, ChunkRepository
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.path_document_builder import (
     build_path_document,
     is_indexable_path,
 )
 from oce.domain.services.path_search import PathSearchStore
-from oce.domain.services.search import VectorIndex
+from oce.domain.services.search import VectorIndex, VectorRecord
 from oce.domain.services.source_filter import is_binary_source, is_ignored_source_path
 from oce.domain.services.symbols import SymbolProjection
-from oce.shared.events import DomainEvent, EventBus
-from oce.domain.repositories import BlobRepository, ChunkRepository
-
-EVENT_BLOB_CREATED = "blob.created"
-EVENT_BLOB_READY = "blob.ready"
-EVENT_BLOB_FAILED = "blob.failed"
 
 
 class IndexingPipeline:
@@ -46,7 +37,6 @@ class IndexingPipeline:
         blob_repo: BlobRepository,
         chunk_repo: ChunkRepository,
         symbol_projection: SymbolProjection,
-        event_bus: EventBus | None = None,
         embed_batch_size: int = 64,
         path_store: PathSearchStore | None = None,
         embedding_enabled: bool = True,
@@ -59,7 +49,6 @@ class IndexingPipeline:
         self.blob_repo = blob_repo
         self.chunk_repo = chunk_repo
         self.symbol_projection = symbol_projection
-        self.event_bus = event_bus
         self.embed_batch_size = embed_batch_size
         self.path_store = path_store
         self._embedding_enabled = embedding_enabled
@@ -111,12 +100,6 @@ class IndexingPipeline:
         # 保存原文到 staging，供后续 embed_pending 切块使用。
         # blob_staging.content 是 Text 列，编码成 bytes 会被驱动拒绝。
         await self.blob_repo.save_staging(blob_name, content)
-
-        if self.event_bus is not None:
-            await self.event_bus.publish(DomainEvent(
-                event_type=EVENT_BLOB_CREATED,
-                data={"blob_name": blob_name, "path": path, "chunk_count": 0},
-            ))
         return 0
 
     async def embed_pending(
@@ -185,7 +168,7 @@ class IndexingPipeline:
         embedded = 0
         try:
             for offset in range(0, len(pending), self.embed_batch_size):
-                chunk_batch = pending[offset:offset + self.embed_batch_size]
+                chunk_batch = pending[offset : offset + self.embed_batch_size]
 
                 vectors = await self.embedder.embed_documents(
                     [chunk.embedding_text() for chunk in chunk_batch]
@@ -195,23 +178,25 @@ class IndexingPipeline:
                         "Embedding count mismatch: "
                         f"expected {len(chunk_batch)}, got {len(vectors)}"
                     )
-                await self.vector_index.upsert([
-                    {
-                        "chunk_id": chunk.chunk_id,
-                        "content_hash": chunk.content_hash,
-                        "blob_name": chunk.blob_name,
-                        "content": chunk.content,
-                        "vector": vector,
-                        "metadata": {
-                            "path": chunk.path,
-                            "start_line": chunk.start_line,
-                            "end_line": chunk.end_line,
-                        },
-                    }
-                    for chunk, vector in zip(chunk_batch, vectors)
-                ])
+                await self.vector_index.upsert(
+                    [
+                        VectorRecord(
+                            chunk_id=chunk.chunk_id,
+                            content_hash=chunk.content_hash,
+                            blob_name=chunk.blob_name,
+                            path=chunk.path,
+                            content=chunk.content,
+                            start_line=chunk.start_line,
+                            end_line=chunk.end_line,
+                            vector=vector,
+                        )
+                        for chunk, vector in zip(chunk_batch, vectors, strict=True)
+                    ]
+                )
                 # 标记已嵌入
-                await self.chunk_repo.mark_embedded([c.content_hash for c in chunk_batch])
+                await self.chunk_repo.mark_embedded(
+                    [c.content_hash for c in chunk_batch]
+                )
                 embedded += len(vectors)
 
             # READY 表示当前配置声明的检索产物均已写完。路径索引启用时若写入失败，
@@ -223,15 +208,6 @@ class IndexingPipeline:
                 for blob in blobs:
                     blob.mark_error(str(exc))
                     await self.blob_repo.save(blob)
-                    if self.event_bus is not None:
-                        await self.event_bus.publish(DomainEvent(
-                            event_type=EVENT_BLOB_FAILED,
-                            data={
-                                "blob_name": blob.blob_name,
-                                "path": blob.path,
-                                "error": str(exc),
-                            },
-                        ))
             raise
 
         # 第三阶段:所有启用的索引写完后再标记 ready、清理 staging。
@@ -239,11 +215,6 @@ class IndexingPipeline:
             blob.mark_ready()
             await self.blob_repo.save(blob)
             await self.blob_repo.delete_staging(blob.blob_name)
-            if self.event_bus is not None:
-                await self.event_bus.publish(DomainEvent(
-                    event_type=EVENT_BLOB_READY,
-                    data={"blob_name": blob.blob_name, "path": blob.path},
-                ))
         return embedded
 
     async def _index_paths(self, blobs: Sequence[Blob]) -> None:
@@ -274,7 +245,7 @@ class IndexingPipeline:
                 "Path embedding count mismatch: "
                 f"expected {len(docs)}, got {len(vectors)}"
             )
-        for doc, vector in zip(docs, vectors):
+        for doc, vector in zip(docs, vectors, strict=True):
             doc["path_id"] = f"path_{doc['blob_name']}"
             doc["path_vector"] = vector
         result = await self.path_store.insert(docs)

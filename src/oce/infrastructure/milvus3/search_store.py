@@ -1,103 +1,43 @@
-"""Milvus 3.0 SearchStore 实现
-
-实现 domain/services/search.py 的 SearchStore Protocol：
-- dense 向量检索
-- 索引级 blob 过滤（多租户关键）
-- 返回 SearchHit 值对象列表
-"""
+"""SearchStore / VectorIndex implementation over the content collection."""
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, VectorRecord
+from oce.infrastructure.milvus3.client import Milvus3Client
 from oce.shared.config.settings import MilvusSettings
 from oce.shared.index_stats import IndexStoreStats
 
-from .client import Milvus3Client
-
 
 class Milvus3SearchStore:
-    """Milvus 3.0 SearchStore（实现 SearchStore Protocol）"""
-
-    def __init__(self, milvus_settings: MilvusSettings):
-        self.client = Milvus3Client(milvus_settings)
+    def __init__(self, milvus_settings: MilvusSettings, *, dense_dim: int):
+        self.client = Milvus3Client(milvus_settings, dense_dim=dense_dim)
         self.milvus_settings = milvus_settings
-        self._initialized = False
-
-    async def _ensure_initialized(self):
-        """确保客户端已初始化"""
-        if not self._initialized:
-            await self.client.initialize()
-            self._initialized = True
 
     async def search(
         self,
         *,
-        query: str,
         query_vector: list[float],
         allowed_blob_names: Sequence[str] | None = None,
         top_k: int = 50,
-        vector_threshold: float = 0.1,
+        vector_threshold: float = 0.0,
     ) -> list[SearchHit]:
-        """执行 dense 向量检索，返回 SearchHit 列表。"""
+        """Dense search inside the workspace scope; an empty scope searches nothing."""
         if allowed_blob_names is not None and not allowed_blob_names:
             return []
-        await self._ensure_initialized()
-
-        results = await self.client.search(
-            query_text=query,
-            query_embedding=query_vector,
-            blob_filter=(
-                list(allowed_blob_names) if allowed_blob_names is not None else None
-            ),
+        hits = await self.client.search(
+            query_vector,
+            blob_filter=list(allowed_blob_names) if allowed_blob_names else None,
             top_k=top_k,
         )
-        hits: list[SearchHit] = []
-        for result in results:
-            score = result.get("score", 0.0)
-            if score < vector_threshold:
-                continue
-            metadata = result.get("metadata", {})
-            hits.append(
-                SearchHit(
-                    blob_name=result.get("blob_name", ""),
-                    path=metadata.get("path", result.get("blob_name", "")),
-                    content=result.get("content", ""),
-                    score=score,
-                    content_hash=result.get("content_hash", ""),
-                    start_line=metadata.get("start_line", 1),
-                    end_line=metadata.get("end_line", 1),
-                )
-            )
-        return hits
+        return [hit for hit in hits if hit.score >= vector_threshold]
 
-    async def upsert(self, items: list[dict[str, Any]]) -> None:
-        """写入向量到 Milvus
+    async def upsert(self, records: Sequence[VectorRecord]) -> None:
+        await self.client.insert(records)
 
-        Args:
-            items: 每个包含 blob_name, chunk_id, vector, content, metadata
-        """
-        await self._ensure_initialized()
-
-        chunks = [
-            {
-                "chunk_id": item["chunk_id"],
-                "content_hash": item.get("content_hash", item["chunk_id"]),
-                "content": item.get("content", ""),
-                "embedding": item["vector"],
-                "blob_name": item["blob_name"],
-                "metadata": item.get("metadata", {}),
-            }
-            for item in items
-        ]
-        await self.client.insert(chunks)
-
-    async def delete(self, blob_names: list[str]) -> None:
-        """删除指定 blob 的全部向量"""
-        await self._ensure_initialized()
-        for blob_name in blob_names:
-            await self.client.delete_by_blob(blob_name)
+    async def delete(self, blob_names: Sequence[str]) -> None:
+        await self.client.delete_by_blob_names(blob_names)
 
     async def index_stats(self) -> IndexStoreStats:
         exists, entities = await self.client.read_collection_stats()
@@ -113,6 +53,5 @@ class Milvus3SearchStore:
         _exists, entities = await self.client.read_collection_stats()
         return entities > 0
 
-    async def close(self):
-        """关闭客户端连接"""
+    async def close(self) -> None:
         await self.client.close()

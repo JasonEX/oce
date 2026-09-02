@@ -8,7 +8,6 @@ from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
-
 from tests.unit.application.fakes import FakeEmbedder, FakeSearchStore
 
 

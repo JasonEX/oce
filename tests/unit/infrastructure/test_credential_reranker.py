@@ -2,10 +2,10 @@
 
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from oce.shared.database.session import Base
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import RerankSettings
+from oce.shared.database.session import Base
 
 
 async def _runtime():

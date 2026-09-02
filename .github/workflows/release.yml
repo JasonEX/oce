@@ -38,7 +38,9 @@ jobs:
           fi
 
       - name: Run Ruff
-        run: uv run ruff check .
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
 
       - name: Run unit tests (one process per file)
         shell: bash
@@ -55,30 +57,12 @@ jobs:
           done < <(find tests/unit -name 'test_*.py' -print0 | sort -z)
           exit "${failed}"
 
-  python-package:
-    name: publish Python package
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up uv + Python
-        uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.13"
-          enable-cache: true
-
-      - name: Build sdist and wheel
+      - name: Verify sdist and wheel build
         run: uv build
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
 
   docker:
     name: publish Docker image
+    if: github.repository == 'JasonEX/oce'
     needs: test
     runs-on: ubuntu-latest
     permissions:
@@ -99,7 +83,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/jasonex/oce
           tags: |
             type=ref,event=tag
             type=raw,value=latest

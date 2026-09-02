@@ -3,6 +3,7 @@
 避免依赖方言专有的 percentile 函数：延迟分位在 Python 侧对窗口内延迟排序后计算。
 监控是旁路，本读路径只读不写，不影响主链路。
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -88,7 +89,9 @@ class SqlMonitoringStatsReader:
                         TokenUsageMetricModel.kind,
                         func.count(),
                         func.coalesce(func.sum(TokenUsageMetricModel.prompt_tokens), 0),
-                        func.coalesce(func.sum(TokenUsageMetricModel.completion_tokens), 0),
+                        func.coalesce(
+                            func.sum(TokenUsageMetricModel.completion_tokens), 0
+                        ),
                         func.coalesce(func.sum(TokenUsageMetricModel.total_tokens), 0),
                     )
                     .where(TokenUsageMetricModel.ts >= cutoff)

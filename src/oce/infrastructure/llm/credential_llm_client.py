@@ -8,22 +8,23 @@ domain 层的 reranker / rewriter 复用。
 连接，故 reload 只需原子替换 delegate，无需关闭旧实例。两个 kind 各自独立限流：若共用
 同一把 key，TPM 预算不共享（可接受的取舍，换取按用途独立管理/轮换）。
 """
+
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.infrastructure.llm.openai_compatible_client import (
     OpenAICompatibleLLMClient,
     UsageCallback,
 )
-from oce.infrastructure.persistence.models import ModelCredentialModel
+from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import LLMSettings
 from oce.shared.errors import ServiceNotReadyError
+
 
 @dataclass(frozen=True)
 class LLMRuntimeConfig:
@@ -57,7 +58,12 @@ class CredentialConfiguredLLMClient:
         self._config: LLMRuntimeConfig | None = None
         self._lock = asyncio.Lock()
 
-    async def chat(self, messages, model: str | None = None, **kwargs) -> str:
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        model: str | None = None,
+        **kwargs,
+    ) -> str:
         delegate, config = await self._acquire()
         # 凭证 model 优先；其次调用方传入的 model；最后回落 env 默认模型。
         resolved = config.model or model or self._fallback_model
@@ -71,26 +77,7 @@ class CredentialConfiguredLLMClient:
             return self._delegate, self._config
 
     async def _resolve_config(self) -> LLMRuntimeConfig:
-        async with self._session_factory() as session:
-            credential = (
-                (
-                    await session.execute(
-                        select(ModelCredentialModel)
-                        .where(
-                            ModelCredentialModel.kind == self._kind,
-                            ModelCredentialModel.status == "active",
-                        )
-                        .order_by(
-                            ModelCredentialModel.priority,
-                            ModelCredentialModel.id,
-                        )
-                        .limit(1)
-                    )
-                )
-                .scalars()
-                .first()
-            )
-
+        credential = await resolve_active_credential(self._session_factory, self._kind)
         fb = self._fallback
         if credential is not None and credential.api_key:
             return LLMRuntimeConfig(
