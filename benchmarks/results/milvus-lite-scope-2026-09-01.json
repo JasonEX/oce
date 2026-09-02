@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "environment": {
+    "python": "3.13.5",
+    "platform": "Linux-6.6.114.1-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+    "pymilvus": "3.0.1",
+    "milvus_lite": "3.2.0"
+  },
+  "rows_per_collection": 50000,
+  "dimension": 4,
+  "warmups": 1,
+  "iterations": 5,
+  "setup_ms": 5594.441,
+  "scopes": [
+    {
+      "scope_size": 2000,
+      "filter_bytes": 136013,
+      "dense": {
+        "samples_ms": [27.58, 27.314, 25.961, 28.371, 26.811],
+        "p50_ms": 27.314,
+        "p95_ms": 28.213,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      },
+      "path": {
+        "samples_ms": [26.69, 25.53, 26.404, 28.099, 28.31],
+        "p50_ms": 26.69,
+        "p95_ms": 28.268,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      }
+    },
+    {
+      "scope_size": 10000,
+      "filter_bytes": 680013,
+      "dense": {
+        "samples_ms": [70.123, 68.659, 65.736, 68.073, 71.185],
+        "p50_ms": 68.659,
+        "p95_ms": 70.972,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      },
+      "path": {
+        "samples_ms": [65.033, 65.752, 67.462, 67.216, 65.608],
+        "p50_ms": 65.752,
+        "p95_ms": 67.412,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      }
+    },
+    {
+      "scope_size": 50000,
+      "filter_bytes": 3400013,
+      "dense": {
+        "samples_ms": [283.663, 266.302, 264.371, 260.582, 253.453],
+        "p50_ms": 264.371,
+        "p95_ms": 280.191,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      },
+      "path": {
+        "samples_ms": [264.513, 261.63, 268.099, 269.03, 261.63],
+        "p50_ms": 264.513,
+        "p95_ms": 268.844,
+        "target_hits": 5,
+        "scope_violation_samples": 0,
+        "result_counts": [10, 10, 10, 10, 10],
+        "successful_samples": 5,
+        "errors": []
+      }
+    }
+  ]
+}
