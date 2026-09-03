@@ -90,11 +90,13 @@ class FakeExactSearchStore:
         self.error = error
         self.identifiers: tuple[str, ...] = ()
         self.scope: SearchScope | None = None
+        self.kinds_seen: list[tuple[str, ...] | None] = []
 
     async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
         self.identifiers = tuple(identifiers)
         self.scope = scope
         self.kinds = kinds
+        self.kinds_seen.append(kinds)
         if self.error is not None:
             raise self.error
         return list(self.hits[:top_k])
@@ -134,6 +136,27 @@ class TestSourcePriorityFactor:
         assert source_priority_factor("src/tools/index.ts") == 0.85
         assert source_priority_factor("src/tools/types.ts") == 0.85
         assert source_priority_factor("src/config/types.openclaw.ts") == 1.0
+        assert source_priority_factor("requests/__init__.py") == 0.85
+
+    def test_changelogs_examples_and_singular_doc_dir_are_documentation(self):
+        assert source_priority_factor("ChangeLog") == 0.5
+        assert source_priority_factor("changelog/README.rst") == 0.5
+        assert source_priority_factor("doc/data/messages/c/bad.py") == 0.5
+        assert source_priority_factor("examples/pyproject.toml") == 0.5
+        assert source_priority_factor("README.md") == 1.0
+        assert source_priority_factor("README.zh-CN.md") == 0.2
+        # A source module that happens to use a documentation-like stem is
+        # implementation code; only root metadata files get the stem rule.
+        assert source_priority_factor("src/history.py") == 1.0
+        assert source_priority_factor("history.py") == 1.0
+
+    def test_config_files_and_stubs_yield_to_implementation(self):
+        assert source_priority_factor(".coveragerc") == 0.7
+        assert source_priority_factor("pylintrc") == 0.7
+        assert source_priority_factor("pyproject.toml") == 0.7
+        assert source_priority_factor("setup.cfg") == 0.7
+        assert source_priority_factor("xarray/core/_typed_ops.pyi") == 0.7
+        assert source_priority_factor("src/engine/core.py") == 1.0
 
 
 class TestRetrievalPipeline:

@@ -154,8 +154,10 @@ class SqlLexicalSearchStore:
         phrases: Sequence[str],
         scope: SearchScope,
         top_k: int = 30,
+        required: Sequence[str] = (),
     ) -> list[SearchHit]:
         term_list = [term for term in dict.fromkeys(terms) if term.isalnum()]
+        required_list = [term for term in dict.fromkeys(required) if term.isalnum()]
         phrase_lists = [
             list(tokens)
             for tokens in (phrase_tokens(phrase) for phrase in phrases)
@@ -167,7 +169,9 @@ class SqlLexicalSearchStore:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
                     dialect = session.get_bind().dialect.name
-                    query = _build_query(dialect, term_list, phrase_lists)
+                    query = _build_query(
+                        dialect, term_list, phrase_lists, required=required_list
+                    )
                     # One lexical document may occur in several files. A small
                     # scoped surplus preserves those occurrences without the
                     # old global 300/3000-row widening loop.
@@ -297,15 +301,34 @@ class SqlLexicalSearchStore:
         return hits[: max(top_k * 3, top_k)]
 
 
-def _build_query(dialect: str, terms: list[str], phrases: list[list[str]]) -> str:
-    """OR query in the dialect's full-text syntax; phrases keep token order."""
+def _build_query(
+    dialect: str,
+    terms: list[str],
+    phrases: list[list[str]],
+    *,
+    required: Sequence[str] = (),
+) -> str:
+    """OR query in the dialect's full-text syntax; phrases keep token order.
+
+    ``required`` becomes a conjunct: a row must contain one of those tokens,
+    yet BM25/ts_rank still see every term, so the identifier gate does not
+    flatten the ranking among the rows that pass it.
+    """
     if dialect == "sqlite":
         parts = [f'"{" ".join(tokens)}"' for tokens in phrases]
         parts.extend(f'"{term}"' for term in terms)
-        return " OR ".join(parts)
+        ranked = " OR ".join(parts)
+        if not required:
+            return ranked
+        gate = " OR ".join(f'"{term}"' for term in required)
+        return f"({gate}) AND ({ranked})"
     parts = [" <-> ".join(tokens) for tokens in phrases]
     parts.extend(terms)
-    return " | ".join(f"({part})" if " " in part else part for part in parts)
+    ranked = " | ".join(f"({part})" if " " in part else part for part in parts)
+    if not required:
+        return ranked
+    gate = " | ".join(required)
+    return f"({gate}) & ({ranked})"
 
 
 def lexical_row_count_statement() -> Any:

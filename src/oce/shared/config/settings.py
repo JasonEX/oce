@@ -150,6 +150,11 @@ class RerankSettings(BaseSettings):
     )
     min_score: float = Field(default=0.05, ge=0.0, le=1.0, description="最低重排分")
     timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
+    # 交叉编码器对每个候选都要重读一遍 query；本项目的 0.6B 基准中，一段 25K
+    # 字符的 issue 曾让单次调用接近 15 秒。截断保留开头的问题描述。
+    max_query_chars: int = Field(
+        default=2_400, ge=200, description="送入 reranker 的 query 字符上限"
+    )
     # Qwen3-Reranker 模型卡报告：instruction-aware 任务中常见 1%~5% 提升，
     # 且多语言场景建议用英文；其他 provider 不支持时可置空。
     instruction: str = Field(
@@ -374,6 +379,13 @@ class RetrievalSettings(BaseSettings):
     )
     lexical_timeout_seconds: float = Field(
         default=2.0, gt=0.0, description="词法召回超时；超时后只用其他召回"
+    )
+
+    # 源码头部槽位：语义类查询的前 N 个结果优先给未被先验降权的源码文件。乘性
+    # 先验在归一化 RRF 上过弱（同时进入 dense 和 lexical 的测试片段仍居首），
+    # 而重排器又不一定启用；显式提到 test/测试 的查询不适用。0 关闭。
+    source_head_slots: int = Field(
+        default=3, ge=0, le=10, description="语义查询保留给源码文件的头部槽位数"
     )
 
     # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大

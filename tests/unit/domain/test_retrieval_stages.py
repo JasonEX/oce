@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import replace
 
 import pytest
@@ -43,8 +44,10 @@ class FakeLexicalStore:
         self.hits = hits or []
         self.calls: list[dict] = []
 
-    async def search_lexical(self, *, terms, phrases, scope, top_k=30):
-        self.calls.append({"terms": terms, "phrases": phrases, "top_k": top_k})
+    async def search_lexical(self, *, terms, phrases, scope, top_k=30, required=()):
+        self.calls.append(
+            {"terms": terms, "phrases": phrases, "top_k": top_k, "required": required}
+        )
         return list(self.hits)
 
 
@@ -191,6 +194,35 @@ class TestLexicalRecall:
         assert hits[0].path == "src/definition.py"
         assert len(lexical.calls) == 1
 
+    @pytest.mark.parametrize(
+        ("query", "required"),
+        [
+            ("Where is `get_json` used?", ("getjson",)),
+            ("哪些地方引用了 `HTTPServer`？", ("httpserver",)),
+            ("Which modules import `Request::get_json`?", ("getjson",)),
+            ("How does `get_json` call `parse`?", ()),
+            ("Where is `get_json` defined?", ()),
+            ("json parsing in requests", ()),
+        ],
+    )
+    async def test_use_site_queries_gate_lexical_on_the_whole_identifier(
+        self, query, required
+    ):
+        lexical = FakeLexicalStore([_hit("src/a.py", 1.0)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/a.py", 0.9)]),
+            lexical_store=lexical,
+            exact_store=FakeExactSearchStore(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        await pipe.search(query, SearchScope(frozenset({BLOB_A})))
+        assert [call["required"] for call in lexical.calls] == [required] * len(
+            lexical.calls
+        )
+        if required:
+            assert lexical.calls, query
+
     async def test_lexical_failure_degrades_to_dense(self):
         class Broken(FakeLexicalStore):
             async def search_lexical(self, **kwargs):
@@ -282,9 +314,15 @@ class TestPathLookup:
         )
         scope = SearchScope(frozenset({BLOB_A}))
         await pipe.search("where is `load_config` defined", scope)
-        assert exact.kinds == ("endpoint", "definition")
+        assert exact.kinds_seen == [("endpoint", "definition")]
+        exact.kinds_seen.clear()
         await pipe.search("which modules import `load_config`", scope)
-        assert exact.kinds is None
+        # Every occurrence kind for the use sites, plus the declarations so
+        # the head can tell them apart.
+        assert sorted(exact.kinds_seen, key=str) == [
+            ("endpoint", "definition"),
+            None,
+        ]
 
     async def test_path_lookup_backfills_when_embedding_is_unavailable(self):
         class BrokenEmbedder:
@@ -360,6 +398,263 @@ class TestPathLookup:
 
         assert reranker.calls == 0
         assert audit.rerank_route == "skip:path_evidence"
+
+
+class TestSourceHead:
+    def _pipe(self, dense, lexical=None, **settings):
+        return RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(dense),
+            lexical_store=FakeLexicalStore(lexical or []),
+            exact_store=FakeExactSearchStore(),
+            settings=_settings(related_definitions_enabled=False, **settings),
+        )
+
+    async def test_test_files_leading_both_lists_yield_the_head_to_source(self):
+        test_hit = _hit("tests/test_pool.py", 0.95, blob=BLOB_A)
+        dense = [
+            test_hit,
+            _hit("src/pool.py", 0.9, blob=BLOB_B),
+            _hit("src/conn.py", 0.85, blob=BLOB_C),
+        ]
+        lexical = [test_hit, _hit("src/pool.py", 3.0, blob=BLOB_B)]
+        pipe = self._pipe(dense, lexical)
+        hits = await pipe.search(
+            "connection pool exhausted when acquiring a connection",
+            SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
+        )
+        # Source first, the test right behind the reserved slots, nothing lost.
+        assert [hit.path for hit in hits] == [
+            "src/pool.py",
+            "src/conn.py",
+            "tests/test_pool.py",
+        ]
+
+    async def test_source_head_is_bounded(self):
+        dense = [_hit("tests/test_a.py", 0.99, blob=BLOB_A)] + [
+            _hit(f"src/m{i}.py", 0.9 - i * 0.01, blob=BLOB_B) for i in range(5)
+        ]
+        pipe = self._pipe(dense, source_head_slots=2)
+        hits = await pipe.search(
+            "connection pool exhausted when acquiring a connection",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        paths = [hit.path for hit in hits]
+        assert paths[:2] == ["src/m0.py", "src/m1.py"]
+        # Beyond the reserved slots the multiplicative prior alone orders the
+        # tail; the test file is kept, not dropped.
+        assert "tests/test_a.py" in paths
+
+    async def test_root_readme_keeps_its_score_but_not_a_source_slot(self):
+        dense = [
+            _hit("README.md", 0.99, blob=BLOB_A),
+            _hit("src/pool.py", 0.8, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense)
+        hits = await pipe.search(
+            "connection pool exhausted when acquiring a connection",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert [hit.path for hit in hits] == ["src/pool.py", "README.md"]
+
+    @pytest.mark.parametrize(
+        "query",
+        [
+            "which test covers the connection pool",
+            "连接池的测试用例在哪里",
+        ],
+    )
+    async def test_requests_about_tests_keep_score_order(self, query):
+        dense = [
+            _hit("tests/test_pool.py", 0.95, blob=BLOB_A),
+            _hit("src/pool.py", 0.9, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense)
+        hits = await pipe.search(query, SearchScope(frozenset({BLOB_A, BLOB_B})))
+        assert hits[0].path == "tests/test_pool.py"
+
+    async def test_overview_requests_do_not_reserve_source_slots(self):
+        dense = [
+            _hit("docs/architecture.md", 0.95, blob=BLOB_A),
+            _hit("src/pool.py", 0.9, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense, source_priority_enabled=False)
+        hits = await pipe.search(
+            "explain the architecture of the connection pool subsystem",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert hits[0].path == "docs/architecture.md"
+
+    async def test_source_head_is_disabled_by_setting(self):
+        dense = [
+            _hit("tests/test_pool.py", 0.95, blob=BLOB_A),
+            _hit("src/pool.py", 0.9, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense, source_head_slots=0, source_priority_enabled=False)
+        hits = await pipe.search(
+            "connection pool exhausted when acquiring a connection",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert hits[0].path == "tests/test_pool.py"
+
+    async def test_reference_head_skips_the_declaration(self):
+        definition = _hit("src/pool.py", 0.99, blob=BLOB_A, content="def acquire():")
+        use_a = _hit("src/server.py", 0.9, blob=BLOB_B, content="pool.acquire()")
+        use_b = _hit("src/worker.py", 0.8, blob=BLOB_C, content="pool.acquire()")
+
+        class ExactStore(FakeExactSearchStore):
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                self.kinds_seen.append(kinds)
+                if kinds is None:
+                    return [definition, use_a, use_b]
+                return [definition]
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([definition, use_a, use_b]),
+            exact_store=ExactStore(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        hits = await pipe.search(
+            "Where is `acquire` used?", SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
+        )
+        assert [hit.path for hit in hits] == [
+            "src/server.py",
+            "src/worker.py",
+            "src/pool.py",
+        ]
+
+    async def test_reference_head_rejects_dense_hits_without_occurrence_evidence(self):
+        definition = _hit("src/pool.py", 0.9, blob=BLOB_A, content="def acquire():")
+        unrelated = _hit(
+            "src/scheduler.py", 0.99, blob=BLOB_B, content="def schedule():"
+        )
+        use = _hit("src/server.py", 0.8, blob=BLOB_C, content="pool.acquire()")
+
+        class ExactStore(FakeExactSearchStore):
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                self.kinds_seen.append(kinds)
+                return [definition]
+
+        class DenseFirstReranker:
+            async def rerank(self, query, hits):
+                by_path = {hit.path: hit for hit in hits}
+                return [
+                    by_path["src/scheduler.py"],
+                    by_path["src/pool.py"],
+                    by_path["src/server.py"],
+                ]
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([unrelated, definition, use]),
+            lexical_store=FakeLexicalStore([use]),
+            exact_store=ExactStore(),
+            reranker=DenseFirstReranker(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        hits = await pipe.search(
+            "Where is `acquire` used?",
+            SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
+        )
+        assert [hit.path for hit in hits] == [
+            "src/server.py",
+            "src/scheduler.py",
+            "src/pool.py",
+        ]
+
+    async def test_source_head_is_reapplied_after_the_dedicated_reranker(self):
+        class TestFirstReranker:
+            async def rerank(self, query, hits):
+                # A small cross-encoder that leads with the test file but
+                # orders the source files sensibly among themselves.
+                by_path = {hit.path: hit for hit in hits}
+                return [
+                    by_path["tests/test_pool.py"],
+                    by_path["src/conn.py"],
+                    by_path["src/pool.py"],
+                ]
+
+        dense = [
+            _hit("src/pool.py", 0.9, blob=BLOB_A),
+            _hit("src/conn.py", 0.85, blob=BLOB_B),
+            _hit("tests/test_pool.py", 0.8, blob=BLOB_C),
+        ]
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(dense),
+            reranker=TestFirstReranker(),
+            settings=_settings(
+                related_definitions_enabled=False, rerank_policy="always"
+            ),
+        )
+        hits = await pipe.search(
+            "connection pool exhausted when acquiring a connection",
+            SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
+        )
+        # Model order among source files is kept; the test file follows.
+        assert [hit.path for hit in hits] == [
+            "src/conn.py",
+            "src/pool.py",
+            "tests/test_pool.py",
+        ]
+
+    async def test_sql_lanes_start_before_the_query_embedding(self):
+        order: list[str] = []
+
+        class SlowEmbedder(FakeEmbedder):
+            async def embed_query(self, text):
+                order.append("embed:start")
+                await asyncio.sleep(0.02)
+                order.append("embed:end")
+                return await super().embed_query(text)
+
+        class Exact(FakeExactSearchStore):
+            async def search_exact(self, **kwargs):
+                order.append("exact")
+                return []
+
+        pipe = RetrievalPipeline(
+            embedder=SlowEmbedder(),
+            store=FakeSearchStore([_hit("src/a.py", 0.9)]),
+            exact_store=Exact(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        await pipe.search(
+            "where is `load_config` defined", SearchScope(frozenset({BLOB_A}))
+        )
+        assert order.index("exact") < order.index("embed:end")
+
+    async def test_sql_lanes_are_drained_when_query_planning_fails(self):
+        exact_started = asyncio.Event()
+        exact_finished = asyncio.Event()
+
+        class SlowExact(FakeExactSearchStore):
+            async def search_exact(self, **kwargs):
+                exact_started.set()
+                try:
+                    await asyncio.Future()
+                finally:
+                    exact_finished.set()
+
+        class BrokenRewriter:
+            async def rewrite(self, query):
+                await exact_started.wait()
+                raise RuntimeError("rewrite failed")
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([]),
+            exact_store=SlowExact(),
+            query_rewriter=BrokenRewriter(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        with pytest.raises(RuntimeError, match="rewrite failed"):
+            await pipe.search(
+                "Where is `load_config` defined?",
+                SearchScope(frozenset({BLOB_A})),
+            )
+        assert exact_finished.is_set()
 
 
 class TestWorkingSetPrior:

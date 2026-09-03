@@ -83,13 +83,17 @@ def source_priority_factor(path: str) -> float:
     # 法律文件最重降权
     if stem in {"license", "notice", "copying"}:
         return 0.1
-    # 主 README 显式不降权，多语言 README 降权
-    if stem == "readme":
-        return 1.0
+    # 仓库根目录的主 README 显式不降权；子目录 README 是普通文档，多语言 README 降权
+    if name in _PRIMARY_README_NAMES:
+        return 1.0 if "/" not in p else 0.5
     if stem.startswith("readme"):
         return 0.2
-    # 文档目录 / 文档扩展
-    if "/docs/" in f"/{p}" or p.endswith((".md", ".rst", ".txt")):
+    # 文档目录 / 文档扩展 / 变更记录：说明代码，不是代码本身
+    if (
+        any(f"/{part}/" in f"/{p}" for part in _DOCUMENT_DIRECTORIES)
+        or p.endswith((".md", ".rst", ".txt"))
+        or ("/" not in p and "." not in name and stem in _DOCUMENT_STEMS)
+    ):
         return 0.5
     if (
         "/tests/" in f"/{p}"
@@ -99,9 +103,35 @@ def source_priority_factor(path: str) -> float:
         or ".spec." in name
     ):
         return 0.6
+    # 配置文件和类型桩：需要它们的查询会写出文件名（PATH 意图，中立先验），
+    # 其余查询在找实现，这些文件只是碰巧提到同样的名字。
+    if name.endswith(_CONFIG_SUFFIXES) or _RC_FILE.match(name) or name.endswith(".pyi"):
+        return 0.7
     if name in {"index.ts", "index.tsx", "index.js", "index.jsx", "types.ts"}:
         return 0.85
+    if name == "__init__.py":
+        return 0.85
     return 1.0
+
+
+_DOCUMENT_DIRECTORIES = frozenset(
+    {"docs", "doc", "examples", "example", "changelog", "changelogs", "news"}
+)
+_DOCUMENT_STEMS = frozenset(
+    {"changelog", "changes", "history", "news", "authors", "contributors", "todo"}
+)
+_PRIMARY_README_NAMES = frozenset(
+    {"readme", "readme.md", "readme.rst", "readme.txt", "readme.adoc"}
+)
+_CONFIG_SUFFIXES = (".cfg", ".ini", ".toml", ".yaml", ".yml", ".json")
+# .coveragerc, .pylintrc, pylintrc, tox.ini-style rc files
+_RC_FILE = re.compile(r"^\.?[a-z0-9_-]+rc$")
+
+
+def _is_root_readme(path: str) -> bool:
+    normalized = path.replace("\\", "/").lower()
+    name = normalized.rsplit("/", 1)[-1]
+    return "/" not in normalized and name.split(".", 1)[0] == "readme"
 
 
 def neutral_priority_factor(_path: str) -> float:
@@ -112,6 +142,24 @@ def neutral_priority_factor(_path: str) -> float:
     排序完全交由路径 boost + 内容分数 + rerank 决定。
     """
     return 1.0
+
+
+_TEST_QUERY = re.compile(
+    r"(?i)(?<![a-z])(?:tests?|testing|spec|unittest|pytest|conftest|fixtures?)(?![a-z])"
+    r"|测试|用例"
+)
+
+
+_TEST_QUERY_MAX_CHARS = 200
+
+
+def _asks_about_tests(query: str) -> bool:
+    """A short request that names tests wants test files ranked like any source.
+
+    Long issue-style text mentions failing tests while asking about the code
+    under test, so the rule is limited to question-sized requests.
+    """
+    return len(query) <= _TEST_QUERY_MAX_CHARS and _TEST_QUERY.search(query) is not None
 
 
 # Identifiers worth pulling a definition for: multi-part or reasonably long
@@ -188,6 +236,10 @@ class RetrievalState:
     dense: list[SearchHit] = field(default_factory=list)
     dense_error: Exception | None = None
     exact: list[SearchHit] = field(default_factory=list)
+    # Definition/endpoint chunks of the queried identifiers. Reference queries
+    # recall every occurrence kind, so the declaration must be told apart
+    # from the use sites the question actually asks for.
+    definitions: list[SearchHit] = field(default_factory=list)
     lexical: list[SearchHit] = field(default_factory=list)
     path_scores: dict[str, float] = field(default_factory=dict)
     lookup_scores: dict[str, float] = field(default_factory=dict)
@@ -295,8 +347,20 @@ class RetrievalPipeline:
             return []
 
         self._route(state)
-        await self._plan(state)
-        await self._recall(state)
+        # SQL lanes need only routing, so they overlap the remote query
+        # embedding instead of waiting behind it.
+        sql_lanes = self._start_sql_lanes(state)
+        try:
+            await self._plan(state)
+        except BaseException:
+            for task in sql_lanes:
+                task.cancel()
+            # Merely cancelling background tasks leaves their exceptions and
+            # database contexts pending. Drain every lane before propagating
+            # planning failures or caller cancellation.
+            await asyncio.gather(*sql_lanes, return_exceptions=True)
+            raise
+        await self._recall(state, sql_lanes)
         await self._fuse(state)
         if not state.candidates:
             return []
@@ -378,27 +442,42 @@ class RetrievalPipeline:
 
     # ── recall ───────────────────────────────────────────────────────────
 
-    async def _recall(self, state: RetrievalState) -> None:
-        """Exact SQL, lexical FTS, dense vector I/O and the path stores are
-        independent after routing and rewrite, so semantic lexical recall runs
-        with them. Symbol/path queries defer lexical I/O until their structural
-        operator misses; that keeps the common exact path fast without giving up
-        the fallback."""
+    def _start_sql_lanes(
+        self, state: RetrievalState
+    ) -> tuple[asyncio.Task[object], ...]:
+        """Exact, path lookup and routed lexical recall depend only on routing.
+
+        They start before the query embedding round trip. Symbol/path queries
+        defer lexical I/O until their structural operator misses; that keeps
+        the common exact path fast without giving up the fallback.
+        """
         eager_lexical = self._should_recall_lexical_eagerly(state)
+        return (
+            asyncio.create_task(self._recall_exact(state)),
+            asyncio.create_task(self._recall_path_lookup(state)),
+            asyncio.create_task(self._recall_lexical(state, routed=eager_lexical)),
+        )
+
+    async def _recall(
+        self,
+        state: RetrievalState,
+        sql_lanes: tuple[asyncio.Task[object], ...],
+    ) -> None:
+        exact_task, lookup_task, lexical_task = sql_lanes
         (
             (state.dense, state.dense_error),
-            state.exact,
             state.path_scores,
+            (state.exact, state.definitions),
             state.lookup_scores,
             state.lexical,
         ) = await asyncio.gather(
             self._recall_dense(state),
-            self._recall_exact(state),
             self._recall_paths(state),
-            self._recall_path_lookup(state),
-            self._recall_lexical(state, routed=eager_lexical),
+            exact_task,
+            lookup_task,
+            lexical_task,
         )
-        if not eager_lexical and self._should_recall_lexical_fallback(state):
+        if not state.lexical and self._should_recall_lexical_fallback(state):
             state.lexical = await self._recall_lexical(state, routed=True)
 
     async def _recall_dense(
@@ -466,7 +545,15 @@ class RetrievalPipeline:
             vector_threshold=self.settings.vector_threshold,
         )
 
-    async def _recall_exact(self, state: RetrievalState) -> list[SearchHit]:
+    async def _recall_exact(
+        self, state: RetrievalState
+    ) -> tuple[list[SearchHit], list[SearchHit]]:
+        """``(occurrences, definitions)`` for the query identifiers.
+
+        Reference questions want every occurrence kind including imports and
+        additionally need to know which of those chunks declare the symbol;
+        everything else asks for the structural definition only.
+        """
         evidence = state.evidence
         if (
             not self.settings.exact_enabled
@@ -476,23 +563,30 @@ class RetrievalPipeline:
             or evidence is None
             or not evidence.identifiers
         ):
-            return []
-        # Reference questions want every occurrence kind including imports;
-        # everything else asks for the structural definition.
-        kinds = None if state.intent == QueryIntent.REFERENCE else DEFINITION_KINDS
+            return [], []
+        store = self.exact_store
+        scope = state.scope
+        top_k = self.settings.default_top_k
+
+        async def lookup(kinds: Sequence[str] | None) -> list[SearchHit]:
+            return await store.search_exact(
+                identifiers=evidence.identifiers, scope=scope, top_k=top_k, kinds=kinds
+            )
+
         try:
             with state.stage("exact"):
-                return await self.exact_store.search_exact(
-                    identifiers=evidence.identifiers,
-                    scope=state.scope,
-                    top_k=self.settings.default_top_k,
-                    kinds=kinds,
-                )
+                if state.intent == QueryIntent.REFERENCE:
+                    occurrences, definitions = await asyncio.gather(
+                        lookup(None), lookup(DEFINITION_KINDS)
+                    )
+                    return occurrences, definitions
+                definitions = await lookup(DEFINITION_KINDS)
+                return definitions, definitions
         except Exception as exc:
             logger.warning(
                 "Exact identifier recall failed; using semantic candidates: {}", exc
             )
-            return []
+            return [], []
 
     def _can_recall_lexical(self, state: RetrievalState) -> bool:
         evidence = state.evidence
@@ -513,6 +607,8 @@ class RetrievalPipeline:
         )
 
     def _should_recall_lexical_fallback(self, state: RetrievalState) -> bool:
+        if self._should_recall_lexical_eagerly(state):
+            return False
         if not self._can_recall_lexical(state):
             return False
         if state.intent == QueryIntent.SYMBOL:
@@ -535,6 +631,7 @@ class RetrievalPipeline:
                         phrases=evidence.phrases,
                         scope=state.scope,
                         top_k=self.settings.lexical_top_k,
+                        required=self._lexical_required(state),
                     )
         except TimeoutError:
             logger.warning("Lexical recall timed out; using other candidates")
@@ -565,6 +662,32 @@ class RetrievalPipeline:
                 if token and token not in terms:
                     terms.append(token)
         return tuple(terms) or evidence.terms
+
+    @staticmethod
+    def _lexical_required(state: RetrievalState) -> tuple[str, ...]:
+        """Whole-identifier tokens a use-site lookup must contain.
+
+        The exact lane only knows declarations and imports, so lexical recall
+        is the one operator that reaches call sites. Ranking ``get OR json``
+        by BM25 favours chunks dense in ``json``; gating on the joined
+        surrogate ``getjson`` keeps the lane on chunks that name the symbol.
+        Every whole identifier is a valid answer, so several gate as OR.
+        Call-chain questions stay ungated: their far end is described in
+        words ("its base service") and rarely repeats the named symbol.
+        """
+        evidence = state.evidence
+        if state.intent != QueryIntent.REFERENCE or evidence is None:
+            return ()
+        required: list[str] = []
+        for identifier in evidence.identifiers:
+            leaf = identifier.rsplit("::", 1)[-1].rsplit(".", 1)[-1]
+            tokens = lexical_tokens(leaf)
+            if not tokens:
+                continue
+            surrogate = max(tokens, key=len)
+            if surrogate not in required:
+                required.append(surrogate)
+        return tuple(required)
 
     async def _recall_paths(self, state: RetrievalState) -> dict[str, float]:
         """Best path score per blob over every query variant; failures degrade to none."""
@@ -644,9 +767,11 @@ class RetrievalPipeline:
                 # Embedding path hits are the only answer to a pure filename
                 # query, so files the content index missed are backfilled.
                 # Lookup hits from traceback frames only boost: their first
-                # chunk would be imports, not the failing code.
+                # chunk would be imports, not the failing code. A path request
+                # is the exception: its SQL match is the answer and must own a
+                # chunk even when the content index never mentions the name.
                 backfill = set(state.path_scores)
-                if state.use_path_index or not hits:
+                if state.use_path_index or not hits or state.intent == QueryIntent.PATH:
                     backfill |= set(state.lookup_scores)
                 hits = await self._merge_path_and_content(boosts, hits, backfill)
             elif state.use_path_index:
@@ -828,9 +953,14 @@ class RetrievalPipeline:
 
     async def _rank(self, state: RetrievalState) -> None:
         """Apply static priors, then one candidate-preserving rerank state machine."""
-        # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）。
+        # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）；明确问测试的短查询
+        # 同样中立，否则被问到的测试文件反而会被压后。issue 文本只是顺带提到
+        # 文件名或测试失败，仍然是在找源码，先验照常生效。
         priority_factor = (
-            neutral_priority_factor if state.use_path_index else self.priority_factor
+            neutral_priority_factor
+            if state.strategy.enable_path_index
+            or (state.intent != QueryIntent.COMPOUND and _asks_about_tests(state.query))
+            else self.priority_factor
         )
         boosted = self._working_set(state.scope)
 
@@ -839,6 +969,7 @@ class RetrievalPipeline:
         hits = self._apply_source_priority(
             state.candidates, priority_factor=priority_factor, boosted=boosted
         )
+        hits = self._prefer_source_head(state, hits, priority_factor)
         structural_heads = self._structural_heads(state, hits)
         # This optional floor belongs to recall, before model scores can enter the
         # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
@@ -874,8 +1005,67 @@ class RetrievalPipeline:
                 hits = await self.llm_reranker.rerank(state.query, hits)
         # ``always`` is an evaluation/quality policy, not permission to erase a
         # deterministic answer. Rerank the full candidate set, then restore the
-        # bounded structural slots while preserving the model's tail order.
+        # bounded structural slots while preserving the model's tail order. The
+        # source head is reapplied as well: a small dedicated reranker can lead
+        # with a test, change log, issue template, or the declaration when the
+        # query asks for uses. Its order among preferred files is kept; only
+        # the tier boundary is enforced.
+        hits = self._prefer_source_head(state, hits, priority_factor)
         state.candidates = self._promote_heads(hits, structural_heads)
+
+    def _prefer_source_head(
+        self,
+        state: RetrievalState,
+        hits: list[SearchHit],
+        priority_factor: Callable[[str], float],
+    ) -> list[SearchHit]:
+        """Give the first slots to undemoted source files, in their own order.
+
+        A test or documentation chunk that leads both the dense and the
+        lexical list keeps a normalized RRF score no multiplicative prior can
+        undercut, yet the request almost never asks for it first. Reference
+        questions additionally keep the symbol's own declaration out of those
+        slots: the question is where it is used. The demoted hits are not
+        dropped; they follow immediately after the reserved slots.
+        """
+        slots = self.settings.source_head_slots
+        # Symbol/path answers have structural heads; overview requests are the
+        # one place where documentation legitimately answers first.
+        if (
+            slots <= 0
+            or priority_factor is neutral_priority_factor
+            or state.intent
+            in (QueryIntent.SYMBOL, QueryIntent.PATH, QueryIntent.OVERVIEW)
+        ):
+            return hits
+        # "Where is X used" wants other places: the declaring file as a whole
+        # yields the head, including its own internal calls. Only exact/lexical
+        # occurrence evidence may claim a reference head slot; a dense source
+        # hit that never names the identifier is not a deterministic use site.
+        declaring_blobs: set[str] = set()
+        reference_keys: set[SearchHitKey] | None = None
+        if state.intent == QueryIntent.REFERENCE:
+            declaring_blobs = {hit.blob_name for hit in state.definitions}
+            reference_keys = {
+                search_hit_key(hit) for hit in (*state.exact, *state.lexical)
+            }
+
+        def preferred(hit: SearchHit) -> bool:
+            return (
+                priority_factor(hit.path) >= 1.0
+                # Root README intentionally keeps a neutral multiplicative
+                # prior, but it remains documentation and must not consume a
+                # slot reserved for implementation code.
+                and not _is_root_readme(hit.path)
+                and hit.blob_name not in declaring_blobs
+                and (reference_keys is None or search_hit_key(hit) in reference_keys)
+            )
+
+        head = [hit for hit in hits if preferred(hit)][:slots]
+        if not head:
+            return hits
+        head_keys = {search_hit_key(hit) for hit in head}
+        return [*head, *(hit for hit in hits if search_hit_key(hit) not in head_keys)]
 
     def _structural_heads(
         self,

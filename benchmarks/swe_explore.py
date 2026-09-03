@@ -11,6 +11,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import math
 import os
 import re
 import shutil
@@ -703,6 +704,14 @@ def _token_delta(
     }
 
 
+def _percentile(values: Sequence[int], percentile: int) -> int | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    index = max(0, math.ceil(percentile / 100 * len(ordered)) - 1)
+    return ordered[index]
+
+
 def _aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     metric_names = (
         "edit_top1",
@@ -731,6 +740,10 @@ def _aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
             if successful
             else None
         ),
+        # An agent waits on the slow tail, not the mean; both percentiles are
+        # part of the acceptance line for any default change.
+        "p50_elapsed_ms": _percentile([int(r["elapsed_ms"]) for r in successful], 50),
+        "p95_elapsed_ms": _percentile([int(r["elapsed_ms"]) for r in successful], 95),
         "mean_returned_chars": fmean(
             float(result.get("returned_chars", 0)) for result in results
         ),
@@ -942,18 +955,26 @@ def _number(value: object) -> str:
 
 
 def compare(paths: Iterable[Path]) -> str:
+    # Head-of-list quality (Top-1, nDCG@100) sits next to the line-budget
+    # metrics on purpose: a change that lifts recall while pushing the answer
+    # out of the first slots must be visible in the same row.
     headers = (
         "Variant",
         "OK",
         "Edit Top-1",
+        "Core Top-1",
         "Edit file R@10",
         "Edit region R@10",
         "Core file R@10",
         "Core region R@10",
         "SWE line R",
+        "SWE nDCG@100",
         "SWE nDCG@500",
+        "SWE first hit",
         "SWE efficiency",
         "Latency ms",
+        "p50 ms",
+        "p95 ms",
         "Chars",
     )
     rows: list[tuple[str, ...]] = []
@@ -971,14 +992,19 @@ def compare(paths: Iterable[Path]) -> str:
                 str(value.get("label", path.stem)),
                 f"{summary['successful_cases']}/{summary['cases']}",
                 _percent(summary["edit_top1"]),
+                _percent(summary.get("core_top1")),
                 _percent(summary["edit_file_recall_at_10"]),
                 _percent(summary["edit_region_recall_at_10"]),
                 _percent(summary["core_file_recall_at_10"]),
                 _percent(summary["core_region_recall_at_10"]),
                 _percent(summary.get("swe_explore_recall")),
+                _percent(summary.get("swe_explore_ndcg_at_100")),
                 _percent(summary.get("swe_explore_ndcg_at_500")),
+                _percent(summary.get("swe_explore_first_useful_hit")),
                 _percent(summary.get("swe_explore_context_efficiency")),
                 _number(summary.get("mean_elapsed_ms")),
+                _number(summary.get("p50_elapsed_ms")),
+                _number(summary.get("p95_elapsed_ms")),
                 _number(summary.get("mean_returned_chars")),
             )
         )

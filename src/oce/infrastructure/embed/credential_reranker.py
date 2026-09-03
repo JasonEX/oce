@@ -108,6 +108,7 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
             instruct=self._fallback.instruction or None,
             credential_id=config.credential_id,
             on_usage=self._on_usage,
+            max_query_chars=self._fallback.max_query_chars,
         )
 
     async def reload(self) -> None:

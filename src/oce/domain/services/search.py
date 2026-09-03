@@ -123,7 +123,11 @@ class ExactSearchStore(Protocol):
 
 
 class LexicalSearchStore(Protocol):
-    """词法召回：对 chunk 词元索引做 term/phrase 匹配，按词法相关度排序。"""
+    """词法召回：对 chunk 词元索引做 term/phrase 匹配，按词法相关度排序。
+
+    ``required`` 是必须至少命中一个的词元组：引用类查询用它把「真正用到这个
+    标识符」的片段和「只是碰到同样子词」的片段分开；排序仍按全部 terms 计算。
+    """
 
     async def search_lexical(
         self,
@@ -132,6 +136,7 @@ class LexicalSearchStore(Protocol):
         phrases: Sequence[str],
         scope: SearchScope,
         top_k: int = 30,
+        required: Sequence[str] = (),
     ) -> list[SearchHit]: ...
 
 

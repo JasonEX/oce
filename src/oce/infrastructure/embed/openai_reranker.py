@@ -27,13 +27,17 @@ class OpenAIReranker:
         instruct: str | None = None,
         credential_id: int = 0,
         on_usage: UsageCallback | None = None,
+        max_query_chars: int = 2_400,
     ) -> None:
+        if max_query_chars < 1:
+            raise ValueError("max_query_chars must be positive")
         self._endpoint = endpoint
         self._api_key = api_key
         self._model = model
         self._top_n = top_n
         self._min_score = min_score
         self._instruct = instruct
+        self._max_query_chars = max_query_chars
         self._credential_id = credential_id
         self._on_usage = on_usage
         self._owns_client = client is None
@@ -44,7 +48,7 @@ class OpenAIReranker:
             return []
         body: dict[str, Any] = {
             "model": self._model,
-            "query": query,
+            "query": query[: self._max_query_chars],
             "documents": [self._document_text(hit) for hit in hits],
             "top_n": min(self._top_n, len(hits)),
             "return_documents": False,

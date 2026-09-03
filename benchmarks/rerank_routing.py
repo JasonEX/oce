@@ -71,6 +71,10 @@ class RoutingCase:
     # Every anchor is asked in English and Chinese; the routing rules and the
     # cross-language embedding path must agree on both.
     language: str = "en"
+    # The anchor's declaration file. Reference truth excludes it, so a
+    # reference query that leads with it is a distinct failure mode
+    # ("answered the definition") worth reporting apart from noise.
+    definition_path: str = ""
 
 
 @dataclass(frozen=True)
@@ -191,6 +195,7 @@ def expand_cases(
                         expected_intent="symbol",
                         expected_paths=(anchor.definition_path,),
                         language=language,
+                        definition_path=anchor.definition_path,
                     ),
                     RoutingCase(
                         id=f"{anchor.id}-path{suffix}",
@@ -200,6 +205,7 @@ def expand_cases(
                         expected_intent="path",
                         expected_paths=(anchor.definition_path,),
                         language=language,
+                        definition_path=anchor.definition_path,
                     ),
                     RoutingCase(
                         id=f"{anchor.id}-reference{suffix}",
@@ -209,6 +215,7 @@ def expand_cases(
                         expected_intent="reference",
                         expected_paths=references,
                         language=language,
+                        definition_path=anchor.definition_path,
                     ),
                 )
             )
@@ -311,7 +318,12 @@ def expected_route(kind: QueryKind, runtime: dict[str, object]) -> str:
     return f"skip:{reason}"
 
 
-def _score_paths(expected: Sequence[str], retrieved: Sequence[str]) -> dict[str, float]:
+def _score_paths(
+    expected: Sequence[str],
+    retrieved: Sequence[str],
+    *,
+    definition_path: str = "",
+) -> dict[str, float]:
     expected_set = set(expected)
     ranked = list(dict.fromkeys(retrieved[:10]))
     rank = next(
@@ -322,6 +334,11 @@ def _score_paths(expected: Sequence[str], retrieved: Sequence[str]) -> dict[str,
         "hit_at_10": float(rank is not None),
         "mrr": 0.0 if rank is None else 1.0 / rank,
         "path_recall_at_10": len(expected_set.intersection(ranked)) / len(expected_set),
+        "definition_top1": float(
+            bool(definition_path)
+            and bool(retrieved)
+            and retrieved[0] == definition_path
+        ),
     }
 
 
@@ -335,7 +352,13 @@ def _percentile(values: Sequence[int], percentile: int) -> int | None:
 
 def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     successful = [result for result in results if result["status"] == "ok"]
-    quality_names = ("top1", "hit_at_10", "mrr", "path_recall_at_10")
+    quality_names = (
+        "top1",
+        "hit_at_10",
+        "mrr",
+        "path_recall_at_10",
+        "definition_top1",
+    )
     elapsed = [int(result["elapsed_ms"]) for result in successful]
     returned_chars = [int(result["returned_chars"]) for result in successful]
     hit_counts = [int(result["hit_count"]) for result in successful]
@@ -467,7 +490,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "expected_path_count": len(case.expected_paths),
                     "retrieved": [asdict(region) for region in retrieved],
                     "metrics": _score_paths(
-                        case.expected_paths, [region.path for region in retrieved]
+                        case.expected_paths,
+                        [region.path for region in retrieved],
+                        definition_path=case.definition_path,
                     ),
                     "returned_chars": len(formatted),
                     "hit_count": len(retrieved),
@@ -550,13 +575,18 @@ def _number(value: object) -> str:
 
 
 def compare(paths: Iterable[Path]) -> str:
+    # Top-1 per kind is the acceptance line for the deterministic head slots;
+    # Hit@10 alone stayed at 100% while symbol answers slipped to rank 2-4.
     headers = (
         "Variant",
         "OK",
+        "Top-1",
+        "MRR",
+        "Symbol Top-1",
+        "Path Top-1",
+        "Reference Top-1",
+        "Ref def-first",
         "Hit@10",
-        "Symbol",
-        "Path",
-        "Reference",
         "Intent",
         "Route",
         "Stage",
@@ -585,10 +615,13 @@ def compare(paths: Iterable[Path]) -> str:
             (
                 str(value.get("label", path.stem)),
                 f"{summary['successful_cases']}/{summary['cases']}",
+                _percent(summary["top1"]),
+                f"{float(summary['mrr']):.3f}",
+                _percent(by_kind["symbol"]["top1"]),
+                _percent(by_kind["path"]["top1"]),
+                _percent(by_kind["reference"]["top1"]),
+                _percent(by_kind["reference"].get("definition_top1")),
                 _percent(summary["hit_at_10"]),
-                _percent(by_kind["symbol"]["hit_at_10"]),
-                _percent(by_kind["path"]["hit_at_10"]),
-                _percent(by_kind["reference"]["hit_at_10"]),
                 _percent(summary["intent_conformance"]),
                 _percent(summary["route_conformance"]),
                 _percent(summary["stage_conformance"]),

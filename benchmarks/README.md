@@ -136,11 +136,14 @@ questions:
 - SWE-Explore issues are long compound texts. The deterministic classifier labels all 13
   `development` issues `compound`, so `adaptive` and `always` send them to the same rerankers.
   Use this set to confirm that routing changes do not regress semantic ranking.
-- [`rerank_routing_cases.json`](rerank_routing_cases.json) pins 10 manually reviewed
-  definition anchors from five of the same snapshots. [`rerank_routing.py`](rerank_routing.py)
-  expands them into a balanced set of 60 short `symbol`, `path`, and `reference` queries,
+- [`rerank_routing_cases.json`](rerank_routing_cases.json) pins 16 manually reviewed
+  definition anchors from five of the same snapshots: 10 classes and 6 module-level
+  `snake_case` functions, because single-word class names cannot exercise whole-identifier
+  matching. [`rerank_routing.py`](rerank_routing.py)
+  expands them into a balanced set of 96 short `symbol`, `path`, and `reference` queries,
   each asked in English and in Chinese, and derives reference-file truth from tracked
-  non-test Python sources. Results report `by_kind` and `by_language` aggregates. Use it to verify the skip
+  non-test Python sources. Results report `by_kind` and `by_language` aggregates, and
+  `definition_top1` separates "answered with the declaration" from other reference misses. Use it to verify the skip
   rules: with dedicated adaptive reranking enabled, each query's
   `retrieval_metrics.rerank_route` should read
   `skip:exact_definition`, `skip:path_evidence`, or `dedicated` respectively, and `rerank_ms`
@@ -150,6 +153,12 @@ Run at least `none`, `dedicated:always`, and `dedicated:adaptive`, each with and
 `chat:adaptive`, and repeat every variant at least twice; a single chat-20 rerun moved edit
 Top-1 by 7 points in the September 2026 study. Report semantic metrics (nDCG@500, first
 useful hit) and skip-path metrics (hit rate, `rerank_ms`, p95 latency, skip rate) separately.
+Both `compare` tables also lead with head-of-list quality: per-kind Top-1 and MRR for the
+routing set, Edit/Core Top-1 and nDCG@100 for issues, next to returned characters and p50
+latency. A change that lifts Recall@10 while pushing the answer out of the first slot fails
+these columns; the September 2026 lexical fusion did exactly that (symbol Top-1 100% → 65%)
+while Hit@10 stayed at 100%. `tests/unit/infrastructure/test_retrieval_regression.py` guards
+the same head-order contract offline on an adversarial SQLite corpus.
 The `/admin/index-stats` runtime block records both policies for every run.
 
 The routing harness deliberately does not add a benchmark-only field to the ACE response or
@@ -180,3 +189,6 @@ observability stack.
 
 The completed six-variant, two-repeat issue and routing matrix is summarized in
 [`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md).
+The follow-up head-order study, which introduced the 96-query set and head-of-list columns and
+then retested the selected baseline with both model stages, is in
+[`results/swe-explore-development-2026-09-03.md`](results/swe-explore-development-2026-09-03.md).

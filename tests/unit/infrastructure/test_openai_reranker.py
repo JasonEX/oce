@@ -39,6 +39,7 @@ def _make_reranker(
     response_payload=None,
     raise_exc: Exception | None = None,
     instruct=None,
+    max_query_chars=2_400,
 ):
     """构造一个 OpenAIReranker，注入 mock httpx client。"""
     fake_client = MagicMock(spec=httpx.AsyncClient)
@@ -57,6 +58,7 @@ def _make_reranker(
         min_score=min_score,
         client=fake_client,
         instruct=instruct,
+        max_query_chars=max_query_chars,
     )
     return reranker, fake_client
 
@@ -112,6 +114,17 @@ async def test_rerank_documents_include_source_location_when_available():
 
 
 @pytest.mark.asyncio
+async def test_rerank_query_is_capped_to_keep_issue_text_affordable():
+    reranker, fake_client = _make_reranker(
+        response_payload={"results": []}, max_query_chars=50
+    )
+    long_query = "title line\n" + "x" * 500
+    await reranker.rerank(long_query, [_Hit("code", 0.9)])
+    body = fake_client.post.call_args.kwargs["json"]
+    assert body["query"] == long_query[:50]
+    assert body["query"].startswith("title line")
+
+
 async def test_rerank_body_shape_omits_instruction_when_none():
     reranker, client = _make_reranker(response_payload={"results": []})
     await reranker.rerank("q", [_Hit(content="d1")])

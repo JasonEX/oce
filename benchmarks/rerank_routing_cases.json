@@ -60,6 +60,42 @@
       "instance_id": "pydata__xarray-7233",
       "identifier": "DataArray",
       "definition_path": "xarray/core/dataarray.py"
+    },
+    {
+      "id": "xarray-is-dict-like",
+      "instance_id": "pydata__xarray-7233",
+      "identifier": "is_dict_like",
+      "definition_path": "xarray/core/utils.py"
+    },
+    {
+      "id": "xarray-close-on-error",
+      "instance_id": "pydata__xarray-7233",
+      "identifier": "close_on_error",
+      "definition_path": "xarray/core/utils.py"
+    },
+    {
+      "id": "xarray-combine-by-coords",
+      "instance_id": "pydata__xarray-7233",
+      "identifier": "combine_by_coords",
+      "definition_path": "xarray/core/combine.py"
+    },
+    {
+      "id": "pylint-is-overload-stub",
+      "instance_id": "pylint-dev__pylint-7080",
+      "identifier": "is_overload_stub",
+      "definition_path": "pylint/checkers/utils.py"
+    },
+    {
+      "id": "pylint-fix-import-path",
+      "instance_id": "pylint-dev__pylint-7080",
+      "identifier": "fix_import_path",
+      "definition_path": "pylint/lint/utils.py"
+    },
+    {
+      "id": "pytest-assert-never",
+      "instance_id": "pytest-dev__pytest-10356",
+      "identifier": "assert_never",
+      "definition_path": "src/_pytest/compat.py"
     }
   ]
 }

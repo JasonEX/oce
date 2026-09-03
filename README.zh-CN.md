@@ -108,6 +108,8 @@ RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # 对默认 50 条候选窗完整排序；provider 未返回的候选仍保留
 RERANK_TOP_N=50
+# 限制对每个候选重复读取的 query 长度；保留 issue 开头的主要上下文
+RERANK_MAX_QUERY_CHARS=2400
 # adaptive 在 exact symbol / path 证据已回答问题时跳过调用
 RETRIEVAL_RERANK_POLICY=adaptive
 # Qwen 报告任务 instruction 通常有增益；provider 不支持时请置空
@@ -134,10 +136,10 @@ feature/flow/overview/compound 查询两者都用。`always` 对所有至少两�
 适合质量优先部署与受控对照。每次检索的路由（`dedicated`、`dedicated+llm` 或
 `skip:<原因>`）记录在 `retrieval_metrics.rerank_route`。同时启用两种后端时，管线按专用 reranker
 → chat LLM 级联。默认关闭只是数据外发和延迟边界，不代表 chat LLM 的排序质量更低。
-当前重复运行的 development benchmark 支持把专用 reranker 作为交互式首选增强，
-把有界级联作为质量优先模式；chat-only 更慢且超时更多。由于这仍只是 13 个
+当前重复运行的 development benchmark 支持把专用 reranker 作为交互式首选增强；有界
+chat 级联在小样本上继续提高质量，但速度不适合交互使用。由于这仍只是 13 个
 issue 的开发观察，在 full profile 重复前不修改默认授权开关。详见
-[benchmark 报告](benchmarks/results/swe-explore-development-2026-09-02.md)。无论窗口多大，
+[benchmark 报告](benchmarks/results/swe-explore-development-2026-09-03.md)。无论窗口多大，
 窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
 
 然后启动服务：
@@ -251,9 +253,20 @@ overview 和复合查询；symbol/path 只在确定性证据缺失时补跑，�
 标识符同时按整体和子词入库，因此
 `ParseConfig`、`parse_config` 和自然语言里的 “parse the config” 可以相互命中。请求中的
 traceback 帧会变成精确路径与函数证据，引号内报错会变成短语查询。exact symbol 未命中时，
-词法回退只查标识符整体代理 token，不用宽泛高频子词。cAST chunk 的 embedding
+词法回退只查标识符整体代理 token，不用宽泛高频子词。reference 查询会以该代理 token 作为
+词法召回的必要条件：片段必须包含完整标识符才能进入这一路，排序仍由全部词元决定。cAST chunk 的 embedding
 输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。精确
-symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。选择后，同文件相邻
+symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。路径先验把文档目录
+（`docs/`、`doc/`、`examples/`、changelog）、变更记录、配置文件、`.pyi` 桩、`__init__.py`
+桶文件和测试文件视为实现文件之后的辅助材料，仓库根目录的 `README` 保持全权重。feature、
+compound、调用链和 reference 查询会给未被路径先验降权的实现文件保留前几个槽位（根目录
+`README` 在这条规则里仍按文档处理）：同时领先
+dense 和词法列表的测试或文档片段，其融合分数是乘性先验压不下去的；明确问测试的查询保持
+中立先验。reference 查询只提升 exact 或整标识符词法证据，并把被问符号自身的声明排在最先
+出现的使用位置之后。这两条头部规则在模型重排之后会再应用一次，层内保持模型给出的顺序；
+专用 reranker 最多只收到
+`RERANK_MAX_QUERY_CHARS` 个字符的请求文本，issue 长文不再成倍放大它的延迟。exact、
+路径查找和按意图的词法召回在 query embedding 往返之前就开始执行。选择后，同文件相邻
 片段会合并；调用链、feature 和 overview 查询可用主结果的剩余字符预算附带简短定义摘录，
 compound 查询不会对已选片段里的所有标识符扇出。请求刚加入的少量 `added_blobs` 还会获得轻量
 工作集先验。
@@ -429,7 +442,7 @@ flowchart TB
 | plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
 | recall | dense（Milvus）∥ 精确符号（SQL）∥ 按意图词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
 | fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |
-| prior | 源码先验 × 工作集先验，然后保护有界的精确 symbol/path 头部槽位 |
+| prior | 源码先验 × 工作集先验；有界头部槽位：精确 symbol/path 答案、语义查询的未降权源码文件、reference 查询里排在声明之前的使用位置 |
 | rerank | `plan_rerank` 决策 → 专用 reranker → chat-LLM reranker，两者都保留候选集 |
 | select | focused / coverage 选择，字符预算为硬限制 |
 | expand | 合并同文件相邻片段；语义关系查询可用剩余上下文预算附带相关定义 |

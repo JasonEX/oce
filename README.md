@@ -115,6 +115,8 @@ RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # Rank the full default candidate window; provider-omitted candidates still remain.
 RERANK_TOP_N=50
+# Bound the query repeated against every candidate; keeps the leading issue context.
+RERANK_MAX_QUERY_CHARS=2400
 # adaptive skips the call when exact symbol / path evidence already answers the query.
 RETRIEVAL_RERANK_POLICY=adaptive
 # Qwen reports typical gains from task instructions; clear this for unsupported providers.
@@ -146,10 +148,10 @@ controlled comparisons. Each retrieval records its route (`dedicated`, `dedicate
 both backends forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an
 operational data/latency boundary, not a claim that chat-LLM ranking is lower quality.
 The repeated development benchmark supports dedicated reranking as the first interactive
-opt-in and the bounded cascade as a quality-first mode; chat-only behavior was slower and
-timed out more often. This is still a 13-issue development observation, so authorization
+opt-in; the bounded chat cascade improved the small development set further but was too slow
+for interactive use. This is still a 13-issue development observation, so authorization
 defaults stay off until replicated on the full profile. See the
-[benchmark report](benchmarks/results/swe-explore-development-2026-09-02.md). Candidates
+[benchmark report](benchmarks/results/swe-explore-development-2026-09-03.md). Candidates
 outside either rerank window remain available to final selection.
 
 Then start the service:
@@ -288,10 +290,23 @@ Identifiers are indexed both whole and split into sub-words so
 `ParseConfig`, `parse_config`, and "parse the config" meet. Traceback frames in a request
 become exact path and function evidence, and quoted error text becomes a phrase query. When an
 exact symbol lookup misses, its lexical fallback uses the whole-identifier surrogate rather than
-broad common sub-words.
+broad common sub-words. Reference requests gate lexical recall on that surrogate: a chunk must
+name the whole identifier to enter the lane, while every term still shapes the ranking.
 Each cAST chunk is embedded with its enclosing scope chain (`class Foo > def bar`), and the
 same chain is shown as a `Context:` line in results. Exact symbol definitions and explicit SQL
 path matches occupy bounded head slots instead of mixing incompatible structural and RRF scores.
+The path prior treats documentation directories (`docs/`, `doc/`, `examples/`, changelogs),
+change logs, configuration files, `.pyi` stubs, `__init__.py` barrels, and test files as
+supporting material behind implementation files; a root `README` keeps full weight. Feature,
+compound, call-chain, and reference requests reserve a few leading slots for implementation
+files the path prior does not demote (the root `README` remains documentation for this rule).
+A test or document chunk that leads both the dense and lexical lists keeps a fused score no
+multiplicative prior can undercut; requests that name tests keep a neutral prior. Reference
+requests only promote exact or whole-identifier lexical evidence and place the symbol's own
+declaration after its first use sites. Both head rules are reapplied after a model reranker
+runs, keeping the model's order inside each tier. The dedicated reranker also receives at most
+`RERANK_MAX_QUERY_CHARS` of the request so issue-length text does not multiply its latency.
+Exact, path-lookup, and routed lexical recall start before the query embedding round trip.
 After selection, touching spans of one file are merged; call-chain, feature, and overview requests
 may append short definition excerpts only within the unused main context budget. Compound
 requests do not fan out through every identifier in their selected snippets. Files the
@@ -478,7 +493,7 @@ fields, and every optional operator degrades to the identity transform when disa
 | plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
 | recall | dense (Milvus) ∥ exact symbols (SQL) ∥ intent-routed lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
 | fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |
-| prior | source priority × working-set boost, then protect bounded exact symbol/path head slots from heterogeneous score mixing |
+| prior | source priority × working-set boost; bounded head slots: exact symbol/path answers, undemoted source files for semantic requests, use sites before the declaration for reference requests |
 | rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
 | select | focused / coverage selection under a hard character budget |
 | expand | merge touching spans; relationship queries may use remaining context budget for related definitions |

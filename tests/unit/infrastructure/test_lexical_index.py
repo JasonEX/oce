@@ -108,6 +108,50 @@ async def test_error_text_and_identifiers_are_found_in_scope(sessions):
     assert hits == []
 
 
+async def test_required_identifier_gates_rows_but_not_their_ranking(sessions):
+    async with sessions() as session:
+        names = await _index(
+            session,
+            [
+                (
+                    "json-heavy",
+                    "src/serializer.py",
+                    "def dump(json_value):\n"
+                    "    json.dumps(json_value)\n"
+                    "    json.loads(json_value)\n"
+                    "    return json_value",
+                ),
+                (
+                    "call-site",
+                    "src/view.py",
+                    "def handle(request):\n"
+                    "    payload = request.get_json()\n"
+                    "    return json.dumps(payload)",
+                ),
+                (
+                    "call-site-only",
+                    "src/other.py",
+                    "def other(request):\n    return request.get_json()",
+                ),
+            ],
+        )
+    store = SqlLexicalSearchStore(sessions)
+    scope = SearchScope(frozenset(names))
+    terms = ("getjson", "get", "json")
+
+    ungated = await store.search_lexical(terms=terms, phrases=(), scope=scope)
+    assert "src/serializer.py" in {hit.path for hit in ungated}
+
+    gated = await store.search_lexical(
+        terms=terms, phrases=(), scope=scope, required=("getjson",)
+    )
+    assert {hit.path for hit in gated} == {"src/view.py", "src/other.py"}
+    # The gate only decides admission: rows that pass keep the relative
+    # order the full term set gave them.
+    surviving = [hit.path for hit in ungated if hit.path != "src/serializer.py"]
+    assert [hit.path for hit in gated] == surviving
+
+
 async def test_scope_uses_chain_membership(sessions):
     async with sessions() as session:
         names = await _index(
