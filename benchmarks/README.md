@@ -24,12 +24,13 @@ Downloaded data, Git repositories, client state, and result files default to
 SWE-Explore is licensed CC BY-NC-ND 4.0, so review its terms before using the data outside
 internal product evaluation.
 
-Three deterministic profiles trade iteration speed for coverage:
+Four deterministic profiles trade iteration speed for coverage:
 
 | Profile | Current size | Purpose |
 | --- | ---: | --- |
 | `pilot` | 5 issues / 5 repositories | End-to-end smoke and configuration checks |
 | `development` | 13 issues / 5 repositories | Fast paired strategy experiments |
+| `standard` | 53 issues / 12 repositories | Up to 5 issues per joined repository for broader repository-mix coverage |
 | `verified` | 451 joined issues | Full evaluation over the Verified/SWE-Explore intersection |
 
 The two smaller profiles take a SHA256-stable sample from Flask, Requests, pytest, Pylint,
@@ -137,8 +138,9 @@ questions:
   Use this set to confirm that routing changes do not regress semantic ranking.
 - [`rerank_routing_cases.json`](rerank_routing_cases.json) pins 10 manually reviewed
   definition anchors from five of the same snapshots. [`rerank_routing.py`](rerank_routing.py)
-  expands them into a balanced set of 30 short `symbol`, `path`, and `reference` queries and
-  derives reference-file truth from tracked non-test Python sources. Use it to verify the skip
+  expands them into a balanced set of 60 short `symbol`, `path`, and `reference` queries,
+  each asked in English and in Chinese, and derives reference-file truth from tracked
+  non-test Python sources. Results report `by_kind` and `by_language` aggregates. Use it to verify the skip
   rules: with dedicated adaptive reranking enabled, each query's
   `retrieval_metrics.rerank_route` should read
   `skip:exact_definition`, `skip:path_evidence`, or `dedicated` respectively, and `rerank_ms`

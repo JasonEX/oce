@@ -1,4 +1,4 @@
-"""编程式迁移 run_migrations 与迁移脚本的 SQLite（个人模式）兼容性测试。"""
+"""个人模式的编程式 SQLite schema 初始化测试。"""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ def _sync_engine(url: str):
 def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
     from oce.infrastructure.persistence.migrations import run_migrations
 
-    run_migrations(sqlite_url)
+    run_migrations()
 
     engine = _sync_engine(sqlite_url)
     try:
@@ -52,6 +52,9 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
             tables = set(inspector.get_table_names())
             retrieval_columns = {
                 column["name"] for column in inspector.get_columns("retrieval_metrics")
+            }
+            blob_chunk_columns = {
+                column["name"] for column in inspector.get_columns("blob_chunks")
             }
             version = conn.execute(
                 text("SELECT version_num FROM oce_alembic_version")
@@ -65,6 +68,7 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "blob_chunks",
         "symbol_occurrences",
         "index_profiles",
+        "chunk_lexical",
     }.issubset(tables)
     # 监控迁移链（含检索审计）也应被建出
     assert {
@@ -76,14 +80,15 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
     assert "rerank_route" in retrieval_columns
     assert {"embed_ms", "path_ms"}.issubset(retrieval_columns)
     assert "intent_ms" not in retrieval_columns
+    assert "context" in blob_chunk_columns
     assert version == _head_revision()
 
 
 def test_run_migrations_is_idempotent(sqlite_url: str) -> None:
     from oce.infrastructure.persistence.migrations import run_migrations
 
-    run_migrations(sqlite_url)
-    run_migrations(sqlite_url)  # 第二次不应抛“表已存在”
+    run_migrations()
+    run_migrations()  # 第二次不应抛“表已存在”
 
 
 def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
@@ -117,34 +122,11 @@ def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
     assert version == _head_revision()
 
 
-def test_run_migrations_stamps_legacy_create_all_db(sqlite_url: str) -> None:
-    """旧版 create_all 库（无版本表）应被 stamp 为 head，而不是重放建表报错。"""
-    from oce.infrastructure.persistence import models  # noqa: F401
-    from oce.infrastructure.persistence.migrations import run_migrations
-    from oce.shared.database.session import Base
-
-    engine = _sync_engine(sqlite_url)
-    Base.metadata.create_all(engine)  # 模拟 create_all 时代的库
-    engine.dispose()
-
-    run_migrations(sqlite_url)
-
-    engine = _sync_engine(sqlite_url)
-    try:
-        with engine.begin() as conn:
-            version = conn.execute(
-                text("SELECT version_num FROM oce_alembic_version")
-            ).scalar()
-    finally:
-        engine.dispose()
-    assert version == _head_revision()
-
-
 def test_symbol_occurrences_insert_auto_id_on_sqlite(sqlite_url: str) -> None:
     """封面回归：迁移里 id 必须走 INTEGER 自增，created_at 必须用 func.now()。"""
     from oce.infrastructure.persistence.migrations import run_migrations
 
-    run_migrations(sqlite_url)
+    run_migrations()
 
     engine = _sync_engine(sqlite_url)
     try:

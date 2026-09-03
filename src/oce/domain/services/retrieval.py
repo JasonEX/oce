@@ -1,20 +1,27 @@
-"""RetrievalPipeline 领域服务 - 检索编排
+"""RetrievalPipeline 领域服务 - 检索状态机
 
-流程：
-    embed_query → store.search（dense 向量检索）
-    → 精确标识符召回 → 多查询结果融合 → 源码优先/可选置信度过滤
-    → 专用 rerank → 可选 LLM 语义 rerank → select（最终 K 条）
+一次检索是一条固定顺序的状态转移，每个阶段只读写 ``RetrievalState`` 上属于它的字段：
 
-rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余」，职责不同。
-关闭查询分解、使用 Noop reranker 和自定义 TopK selector 时，可退化为传统 Top-K。
+    route   查询 → intent / strategy / QueryEvidence（标识符、文件名、路径、报错短语、词元）
+    plan    可选 LLM 改写 + 句子级 facet 分解 + 查询向量
+    recall  dense | exact | lexical | path（embedding 路径索引 + SQL 精确路径查找），并行
+    fuse    dense/lexical 按 RRF 融合 → 合并 exact → 路径 boost/回填
+    prior   源码先验 × 工作集增量先验 → 可选置信度门槛
+    rerank  plan_rerank 决策 → 专用 reranker → chat-LLM reranker（均保留候选集）
+    select  focused / coverage 选择（数量软上限、字符硬预算）
+    expand  同文件相邻片段合并 → 二跳拉取被引用符号的定义摘要（独立预算）
+
+rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余」，expand 解决「拿到的
+片段引用了什么」。关闭对应开关时每个阶段都退化为恒等变换。
 """
 
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
 from loguru import logger
@@ -24,14 +31,22 @@ from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
-    extract_code_identifiers,
     should_use_path_index,
 )
+from oce.domain.services.query_evidence import QueryEvidence, extract_query_evidence
 from oce.domain.services.query_planner import HeuristicQueryPlanner, QueryPlanner
 from oce.domain.services.reranker import Reranker
-from oce.domain.services.retrieval_strategy import get_strategy, plan_rerank
+from oce.domain.services.retrieval_strategy import (
+    RerankDecision,
+    RetrievalStrategy,
+    get_strategy,
+    plan_rerank,
+)
 from oce.domain.services.search import (
+    DefinitionHit,
     ExactSearchStore,
+    LexicalSearchStore,
+    PathLookupStore,
     SearchHit,
     SearchHitKey,
     SearchScope,
@@ -39,8 +54,9 @@ from oce.domain.services.search import (
     search_hit_key,
 )
 from oce.domain.services.selector.coverage_selector import CoverageSelector
-from oce.domain.services.selector.protocols import SelectionMode, Selector
+from oce.domain.services.selector.protocols import Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
+from oce.domain.services.symbols import DEFINITION_KINDS
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 
@@ -97,6 +113,89 @@ def neutral_priority_factor(_path: str) -> float:
     return 1.0
 
 
+# Identifiers worth pulling a definition for: multi-part or reasonably long
+# names. Short lowercase words are mostly keywords, locals, or English.
+_MINED_IDENTIFIER = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]{2,}\b")
+_IDENTIFIER_NOISE = frozenset(
+    """
+    self cls this super none true false null nil return import from export def
+    class fn func function const let var static public private protected async
+    await yield lambda pass break continue while for foreach else elif if try
+    catch except finally raise throw throws new delete typeof instanceof void
+    int str float bool list dict set tuple object string number boolean array
+    print len range enumerate zip map filter isinstance hasattr getattr setattr
+    type super value values key keys item items name args kwargs result data
+    error exception warning test tests assert with match case default switch
+    struct enum trait impl mod use pub crate where type interface extends
+    implements package namespace using module require console
+    """.split()
+)
+
+
+def _mine_identifiers(hits: Sequence[SearchHit]) -> list[str]:
+    """Identifiers referenced by the hits, most widely shared first."""
+    per_hit: dict[str, set[int]] = {}
+    total: dict[str, int] = {}
+    for index, hit in enumerate(hits):
+        for match in _MINED_IDENTIFIER.finditer(hit.content):
+            token = match.group()
+            lowered = token.lower()
+            if lowered in _IDENTIFIER_NOISE:
+                continue
+            # A plain lowercase word needs some length to look like a symbol.
+            if token.islower() and "_" not in token and len(token) < 6:
+                continue
+            per_hit.setdefault(token, set()).add(index)
+            total[token] = total.get(token, 0) + 1
+    return sorted(
+        per_hit,
+        key=lambda token: (-len(per_hit[token]), -total[token], token),
+    )
+
+
+@dataclass
+class RetrievalState:
+    """Mutable record of one retrieval; each stage owns the fields it fills."""
+
+    query: str
+    scope: SearchScope | None
+    audit: RetrievalAudit | None = None
+
+    # route
+    evidence: QueryEvidence | None = None
+    intent: QueryIntent = QueryIntent.FEATURE
+    strategy: RetrievalStrategy = field(default_factory=RetrievalStrategy)
+    use_path_index: bool = False
+
+    # plan
+    queries: list[str] = field(default_factory=list)
+    planned: list[tuple[str, int]] = field(default_factory=list)
+    path_queries: tuple[str, ...] = ()
+    vectors: dict[str, list[float]] = field(default_factory=dict)
+    embed_error: Exception | None = None
+
+    # recall
+    dense: list[SearchHit] = field(default_factory=list)
+    dense_error: Exception | None = None
+    exact: list[SearchHit] = field(default_factory=list)
+    lexical: list[SearchHit] = field(default_factory=list)
+    path_scores: dict[str, float] = field(default_factory=dict)
+    lookup_scores: dict[str, float] = field(default_factory=dict)
+
+    # fuse / prior / rerank / select / expand
+    candidates: list[SearchHit] = field(default_factory=list)
+    decision: RerankDecision | None = None
+    selected: list[SearchHit] = field(default_factory=list)
+    related: list[SearchHit] = field(default_factory=list)
+
+    @property
+    def allowed_blob_names(self) -> frozenset[str] | None:
+        return self.scope.blob_names if self.scope is not None else None
+
+    def stage(self, name: str):
+        return self.audit.stage(name) if self.audit is not None else _noop_stage(name)
+
+
 class RetrievalPipeline:
     """检索管道：编排检索全流程"""
 
@@ -111,7 +210,9 @@ class RetrievalPipeline:
         query_rewriter: QueryRewriter | None = None,
         path_store: PathSearchStore | None = None,
         path_content_store: PathContentStore | None = None,
+        path_lookup_store: PathLookupStore | None = None,
         exact_store: ExactSearchStore | None = None,
+        lexical_store: LexicalSearchStore | None = None,
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
         priority_factor: Callable[[str], float] | None = None,
@@ -128,8 +229,10 @@ class RetrievalPipeline:
         self.query_rewriter = query_rewriter
         self.path_store = path_store
         self.path_content_store = path_content_store
+        self.path_lookup_store = path_lookup_store
         self.settings = settings
         self.exact_store = exact_store
+        self.lexical_store = lexical_store
         self.priority_factor = priority_factor or (
             source_priority_factor
             if self.settings.source_priority_enabled
@@ -162,169 +265,87 @@ class RetrievalPipeline:
         *,
         audit: RetrievalAudit | None = None,
     ) -> list[SearchHit]:
-        """执行一次检索，返回最终命中列表（按融合分降序）。
+        """执行一次检索，返回主结果（按最终排序）加二跳定义摘要（role=related）。
 
         Args:
             query: 查询文本
             scope: 已解析的工作集；None 仅供内部测试使用，表示不过滤。
             audit: 可选的阶段耗时收集容器；为 None 时不打点、零开销。
         """
-        stage = audit.stage if audit is not None else _noop_stage
-        allowed_blob_names = scope.blob_names if scope is not None else None
+        state = RetrievalState(query=query, scope=scope, audit=audit)
         if audit is not None:
             audit.scope_size = (
-                len(allowed_blob_names) if allowed_blob_names is not None else None
+                len(state.allowed_blob_names)
+                if state.allowed_blob_names is not None
+                else None
             )
-
         # None 表示不过滤，空集合表示无可搜索内容
-        if allowed_blob_names is not None and len(allowed_blob_names) == 0:
+        if state.allowed_blob_names is not None and not state.allowed_blob_names:
             return []
 
-        # 路由完全由可测试的确定性信号决定；模型只参与显式的 rewrite/rerank。
-        intent = classify_query_intent(query)
-        strategy = get_strategy(intent)
-        logger.debug("Query intent: {}, strategy: {}", intent.value, strategy)
+        self._route(state)
+        await self._plan(state)
+        await self._recall(state)
+        await self._fuse(state)
+        if not state.candidates:
+            return []
+        await self._rank(state)
+        await self._select(state)
+        await self._expand(state)
+        return [*state.selected, *state.related]
+
+    # ── route ────────────────────────────────────────────────────────────
+
+    def _route(self, state: RetrievalState) -> None:
+        """路由完全由可测试的确定性信号决定；模型只参与显式的 rewrite/rerank。"""
+        state.evidence = extract_query_evidence(state.query)
+        state.intent = classify_query_intent(state.query)
+        state.strategy = get_strategy(state.intent)
+        logger.debug(
+            "Query intent: {}, strategy: {}", state.intent.value, state.strategy
+        )
         # 路径索引回答「哪个文件」，内容索引回答「文件里哪一段」；两者只在
         # 文件定位类查询上并行召回，再按 chunk 粒度合并。
-        use_path_index = self.path_store is not None and (
-            strategy.enable_path_index or should_use_path_index(query, intent)
+        state.use_path_index = self.path_store is not None and (
+            state.strategy.enable_path_index
+            or should_use_path_index(state.query, state.intent)
         )
-        if audit is not None:
-            audit.intent = intent.value
-            audit.path_boosted = use_path_index
+        if state.audit is not None:
+            state.audit.intent = state.intent.value
+            state.audit.path_boosted = state.use_path_index
 
+    # ── plan ─────────────────────────────────────────────────────────────
+
+    async def _plan(self, state: RetrievalState) -> None:
         # QueryRewriter 内部已容错：失败时返回原查询，不会抛到这里。
-        queries_to_search = [query]
-        if strategy.enable_query_rewrite and self.query_rewriter is not None:
-            with stage("rewrite"):
-                rewritten_queries = await self.query_rewriter.rewrite(query)
-            if rewritten_queries:
-                queries_to_search = rewritten_queries
+        state.queries = [state.query]
+        if state.strategy.enable_query_rewrite and self.query_rewriter is not None:
+            with state.stage("rewrite"):
+                rewritten = await self.query_rewriter.rewrite(state.query)
+            if rewritten:
+                state.queries = list(rewritten)
 
-        planned_queries = self._plan_queries(queries_to_search)
+        state.planned = self._plan_queries(state.queries)
         # 路径索引用原查询 + 改写变体分别检索：中文查询直接 embedding 常匹配不到
         # 英文路径文档，改写变体（含文件名如 CHANGES.rst）才能命中。
-        path_queries = (
-            tuple(dict.fromkeys((query, *queries_to_search))) if use_path_index else ()
+        state.path_queries = (
+            tuple(dict.fromkeys((state.query, *state.queries)))
+            if state.use_path_index
+            else ()
         )
-        with stage("embed"):
-            query_vectors = await self._embed_query_vectors(
-                [*path_queries, *(item[0] for item in planned_queries)]
-            )
-
-        # Exact SQL, dense vector I/O and the path index are independent after
-        # routing and rewrite, so they run together; fusion order is unchanged.
-        async def recall_dense() -> tuple[list[SearchHit], Exception | None]:
-            try:
-                with stage("dense"):
-                    result_lists = await asyncio.gather(
-                        *(
-                            self._recall_with_vector(
-                                query_vectors[planned_query],
-                                allowed_blob_names,
-                                num_queries,
-                            )
-                            for planned_query, num_queries in planned_queries
-                        )
-                    )
-                return (self._fuse(list(result_lists)) if result_lists else []), None
-            except Exception as exc:
-                if not use_path_index:
-                    raise
-                logger.warning("Content search failed: {}", type(exc).__name__)
-                return [], exc
-
-        async def recall_exact() -> list[SearchHit]:
-            with stage("exact"):
-                return await self._recall_exact(query, scope)
-
-        async def recall_paths() -> dict[str, float]:
-            if not use_path_index:
-                return {}
-            with stage("path"):
-                return await self._recall_paths(
-                    [query_vectors[variant] for variant in path_queries],
-                    allowed_blob_names,
+        try:
+            with state.stage("embed"):
+                state.vectors = await self._embed_query_vectors(
+                    [*state.path_queries, *(item[0] for item in state.planned)]
                 )
-
-        (content_hits, content_error), exact_hits, path_scores = await asyncio.gather(
-            recall_dense(),
-            recall_exact(),
-            recall_paths(),
-        )
-
-        with stage("fuse"):
-            hits = self._merge_exact_hits(intent, exact_hits, content_hits)
-            if path_scores:
-                hits = await self._merge_path_and_content(path_scores, hits)
-            elif use_path_index:
-                logger.info("No path results, using content-only")
-            # 路径索引失败且内容检索也失败：没有任何候选时才把内容错误抛出。
-            if not hits and content_error is not None:
-                raise content_error
-        if not hits:
-            return []
-
-        return await self._rank_and_select(
-            query,
-            hits,
-            intent=intent,
-            selection_mode=strategy.selection_mode,
-            has_exact_hits=bool(exact_hits),
-            has_path_hits=bool(path_scores),
-            # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）。
-            priority_factor=neutral_priority_factor if use_path_index else None,
-            audit=audit,
-        )
-
-    async def _rank_and_select(
-        self,
-        query: str,
-        hits: list[SearchHit],
-        *,
-        intent: QueryIntent,
-        selection_mode: SelectionMode,
-        has_exact_hits: bool = False,
-        has_path_hits: bool = False,
-        priority_factor: Callable[[str], float] | None = None,
-        audit: RetrievalAudit | None = None,
-    ) -> list[SearchHit]:
-        """Apply one candidate-preserving rerank state machine before selection."""
-        stage = audit.stage if audit is not None else _noop_stage
-
-        # Static source priors prepare the candidate order. Model rerankers run
-        # afterwards, so their returned order cannot be silently overwritten.
-        hits = self._apply_source_priority(hits, priority_factor=priority_factor)
-        # This optional floor belongs to recall, before model scores can enter the
-        # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
-        # to a shared scale; filtering their mixture after reranking is undefined.
-        hits = self._apply_confidence_floor(hits, priority_factor=priority_factor)
-
-        decision = plan_rerank(
-            intent,
-            len(hits),
-            has_exact_hits=has_exact_hits,
-            has_path_hits=has_path_hits,
-            dedicated_enabled=self.reranker is not None,
-            llm_enabled=self.llm_reranker is not None,
-            dedicated_policy=self.settings.rerank_policy,
-            llm_policy=self.settings.llm_rerank_policy,
-        )
-        if audit is not None:
-            audit.rerank_route = decision.route
-        if decision.dedicated and self.reranker is not None:
-            with stage("rerank"):
-                hits = await self.reranker.rerank(query, hits)
-        if decision.llm and self.llm_reranker is not None:
-            with stage("llm_rerank"):
-                hits = await self.llm_reranker.rerank(query, hits)
-
-        with stage("select"):
-            return await self.selector.select(
-                hits,
-                self.settings.final_select_k,
-                mode=selection_mode,
+        except Exception as exc:
+            if not self._has_fallback_recall(state):
+                raise
+            logger.warning(
+                "Query embedding failed; trying SQL retrieval: {}",
+                type(exc).__name__,
             )
+            state.embed_error = exc
 
     def _plan_queries(self, queries: Sequence[str]) -> list[tuple[str, int]]:
         planned: list[tuple[str, int]] = []
@@ -343,6 +364,72 @@ class RetrievalPipeline:
             *(self.embedder.embed_query(query) for query in unique_queries)
         )
         return dict(zip(unique_queries, vectors, strict=True))
+
+    # ── recall ───────────────────────────────────────────────────────────
+
+    async def _recall(self, state: RetrievalState) -> None:
+        """Exact SQL, lexical FTS, dense vector I/O and the path stores are
+        independent after routing and rewrite, so they run together."""
+        (
+            (state.dense, state.dense_error),
+            state.exact,
+            state.lexical,
+            state.path_scores,
+            state.lookup_scores,
+        ) = await asyncio.gather(
+            self._recall_dense(state),
+            self._recall_exact(state),
+            self._recall_lexical(state),
+            self._recall_paths(state),
+            self._recall_path_lookup(state),
+        )
+
+    async def _recall_dense(
+        self, state: RetrievalState
+    ) -> tuple[list[SearchHit], Exception | None]:
+        if state.embed_error is not None:
+            return [], state.embed_error
+        try:
+            with state.stage("dense"):
+                result_lists = await asyncio.gather(
+                    *(
+                        self._recall_with_vector(
+                            state.vectors[planned_query],
+                            state.allowed_blob_names,
+                            num_queries,
+                        )
+                        for planned_query, num_queries in state.planned
+                    )
+                )
+            return self._fuse_lists(list(result_lists)), None
+        except Exception as exc:
+            if not state.use_path_index and not self._has_fallback_recall(state):
+                raise
+            logger.warning("Content search failed: {}", type(exc).__name__)
+            return [], exc
+
+    def _has_fallback_recall(self, state: RetrievalState) -> bool:
+        """Whether another operator can still answer when dense recall fails."""
+        evidence = state.evidence
+        return (
+            evidence is not None
+            and state.scope is not None
+            and (
+                (self.exact_store is not None and bool(evidence.identifiers))
+                and self.settings.exact_enabled
+                or (
+                    self.lexical_store is not None
+                    and self.settings.lexical_enabled
+                    and bool(evidence.terms or evidence.phrases)
+                )
+                or (
+                    self.path_lookup_store is not None
+                    and self.path_content_store is not None
+                    and self.settings.path_lookup_enabled
+                    and evidence.has_path_evidence
+                )
+            )
+        )
 
     async def _recall_with_vector(
         self,
@@ -366,32 +453,197 @@ class RetrievalPipeline:
             vector_threshold=self.settings.vector_threshold,
         )
 
-    async def _recall_exact(
-        self,
-        query: str,
-        scope: SearchScope | None,
-    ) -> list[SearchHit]:
+    async def _recall_exact(self, state: RetrievalState) -> list[SearchHit]:
+        evidence = state.evidence
         if (
             not self.settings.exact_enabled
             or self.exact_store is None
-            or scope is None
-            or not scope.blob_names
+            or state.scope is None
+            or not state.scope.blob_names
+            or evidence is None
+            or not evidence.identifiers
         ):
             return []
-        identifiers = extract_code_identifiers(query)
-        if not identifiers:
-            return []
+        # Reference questions want every occurrence kind including imports;
+        # everything else asks for the structural definition.
+        kinds = None if state.intent == QueryIntent.REFERENCE else DEFINITION_KINDS
         try:
-            return await self.exact_store.search_exact(
-                identifiers=identifiers,
-                scope=scope,
-                top_k=self.settings.default_top_k,
-            )
+            with state.stage("exact"):
+                return await self.exact_store.search_exact(
+                    identifiers=evidence.identifiers,
+                    scope=state.scope,
+                    top_k=self.settings.default_top_k,
+                    kinds=kinds,
+                )
         except Exception as exc:
             logger.warning(
                 "Exact identifier recall failed; using semantic candidates: {}", exc
             )
             return []
+
+    async def _recall_lexical(self, state: RetrievalState) -> list[SearchHit]:
+        evidence = state.evidence
+        if (
+            not self.settings.lexical_enabled
+            or self.lexical_store is None
+            or state.scope is None
+            or not state.scope.blob_names
+            or evidence is None
+            or not (evidence.terms or evidence.phrases)
+        ):
+            return []
+        try:
+            with state.stage("lexical"):
+                async with asyncio.timeout(self.settings.lexical_timeout_seconds):
+                    return await self.lexical_store.search_lexical(
+                        terms=evidence.terms,
+                        phrases=evidence.phrases,
+                        scope=state.scope,
+                        top_k=self.settings.lexical_top_k,
+                    )
+        except TimeoutError:
+            logger.warning("Lexical recall timed out; using other candidates")
+            return []
+        except Exception as exc:
+            logger.warning("Lexical recall failed: {}", type(exc).__name__)
+            return []
+
+    async def _recall_paths(self, state: RetrievalState) -> dict[str, float]:
+        """Best path score per blob over every query variant; failures degrade to none."""
+        if (
+            not state.use_path_index
+            or self.path_store is None
+            or state.embed_error is not None
+        ):
+            return {}
+        allowed = state.allowed_blob_names
+        blob_filter = list(allowed) if allowed else None
+        path_scores: dict[str, float] = {}
+        try:
+            with state.stage("path"):
+                result_lists = await asyncio.gather(
+                    *(
+                        self.path_store.search_paths(
+                            query_vector=state.vectors[variant],
+                            allowed_blob_names=blob_filter,
+                            top_k=self.settings.path_top_k,
+                        )
+                        for variant in state.path_queries
+                    )
+                )
+        except Exception as exc:
+            logger.warning(
+                "Path index search failed: {}; falling back to content-only",
+                type(exc).__name__,
+            )
+            return path_scores
+        for path_results in result_lists:
+            for result in path_results:
+                if result.score > path_scores.get(result.blob_name, float("-inf")):
+                    path_scores[result.blob_name] = result.score
+        logger.info("Path index returned {} results", len(path_scores))
+        return path_scores
+
+    async def _recall_path_lookup(self, state: RetrievalState) -> dict[str, float]:
+        """Exact path/basename evidence (explicit filenames, traceback frames)."""
+        evidence = state.evidence
+        if (
+            not self.settings.path_lookup_enabled
+            or self.path_lookup_store is None
+            or state.scope is None
+            or not state.scope.blob_names
+            or evidence is None
+            or not evidence.has_path_evidence
+        ):
+            return {}
+        try:
+            with state.stage("path_lookup"):
+                return await self.path_lookup_store.match_paths(
+                    filenames=evidence.filenames,
+                    paths=evidence.paths,
+                    scope=state.scope,
+                    limit=self.settings.path_top_k,
+                )
+        except Exception as exc:
+            logger.warning("Path lookup failed: {}", type(exc).__name__)
+            return {}
+
+    # ── fuse ─────────────────────────────────────────────────────────────
+
+    async def _fuse(self, state: RetrievalState) -> None:
+        with state.stage("fuse"):
+            hits = state.dense
+            if state.lexical:
+                hits = self._fuse_lists(
+                    [hits] if hits else [],
+                    state.lexical,
+                )
+            hits = self._merge_exact_hits(state.intent, state.exact, hits)
+            boosts = dict(state.lookup_scores)
+            for blob_name, score in state.path_scores.items():
+                boosts[blob_name] = max(score, boosts.get(blob_name, float("-inf")))
+            if boosts:
+                # Embedding path hits are the only answer to a pure filename
+                # query, so files the content index missed are backfilled.
+                # Lookup hits from traceback frames only boost: their first
+                # chunk would be imports, not the failing code.
+                backfill = set(state.path_scores)
+                if state.use_path_index or not hits:
+                    backfill |= set(state.lookup_scores)
+                hits = await self._merge_path_and_content(boosts, hits, backfill)
+            elif state.use_path_index:
+                logger.info("No path results, using content-only")
+            # 路径索引失败且内容检索也失败：没有任何候选时才把内容错误抛出。
+            if not hits and state.dense_error is not None:
+                raise state.dense_error
+            state.candidates = hits
+
+    def _fuse_lists(
+        self,
+        dense_lists: list[list[SearchHit]],
+        lexical: list[SearchHit] | None = None,
+    ) -> list[SearchHit]:
+        """Weighted reciprocal rank fusion over dense facet lists plus lexical.
+
+        Raw scores never mix: dense cosine, BM25/ts_rank and RRF do not share a
+        scale, so every list contributes by rank only. A single dense list with
+        no lexical companion is returned untouched so cosine scores survive for
+        the confidence floor.
+        """
+        lists = list(dense_lists)
+        weights = (
+            [1.0] + [self.settings.query_facet_weight] * (len(lists) - 1)
+            if lists
+            else []
+        )
+        if lexical:
+            lists.append(lexical)
+            weights.append(self.settings.lexical_weight)
+        if not lists:
+            return []
+        if len(lists) == 1:
+            return lists[0]
+
+        rrf_k = self.settings.rrf_k
+        max_score = sum(weight / (rrf_k + 1) for weight in weights)
+        scores: dict[SearchHitKey, float] = {}
+        hits_by_key: dict[SearchHitKey, SearchHit] = {}
+        first_seen: dict[SearchHitKey, int] = {}
+        ordinal = 0
+        for weight, hits in zip(weights, lists, strict=True):
+            for rank, hit in enumerate(hits, 1):
+                key = search_hit_key(hit)
+                if key not in first_seen:
+                    first_seen[key] = ordinal
+                    ordinal += 1
+                    hits_by_key[key] = hit
+                scores[key] = scores.get(key, 0.0) + weight / (rrf_k + rank)
+
+        keys = sorted(scores, key=lambda key: (-scores[key], first_seen[key]))
+        return [
+            replace(hits_by_key[key], score=scores[key] / max_score)
+            for key in keys[: self.settings.default_top_k]
+        ]
 
     def _merge_exact_hits(
         self,
@@ -433,97 +685,11 @@ class RetrievalPipeline:
         merged.sort(key=lambda hit: hit.score, reverse=True)
         return merged[: self.settings.default_top_k]
 
-    def _fuse(self, result_lists: list[list[SearchHit]]) -> list[SearchHit]:
-        if len(result_lists) == 1:
-            return result_lists[0]
-
-        rrf_k = self.settings.rrf_k  # 统一使用 rrf_k
-        weights = [1.0] + [self.settings.query_facet_weight] * (len(result_lists) - 1)
-        max_score = sum(weight / (rrf_k + 1) for weight in weights)
-        scores: dict[SearchHitKey, float] = {}
-        hits_by_key: dict[SearchHitKey, SearchHit] = {}
-        first_seen: dict[SearchHitKey, int] = {}
-        ordinal = 0
-        for weight, hits in zip(weights, result_lists, strict=True):
-            for rank, hit in enumerate(hits, 1):
-                key = search_hit_key(hit)
-                if key not in first_seen:
-                    first_seen[key] = ordinal
-                    ordinal += 1
-                    hits_by_key[key] = hit
-                scores[key] = scores.get(key, 0.0) + weight / (rrf_k + rank)
-
-        keys = sorted(scores, key=lambda key: (-scores[key], first_seen[key]))
-        return [
-            replace(hits_by_key[key], score=scores[key] / max_score)
-            for key in keys[: self.settings.default_top_k]
-        ]
-
-    def _apply_source_priority(
-        self,
-        hits: list[SearchHit],
-        priority_factor: Callable[[str], float] | None = None,
-    ) -> list[SearchHit]:
-        """按 score × 路径惩罚因子稳定重排（只重排，不改 rerank 决策）。
-
-        普通查询默认用 self.priority_factor（源码优先）；路径类查询可传
-        文档中立的 factor（neutral_priority_factor）。
-        """
-        factor = priority_factor or self.priority_factor
-        return sorted(
-            hits,
-            key=lambda h: h.score * factor(h.path),
-            reverse=True,
-        )
-
-    def _apply_confidence_floor(
-        self,
-        hits: list[SearchHit],
-        priority_factor: Callable[[str], float] | None = None,
-    ) -> list[SearchHit]:
-        """逐条按有效分（score × penalty）剔除低于门槛的弱匹配"""
-        factor = priority_factor or self.priority_factor
-        floor = self.settings.confidence_floor
-        return [h for h in hits if h.score * factor(h.path) >= floor]
-
-    async def _recall_paths(
-        self,
-        query_vectors: Sequence[list[float]],
-        allowed_blob_names: frozenset[str] | None,
-    ) -> dict[str, float]:
-        """Best path score per blob over every query variant; failures degrade to none."""
-        path_scores: dict[str, float] = {}
-        if self.path_store is None:
-            return path_scores
-        blob_filter = list(allowed_blob_names) if allowed_blob_names else None
-        try:
-            result_lists = await asyncio.gather(
-                *(
-                    self.path_store.search_paths(
-                        query_vector=vector,
-                        allowed_blob_names=blob_filter,
-                        top_k=self.settings.path_top_k,
-                    )
-                    for vector in query_vectors
-                )
-            )
-        except Exception as exc:
-            logger.warning(
-                "Path index search failed: {}; falling back to content-only",
-                type(exc).__name__,
-            )
-            return path_scores
-        for path_results in result_lists:
-            for result in path_results:
-                if result.score > path_scores.get(result.blob_name, float("-inf")):
-                    path_scores[result.blob_name] = result.score
-        logger.info("Path index returned {} results", len(path_scores))
-        return path_scores
-
     async def _merge_path_and_content(
         self,
         path_scores: dict[str, float],
         content_hits: list[SearchHit],
+        backfill: set[str],
     ) -> list[SearchHit]:
         """按 chunk 粒度合并路径命中与内容命中。
 
@@ -544,7 +710,9 @@ class RetrievalPipeline:
             merged.append(replace(hit, score=hit.score + weight * boost))
 
         # 内容检索完全没覆盖到的文件才回填首个 chunk，保住纯文件名查询的召回
-        missing = [name for name in path_scores if name not in covered]
+        missing = [
+            name for name in path_scores if name in backfill and name not in covered
+        ]
         if missing:
             try:
                 merged.extend(await self._fetch_content_for_paths(missing, path_scores))
@@ -582,3 +750,288 @@ class RetrievalPipeline:
             return []
         hits = await self.path_content_store.get_representative_chunks(blob_names)
         return [replace(hit, score=path_scores.get(hit.blob_name, 0.0)) for hit in hits]
+
+    # ── prior + rerank ───────────────────────────────────────────────────
+
+    async def _rank(self, state: RetrievalState) -> None:
+        """Apply static priors, then one candidate-preserving rerank state machine."""
+        # 路径类查询使用文档中立先验（不降权 .rst/.md/.txt）。
+        priority_factor = (
+            neutral_priority_factor if state.use_path_index else self.priority_factor
+        )
+        boosted = self._working_set(state.scope)
+
+        # Static source priors prepare the candidate order. Model rerankers run
+        # afterwards, so their returned order cannot be silently overwritten.
+        hits = self._apply_source_priority(
+            state.candidates, priority_factor=priority_factor, boosted=boosted
+        )
+        # This optional floor belongs to recall, before model scores can enter the
+        # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
+        # to a shared scale; filtering their mixture after reranking is undefined.
+        hits = self._apply_confidence_floor(hits, priority_factor=priority_factor)
+
+        decision = plan_rerank(
+            state.intent,
+            len(hits),
+            has_exact_hits=bool(state.exact),
+            has_path_hits=bool(state.path_scores or state.lookup_scores),
+            dedicated_enabled=self.reranker is not None,
+            llm_enabled=self.llm_reranker is not None,
+            dedicated_policy=self.settings.rerank_policy,
+            llm_policy=self.settings.llm_rerank_policy,
+        )
+        state.decision = decision
+        if state.audit is not None:
+            state.audit.rerank_route = decision.route
+        if decision.dedicated and self.reranker is not None:
+            with state.stage("rerank"):
+                hits = await self.reranker.rerank(state.query, hits)
+        if decision.llm and self.llm_reranker is not None:
+            with state.stage("llm_rerank"):
+                hits = await self.llm_reranker.rerank(state.query, hits)
+        state.candidates = hits
+
+    def _working_set(self, scope: SearchScope | None) -> frozenset[str]:
+        """Blobs the request just added: the files the user is editing right now.
+
+        A first full sync adds everything, which carries no information, so
+        the prior only applies below the configured delta size.
+        """
+        if scope is None or not scope.added_blob_names:
+            return frozenset()
+        limit = self.settings.working_set_boost_max_blobs
+        if limit <= 0 or len(scope.added_blob_names) > limit:
+            return frozenset()
+        if self.settings.working_set_boost <= 1.0:
+            return frozenset()
+        return scope.added_blob_names
+
+    def _apply_source_priority(
+        self,
+        hits: list[SearchHit],
+        priority_factor: Callable[[str], float] | None = None,
+        boosted: frozenset[str] = frozenset(),
+    ) -> list[SearchHit]:
+        """按 score × 路径先验 × 工作集先验稳定重排（只重排，不改 rerank 决策）。
+
+        普通查询默认用 self.priority_factor（源码优先）；路径类查询可传
+        文档中立的 factor（neutral_priority_factor）。
+        """
+        factor = priority_factor or self.priority_factor
+        boost = self.settings.working_set_boost
+
+        def effective(hit: SearchHit) -> float:
+            score = hit.score * factor(hit.path)
+            if hit.blob_name in boosted:
+                score *= boost
+            return score
+
+        return sorted(hits, key=effective, reverse=True)
+
+    def _apply_confidence_floor(
+        self,
+        hits: list[SearchHit],
+        priority_factor: Callable[[str], float] | None = None,
+    ) -> list[SearchHit]:
+        """逐条按有效分（score × penalty）剔除低于门槛的弱匹配"""
+        factor = priority_factor or self.priority_factor
+        floor = self.settings.confidence_floor
+        return [h for h in hits if h.score * factor(h.path) >= floor]
+
+    # ── select ───────────────────────────────────────────────────────────
+
+    async def _select(self, state: RetrievalState) -> None:
+        with state.stage("select"):
+            state.selected = await self.selector.select(
+                state.candidates,
+                self.settings.final_select_k,
+                mode=state.strategy.selection_mode,
+            )
+
+    # ── expand ───────────────────────────────────────────────────────────
+
+    async def _expand(self, state: RetrievalState) -> None:
+        if self.settings.merge_adjacent_enabled:
+            state.selected = merge_adjacent_hits(state.selected)
+        if (
+            not self.settings.related_definitions_enabled
+            or self.exact_store is None
+            or state.scope is None
+            or not state.scope.blob_names
+            or not state.selected
+        ):
+            return
+        with state.stage("expand"):
+            try:
+                state.related = await self._related_definitions(state)
+            except Exception as exc:
+                logger.warning(
+                    "Related definition lookup failed: {}", type(exc).__name__
+                )
+                state.related = []
+
+    async def _related_definitions(self, state: RetrievalState) -> list[SearchHit]:
+        """Signature-sized excerpts of symbols the selected code refers to.
+
+        Query identifiers come first: when the request names a symbol whose
+        definition the selection missed, that is the most useful pull. Mined
+        identifiers follow, ordered by how many selected hits share them.
+        """
+        settings = self.settings
+        assert self.exact_store is not None and state.scope is not None
+        sources = state.selected[: settings.related_source_hits]
+        ordered: list[str] = []
+        for identifier in (
+            *(state.evidence.identifiers if state.evidence else ()),
+            *_mine_identifiers(sources),
+        ):
+            if identifier not in ordered:
+                ordered.append(identifier)
+        # Symbols defined by the selected code itself need no pull-in; the
+        # store returns their chunk so the filter below drops them.
+        candidates = ordered[: settings.related_max_symbols * 5]
+        if not candidates:
+            return []
+
+        definitions = await self.exact_store.find_definitions(
+            identifiers=candidates,
+            scope=state.scope,
+            max_per_identifier=settings.related_max_definitions_per_symbol,
+        )
+        selected_keys = {(hit.blob_name, hit.content_hash) for hit in state.selected}
+        selected_spans = [
+            (hit.blob_name, hit.start_line, hit.end_line) for hit in state.selected
+        ]
+        by_identifier: dict[str, list[DefinitionHit]] = {}
+        for definition in definitions:
+            hit = definition.hit
+            if (hit.blob_name, hit.content_hash) in selected_keys:
+                continue
+            if any(
+                blob == hit.blob_name and start <= definition.start_line <= end
+                for blob, start, end in selected_spans
+            ):
+                continue
+            by_identifier.setdefault(definition.identifier, []).append(definition)
+
+        related: list[SearchHit] = []
+        seen: set[tuple[str, int]] = set()
+        used_chars = 0
+        symbols = 0
+        for identifier in candidates:
+            if identifier not in by_identifier:
+                continue
+            if symbols >= settings.related_max_symbols:
+                break
+            added = False
+            for definition in by_identifier[identifier]:
+                key = (definition.hit.blob_name, definition.start_line)
+                if key in seen:
+                    continue
+                excerpt = definition_excerpt(definition, settings.related_snippet_lines)
+                if excerpt is None:
+                    continue
+                if used_chars + len(excerpt.content) > settings.related_max_chars:
+                    continue
+                seen.add(key)
+                related.append(excerpt)
+                used_chars += len(excerpt.content)
+                added = True
+            if added:
+                symbols += 1
+        return related
+
+
+def definition_excerpt(definition: DefinitionHit, max_lines: int) -> SearchHit | None:
+    """Cut the first ``max_lines`` lines of a definition out of its chunk."""
+    chunk = definition.hit
+    lines = chunk.content.splitlines()
+    offset = definition.start_line - chunk.start_line
+    if offset < 0 or offset >= len(lines):
+        return None
+    span = min(definition.end_line - definition.start_line + 1, max_lines)
+    excerpt = lines[offset : offset + span]
+    while excerpt and not excerpt[-1].strip():
+        excerpt.pop()
+    if not excerpt:
+        return None
+    return replace(
+        chunk,
+        content="\n".join(excerpt),
+        start_line=definition.start_line,
+        end_line=definition.start_line + len(excerpt) - 1,
+        score=0.0,
+        role="related",
+    )
+
+
+def merge_adjacent_hits(hits: Sequence[SearchHit]) -> list[SearchHit]:
+    """Join hits of one file whose line spans touch or overlap.
+
+    The merged hit keeps the rank position of its best member and stitches
+    text by line number, so the result renders exactly like the source.
+    """
+    groups: dict[tuple[str, str], list[int]] = {}
+    for index, hit in enumerate(hits):
+        groups.setdefault((hit.blob_name, hit.path), []).append(index)
+
+    merged_at: dict[int, SearchHit] = {}
+    consumed: set[int] = set()
+    for indices in groups.values():
+        ordered = sorted(indices, key=lambda index: hits[index].start_line)
+        cluster: list[int] = []
+        cluster_end = 0
+        for index in ordered:
+            hit = hits[index]
+            if cluster and hit.start_line <= cluster_end + 1:
+                cluster.append(index)
+                cluster_end = max(cluster_end, hit.end_line)
+                continue
+            if cluster:
+                _emit_cluster(hits, cluster, merged_at, consumed)
+            cluster = [index]
+            cluster_end = hit.end_line
+        if cluster:
+            _emit_cluster(hits, cluster, merged_at, consumed)
+
+    return [
+        merged_at[index]
+        for index in range(len(hits))
+        if index in merged_at and index not in consumed
+    ]
+
+
+def _emit_cluster(
+    hits: Sequence[SearchHit],
+    cluster: list[int],
+    merged_at: dict[int, SearchHit],
+    consumed: set[int],
+) -> None:
+    anchor = min(cluster)
+    if len(cluster) == 1:
+        merged_at[anchor] = hits[anchor]
+        return
+    lines: dict[int, str] = {}
+    end_line = 0
+    for index in cluster:
+        hit = hits[index]
+        for offset, text in enumerate(hit.content.splitlines()):
+            lines.setdefault(hit.start_line + offset, text)
+        end_line = max(end_line, hit.end_line)
+    start_line = hits[cluster[0]].start_line
+    content = "\n".join(
+        lines.get(number, "") for number in range(start_line, end_line + 1)
+    )
+    best = max((hits[index] for index in cluster), key=lambda hit: hit.score)
+    contexts = {hits[index].context for index in cluster}
+    merged_at[anchor] = replace(
+        hits[cluster[0]],
+        content=content,
+        start_line=start_line,
+        end_line=end_line,
+        score=best.score,
+        content_hash="",
+        context=contexts.pop() if len(contexts) == 1 else None,
+    )
+    consumed.update(index for index in cluster if index != anchor)

@@ -8,6 +8,7 @@ from sqlalchemy import select
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk, ChunkRef
 from oce.domain.services.search import SearchScope
+from oce.infrastructure.persistence.lexical_index import create_lexical_table
 from oce.infrastructure.persistence.models import ChunkModel
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
@@ -66,6 +67,7 @@ async def sqlite_session():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(create_lexical_table)
 
     async_session_factory = async_sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
@@ -201,7 +203,9 @@ async def _save_symbol_blobs(sqlite_session, specs):
     ]
     await blob_repo.save_many(blobs)
     for blob, chunk in zip(blobs, chunks, strict=True):
-        await symbol_projection.index(blob, [chunk])
+        # The provider reads whole files; pad so chunk lines stay absolute.
+        file_content = "\n" * (chunk.start_line - 1) + chunk.content
+        await symbol_projection.index(blob, [chunk], file_content)
     await sqlite_session.commit()
     return names, chunks
 
@@ -239,7 +243,7 @@ async def test_blob_status_save_does_not_repeat_symbol_projection(sqlite_session
 
     await chunk_repo.save_many([chunk])
     await blob_repo.save(blob)
-    await projection.index(blob, [chunk])
+    await projection.index(blob, [chunk], content)
     blob.mark_ready()
     await blob_repo.save(blob)
     await sqlite_session.commit()

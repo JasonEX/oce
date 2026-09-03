@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
+
+# 命中在最终结果中的角色：primary 是回答查询的片段，related 是二跳拉取的定义摘要。
+HitRole = Literal["primary", "related"]
 
 
 @dataclass(frozen=True)
@@ -23,6 +26,9 @@ class SearchHit:
     content_hash: str = ""
     start_line: int = 1
     end_line: int = 1
+    # 切块时记录的封闭作用域签名链（如 ``class Foo > def bar``）；无 AST 时为 None。
+    context: str | None = None
+    role: HitRole = "primary"
 
 
 @dataclass(frozen=True)
@@ -76,6 +82,21 @@ class SearchStore(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class DefinitionHit:
+    """One symbol definition inside an indexed chunk.
+
+    ``hit`` spans the whole chunk; ``start_line``/``end_line`` are the
+    definition's own lines so callers can cut a signature-sized excerpt.
+    """
+
+    identifier: str
+    kind: str
+    hit: SearchHit
+    start_line: int
+    end_line: int
+
+
 class ExactSearchStore(Protocol):
     """按代码标识符精确召回已索引片段。"""
 
@@ -85,7 +106,48 @@ class ExactSearchStore(Protocol):
         identifiers: Sequence[str],
         scope: SearchScope,
         top_k: int = 50,
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        """``kinds`` 限定 occurrence 种类（endpoint/definition/import）；None 不限。"""
+        ...
+
+    async def find_definitions(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        max_per_identifier: int = 3,
+    ) -> list[DefinitionHit]:
+        """Definitions/endpoints of the identifiers whose scope-wide count fits the cap."""
+        ...
+
+
+class LexicalSearchStore(Protocol):
+    """词法召回：对 chunk 词元索引做 term/phrase 匹配，按词法相关度排序。"""
+
+    async def search_lexical(
+        self,
+        *,
+        terms: Sequence[str],
+        phrases: Sequence[str],
+        scope: SearchScope,
+        top_k: int = 30,
     ) -> list[SearchHit]: ...
+
+
+class PathLookupStore(Protocol):
+    """Exact path/basename lookup inside the scope; no embedding involved."""
+
+    async def match_paths(
+        self,
+        *,
+        filenames: Sequence[str],
+        paths: Sequence[str],
+        scope: SearchScope,
+        limit: int = 20,
+    ) -> dict[str, float]:
+        """Return ``blob_name -> score`` (1.0 full-path suffix, 0.9 basename)."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -100,6 +162,7 @@ class VectorRecord:
     start_line: int
     end_line: int
     vector: list[float]
+    context: str | None = None
 
 
 class VectorIndex(Protocol):

@@ -70,6 +70,7 @@ class FakeChunkRepo:
                 content=c.content,
                 start_line=c.start_line,
                 end_line=c.end_line,
+                context=c.context,
             )
             self.pending.append(located)
 
@@ -113,10 +114,18 @@ class FakeSymbolProjection:
     def __init__(self) -> None:
         self.indexed: list[tuple[str, tuple[str, ...]]] = []
 
-    async def index(self, blob, chunks) -> None:
+    async def index(self, blob, chunks, content: str = "") -> None:
         self.indexed.append(
             (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
         )
+
+
+class FakeLexicalProjection:
+    def __init__(self) -> None:
+        self.indexed: list[tuple[str, ...]] = []
+
+    async def index(self, chunks) -> None:
+        self.indexed.append(tuple(chunk.content_hash for chunk in chunks))
 
 
 class RecordingPathStore:
@@ -416,3 +425,44 @@ class TestEmbedPending:
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.ERROR
         assert blob.error_message == "provider rejected input"
+
+
+class TestProjections:
+    async def test_lexical_projection_and_context_reach_the_vector_index(self):
+        blob_repo = FakeBlobRepo()
+        chunk_repo = FakeChunkRepo()
+        vector_index = FakeVectorIndex()
+        lexical = FakeLexicalProjection()
+        symbols = FakeSymbolProjection()
+
+        class ContextChunker:
+            def chunk(self, content, path):
+                return [
+                    Chunk(
+                        Chunk.compute_hash(content),
+                        path,
+                        content,
+                        1,
+                        content.count("\n") + 1,
+                        context="class Svc:",
+                    )
+                ]
+
+        pipeline = IndexingPipeline(
+            chunker=ContextChunker(),
+            embedder=FakeEmbedder(),
+            vector_index=vector_index,
+            blob_repo=blob_repo,
+            chunk_repo=chunk_repo,
+            symbol_projection=symbols,
+            lexical_projection=lexical,
+        )
+        content = "def run(self):\n    return 1"
+        name = _blob_name("src/svc.py", content)
+        await pipeline.ingest(name, "src/svc.py", content)
+        await pipeline.embed_pending([name])
+
+        assert lexical.indexed == [(Chunk.compute_hash(content),)]
+        assert symbols.indexed[0][0] == name
+        assert [record.context for record in vector_index.items] == ["class Svc:"]
+        assert blob_repo.blobs[name].chunks[0].context == "class Svc:"

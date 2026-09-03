@@ -16,6 +16,7 @@ from tree_sitter_language_pack import get_parser
 
 from oce.infrastructure.astchunk.astnode import ASTNode
 from oce.infrastructure.astchunk.compat import CompatNode, compat_parse
+from oce.infrastructure.astchunk.declarations import declared_name, signature_line
 from oce.infrastructure.astchunk.preprocessing import (
     ByteRange,
     get_nws_count,
@@ -403,15 +404,52 @@ class ASTChunkBuilder:
                 merged_windows.append(window[:])
         yield from merged_windows
 
-    def chunkify(self, code: str) -> list[AstWindow]:
-        """Parse ``code`` and return its windows in source order."""
-        tree = compat_parse(self.parser, code)
+    def parse(self, code: str) -> CompatNode:
+        """Root of ``code``'s syntax tree, reusable across chunking and context."""
+        return compat_parse(self.parser, code).root_node
+
+    def chunkify(self, code: str, root: CompatNode | None = None) -> list[AstWindow]:
+        """Return the windows of ``code`` in source order.
+
+        ``root`` lets a caller that already parsed the file skip a second parse.
+        """
+        if root is None:
+            root = self.parse(code)
         return [
             AstWindow(
                 start_row=window[0].start_row,
                 end_row=window[-1].end_row,
                 end_column=window[-1].end_column,
             )
-            for window in self.assign_tree_to_windows(code, tree.root_node)
+            for window in self.assign_tree_to_windows(code, root)
             if window
         ]
+
+    def enclosing_context(
+        self, root: CompatNode, start_row: int, end_row: int
+    ) -> list[str]:
+        """Signature lines of the named declarations strictly enclosing a row span.
+
+        Walks down from the root along the child that contains the span. A
+        declaration counts only when it starts above the span: one that starts
+        on the span's first row is the chunk's own subject and already visible
+        in the text. Unnamed containers (blocks, wrappers, class bodies) are
+        transparent, so the chain reads ``class Foo(Base): > def bar(self):``.
+        """
+        chain: list[str] = []
+        node = root
+        while True:
+            container = None
+            for child in node.named_children:
+                if child.start_point.row >= start_row:
+                    break
+                if child.end_point.row >= end_row:
+                    container = child
+                    break
+            if container is None:
+                return chain
+            if declared_name(container) is not None and self._carries_body(container):
+                signature = signature_line(container)
+                if signature:
+                    chain.append(signature)
+            node = container

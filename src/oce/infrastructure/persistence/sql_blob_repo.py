@@ -12,6 +12,7 @@ from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import ChunkRef
 from oce.domain.repositories import BlobRepository
 from oce.infrastructure.persistence.dialect import upsert_insert
+from oce.infrastructure.persistence.lexical_index import delete_lexical_rows
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
@@ -132,6 +133,9 @@ class SqlBlobRepository(BlobRepository):
                     ~referenced.exists(),
                 )
             )
+            # The term index has no foreign key (FTS5 virtual table); drop the
+            # documents of chunks that just became unreferenced.
+            await delete_lexical_rows(self.session, content_hashes)
 
     async def find_pending(self, blob_names: Sequence[str] | None = None) -> list[Blob]:
         stmt = select(BlobModel).where(BlobModel.status == BlobStatus.PENDING.value)
@@ -202,7 +206,12 @@ class SqlBlobRepository(BlobRepository):
         result: dict[str, list[ChunkRef]] = {}
         for row in rows:
             result.setdefault(row.blob_name, []).append(
-                ChunkRef(row.content_hash, row.start_line, row.end_line)
+                ChunkRef(
+                    row.content_hash,
+                    row.start_line,
+                    row.end_line,
+                    context=row.context,
+                )
             )
         return result
 
@@ -218,6 +227,7 @@ class SqlBlobRepository(BlobRepository):
                 "start_line": chunk.start_line,
                 "end_line": chunk.end_line,
                 "chunk_index": index,
+                "context": chunk.context,
             }
             for index, chunk in enumerate(chunks)
         ]

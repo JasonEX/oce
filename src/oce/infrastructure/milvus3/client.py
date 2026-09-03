@@ -49,6 +49,8 @@ class Milvus3Client(MilvusCollectionClient):
                 "start_line": record.start_line,
                 "end_line": record.end_line,
             }
+            if record.context:
+                metadata["context"] = record.context
             if truncated:
                 metadata["content_truncated"] = True
                 metadata["content_bytes"] = len(record.content.encode("utf-8"))
@@ -92,6 +94,7 @@ class Milvus3Client(MilvusCollectionClient):
                     content_hash=entity.get("content_hash", ""),
                     start_line=metadata.get("start_line", 1),
                     end_line=metadata.get("end_line", 1),
+                    context=metadata.get("context"),
                 )
             )
         return hits

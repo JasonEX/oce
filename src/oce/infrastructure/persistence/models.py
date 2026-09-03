@@ -167,6 +167,8 @@ class BlobChunkModel(Base):
     start_line: Mapped[int] = mapped_column(Integer)
     end_line: Mapped[int] = mapped_column(Integer)
     chunk_index: Mapped[int] = mapped_column(Integer)
+    # 封闭作用域签名链；属于文件内的这次出现，不属于内容寻址的 chunk 本身。
+    context: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
         UniqueConstraint(

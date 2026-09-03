@@ -1,7 +1,7 @@
 """IndexingPipeline 领域服务 - 索引编排
 
 - ingest:        只写 Blob 元数据与 staging 原文，切块和嵌入留给 embed_pending
-- embed_pending: 切块（如需）→ 向量化 → 写回 → 路径索引 → Blob 置 ready
+- embed_pending: 切块（如需）→ 符号/词法投影 → 向量化 → 写回 → 路径索引 → Blob 置 ready
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from oce.domain.chunk import Chunker
 from oce.domain.chunk.lang import detect_language
 from oce.domain.repositories import BlobRepository, ChunkRepository
 from oce.domain.services.embedder import Embedder
+from oce.domain.services.lexical import LexicalProjection
 from oce.domain.services.path_document_builder import (
     build_path_document,
     is_indexable_path,
@@ -40,6 +41,7 @@ class IndexingPipeline:
         embed_batch_size: int = 64,
         path_store: PathSearchStore | None = None,
         embedding_enabled: bool = True,
+        lexical_projection: LexicalProjection | None = None,
     ) -> None:
         if embed_batch_size < 1:
             raise ValueError("embed_batch_size must be positive")
@@ -52,6 +54,8 @@ class IndexingPipeline:
         self.embed_batch_size = embed_batch_size
         self.path_store = path_store
         self._embedding_enabled = embedding_enabled
+        # None 表示词法召回未启用：不写词元索引，检索侧也不会查它。
+        self.lexical_projection = lexical_projection
 
     async def ingest(self, blob_name: str, path: str, content: str) -> int:
         """轻量入库:只写元数据,切块推给 worker。立刻返回 0。
@@ -142,7 +146,10 @@ class IndexingPipeline:
                     await self.chunk_repo.save_many(chunks)
                     blob.chunks = [c.to_ref() for c in chunks]
                     await self.blob_repo.save(blob)
-                    await self.symbol_projection.index(blob, chunks)
+                    # 符号按整文件解析一次再映射到 chunk；词法索引按内容哈希去重。
+                    await self.symbol_projection.index(blob, chunks, content)
+                    if self.lexical_projection is not None:
+                        await self.lexical_projection.index(chunks)
                 else:
                     # 无有效内容也可能需要路径召回，统一在路径索引完成后置 ready。
                     continue
@@ -189,6 +196,7 @@ class IndexingPipeline:
                             start_line=chunk.start_line,
                             end_line=chunk.end_line,
                             vector=vector,
+                            context=chunk.context,
                         )
                         for chunk, vector in zip(chunk_batch, vectors, strict=True)
                     ]

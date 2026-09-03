@@ -7,6 +7,8 @@ prints.
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from loguru import logger
 
 from oce.domain.chunk.lang import SUPPORTED_LANGUAGES, detect_language
@@ -23,6 +25,11 @@ from oce.infrastructure.astchunk.astchunk_builder import (
     ASTChunkBuilder,
     AstWindow,
 )
+from oce.infrastructure.astchunk.compat import CompatNode
+
+# Scope chain rendering shared with everything that reads ``Chunk.context``.
+CONTEXT_SEPARATOR = " > "
+MAX_CONTEXT_CHARS = 400
 
 # Non-whitespace characters per character of source, at the low end. Measured
 # over the supported grammars on the OpenClaw tree: Swift sits lowest at 0.67,
@@ -85,7 +92,8 @@ class CastChunker:
     def _chunk_ast(
         self, builder: ASTChunkBuilder, content: str, path: str
     ) -> list[Chunk]:
-        windows = builder.chunkify(content)
+        root = builder.parse(content)
+        windows = builder.chunkify(content, root)
         lines = content.splitlines()
         ranges = [self._resolve_range(window, lines) for window in windows]
         chunks = emit_chunks(
@@ -95,12 +103,31 @@ class CastChunker:
             max_chars=self.max_chunk_chars,
         )
         if chunks:
-            return chunks
+            # The enclosing scope is an occurrence property: the same method body
+            # under two classes gets two different headers but one content hash.
+            return [
+                replace(chunk, context=self._context(builder, root, chunk))
+                for chunk in chunks
+            ]
         # 解析成功但所有行都超出字符预算：文件是压缩包或单行生成产物。
         # 回退到 RecursiveChunker 只会把同样的内容按字符切回来，所以不产出。
         if windows:
             return []
         return self.fallback.chunk(content, path)
+
+    @staticmethod
+    def _context(
+        builder: ASTChunkBuilder, root: CompatNode, chunk: Chunk
+    ) -> str | None:
+        chain = builder.enclosing_context(
+            root, chunk.start_line - 1, chunk.end_line - 1
+        )
+        if not chain:
+            return None
+        text = CONTEXT_SEPARATOR.join(chain)
+        if len(text) > MAX_CONTEXT_CHARS:
+            text = text[: MAX_CONTEXT_CHARS - 1] + "…"
+        return text
 
     def _merge_small(
         self,

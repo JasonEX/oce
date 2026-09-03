@@ -7,12 +7,17 @@ import json
 from dataclasses import asdict, dataclass
 from typing import Protocol
 
-INDEX_SCHEMA_VERSION = 2
-CHUNKER_VERSION = 3
-EMBEDDING_PIPELINE_VERSION = 1
-SYMBOL_EXTRACTION_VERSION = 1
+# 3: blob_chunks.context + chunk_lexical term index.
+INDEX_SCHEMA_VERSION = 3
+# 4: cAST chunks carry the enclosing scope chain.
+CHUNKER_VERSION = 4
+# 2: embedding input = File + Context header + code.
+EMBEDDING_PIPELINE_VERSION = 2
+# 2: tree-sitter definitions/imports with real spans; regex fallback + endpoints.
+SYMBOL_EXTRACTION_VERSION = 2
 PATH_DOCUMENT_VERSION = 1
 SOURCE_ADMISSION_VERSION = 1
+LEXICAL_INDEX_VERSION = 1
 
 
 def profile_value_hash(value: str) -> str:
@@ -65,6 +70,8 @@ class IndexProfile(_CanonicalProfile):
     path_document_version: int
     source_admission_version: int
     embedding: EmbeddingIndexProfile
+    lexical_index_enabled: bool
+    lexical_index_version: int
 
     @classmethod
     def from_json(cls, text: str) -> IndexProfile | None:

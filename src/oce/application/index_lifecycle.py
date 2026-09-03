@@ -13,6 +13,7 @@ from oce.shared.errors import ServiceNotReadyError
 from oce.shared.index_profile import (
     CHUNKER_VERSION,
     INDEX_SCHEMA_VERSION,
+    LEXICAL_INDEX_VERSION,
     PATH_DOCUMENT_VERSION,
     SOURCE_ADMISSION_VERSION,
     SYMBOL_EXTRACTION_VERSION,
@@ -57,6 +58,10 @@ def build_index_profile(
         path_document_version=PATH_DOCUMENT_VERSION,
         source_admission_version=SOURCE_ADMISSION_VERSION,
         embedding=embedding,
+        lexical_index_enabled=settings.retrieval.lexical_enabled,
+        lexical_index_version=(
+            LEXICAL_INDEX_VERSION if settings.retrieval.lexical_enabled else 0
+        ),
     )
 
 

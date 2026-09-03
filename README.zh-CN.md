@@ -242,12 +242,22 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 精确标识符召回直接关联 checkpoint 成员关系，大型工作集不会关闭 exact recall，也不会把全部
 成员展开为一个 SQL `IN (...)`。仅 added 组成的 scope 与异常大的请求增量会使用固定批次查询；
 超时仍回退 dense 检索。
-symbol index 只识别已支持的定义和 endpoint 模式，不是 call/reference/implementation graph；
-需要这些结构关系时应使用原生文本搜索或 LSP。
+symbol index 由 tree-sitter 对整文件抽取 definition、endpoint 与 import，并保留真实行号；
+无法加载 grammar 时回退 regex。它仍不是 call/implementation graph，需要真实结构关系时应使用
+原生文本搜索或 LSP。SQLite 个人模式用 FTS5、PostgreSQL 服务模式用 `tsvector` 建立词法索引，
+补充召回 dense 不敏感的报错文案、日志文本与调用点。标识符同时按整体和子词入库，因此
+`ParseConfig`、`parse_config` 和自然语言里的 “parse the config” 可以相互命中。请求中的
+traceback 帧会变成精确路径与函数证据，引号内报错会变成短语查询。cAST chunk 的 embedding
+输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。选择后，
+同文件相邻片段会合并；前几条结果引用的符号定义则以独立字符预算附在相关定义区。请求刚加入的
+少量 `added_blobs` 还会获得轻量工作集先验。
+
 可复现消融可通过 `CHUNKING_SEMANTIC_ENABLED`、`RETRIEVAL_EXACT_ENABLED`、
-`RETRIEVAL_SOURCE_PRIORITY_ENABLED` 与 `RETRIEVAL_COVERAGE_SELECTION_ENABLED` 分别关闭
-结构化切块、exact recall、源码路径先验和 coverage selector。切块配置变化后必须使用干净
-数据目录完整重同步，这些开关不会改写已有索引。
+`RETRIEVAL_LEXICAL_ENABLED`、`RETRIEVAL_PATH_LOOKUP_ENABLED`、
+`RETRIEVAL_SOURCE_PRIORITY_ENABLED`、`RETRIEVAL_COVERAGE_SELECTION_ENABLED`、
+`RETRIEVAL_MERGE_ADJACENT_ENABLED` 与 `RETRIEVAL_RELATED_DEFINITIONS_ENABLED` 分别关闭
+结构化切块、exact recall、词法召回、路径查找、源码路径先验、coverage selector、相邻合并和
+相关定义扩展。切块配置变化后必须使用干净数据目录完整重同步，这些开关不会改写已有索引。
 
 上传准入会在切块前拒绝依赖/构建/缓存目录、`.env`、私钥、SSH/AWS 凭据目录、含 NUL 的文件，
 以及 SVG、媒体、压缩包、压缩打包产物、source map、lock 文件等非源码产物；`.env.example`
@@ -404,40 +414,39 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval.py`）执行确定性路由与可选查询改写、并发的
-dense + exact 召回、加权 rank fusion、单一的候选保真重排状态机，以及 focused/coverage
-任务感知选择。
+`RetrievalPipeline.search`（`domain/services/retrieval.py`）是 `RetrievalState` 上的一条固定
+状态转移序列：每个阶段只读写属于自己的字段，任何可选算子关闭后都退化为恒等变换。
+
+| 阶段 | 职责 |
+| --- | --- |
+| route | 确定性意图，加上 `QueryEvidence`：标识符、traceback 帧、引号内报错文案、文件名、词法词元 |
+| plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
+| recall | dense（Milvus）∥ 精确符号（SQL）∥ 词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
+| fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |
+| prior | 源码先验 × 工作集先验（`added_blobs` 中的文件），可选置信度门槛 |
+| rerank | `plan_rerank` 决策 → 专用 reranker → chat-LLM reranker，两者都保留候选集 |
+| select | focused / coverage 选择，字符预算为硬限制 |
+| expand | 合并同文件相邻片段，再附带被引用符号的定义签名摘录 |
 
 ```mermaid
 flowchart TB
-    Q["查询：query + SearchScope"]
-    Q --> Intent["确定性查询信号"]
-    Intent --> PathCheck{"路径增强分支？<br/>意图或文件名启发式"}
-
-    PathCheck -->|是| PathBoost["_search_with_path_boost<br/>path + dense + exact 召回"]
-    PathCheck -->|否| Rewrite["查询改写（可选）<br/>query_planner.plan 拆分子查询"]
-
-    Rewrite --> Recall
-
-    subgraph Recall["召回（并发）"]
+    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
+    Route --> Plan["plan<br/>改写（可选）· facet · embed"]
+    Plan --> Recall
+    subgraph Recall["recall（并发）"]
         direction LR
-        Dense["dense 语义<br/>embed_query → Milvus"]
-        Exact["exact 符号<br/>SymbolSearchStore"]
+        Dense["dense<br/>Milvus"]
+        Exact["精确符号<br/>symbol_occurrences"]
+        Lexical["词法 FTS<br/>chunk_lexical"]
+        PathIdx["路径索引<br/>Milvus"]
+        PathLookup["路径查找<br/>blobs.path 后缀"]
     end
-
-    Recall --> Fuse["_fuse 加权融合"]
-    Fuse --> Merge["_merge_exact_hits 合并精确命中"]
-    Merge --> Source["_apply_source_priority 来源优先级"]
-    Source --> Floor["_apply_confidence_floor（可选）"]
-    Floor --> Rerank["专用 reranker（可选）<br/>提升、不裁剪"]
-    Rerank --> Gate{"chat 策略需要<br/>语义判断？"}
-    Gate -->|是| LLMRerank["chat LLM reranker<br/>提升、不裁剪"]
-    Gate -->|否| Promote
-    LLMRerank --> Promote["_promote_symbol_endpoints 符号端点提升"]
-    Promote --> Select["selector.select<br/>focused / coverage"]
-
-    PathBoost --> Source
-    Select --> Out["最终上下文候选"]
+    Recall --> Fuse["fuse<br/>RRF · exact 合并 · 路径 boost"]
+    Fuse --> Prior["prior<br/>源码先验 × 工作集"]
+    Prior --> Rerank["rerank<br/>专用 → chat LLM（策略）"]
+    Rerank --> Select["select<br/>focused / coverage"]
+    Select --> Expand["expand<br/>相邻合并 · 相关定义"]
+    Expand --> Out["formatted_retrieval"]
 ```
 
 ## 测试

@@ -62,6 +62,7 @@ class SqlChunkRepository(ChunkRepository):
                 ChunkModel.content,
                 BlobChunkModel.start_line,
                 BlobChunkModel.end_line,
+                BlobChunkModel.context,
             )
             .join(ChunkModel, ChunkModel.content_hash == BlobChunkModel.content_hash)
             .join(BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name)
@@ -82,6 +83,7 @@ class SqlChunkRepository(ChunkRepository):
                 content=row.content,
                 start_line=row.start_line,
                 end_line=row.end_line,
+                context=row.context,
             )
             for row in rows
         ]

@@ -15,6 +15,8 @@ class ChunkRef:
     content_hash: str
     start_line: int
     end_line: int
+    # 封闭作用域签名链；随 blob_chunks 持久化，是 occurrence 级而非内容级属性。
+    context: str | None = None
 
     def __post_init__(self) -> None:
         if not is_sha256_hex(self.content_hash):
@@ -39,6 +41,9 @@ class Chunk:
     start_line: int
     end_line: int
     chunk_type: str | None = None
+    # 切块器给出的封闭作用域签名链（``class Foo(Base) > def bar(self)``）。
+    # 不参与 content_hash：同一段文本在不同文件里的作用域可以不同。
+    context: str | None = None
 
     def __post_init__(self) -> None:
         if not is_sha256_hex(self.content_hash):
@@ -51,7 +56,9 @@ class Chunk:
         return hashlib.sha256(content.encode("utf-8")).hexdigest()
 
     def to_ref(self) -> ChunkRef:
-        return ChunkRef(self.content_hash, self.start_line, self.end_line)
+        return ChunkRef(
+            self.content_hash, self.start_line, self.end_line, context=self.context
+        )
 
 
 @dataclass(frozen=True)
@@ -64,6 +71,7 @@ class LocatedChunk:
     content: str
     start_line: int
     end_line: int
+    context: str | None = None
 
     @property
     def chunk_id(self) -> str:
@@ -73,4 +81,13 @@ class LocatedChunk:
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def embedding_text(self) -> str:
-        return f"File: {self.path}\n\n{self.content}"
+        """Contextualized embedding input: path, enclosing scope, then the code.
+
+        A method cut out of its class carries no class name in its body; the
+        header restores that so the vector answers "which Foo.bar" instead of
+        "some bar". Bump EMBEDDING_PIPELINE_VERSION when this shape changes.
+        """
+        header = f"File: {self.path}"
+        if self.context:
+            header += f"\nContext: {self.context}"
+        return f"{header}\n\n{self.content}"

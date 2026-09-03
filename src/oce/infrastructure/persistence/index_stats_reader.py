@@ -5,8 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import DBAPIError, OperationalError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.infrastructure.persistence.lexical_index import (
+    lexical_row_count_statement,
+)
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
@@ -43,4 +47,18 @@ class SqlMetadataIndexStatsReader:
         )
         async with self._session_factory() as session:
             row = (await session.execute(statement)).one()
-        return MetadataIndexStats(*(int(value or 0) for value in row))
+            lexical = await self._lexical_count(session)
+        return MetadataIndexStats(
+            *(int(value or 0) for value in row), lexical_documents=lexical
+        )
+
+    @staticmethod
+    async def _lexical_count(session: AsyncSession) -> int:
+        # Stats are observational: an unavailable auxiliary term table must not
+        # hide the counts from the ordinary metadata tables.
+        try:
+            value = await session.scalar(lexical_row_count_statement())
+        except (OperationalError, ProgrammingError, DBAPIError):
+            await session.rollback()
+            return 0
+        return int(value or 0)

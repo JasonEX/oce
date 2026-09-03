@@ -68,6 +68,7 @@ from oce.application.worker import EmbedWorker
 from oce.domain.services.llm.reranker import LLMReranker
 from oce.domain.services.llm.rewriter import QueryRewriter
 from oce.domain.services.retrieval import RetrievalPipeline
+from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
@@ -89,7 +90,9 @@ from oce.infrastructure.persistence.index_profile_store import SqlIndexProfileSt
 from oce.infrastructure.persistence.index_stats_reader import (
     SqlMetadataIndexStatsReader,
 )
+from oce.infrastructure.persistence.lexical_index import SqlLexicalSearchStore
 from oce.infrastructure.persistence.path_content_store import SqlPathContentStore
+from oce.infrastructure.persistence.path_lookup_store import SqlPathLookupStore
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from oce.infrastructure.queue.redis_queue import RedisQueue
@@ -303,7 +306,9 @@ class Container:
             query_cache=self.embedder,
         )
 
-        self.symbol_provider = RegexSymbolProvider()
+        # tree-sitter reads definitions and imports with real spans; regex stays
+        # the fallback for grammars the pack cannot load and detects endpoints.
+        self.symbol_provider = TreeSitterSymbolProvider(RegexSymbolProvider())
         self._uow_factory = lambda: SqlAlchemyUnitOfWork(
             async_session_factory,
             self.symbol_provider,
@@ -320,6 +325,7 @@ class Container:
             vector_index=self.search_store,
             path_store=self.path_index,
             embedding_enabled=settings.embedding.enabled,
+            lexical_enabled=settings.retrieval.lexical_enabled,
         )
 
         self.queue: RedisQueue | None = None
@@ -418,6 +424,19 @@ class Container:
                     exact_store=SymbolSearchStore(
                         async_session_factory,
                         timeout_seconds=settings.retrieval.exact_timeout_seconds,
+                    ),
+                    lexical_store=(
+                        SqlLexicalSearchStore(
+                            async_session_factory,
+                            timeout_seconds=settings.retrieval.lexical_timeout_seconds,
+                        )
+                        if settings.retrieval.lexical_enabled
+                        else None
+                    ),
+                    path_lookup_store=(
+                        SqlPathLookupStore(async_session_factory)
+                        if settings.retrieval.path_lookup_enabled
+                        else None
                     ),
                     settings=settings.retrieval,
                 ),
@@ -549,6 +568,10 @@ def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
         source_priority_enabled=retrieval.source_priority_enabled,
         coverage_selection_enabled=retrieval.coverage_selection_enabled,
         query_decomposition_enabled=retrieval.query_decomposition_enabled,
+        lexical_enabled=retrieval.lexical_enabled,
+        path_lookup_enabled=retrieval.path_lookup_enabled,
+        merge_adjacent_enabled=retrieval.merge_adjacent_enabled,
+        related_definitions_enabled=retrieval.related_definitions_enabled,
         api_rerank_enabled=settings.rerank.enabled,
         rerank_policy=retrieval.rerank_policy,
         llm_rerank_enabled=settings.llm.rerank_enabled,

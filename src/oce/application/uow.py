@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from oce.domain.repositories import BlobRepository, ChainRepository, ChunkRepository
+from oce.domain.services.lexical import LexicalProjection
 from oce.domain.services.symbols import SymbolProjection
 
 
@@ -13,6 +14,7 @@ class UnitOfWork(Protocol):
     chunks: ChunkRepository
     chains: ChainRepository
     symbols: SymbolProjection
+    lexical: LexicalProjection
 
     async def __aenter__(self) -> UnitOfWork: ...
 

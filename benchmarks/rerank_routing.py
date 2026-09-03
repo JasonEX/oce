@@ -68,6 +68,9 @@ class RoutingCase:
     query: str
     expected_intent: str
     expected_paths: tuple[str, ...]
+    # Every anchor is asked in English and Chinese; the routing rules and the
+    # cross-language embedding path must agree on both.
+    language: str = "en"
 
 
 @dataclass(frozen=True)
@@ -164,34 +167,51 @@ def expand_cases(
         references = _reference_paths(root, anchor.identifier, anchor.definition_path)
         if not references:
             raise ValueError(f"no source reference path for {anchor.identifier!r}")
-        cases.extend(
-            (
-                RoutingCase(
-                    id=f"{anchor.id}-symbol",
-                    instance_id=anchor.instance_id,
-                    kind="symbol",
-                    query=f"Where is `{anchor.identifier}` defined?",
-                    expected_intent="symbol",
-                    expected_paths=(anchor.definition_path,),
-                ),
-                RoutingCase(
-                    id=f"{anchor.id}-path",
-                    instance_id=anchor.instance_id,
-                    kind="path",
-                    query=f"Where is the {anchor.definition_path} file?",
-                    expected_intent="path",
-                    expected_paths=(anchor.definition_path,),
-                ),
-                RoutingCase(
-                    id=f"{anchor.id}-reference",
-                    instance_id=anchor.instance_id,
-                    kind="reference",
-                    query=f"Where is `{anchor.identifier}` referenced?",
-                    expected_intent="reference",
-                    expected_paths=references,
-                ),
+        templates = {
+            "en": (
+                f"Where is `{anchor.identifier}` defined?",
+                f"Where is the {anchor.definition_path} file?",
+                f"Where is `{anchor.identifier}` referenced?",
+            ),
+            "zh": (
+                f"`{anchor.identifier}` 在哪里定义？",
+                f"{anchor.definition_path} 这个文件在哪里？",
+                f"哪些地方引用了 `{anchor.identifier}`？",
+            ),
+        }
+        for language, (symbol_query, path_query, reference_query) in templates.items():
+            suffix = "" if language == "en" else f"-{language}"
+            cases.extend(
+                (
+                    RoutingCase(
+                        id=f"{anchor.id}-symbol{suffix}",
+                        instance_id=anchor.instance_id,
+                        kind="symbol",
+                        query=symbol_query,
+                        expected_intent="symbol",
+                        expected_paths=(anchor.definition_path,),
+                        language=language,
+                    ),
+                    RoutingCase(
+                        id=f"{anchor.id}-path{suffix}",
+                        instance_id=anchor.instance_id,
+                        kind="path",
+                        query=path_query,
+                        expected_intent="path",
+                        expected_paths=(anchor.definition_path,),
+                        language=language,
+                    ),
+                    RoutingCase(
+                        id=f"{anchor.id}-reference{suffix}",
+                        instance_id=anchor.instance_id,
+                        kind="reference",
+                        query=reference_query,
+                        expected_intent="reference",
+                        expected_paths=references,
+                        language=language,
+                    ),
+                )
             )
-        )
     return tuple(cases)
 
 
@@ -438,6 +458,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "id": case.id,
                     "instance_id": case.instance_id,
                     "kind": case.kind,
+                    "language": case.language,
                     "status": "ok",
                     "expected_path_count": len(case.expected_paths),
                     "retrieved": [asdict(region) for region in retrieved],
@@ -464,6 +485,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "id": case.id,
                     "instance_id": case.instance_id,
                     "kind": case.kind,
+                    "language": case.language,
                     "status": "error",
                     "error_type": type(exc).__name__,
                     "error": str(exc).replace(api_key, "[REDACTED]")[:1000],
@@ -474,6 +496,12 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
     by_kind = {
         kind: aggregate([result for result in results if result["kind"] == kind])
         for kind in ("symbol", "path", "reference")
+    }
+    by_language = {
+        language: aggregate(
+            [result for result in results if result.get("language") == language]
+        )
+        for language in sorted({case.language for case in cases})
     }
     return {
         "schema_version": 1,
@@ -502,6 +530,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         "sync": sync,
         "summary": aggregate(results),
         "by_kind": by_kind,
+        "by_language": by_language,
         "cases": results,
     }
 
@@ -613,6 +642,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "anchors": len(anchors),
                     "cases": len(cases),
                     "kinds": dict(Counter(case.kind for case in cases)),
+                    "languages": dict(Counter(case.language for case in cases)),
                     "instances": len({case.instance_id for case in cases}),
                 },
                 indent=2,

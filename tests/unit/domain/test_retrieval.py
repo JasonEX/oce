@@ -91,12 +91,16 @@ class FakeExactSearchStore:
         self.identifiers: tuple[str, ...] = ()
         self.scope: SearchScope | None = None
 
-    async def search_exact(self, *, identifiers, scope, top_k=50):
+    async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
         self.identifiers = tuple(identifiers)
         self.scope = scope
+        self.kinds = kinds
         if self.error is not None:
             raise self.error
         return list(self.hits[:top_k])
+
+    async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+        return []
 
 
 def _hit(path: str, score: float) -> SearchHit:

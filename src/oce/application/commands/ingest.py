@@ -28,6 +28,7 @@ def build_pipeline_factory(
     vector_index: VectorIndex,
     path_store: PathSearchStore | None = None,
     embedding_enabled: bool = True,
+    lexical_enabled: bool = True,
 ) -> PipelineFactory:
     def build(uow: UnitOfWork) -> IndexingPipeline:
         return IndexingPipeline(
@@ -39,6 +40,7 @@ def build_pipeline_factory(
             symbol_projection=uow.symbols,
             path_store=path_store,
             embedding_enabled=embedding_enabled,
+            lexical_projection=uow.lexical if lexical_enabled else None,
         )
 
     return build

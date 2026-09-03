@@ -157,7 +157,7 @@ def _serve(args: argparse.Namespace) -> None:
     # 个人模式每次启动自动迁移（SQLite 文件可直接幂等升级）
     from oce.infrastructure.persistence.migrations import run_migrations
 
-    run_migrations(os.environ["DB_URL"])
+    run_migrations()
 
     print(f"oce serving on http://{args.host}:{args.port} (data dir: {data_dir})")
 

@@ -151,10 +151,18 @@ class FakeSymbolProjection:
     def __init__(self) -> None:
         self.indexed: list[tuple[str, tuple[str, ...]]] = []
 
-    async def index(self, blob: Blob, chunks) -> None:
+    async def index(self, blob: Blob, chunks, content: str = "") -> None:
         self.indexed.append(
             (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
         )
+
+
+class FakeLexicalProjection:
+    def __init__(self) -> None:
+        self.indexed: list[tuple[str, ...]] = []
+
+    async def index(self, chunks) -> None:
+        self.indexed.append(tuple(chunk.content_hash for chunk in chunks))
 
 
 class FakeEmbedder:
@@ -195,6 +203,7 @@ class FakeUnitOfWork:
         self.chunks = FakeChunkRepo(self.blobs)
         self.chains = FakeChainRepo()
         self.symbols = FakeSymbolProjection()
+        self.lexical = FakeLexicalProjection()
         self.commits = 0
 
     async def __aenter__(self):

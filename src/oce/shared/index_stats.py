@@ -19,6 +19,7 @@ class MetadataIndexStats:
     chains: int = 0
     chain_members: int = 0
     staging_blobs: int = 0
+    lexical_documents: int = 0
 
 
 @dataclass(frozen=True)
@@ -52,6 +53,10 @@ class RetrievalRuntimeProfile:
     source_priority_enabled: bool = True
     coverage_selection_enabled: bool = True
     query_decomposition_enabled: bool = True
+    lexical_enabled: bool = True
+    path_lookup_enabled: bool = True
+    merge_adjacent_enabled: bool = True
+    related_definitions_enabled: bool = True
     api_rerank_enabled: bool = False
     rerank_policy: str = "adaptive"
     llm_rerank_enabled: bool = False

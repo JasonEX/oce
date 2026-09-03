@@ -1,0 +1,145 @@
+"""Grammar-agnostic reading of declarations from tree-sitter nodes.
+
+Grammars disagree on node names but mostly agree on *fields*: a declaration
+carries ``name`` (or a ``declarator`` chain in C-like grammars, or ``type`` on a
+Rust ``impl``), and a body hangs off ``body``/``block``. Matching on those
+rather than on per-language type lists is what lets the same code read Python,
+TypeScript, Go, Rust, Java, Kotlin and Swift without a table per grammar.
+"""
+
+from __future__ import annotations
+
+from oce.infrastructure.astchunk.compat import CompatNode
+
+# Types that syntactically wrap a declaration without naming it. They are
+# transparent to scope chains and definition walks: skip the node, keep going.
+TRANSPARENT_TYPES = frozenset(
+    {
+        "decorated_definition",
+        "export_statement",
+        "expression_statement",
+        "lexical_declaration",
+        "variable_declaration",
+        "field_declaration",
+        "declaration",
+        "assignment",
+        "template_declaration",
+        "attribute_item",
+    }
+)
+
+_DEFINITION_SUFFIXES = ("_definition", "_declaration", "_item", "_spec", "_specifier")
+_DEFINITION_TYPES = frozenset(
+    {
+        "method",
+        "singleton_method",
+        "class",
+        "module",
+        "variable_declarator",
+        "init_declarator",
+    }
+)
+# Declarations that name something but never define a project symbol.
+_EXCLUDED_MARKERS = (
+    "parameter",
+    "import",
+    "package",
+    "using",
+    "annotation",
+    "attribute",
+    "macro",
+    "local_variable",
+    "field_declaration",
+    "preproc",
+    "extern_crate",
+    "type_parameter",
+    "enum_variant",
+    "enumerator",
+)
+_FUNCTION_MARKERS = ("function", "method", "constructor", "lambda", "arrow")
+
+MAX_SIGNATURE_CHARS = 160
+
+
+def _leaf_name(node: CompatNode) -> str | None:
+    """Text of the identifier a name-bearing node resolves to.
+
+    Dotted and scoped names (``a.b.C``, ``std::io::Read``, ``Foo<T>``) resolve
+    to their last plain identifier so the symbol index stores ``C``, ``Read``
+    and ``Foo``.
+    """
+    if node.type.endswith("identifier") and not node.named_children:
+        return node.text.decode("utf-8", errors="replace")
+    for field in ("name", "type"):
+        child = node.child_by_field_name(field)
+        if child is not None and child is not node:
+            resolved = _leaf_name(child)
+            if resolved:
+                return resolved
+    identifiers = [
+        child for child in node.named_children if child.type.endswith("identifier")
+    ]
+    if identifiers:
+        # Scoped paths list segments in order; the last one is the symbol.
+        candidate = identifiers[-1] if node.type.endswith("_name") else identifiers[0]
+        return _leaf_name(candidate)
+    return None
+
+
+def declared_name(node: CompatNode) -> str | None:
+    """The symbol a declaration node introduces, or ``None`` for non-declarations."""
+    name = node.child_by_field_name("name")
+    if name is not None:
+        return _leaf_name(name)
+    declarator = node.child_by_field_name("declarator")
+    if declarator is not None:
+        return declared_name(declarator) or _leaf_name(declarator)
+    if node.type == "impl_item":
+        target = node.child_by_field_name("type")
+        return _leaf_name(target) if target is not None else None
+    if node.type == "assignment":
+        left = node.child_by_field_name("left")
+        if left is not None and left.type == "identifier":
+            return _leaf_name(left)
+        return None
+    # Kotlin/Swift properties: ``property_declaration > variable_declaration > id``.
+    if node.type == "property_declaration":
+        for child in node.named_children:
+            if child.type == "variable_declaration":
+                return _leaf_name(child)
+        return None
+    if node.type.endswith("_declarator"):
+        return None
+    if node.type in TRANSPARENT_TYPES:
+        return None
+    for child in node.named_children:
+        if child.type.endswith("identifier") and not child.named_children:
+            return child.text.decode("utf-8", errors="replace")
+        # Only the first named child may name the node; a later identifier is
+        # a reference, a type, or a parameter.
+        break
+    return None
+
+
+def is_definition_type(node_type: str) -> bool:
+    if any(marker in node_type for marker in _EXCLUDED_MARKERS):
+        return False
+    if node_type in TRANSPARENT_TYPES:
+        return False
+    return node_type in _DEFINITION_TYPES or node_type.endswith(_DEFINITION_SUFFIXES)
+
+
+def is_function_like(node_type: str) -> bool:
+    return any(marker in node_type for marker in _FUNCTION_MARKERS)
+
+
+def signature_line(node: CompatNode) -> str:
+    """First non-empty line of a declaration, bounded for use as a header."""
+    text = node.text.decode("utf-8", errors="replace")
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            if len(stripped) > MAX_SIGNATURE_CHARS:
+                return stripped[: MAX_SIGNATURE_CHARS - 1] + "…"
+            return stripped
+    return ""

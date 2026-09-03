@@ -144,6 +144,7 @@ class MetadataIndexStatsResponse(BaseModel):
     chains: int = 0
     chain_members: int = 0
     staging_blobs: int = 0
+    lexical_documents: int = 0
 
 
 class IndexStoreStatsResponse(BaseModel):
@@ -174,6 +175,10 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     source_priority_enabled: bool
     coverage_selection_enabled: bool
     query_decomposition_enabled: bool
+    lexical_enabled: bool
+    path_lookup_enabled: bool
+    merge_adjacent_enabled: bool
+    related_definitions_enabled: bool
     api_rerank_enabled: bool
     rerank_policy: str
     llm_rerank_enabled: bool

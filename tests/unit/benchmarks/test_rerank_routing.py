@@ -45,8 +45,10 @@ def test_expand_cases_builds_balanced_queries_with_source_reference_truth(
         ),
     )
 
-    assert [case.kind for case in cases] == ["symbol", "path", "reference"]
+    assert [case.kind for case in cases] == ["symbol", "path", "reference"] * 2
+    assert [case.language for case in cases] == ["en"] * 3 + ["zh"] * 3
     assert cases[2].expected_paths == ("src/consumer.py",)
+    assert cases[5].expected_paths == ("src/consumer.py",)
     assert [classify_query_intent(case.query).value for case in cases] == [
         case.expected_intent for case in cases
     ]

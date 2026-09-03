@@ -33,6 +33,7 @@ class SqlPathContentStore:
                 BlobChunkModel.content_hash.label("content_hash"),
                 BlobChunkModel.start_line.label("start_line"),
                 BlobChunkModel.end_line.label("end_line"),
+                BlobChunkModel.context.label("context"),
                 func.row_number()
                 .over(
                     partition_by=BlobChunkModel.blob_name,
@@ -51,6 +52,7 @@ class SqlPathContentStore:
                 ChunkModel.content,
                 ranked_links.c.start_line,
                 ranked_links.c.end_line,
+                ranked_links.c.context,
             )
             .join(ranked_links, ranked_links.c.blob_name == BlobModel.blob_name)
             .join(ChunkModel, ChunkModel.content_hash == ranked_links.c.content_hash)
@@ -74,6 +76,7 @@ class SqlPathContentStore:
                     start_line=row.start_line,
                     end_line=row.end_line,
                     score=0.0,
+                    context=row.context,
                 ),
             )
         return [first_by_blob[name] for name in names if name in first_by_blob]

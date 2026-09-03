@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### Added
+
+- **retrieval**: add SQL lexical recall (SQLite FTS5 / PostgreSQL tsvector) over sub-word chunk terms, fused by rank with dense results
+- **retrieval**: recover traceback frames, error phrases, and filenames from requests as exact path, symbol, and phrase evidence
+- **retrieval**: append signature excerpts of definitions referenced by the top results and merge touching spans of one file
+- **retrieval**: apply a bounded working-set prior to files the request just added
+- **indexing**: embed cAST chunks with their enclosing scope chain and expose it as a `Context:` line and to both rerankers
+- **symbols**: extract definitions, endpoints, and imports with tree-sitter from whole files, with regex fallback and frequency-damped exact scores
+- **evaluation**: add a `standard` issue profile and Chinese variants of the routing queries
+
+### Changed
+
+- **retrieval**: restructure the pipeline as an explicit `RetrievalState` machine (route → plan → recall → fuse → prior → rerank → select → expand)
+- **index lifecycle**: bump schema, chunker, embedding, and symbol versions; existing indexes require a clean data directory and full resync
+
 ## [0.3.0] - 2026-09-02
 
 ### Added

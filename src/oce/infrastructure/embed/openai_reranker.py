@@ -131,9 +131,10 @@ class OpenAIReranker:
     def _document_text(hit: SearchHit) -> str:
         if not hit.path:
             return hit.content
-        return (
-            f"File: {hit.path}\nLines: {hit.start_line}-{hit.end_line}\n\n{hit.content}"
-        )
+        header = f"File: {hit.path}\nLines: {hit.start_line}-{hit.end_line}"
+        if hit.context:
+            header += f"\nContext: {hit.context}"
+        return f"{header}\n\n{hit.content}"
 
     async def close(self) -> None:
         if self._owns_client:

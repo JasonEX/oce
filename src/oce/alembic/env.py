@@ -26,6 +26,12 @@ if config.config_file_name:
 
 target_metadata = Base.metadata
 VERSION_TABLE = "oce_alembic_version"
+_MANUALLY_MANAGED_TABLES = frozenset({"chunk_lexical"})
+
+
+def include_object(_object, name: str | None, _type: str, _reflected, _compare_to):
+    """Dialect-specific FTS DDL is owned by ``lexical_index.py``, not metadata."""
+    return name not in _MANUALLY_MANAGED_TABLES
 
 
 def run_migrations_offline() -> None:
@@ -37,6 +43,7 @@ def run_migrations_offline() -> None:
         version_table=VERSION_TABLE,
         compare_type=True,
         compare_comments=False,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -49,6 +56,7 @@ def run_migrations(connection: Connection) -> None:
         version_table=VERSION_TABLE,
         compare_type=True,
         compare_comments=False,
+        include_object=include_object,
     )
     with context.begin_transaction():
         context.run_migrations()

@@ -129,6 +129,11 @@ class LLMReranker:
         start = candidate.start_line
         end = candidate.end_line
         lines_attr = f' lines="{start}-{end}"' if start and end else ""
+        # The scope chain tells the judge which class a truncated method belongs
+        # to, which is what a shorter snippet budget would otherwise lose.
+        if candidate.context:
+            context = candidate.context.replace('"', "&quot;")
+            lines_attr += f' context="{context}"'
 
         snippet = candidate.content.strip()
         if len(snippet) > self.snippet_chars:

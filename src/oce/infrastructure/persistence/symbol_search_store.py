@@ -1,31 +1,95 @@
-"""基于 PostgreSQL symbol_occurrences 表的精确标识符召回。"""
+"""Exact identifier recall and definition lookup over ``symbol_occurrences``."""
 
 from __future__ import annotations
 
 import asyncio
+import math
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import and_, case, exists, or_, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from oce.domain.blob.blob import BlobStatus
-from oce.domain.services.search import SearchHit, SearchScope
+from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
+from oce.domain.services.symbols import DEFINITION_KINDS
 from oce.infrastructure.persistence.models import (
+    BlobChunkModel,
     BlobModel,
-    ChainMemberModel,
-    ChainModel,
     ChunkModel,
     SymbolOccurrenceModel,
 )
+from oce.infrastructure.persistence.scope_filter import run_scoped
 
-_SCOPE_BATCH_SIZE = 500
-_RELATIONAL_DELTA_LIMIT = 500
-# 结构证据的优先级分：endpoint > definition > 其他；SQL 排序与命中打分共用一份。
+# 结构证据的优先级分：endpoint > definition > import；SQL 排序与命中打分共用一份。
 _KIND_SCORES = {"endpoint": 1.0, "definition": 0.95}
 _DEFAULT_KIND_SCORE = 0.85
+
+
+def _kind_priority() -> ColumnElement[float]:
+    return case(
+        *(
+            (SymbolOccurrenceModel.kind == kind, score)
+            for kind, score in _KIND_SCORES.items()
+        ),
+        else_=_DEFAULT_KIND_SCORE,
+    )
+
+
+def _occurrence_rows(
+    identifiers: Sequence[str],
+    scope_predicate: ColumnElement[bool],
+    limit: int,
+    kinds: Sequence[str] | None,
+):
+    """Occurrence rows joined to the chunk occurrence that contains them.
+
+    ``blob_chunks`` carries the chunk span and scope context; the line
+    containment condition picks the right occurrence when identical chunk text
+    appears twice in one file.
+    """
+    stmt = (
+        select(
+            SymbolOccurrenceModel.identifier,
+            SymbolOccurrenceModel.kind,
+            SymbolOccurrenceModel.blob_name,
+            SymbolOccurrenceModel.content_hash,
+            SymbolOccurrenceModel.start_line.label("def_start"),
+            SymbolOccurrenceModel.end_line.label("def_end"),
+            BlobModel.path,
+            ChunkModel.content,
+            BlobChunkModel.start_line,
+            BlobChunkModel.end_line,
+            BlobChunkModel.context,
+        )
+        .join(ChunkModel, SymbolOccurrenceModel.content_hash == ChunkModel.content_hash)
+        .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
+        .join(
+            BlobChunkModel,
+            and_(
+                BlobChunkModel.blob_name == SymbolOccurrenceModel.blob_name,
+                BlobChunkModel.content_hash == SymbolOccurrenceModel.content_hash,
+                BlobChunkModel.start_line <= SymbolOccurrenceModel.start_line,
+                BlobChunkModel.end_line >= SymbolOccurrenceModel.start_line,
+            ),
+        )
+        .where(
+            SymbolOccurrenceModel.identifier.in_(identifiers),
+            BlobModel.status == BlobStatus.READY.value,
+            scope_predicate,
+        )
+        .order_by(
+            _kind_priority().desc(),
+            BlobModel.path,
+            SymbolOccurrenceModel.start_line,
+        )
+        .limit(limit)
+    )
+    if kinds is not None:
+        stmt = stmt.where(SymbolOccurrenceModel.kind.in_(kinds))
+    return stmt
 
 
 class SymbolSearchStore:
@@ -45,153 +109,152 @@ class SymbolSearchStore:
         identifiers: Sequence[str],
         scope: SearchScope,
         top_k: int = 50,
+        kinds: Sequence[str] | None = None,
     ) -> list[SearchHit]:
-        """查询工作集内的标识符，按 endpoint > definition 排序。"""
+        """查询工作集内的标识符，按 endpoint > definition > import 排序。
+
+        同一标识符在 scope 内出现越多，单条命中的证据越弱：``setup`` 定义 200 次
+        时不应把 200 个 chunk 都推到 dense 结果前面，因此按出现次数对数衰减。
+        """
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or top_k <= 0 or not scope.blob_names:
             return []
-
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
-                    rows = await self._query_scope(session, identifiers, scope, top_k)
+                    rows = await run_scoped(
+                        session,
+                        scope,
+                        SymbolOccurrenceModel.blob_name,
+                        lambda predicate: _occurrence_rows(
+                            identifiers, predicate, max(top_k * 20, top_k), kinds
+                        ),
+                    )
         except TimeoutError:
             return []
         return self._rows_to_hits(rows, top_k)
 
-    async def _query_scope(
+    async def find_definitions(
         self,
-        session: AsyncSession,
+        *,
         identifiers: Sequence[str],
         scope: SearchScope,
-        top_k: int,
-    ) -> list[Row[Any]]:
-        delta_size = len(scope.added_blob_names) + len(scope.deleted_blob_names)
-        if (
-            scope.chain_id is not None
-            and scope.chain_version is not None
-            and delta_size <= _RELATIONAL_DELTA_LIMIT
-        ):
-            rows = await self._query_relational_scope(
-                session, identifiers, scope, top_k
-            )
-            current_version = await session.scalar(
-                select(ChainModel.version).where(ChainModel.chain_id == scope.chain_id)
-            )
-            if current_version == scope.chain_version:
-                return rows
+        max_per_identifier: int = 3,
+    ) -> list[DefinitionHit]:
+        identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
+        if not identifiers or not scope.blob_names:
+            return []
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    counts = await self._definition_counts(session, identifiers, scope)
+                    wanted = tuple(
+                        identifier
+                        for identifier in identifiers
+                        if 0 < counts.get(identifier, 0) <= max_per_identifier
+                    )
+                    if not wanted:
+                        return []
+                    rows = await run_scoped(
+                        session,
+                        scope,
+                        SymbolOccurrenceModel.blob_name,
+                        lambda predicate: _occurrence_rows(
+                            wanted,
+                            predicate,
+                            len(wanted) * max_per_identifier * 2,
+                            DEFINITION_KINDS,
+                        ),
+                    )
+        except TimeoutError:
+            return []
 
-        # Added-only scopes and unusually large request deltas use bounded
-        # statements.  This is also the consistency fallback if a checkpoint
-        # changes between scope resolution and exact recall.
-        rows: list[Row[Any]] = []
-        names = sorted(scope.blob_names)
-        for offset in range(0, len(names), _SCOPE_BATCH_SIZE):
-            batch = names[offset : offset + _SCOPE_BATCH_SIZE]
-            rows.extend(
-                await self._query_rows(
-                    session,
-                    identifiers,
-                    SymbolOccurrenceModel.blob_name.in_(batch),
-                    top_k,
-                )
-            )
-        return rows
-
-    async def _query_relational_scope(
-        self,
-        session: AsyncSession,
-        identifiers: Sequence[str],
-        scope: SearchScope,
-        top_k: int,
-    ) -> list[Row[Any]]:
-        member_exists = exists(
-            select(1)
-            .select_from(ChainMemberModel)
-            .join(ChainModel, ChainModel.chain_id == ChainMemberModel.chain_id)
-            .where(
-                ChainMemberModel.chain_id == scope.chain_id,
-                ChainModel.version == scope.chain_version,
-                ChainMemberModel.blob_name == SymbolOccurrenceModel.blob_name,
-            )
-        )
-        membership = member_exists
-        if scope.added_blob_names:
-            membership = or_(
-                membership,
-                SymbolOccurrenceModel.blob_name.in_(scope.added_blob_names),
-            )
-        if scope.deleted_blob_names:
-            membership = and_(
-                membership,
-                SymbolOccurrenceModel.blob_name.not_in(scope.deleted_blob_names),
-            )
-        return await self._query_rows(session, identifiers, membership, top_k)
-
-    async def _query_rows(
-        self,
-        session: AsyncSession,
-        identifiers: Sequence[str],
-        scope_predicate: ColumnElement[bool],
-        top_k: int,
-    ) -> list[Row[Any]]:
-        kind_priority = case(
-            *(
-                (SymbolOccurrenceModel.kind == kind, score)
-                for kind, score in _KIND_SCORES.items()
-            ),
-            else_=_DEFAULT_KIND_SCORE,
-        )
-        stmt = (
-            select(
-                SymbolOccurrenceModel.content_hash,
-                SymbolOccurrenceModel.kind,
-                SymbolOccurrenceModel.blob_name,
-                BlobModel.path,
-                ChunkModel.content,
-                SymbolOccurrenceModel.start_line,
-                SymbolOccurrenceModel.end_line,
-            )
-            .join(
-                ChunkModel,
-                SymbolOccurrenceModel.content_hash == ChunkModel.content_hash,
-            )
-            .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
-            .where(
-                SymbolOccurrenceModel.identifier.in_(identifiers),
-                BlobModel.status == BlobStatus.READY.value,
-                scope_predicate,
-            )
-            .order_by(
-                kind_priority.desc(),
-                BlobModel.path,
-                SymbolOccurrenceModel.start_line,
-            )
-            .limit(max(top_k * 20, top_k))
-        )
-        return list((await session.execute(stmt)).all())
-
-    def _rows_to_hits(self, rows: Sequence[Row[Any]], top_k: int) -> list[SearchHit]:
-        hits: list[SearchHit] = []
-        seen: set[tuple[str, str, int, int]] = set()
+        order = {identifier: index for index, identifier in enumerate(identifiers)}
+        definitions: list[DefinitionHit] = []
+        seen: set[tuple[str, str, int]] = set()
         for row in rows:
-            key = (row.blob_name, row.content_hash, row.start_line, row.end_line)
+            key = (row.identifier, row.blob_name, row.def_start)
             if key in seen:
                 continue
             seen.add(key)
-            hits.append(
-                SearchHit(
-                    blob_name=row.blob_name,
-                    path=row.path,
-                    content=row.content,
-                    score=self._score_by_kind(row.kind),
-                    content_hash=row.content_hash,
-                    start_line=row.start_line,
-                    end_line=row.end_line,
+            definitions.append(
+                DefinitionHit(
+                    identifier=row.identifier,
+                    kind=row.kind,
+                    hit=self._row_hit(row, self._score_by_kind(row.kind)),
+                    start_line=row.def_start,
+                    end_line=row.def_end,
                 )
             )
+        definitions.sort(key=lambda item: (order[item.identifier], item.hit.path))
+        return definitions
+
+    @staticmethod
+    async def _definition_counts(
+        session: AsyncSession,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+    ) -> dict[str, int]:
+        def build(predicate: ColumnElement[bool]):
+            return (
+                select(
+                    SymbolOccurrenceModel.identifier,
+                    func.count().label("total"),
+                )
+                .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
+                .where(
+                    SymbolOccurrenceModel.identifier.in_(identifiers),
+                    SymbolOccurrenceModel.kind.in_(DEFINITION_KINDS),
+                    BlobModel.status == BlobStatus.READY.value,
+                    predicate,
+                )
+                .group_by(SymbolOccurrenceModel.identifier)
+            )
+
+        counts: dict[str, int] = {}
+        for row in await run_scoped(
+            session, scope, SymbolOccurrenceModel.blob_name, build
+        ):
+            counts[row.identifier] = counts.get(row.identifier, 0) + int(row.total)
+        return counts
+
+    def _rows_to_hits(self, rows: Sequence[Row[Any]], top_k: int) -> list[SearchHit]:
+        occurrences: set[tuple[str, str, int]] = set()
+        per_identifier: dict[str, int] = {}
+        for row in rows:
+            occurrence = (row.identifier, row.blob_name, row.def_start)
+            if occurrence in occurrences:
+                continue
+            occurrences.add(occurrence)
+            per_identifier[row.identifier] = per_identifier.get(row.identifier, 0) + 1
+
+        # One chunk may hold several matched identifiers; it keeps its best score.
+        best: dict[tuple[str, str, int, int], SearchHit] = {}
+        for row in rows:
+            key = (row.blob_name, row.content_hash, row.start_line, row.end_line)
+            score = self._score_by_kind(row.kind) / (
+                1.0 + math.log(per_identifier[row.identifier])
+            )
+            current = best.get(key)
+            if current is None or score > current.score:
+                best[key] = self._row_hit(row, score)
+
+        hits = list(best.values())
         hits.sort(key=lambda hit: (-hit.score, hit.path, hit.start_line))
         return hits[:top_k]
+
+    @staticmethod
+    def _row_hit(row: Row[Any], score: float) -> SearchHit:
+        return SearchHit(
+            blob_name=row.blob_name,
+            path=row.path,
+            content=row.content,
+            score=score,
+            content_hash=row.content_hash,
+            start_line=row.start_line,
+            end_line=row.end_line,
+            context=row.context,
+        )
 
     @staticmethod
     def _score_by_kind(kind: str) -> float:

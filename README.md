@@ -276,11 +276,24 @@ single-query recall.
 Exact identifier recall joins checkpoint membership directly, so large workspaces keep exact
 recall without expanding every member into one SQL `IN (...)` clause. Added-only scopes and
 unusually large request deltas use bounded batches; timeout still falls back to dense retrieval.
-The symbol index recognizes supported definition and endpoint patterns; it is not a call,
-reference, or implementation graph. Use native text search or an LSP for those relations.
-Reproducible ablations can disable semantic chunking, exact recall, source priority, and
-coverage selection with `CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`,
-`RETRIEVAL_SOURCE_PRIORITY_ENABLED`, and `RETRIEVAL_COVERAGE_SELECTION_ENABLED`.
+The symbol index is built by tree-sitter from whole files (definitions, endpoints, and
+imports with real spans; a regex provider covers grammars the pack cannot load). It is not
+a call or implementation graph. A lexical term index (SQLite FTS5 in personal mode,
+PostgreSQL `tsvector` in service mode) recalls error strings, log text, and call sites that
+dense vectors miss; identifiers are indexed both whole and split into sub-words so
+`ParseConfig`, `parse_config`, and "parse the config" meet. Traceback frames in a request
+become exact path and function evidence, and quoted error text becomes a phrase query.
+Each cAST chunk is embedded with its enclosing scope chain (`class Foo > def bar`), and the
+same chain is shown as a `Context:` line in results. After selection, touching spans of one
+file are merged and the definitions of symbols referenced by the top results are appended as
+short signature excerpts under a separate character budget. Files the request just added
+(`added_blobs`) receive a small ranking prior when the delta is small.
+Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path
+lookup, source priority, coverage selection, adjacent merging, and related definitions with
+`CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`, `RETRIEVAL_LEXICAL_ENABLED`,
+`RETRIEVAL_PATH_LOOKUP_ENABLED`, `RETRIEVAL_SOURCE_PRIORITY_ENABLED`,
+`RETRIEVAL_COVERAGE_SELECTION_ENABLED`, `RETRIEVAL_MERGE_ADJACENT_ENABLED`, and
+`RETRIEVAL_RELATED_DEFINITIONS_ENABLED`.
 Changing chunking requires a clean data directory and full resync; these switches do not
 retroactively transform an existing index.
 
@@ -447,40 +460,40 @@ stores dense vectors and the path index.
 
 ### Retrieval pipeline
 
-`RetrievalPipeline.search` (`domain/services/retrieval.py`) runs deterministic routing and
-optional query rewrite, concurrent dense + exact recall, weighted rank fusion, a single
-candidate-preserving ranking state machine, and task-aware final selection.
+`RetrievalPipeline.search` (`domain/services/retrieval.py`) is one fixed sequence of
+state transitions over a `RetrievalState`; every stage reads and writes only its own
+fields, and every optional operator degrades to the identity transform when disabled.
+
+| Stage | What it does |
+| --- | --- |
+| route | deterministic intent, plus `QueryEvidence`: identifiers, traceback frames, quoted error text, filenames, lexical terms |
+| plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
+| recall | dense (Milvus) ∥ exact symbols (SQL) ∥ lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
+| fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |
+| prior | source priority × working-set boost (files in `added_blobs`), optional confidence floor |
+| rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
+| select | focused / coverage selection under a hard character budget |
+| expand | merge touching spans of one file, then pull signature excerpts of referenced definitions |
 
 ```mermaid
 flowchart TB
-    Q["query + SearchScope"]
-    Q --> Intent["deterministic query signals"]
-    Intent --> PathCheck{"Path-boost branch?<br/>intent or filename heuristic"}
-
-    PathCheck -->|yes| PathBoost["_search_with_path_boost<br/>path + dense + exact recall"]
-    PathCheck -->|no| Rewrite["Query rewrite (optional)<br/>query_planner.plan splits sub-queries"]
-
-    Rewrite --> Recall
-
-    subgraph Recall["Recall (concurrent)"]
+    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
+    Route --> Plan["plan<br/>rewrite (optional) · facets · embed"]
+    Plan --> Recall
+    subgraph Recall["recall (concurrent)"]
         direction LR
-        Dense["dense semantic<br/>embed_query → Milvus"]
-        Exact["exact symbol<br/>SymbolSearchStore"]
+        Dense["dense<br/>Milvus"]
+        Exact["exact symbols<br/>symbol_occurrences"]
+        Lexical["lexical FTS<br/>chunk_lexical"]
+        PathIdx["path index<br/>Milvus"]
+        PathLookup["path lookup<br/>blobs.path suffix"]
     end
-
-    Recall --> Fuse["_fuse (weighted RRF)"]
-    Fuse --> Merge["_merge_exact_hits"]
-    Merge --> Source["_apply_source_priority"]
-    Source --> Floor["_apply_confidence_floor (optional)"]
-    Floor --> Rerank["dedicated reranker (optional)<br/>promote, never prune"]
-    Rerank --> Gate{"chat policy requests<br/>semantic judging?"}
-    Gate -->|yes| LLMRerank["chat LLM reranker<br/>promote, never prune"]
-    Gate -->|no| Promote
-    LLMRerank --> Promote["_promote_symbol_endpoints"]
-    Promote --> Select["selector.select<br/>focused / coverage"]
-
-    PathBoost --> Source
-    Select --> Out["final context candidates"]
+    Recall --> Fuse["fuse<br/>RRF · exact merge · path boost"]
+    Fuse --> Prior["prior<br/>source priority × working set"]
+    Prior --> Rerank["rerank<br/>dedicated → chat LLM (policy)"]
+    Rerank --> Select["select<br/>focused / coverage"]
+    Select --> Expand["expand<br/>adjacent merge · related definitions"]
+    Expand --> Out["formatted_retrieval"]
 ```
 
 ## Tests

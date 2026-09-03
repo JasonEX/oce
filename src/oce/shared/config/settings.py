@@ -347,9 +347,56 @@ class RetrievalSettings(BaseSettings):
     path_top_k: int = Field(
         default=20, ge=1, le=100, description="每个查询变体从路径索引召回的文件数"
     )
-    # 路径分数与内容分数同为 COSINE 量纲，加权相加而非替换，避免挤掉正确 chunk
+    # 路径证据只作为有界 boost 加到已融合候选上，不替换内容命中，避免挤掉正确 chunk。
     path_boost_weight: float = Field(
-        default=0.5, ge=0.0, le=2.0, description="路径索引命中对同文件 chunk 的加权系数"
+        default=0.5, ge=0.0, le=2.0, description="路径证据对同文件 chunk 的加权系数"
+    )
+    # 精确路径查找：请求里出现的文件名/路径（含 traceback 帧）在 scope 内做后缀匹配，
+    # 不经 embedding；命中与路径索引共用同一 boost 权重。
+    path_lookup_enabled: bool = Field(
+        default=True, description="是否启用 SQL 精确路径/文件名后缀匹配"
+    )
+
+    # 词法召回：chunk 词元的 FTS 索引，覆盖报错文案、调用点等 dense 不敏感的线索。
+    lexical_enabled: bool = Field(default=True, description="是否启用词法召回")
+    lexical_top_k: int = Field(default=30, ge=1, le=200, description="词法召回条数")
+    lexical_weight: float = Field(
+        default=1.0, gt=0.0, le=2.0, description="词法结果在 RRF 融合中的权重"
+    )
+    lexical_timeout_seconds: float = Field(
+        default=2.0, gt=0.0, description="词法召回超时；超时后只用其他召回"
+    )
+
+    # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大
+    # （首次全量同步）时先验没有区分度，直接跳过。
+    working_set_boost: float = Field(
+        default=1.15, ge=1.0, le=2.0, description="added_blobs 命中的乘性 boost"
+    )
+    working_set_boost_max_blobs: int = Field(
+        default=50, ge=0, description="added_blobs 超过此数量时不应用 boost；0 关闭"
+    )
+
+    # 结果整形：同文件相邻片段合并成一段；二跳拉取被引用符号的定义摘要。
+    merge_adjacent_enabled: bool = Field(
+        default=True, description="是否合并同文件相邻/重叠片段"
+    )
+    related_definitions_enabled: bool = Field(
+        default=True, description="是否附带被引用符号的定义摘要"
+    )
+    related_source_hits: int = Field(
+        default=5, ge=1, le=50, description="从前多少条主结果里抽取被引用标识符"
+    )
+    related_max_symbols: int = Field(
+        default=8, ge=1, le=50, description="最多附带多少个符号的定义"
+    )
+    related_max_definitions_per_symbol: int = Field(
+        default=3, ge=1, le=20, description="scope 内定义数超过此值的符号视为过于常见"
+    )
+    related_snippet_lines: int = Field(
+        default=12, ge=1, le=200, description="每个定义摘要最多多少行"
+    )
+    related_max_chars: int = Field(
+        default=4_000, ge=1, description="定义摘要总字符预算（独立于主结果预算）"
     )
 
 

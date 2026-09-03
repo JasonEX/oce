@@ -5,6 +5,7 @@ from __future__ import annotations
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from oce.domain.services.symbols import SymbolProvider
+from oce.infrastructure.persistence.lexical_index import SqlLexicalProjection
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
@@ -29,6 +30,7 @@ class SqlAlchemyUnitOfWork:
         self.chunks = SqlChunkRepository(self.session)
         self.chains = SqlChainRepository(self.session)
         self.symbols = SqlSymbolProjection(self.session, self._symbol_provider)
+        self.lexical = SqlLexicalProjection(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc, traceback) -> None:

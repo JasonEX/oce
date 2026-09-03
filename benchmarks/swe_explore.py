@@ -56,6 +56,7 @@ DEVELOPMENT_REPOSITORIES = (
     "pylint-dev/pylint",
     "pydata/xarray",
 )
+STANDARD_PER_REPOSITORY = 5
 HUNK_RE = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+\d+(?:,\d+)? @@")
 SAFE_ENVIRONMENT_KEYS = (
     "EMBED_MODEL",
@@ -321,8 +322,15 @@ def load_cases(workdir: Path, profile: str) -> list[BenchmarkCase]:
     if profile == "verified":
         return sorted(cases, key=lambda item: item.instance_id)
     selected: list[BenchmarkCase] = []
-    per_repo = 1 if profile == "pilot" else 3
-    for repo in DEVELOPMENT_REPOSITORIES:
+    if profile == "standard":
+        # Keep every joined repository in the mix and take up to the same
+        # deterministic cap; a few repositories contain fewer joined cases.
+        repositories = sorted({case.repo for case in cases})
+        per_repo = STANDARD_PER_REPOSITORY
+    else:
+        repositories = DEVELOPMENT_REPOSITORIES
+        per_repo = 1 if profile == "pilot" else 3
+    for repo in repositories:
         candidates = [case for case in cases if case.repo == repo]
         candidates.sort(
             key=lambda item: hashlib.sha256(
@@ -986,7 +994,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument(
-        "--profile", choices=("pilot", "development", "verified"), default="development"
+        "--profile",
+        choices=("pilot", "development", "standard", "verified"),
+        default="development",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
