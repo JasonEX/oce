@@ -96,11 +96,10 @@ def source_priority_factor(path: str) -> float:
     ):
         return 0.5
     if (
-        "/tests/" in f"/{p}"
+        any(f"/{part}/" in f"/{p}" for part in _TEST_DIRECTORIES)
         or name.startswith("test_")
         or name == "conftest.py"
-        or ".test." in name
-        or ".spec." in name
+        or _TEST_FILE.search(name) is not None
     ):
         return 0.6
     # 配置文件和类型桩：需要它们的查询会写出文件名（PATH 意图，中立先验），
@@ -114,6 +113,11 @@ def source_priority_factor(path: str) -> float:
     return 1.0
 
 
+_TEST_DIRECTORIES = frozenset(
+    {"test", "tests", "testing", "__tests__", "__testfixtures__", "testfixtures"}
+)
+# foo.test.ts, foo.spec.js, foo.test-d.ts (type tests), foo_test.go
+_TEST_FILE = re.compile(r"\.(?:test|spec)(?:-d)?\.|_test\.go$")
 _DOCUMENT_DIRECTORIES = frozenset(
     {"docs", "doc", "examples", "example", "changelog", "changelogs", "news"}
 )
@@ -971,6 +975,8 @@ class RetrievalPipeline:
         )
         hits = self._prefer_source_head(state, hits, priority_factor)
         structural_heads = self._structural_heads(state, hits)
+        if state.audit is not None:
+            state.audit.head_slots = len(structural_heads)
         # This optional floor belongs to recall, before model scores can enter the
         # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
         # to a shared scale; filtering their mixture after reranking is undefined.

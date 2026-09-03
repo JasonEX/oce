@@ -46,7 +46,7 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 - **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
 - **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
 - **运维 admin API + 监控** —— 独立 admin key 的接口面管理模型凭据、嵌入队列与垃圾回收；旁路 metrics 管线记录调用/token/资源指标与检索各阶段审计。
-- **[固定数据版本的真实 issue 评测](benchmarks/README.md)** —— 复用生产 API 与真实 client 的 checkpoint/retrieval 链路，在 SWE-bench Verified 的 base commit 上运行 issue 查询，分别评价 gold edit 位置与 SWE-Explore 成功轨迹上下文，同时记录延迟、返回上下文、模型用量和失败样本。
+- **[黑盒检索评测体系](benchmarks/README.md)** —— 只通过发布版 client 与稳定 API 驱动服务，覆盖英中双语短查询、Python/TypeScript/Rust 人工复核的架构查询，以及固定版本的 SWE-bench/SWE-Explore issue 评测，不导入服务端实现，也不直读数据库。
 
 <details>
 <summary><strong>目录</strong></summary>

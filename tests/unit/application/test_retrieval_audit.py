@@ -61,6 +61,7 @@ class TestPipelineAuditFill:
         assert audit.intent == "feature"
         assert audit.path_boosted is False
         assert audit.rerank_route == "skip:too_few_candidates"
+        assert audit.head_slots == 0
 
     async def test_audit_none_is_zero_overhead(self):
         # 不传 audit：不打点、不报错，行为与原来一致
@@ -81,6 +82,7 @@ class TestHandlerReporting:
         assert rec.hit_count == 1
         assert rec.total_ms >= 0
         assert "select" in rec.stages
+        assert rec.head_slots == 0
 
     async def test_empty_return_recorded_as_zero(self):
         handler, sink = _handler([], retrieval_audit_enabled=True)

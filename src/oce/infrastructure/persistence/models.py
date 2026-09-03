@@ -313,6 +313,7 @@ class RetrievalMetricModel(Base):
     intent: Mapped[str | None] = mapped_column(String(32))
     path_boosted: Mapped[bool] = mapped_column(Boolean, server_default="false")
     rerank_route: Mapped[str | None] = mapped_column(String(48))
+    head_slots: Mapped[int] = mapped_column(Integer, server_default="0")
     query_text: Mapped[str | None] = mapped_column(Text)
     # 阶段耗时（毫秒）；未运行的阶段留 NULL，不冒充 0。
     rewrite_ms: Mapped[int | None] = mapped_column(Integer)
@@ -320,10 +321,13 @@ class RetrievalMetricModel(Base):
     dense_ms: Mapped[int | None] = mapped_column(Integer)
     exact_ms: Mapped[int | None] = mapped_column(Integer)
     path_ms: Mapped[int | None] = mapped_column(Integer)
+    path_lookup_ms: Mapped[int | None] = mapped_column(Integer)
+    lexical_ms: Mapped[int | None] = mapped_column(Integer)
     fuse_ms: Mapped[int | None] = mapped_column(Integer)
     rerank_ms: Mapped[int | None] = mapped_column(Integer)
     llm_rerank_ms: Mapped[int | None] = mapped_column(Integer)
     select_ms: Mapped[int | None] = mapped_column(Integer)
+    expand_ms: Mapped[int | None] = mapped_column(Integer)
 
     __table_args__ = (
         Index("ix_retrieval_metrics_ts", "ts"),

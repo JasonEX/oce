@@ -73,6 +73,7 @@ class SearchQueryHandler:
                 intent=audit.intent,
                 path_boosted=audit.path_boosted,
                 rerank_route=audit.rerank_route,
+                head_slots=audit.head_slots,
                 query_text=query.query if self.store_query_text else None,
                 stages=dict(audit.stages),
             )

@@ -1,23 +1,13 @@
 import json
 
-from benchmarks.swe_explore import (
+from benchmarks.blackbox.harness import RetrievedRegion, parse_retrieved_regions
+from benchmarks.blackbox.swe_data import BenchmarkCase, Region, parse_patch_regions
+from benchmarks.blackbox.swe_explore import (
     SWE_EXPLORE_METRIC_NAMES,
-    BenchmarkCase,
-    Region,
-    RetrievedRegion,
-    _blob_name,
     compare,
-    parse_patch_regions,
-    parse_retrieved_regions,
     score_case,
     score_swe_explore,
 )
-
-
-def test_blob_name_matches_ace_path_content_contract() -> None:
-    assert _blob_name("src/a.py", "print('ok')\n") == (
-        "7e509c9ce9399cd9d0ab99e610a91f4c2dec175d5119707ab2384d0205a85e33"
-    )
 
 
 def test_parse_patch_regions_uses_base_tree_lines() -> None:
@@ -114,6 +104,9 @@ def test_compare_preserves_all_failed_observation(tmp_path) -> None:
     result_path.write_text(
         json.dumps(
             {
+                "schema_version": 3,
+                "suite": "swe_explore",
+                "source_revisions": {"dataset": "pinned"},
                 "label": "failed-run",
                 "case_ids": ["example-1"],
                 "summary": {

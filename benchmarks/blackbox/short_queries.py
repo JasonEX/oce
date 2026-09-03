@@ -1,59 +1,89 @@
-"""Evaluate deterministic per-query rerank routing on short code lookups.
+"""Evaluate short code lookups under different rerank policies.
 
-The issue benchmark measures semantic retrieval.  This companion benchmark uses
-curated symbols from the same pinned snapshots to make structural skip decisions
-observable: symbol definitions, concrete paths, and symbol references.  It drives
-the production Rust client and reads only the local personal-mode audit database;
-no benchmark-only API is added to OCE.
+The issue benchmark measures semantic retrieval. This companion benchmark uses
+curated symbols from pinned snapshots to measure the high-confidence structural
+workloads where an adaptive policy may skip model work. It observes only output
+quality, latency, and aggregate model calls through the production Rust client;
+it never reads server persistence or imports server implementation code.
 """
 
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
-import math
 import os
 import re
-import sqlite3
 import subprocess
 import sys
 import time
 from collections import Counter
 from collections.abc import Iterable, Sequence
-from contextlib import closing
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import fmean
 from typing import Literal
 
-from benchmarks.swe_explore import (
-    DEFAULT_WORKDIR,
-    SWE_BENCH_REVISION,
-    SWE_EXPLORE_METRICS_REVISION,
-    SWE_EXPLORE_REVISION,
-    _client_binary,
-    _client_version,
-    _git,
-    _metadata,
-    _run_client,
-    _server_retrieval_profile,
-    _server_version,
-    load_cases,
-    parse_retrieved_regions,
+from benchmarks.blackbox.corpus import (
+    CodeLanguage,
+    RepositorySnapshot,
+    load_corpus,
     prepare_snapshots,
+    select_snapshots,
+    snapshot_path,
+)
+from benchmarks.blackbox.harness import (
+    DEFAULT_WORKDIR,
+    admin_stats,
+    ensure_comparable,
+    model_usage_delta,
+    parse_retrieved_regions,
+    percentile,
+    resolve_client_binary,
+    run_client,
+    runtime_metadata,
+    sha256_file,
 )
 
-DEFAULT_CASES = Path(__file__).with_name("rerank_routing_cases.json")
+DEFAULT_CASES = Path(__file__).with_name("short_query_anchors.json")
+DEFAULT_CORPUS = Path(__file__).with_name("curated_corpus.json")
 QueryKind = Literal["symbol", "path", "reference"]
 _REFERENCE_EXCLUDED_PARTS = frozenset(
-    {"doc", "docs", "example", "examples", "test", "tests", "testing"}
+    {
+        "__tests__",
+        "bench",
+        "benches",
+        "benchmark",
+        "benchmarks",
+        "doc",
+        "docs",
+        "example",
+        "examples",
+        "test",
+        "tests",
+        "testing",
+    }
 )
+_SOURCE_EXTENSIONS: dict[CodeLanguage, frozenset[str]] = {
+    "python": frozenset({".py"}),
+    "typescript": frozenset({".ts", ".tsx"}),
+    "rust": frozenset({".rs"}),
+}
+_DEFINITION_PATTERNS: dict[CodeLanguage, str] = {
+    "python": r"(?m)^(?:async\s+def|def|class)\s+{identifier}\b",
+    "typescript": (
+        r"(?m)^(?:export\s+)?(?:declare\s+)?(?:abstract\s+)?"
+        r"(?:class|interface|type|function|const)\s+{identifier}\b"
+    ),
+    "rust": (
+        r"(?m)^(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?"
+        r"(?:fn|struct|enum|trait|type|const)\s+{identifier}\b"
+    ),
+}
 
 
 @dataclass(frozen=True)
-class RoutingAnchor:
+class ShortQueryAnchor:
     id: str
     instance_id: str
     identifier: str
@@ -61,62 +91,52 @@ class RoutingAnchor:
 
 
 @dataclass(frozen=True)
-class RoutingCase:
+class ShortQueryCase:
     id: str
     instance_id: str
     kind: QueryKind
     query: str
-    expected_intent: str
     expected_paths: tuple[str, ...]
-    # Every anchor is asked in English and Chinese; the routing rules and the
-    # cross-language embedding path must agree on both.
-    language: str = "en"
+    code_language: CodeLanguage = "python"
+    # Every anchor is asked in English and Chinese so deterministic evidence and
+    # the cross-language embedding path are exercised on the same truth.
+    query_language: str = "en"
     # The anchor's declaration file. Reference truth excludes it, so a
     # reference query that leads with it is a distinct failure mode
     # ("answered the definition") worth reporting apart from noise.
     definition_path: str = ""
 
 
-@dataclass(frozen=True)
-class AuditRow:
-    id: int
-    intent: str | None
-    rerank_route: str | None
-    total_ms: int
-    rerank_ms: int | None
-    llm_rerank_ms: int | None
-
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def load_anchors(path: Path) -> tuple[RoutingAnchor, ...]:
+def load_anchors(path: Path) -> tuple[ShortQueryAnchor, ...]:
     value = json.loads(path.read_text(encoding="utf-8"))
-    if value.get("schema_version") != 1 or not isinstance(value.get("anchors"), list):
-        raise ValueError("routing case manifest must use schema_version 1")
-    anchors: list[RoutingAnchor] = []
+    if (
+        not isinstance(value, dict)
+        or value.get("schema_version") != 1
+        or not isinstance(value.get("anchors"), list)
+    ):
+        raise ValueError("short-query anchor manifest must use schema_version 1")
+    anchors: list[ShortQueryAnchor] = []
     seen: set[str] = set()
     for raw in value["anchors"]:
         try:
-            anchor = RoutingAnchor(
+            anchor = ShortQueryAnchor(
                 id=str(raw["id"]),
                 instance_id=str(raw["instance_id"]),
                 identifier=str(raw["identifier"]),
                 definition_path=str(raw["definition_path"]),
             )
         except (KeyError, TypeError) as exc:
-            raise ValueError("invalid routing anchor") from exc
+            raise ValueError("invalid short-query anchor") from exc
         if not all(asdict(anchor).values()) or anchor.id in seen:
-            raise ValueError(f"invalid or duplicate routing anchor: {anchor.id!r}")
+            raise ValueError(f"invalid or duplicate short-query anchor: {anchor.id!r}")
         seen.add(anchor.id)
         anchors.append(anchor)
     if not anchors:
-        raise ValueError("routing case manifest is empty")
+        raise ValueError("short-query anchor manifest is empty")
     return tuple(anchors)
 
 
-def _tracked_python_paths(root: Path) -> Iterable[Path]:
+def _tracked_source_paths(root: Path, code_language: CodeLanguage) -> Iterable[Path]:
     completed = subprocess.run(
         ["git", "-C", str(root), "ls-files", "-z"],
         check=True,
@@ -126,19 +146,22 @@ def _tracked_python_paths(root: Path) -> Iterable[Path]:
         if not raw:
             continue
         relative = Path(raw.decode("utf-8"))
-        if relative.suffix != ".py" or _REFERENCE_EXCLUDED_PARTS.intersection(
-            relative.parts
-        ):
+        if relative.suffix not in _SOURCE_EXTENSIONS[
+            code_language
+        ] or _REFERENCE_EXCLUDED_PARTS.intersection(relative.parts):
             continue
         yield relative
 
 
 def _reference_paths(
-    root: Path, identifier: str, definition_path: str
+    root: Path,
+    identifier: str,
+    definition_path: str,
+    code_language: CodeLanguage,
 ) -> tuple[str, ...]:
     pattern = re.compile(rf"(?<![A-Za-z0-9_$]){re.escape(identifier)}(?![A-Za-z0-9_$])")
     paths: list[str] = []
-    for relative in _tracked_python_paths(root):
+    for relative in _tracked_source_paths(root, code_language):
         normalized = relative.as_posix()
         if normalized == definition_path:
             continue
@@ -152,23 +175,33 @@ def _reference_paths(
 
 
 def expand_cases(
-    workdir: Path, anchors: Sequence[RoutingAnchor]
-) -> tuple[RoutingCase, ...]:
-    cases: list[RoutingCase] = []
-    definition_pattern = r"(?m)^(?:async\s+def|def|class)\s+{identifier}\b"
+    workdir: Path,
+    anchors: Sequence[ShortQueryAnchor],
+    snapshots: dict[str, RepositorySnapshot],
+) -> tuple[ShortQueryCase, ...]:
+    cases: list[ShortQueryCase] = []
     for anchor in anchors:
-        root = workdir / "snapshots" / anchor.instance_id
+        snapshot = snapshots[anchor.instance_id]
+        root = snapshot_path(workdir, snapshot.id)
         target = root / anchor.definition_path
         if not target.is_file():
             raise ValueError(f"missing definition target: {target}")
         content = target.read_text(encoding="utf-8")
         if not re.search(
-            definition_pattern.format(identifier=re.escape(anchor.identifier)), content
+            _DEFINITION_PATTERNS[snapshot.code_language].format(
+                identifier=re.escape(anchor.identifier)
+            ),
+            content,
         ):
             raise ValueError(
                 f"{anchor.identifier!r} is not defined in {anchor.definition_path}"
             )
-        references = _reference_paths(root, anchor.identifier, anchor.definition_path)
+        references = _reference_paths(
+            root,
+            anchor.identifier,
+            anchor.definition_path,
+            snapshot.code_language,
+        )
         if not references:
             raise ValueError(f"no source reference path for {anchor.identifier!r}")
         templates = {
@@ -187,34 +220,34 @@ def expand_cases(
             suffix = "" if language == "en" else f"-{language}"
             cases.extend(
                 (
-                    RoutingCase(
+                    ShortQueryCase(
                         id=f"{anchor.id}-symbol{suffix}",
                         instance_id=anchor.instance_id,
                         kind="symbol",
                         query=symbol_query,
-                        expected_intent="symbol",
                         expected_paths=(anchor.definition_path,),
-                        language=language,
+                        code_language=snapshot.code_language,
+                        query_language=language,
                         definition_path=anchor.definition_path,
                     ),
-                    RoutingCase(
+                    ShortQueryCase(
                         id=f"{anchor.id}-path{suffix}",
                         instance_id=anchor.instance_id,
                         kind="path",
                         query=path_query,
-                        expected_intent="path",
                         expected_paths=(anchor.definition_path,),
-                        language=language,
+                        code_language=snapshot.code_language,
+                        query_language=language,
                         definition_path=anchor.definition_path,
                     ),
-                    RoutingCase(
+                    ShortQueryCase(
                         id=f"{anchor.id}-reference{suffix}",
                         instance_id=anchor.instance_id,
                         kind="reference",
                         query=reference_query,
-                        expected_intent="reference",
                         expected_paths=references,
-                        language=language,
+                        code_language=snapshot.code_language,
+                        query_language=language,
                         definition_path=anchor.definition_path,
                     ),
                 )
@@ -223,99 +256,18 @@ def expand_cases(
 
 
 def prepare_cases(
-    workdir: Path, manifest: Path
-) -> tuple[tuple[RoutingCase, ...], tuple[RoutingAnchor, ...]]:
+    workdir: Path, manifest: Path, corpus_path: Path
+) -> tuple[
+    tuple[ShortQueryCase, ...],
+    tuple[ShortQueryAnchor, ...],
+    dict[str, RepositorySnapshot],
+]:
     anchors = load_anchors(manifest)
-    issue_cases = {
-        case.instance_id: case for case in load_cases(workdir, "development")
-    }
-    missing = sorted({anchor.instance_id for anchor in anchors} - issue_cases.keys())
-    if missing:
-        raise ValueError(
-            f"routing anchors are outside the pinned development set: {missing}"
-        )
-    selected = [
-        issue_cases[instance_id]
-        for instance_id in sorted({a.instance_id for a in anchors})
-    ]
-    prepare_snapshots(workdir, selected)
-    return expand_cases(workdir, anchors), anchors
-
-
-def _metric_watermark(database: Path) -> int:
-    if not database.is_file():
-        raise FileNotFoundError(f"metrics database not found: {database}")
-    with closing(sqlite3.connect(f"file:{database}?mode=ro", uri=True)) as connection:
-        row = connection.execute(
-            "SELECT COALESCE(MAX(id), 0) FROM retrieval_metrics"
-        ).fetchone()
-    return int(row[0])
-
-
-def _read_audit_row(database: Path, after_id: int, query: str) -> AuditRow | None:
-    with closing(sqlite3.connect(f"file:{database}?mode=ro", uri=True)) as connection:
-        row = connection.execute(
-            """
-            SELECT id, intent, rerank_route, total_ms, rerank_ms, llm_rerank_ms
-            FROM retrieval_metrics
-            WHERE id > ? AND query_text = ?
-            ORDER BY id
-            LIMIT 1
-            """,
-            (after_id, query),
-        ).fetchone()
-    return AuditRow(*row) if row is not None else None
-
-
-def wait_for_audit_row(
-    database: Path, after_id: int, query: str, timeout_seconds: float
-) -> AuditRow:
-    deadline = time.monotonic() + timeout_seconds
-    while time.monotonic() < deadline:
-        if row := _read_audit_row(database, after_id, query):
-            return row
-        time.sleep(0.05)
-    raise RuntimeError(
-        "retrieval audit row was not flushed; run the benchmark server with "
-        "MONITORING_RETRIEVAL_AUDIT_ENABLED=true, MONITORING_STORE_QUERY_TEXT=true, "
-        "and a short MONITORING_FLUSH_INTERVAL_SECONDS"
+    snapshots = select_snapshots(
+        load_corpus(corpus_path), (anchor.instance_id for anchor in anchors)
     )
-
-
-def expected_route(kind: QueryKind, runtime: dict[str, object]) -> str:
-    dedicated_enabled = bool(runtime.get("api_rerank_enabled"))
-    llm_enabled = bool(runtime.get("llm_rerank_enabled"))
-    dedicated_policy = str(runtime.get("rerank_policy", "adaptive"))
-    llm_policy = str(runtime.get("llm_rerank_policy", "adaptive"))
-    if dedicated_policy not in {"adaptive", "always"} or llm_policy not in {
-        "adaptive",
-        "always",
-    }:
-        raise ValueError("server returned an unsupported rerank policy")
-
-    if kind == "symbol":
-        adaptive_dedicated, adaptive_llm, reason = False, False, "exact_definition"
-    elif kind == "path":
-        adaptive_dedicated, adaptive_llm, reason = False, False, "path_evidence"
-    else:
-        adaptive_dedicated, adaptive_llm, reason = (
-            True,
-            False,
-            "reference_keep_coverage",
-        )
-
-    dedicated = dedicated_enabled and (
-        dedicated_policy == "always" or adaptive_dedicated
-    )
-    llm = llm_enabled and (llm_policy == "always" or adaptive_llm)
-    applied = [
-        name for name, enabled in (("dedicated", dedicated), ("llm", llm)) if enabled
-    ]
-    if applied:
-        return "+".join(applied)
-    if not (dedicated_enabled or llm_enabled):
-        reason = "no_reranker_enabled"
-    return f"skip:{reason}"
+    prepare_snapshots(workdir, tuple(snapshots.values()))
+    return expand_cases(workdir, anchors, snapshots), anchors, snapshots
 
 
 def _score_paths(
@@ -342,14 +294,6 @@ def _score_paths(
     }
 
 
-def _percentile(values: Sequence[int], percentile: int) -> int | None:
-    if not values:
-        return None
-    ordered = sorted(values)
-    index = max(0, math.ceil(percentile / 100 * len(ordered)) - 1)
-    return ordered[index]
-
-
 def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     successful = [result for result in results if result["status"] == "ok"]
     quality_names = (
@@ -362,77 +306,39 @@ def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     elapsed = [int(result["elapsed_ms"]) for result in successful]
     returned_chars = [int(result["returned_chars"]) for result in successful]
     hit_counts = [int(result["hit_count"]) for result in successful]
-    rerank_ms = [
-        int(result["rerank_ms"])
-        for result in successful
-        if result.get("rerank_ms") is not None
-    ]
-    llm_rerank_ms = [
-        int(result["llm_rerank_ms"])
-        for result in successful
-        if result.get("llm_rerank_ms") is not None
-    ]
-    routes = Counter(str(result["rerank_route"]) for result in successful)
     return {
         "cases": len(results),
         "successful_cases": len(successful),
         "error_cases": len(results) - len(successful),
         **{
-            name: fmean(
-                float(result.get("metrics", {}).get(name, 0.0)) for result in results
+            name: (
+                fmean(
+                    float(result.get("metrics", {}).get(name, 0.0))
+                    for result in results
+                )
+                if results
+                else None
             )
             for name in quality_names
         },
-        "route_conformance": fmean(
-            float(bool(result.get("route_conformant"))) for result in results
-        ),
-        "intent_conformance": fmean(
-            float(bool(result.get("intent_conformant"))) for result in results
-        ),
-        "stage_conformance": fmean(
-            float(bool(result.get("stage_conformant"))) for result in results
-        ),
-        "skip_rate": (
-            sum(count for route, count in routes.items() if route.startswith("skip:"))
-            / len(successful)
-            if successful
-            else 0.0
-        ),
-        "routes": dict(sorted(routes.items())),
         "mean_elapsed_ms": fmean(elapsed) if elapsed else None,
         "mean_returned_chars": fmean(returned_chars) if returned_chars else None,
         "mean_hit_count": fmean(hit_counts) if hit_counts else None,
-        "p50_elapsed_ms": _percentile(elapsed, 50),
-        "p95_elapsed_ms": _percentile(elapsed, 95),
-        "mean_rerank_ms": fmean(rerank_ms) if rerank_ms else None,
-        "mean_llm_rerank_ms": fmean(llm_rerank_ms) if llm_rerank_ms else None,
+        "p50_elapsed_ms": percentile(elapsed, 50),
+        "p95_elapsed_ms": percentile(elapsed, 95),
     }
-
-
-def _stage_conformant(route: str, audit: AuditRow) -> bool:
-    dedicated_expected = route in {"dedicated", "dedicated+llm"}
-    llm_expected = route in {"llm", "dedicated+llm"}
-    return (audit.rerank_ms is not None) == dedicated_expected and (
-        audit.llm_rerank_ms is not None
-    ) == llm_expected
 
 
 def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
     workdir = args.workdir.expanduser().resolve()
     manifest = args.cases.expanduser().resolve()
-    metrics_database = args.metrics_db.expanduser().resolve()
-    cases, anchors = prepare_cases(workdir, manifest)
-    binary = _client_binary(args.client_binary)
+    corpus_path = args.corpus.expanduser().resolve()
+    cases, anchors, snapshots = prepare_cases(workdir, manifest, corpus_path)
+    binary = resolve_client_binary(args.client_binary)
     api_key = os.environ.get("OCE_API_KEY", "sk-opencontextengine")
     admin_key = os.environ.get("OCE_ADMIN_API_KEY")
-    runtime = _server_retrieval_profile(args.api_url, admin_key)
-    if runtime is None:
-        raise RuntimeError(
-            "OCE_ADMIN_API_KEY is required to read the server routing profile"
-        )
-    _metric_watermark(metrics_database)
 
-    state_dir = workdir / "routing-client-state"
+    state_dir = workdir / "short-query-client-state"
     state_dir.mkdir(parents=True, exist_ok=True)
     sync: dict[str, dict[str, object]] = {}
     for number, instance_id in enumerate(
@@ -442,9 +348,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             f"[sync {number}/{len(set(c.instance_id for c in cases))}] {instance_id}",
             file=sys.stderr,
         )
-        response = _run_client(
+        response = run_client(
             binary,
-            workdir / "snapshots" / instance_id,
+            snapshot_path(workdir, instance_id),
             state_dir / f"{instance_id}.sqlite3",
             args.api_url,
             api_key,
@@ -456,15 +362,17 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             "uploaded_blobs": len(uploaded) if isinstance(uploaded, list) else None,
         }
 
+    if admin_key:
+        time.sleep(args.metrics_settle_seconds)
+    stats_before = admin_stats(args.api_url, admin_key)
     results: list[dict[str, object]] = []
     for number, case in enumerate(cases, 1):
         print(f"[retrieve {number}/{len(cases)}] {case.id}", file=sys.stderr)
         started = time.perf_counter()
-        watermark = _metric_watermark(metrics_database)
         try:
-            response = _run_client(
+            response = run_client(
                 binary,
-                workdir / "snapshots" / case.instance_id,
+                snapshot_path(workdir, case.instance_id),
                 state_dir / f"{case.instance_id}.sqlite3",
                 args.api_url,
                 api_key,
@@ -474,18 +382,14 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             elapsed_ms = response.get("elapsed_ms")
             if not isinstance(formatted, str) or not isinstance(elapsed_ms, int):
                 raise RuntimeError("oce-client retrieve returned an invalid payload")
-            audit = wait_for_audit_row(
-                metrics_database, watermark, case.query, args.metrics_timeout_seconds
-            )
             retrieved = parse_retrieved_regions(formatted)
-            route = audit.rerank_route or "missing"
-            expected = expected_route(case.kind, runtime)
             results.append(
                 {
                     "id": case.id,
                     "instance_id": case.instance_id,
                     "kind": case.kind,
-                    "language": case.language,
+                    "query_language": case.query_language,
+                    "code_language": case.code_language,
                     "status": "ok",
                     "expected_path_count": len(case.expected_paths),
                     "retrieved": [asdict(region) for region in retrieved],
@@ -498,16 +402,6 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "hit_count": len(retrieved),
                     "elapsed_ms": elapsed_ms,
                     "wall_elapsed_ms": int((time.perf_counter() - started) * 1000),
-                    "intent": audit.intent,
-                    "expected_intent": case.expected_intent,
-                    "intent_conformant": audit.intent == case.expected_intent,
-                    "rerank_route": route,
-                    "expected_rerank_route": expected,
-                    "route_conformant": route == expected,
-                    "stage_conformant": _stage_conformant(route, audit),
-                    "server_total_ms": audit.total_ms,
-                    "rerank_ms": audit.rerank_ms,
-                    "llm_rerank_ms": audit.llm_rerank_ms,
                 }
             )
         except Exception as exc:
@@ -516,7 +410,8 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "id": case.id,
                     "instance_id": case.instance_id,
                     "kind": case.kind,
-                    "language": case.language,
+                    "query_language": case.query_language,
+                    "code_language": case.code_language,
                     "status": "error",
                     "error_type": type(exc).__name__,
                     "error": str(exc).replace(api_key, "[REDACTED]")[:1000],
@@ -528,40 +423,46 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         kind: aggregate([result for result in results if result["kind"] == kind])
         for kind in ("symbol", "path", "reference")
     }
-    by_language = {
+    by_query_language = {
         language: aggregate(
-            [result for result in results if result.get("language") == language]
+            [result for result in results if result.get("query_language") == language]
         )
-        for language in sorted({case.language for case in cases})
+        for language in sorted({case.query_language for case in cases})
     }
+    if admin_key:
+        time.sleep(args.metrics_settle_seconds)
+    stats_after = admin_stats(args.api_url, admin_key)
+    summary = aggregate(results)
+    summary["external_model_tokens"] = model_usage_delta(stats_before, stats_after)
     return {
-        "schema_version": 1,
+        "schema_version": 3,
+        "suite": "short_queries",
         "label": args.label,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "controls": {"metrics_settle_seconds": args.metrics_settle_seconds},
         "source_revisions": {
-            "swe_bench_verified": SWE_BENCH_REVISION,
-            "swe_explore": SWE_EXPLORE_REVISION,
-            "swe_explore_metrics": SWE_EXPLORE_METRICS_REVISION,
-            "routing_cases_sha256": _sha256(manifest),
+            "curated_corpus_sha256": sha256_file(corpus_path),
+            "short_query_anchors_sha256": sha256_file(manifest),
         },
-        "runtime": {
-            "harness_source_commit": _git(
-                "rev-parse", "HEAD", cwd=Path(__file__).resolve().parents[1]
-            ),
-            "harness_source_dirty": bool(
-                _git("status", "--porcelain", cwd=Path(__file__).resolve().parents[1])
-            ),
-            "server_version": _server_version(args.api_url),
-            "server_retrieval_profile": runtime,
-            "client_version": _client_version(binary),
-            "environment": _metadata(args.metadata),
-        },
+        "snapshots": [asdict(snapshot) for snapshot in snapshots.values()],
+        "runtime": runtime_metadata(
+            binary=binary,
+            api_url=args.api_url,
+            admin_key=admin_key,
+            extra_metadata=args.metadata,
+        ),
         "anchors": len(anchors),
         "case_ids": [case.id for case in cases],
         "sync": sync,
-        "summary": aggregate(results),
+        "summary": summary,
         "by_kind": by_kind,
-        "by_language": by_language,
+        "by_query_language": by_query_language,
+        "by_code_language": {
+            language: aggregate(
+                [result for result in results if result["code_language"] == language]
+            )
+            for language in ("python", "typescript", "rust")
+        },
         "cases": results,
     }
 
@@ -572,6 +473,13 @@ def _percent(value: object) -> str:
 
 def _number(value: object) -> str:
     return "-" if value is None else f"{float(value):.0f}"
+
+
+def _model_calls(summary: dict[str, object], kind: str) -> str:
+    usage = summary.get("external_model_tokens")
+    if not isinstance(usage, dict) or not isinstance(usage.get(kind), dict):
+        return "-"
+    return str(int(usage[kind].get("calls", 0)))
 
 
 def compare(paths: Iterable[Path]) -> str:
@@ -586,31 +494,25 @@ def compare(paths: Iterable[Path]) -> str:
         "Path Top-1",
         "Reference Top-1",
         "Ref def-first",
+        "Python Top-1",
+        "TS Top-1",
+        "Rust Top-1",
         "Hit@10",
-        "Intent",
-        "Route",
-        "Stage",
-        "Skip",
         "Chars",
         "Hits",
         "p50 ms",
         "p95 ms",
-        "Rerank ms",
-        "LLM ms",
+        "Rerank calls",
+        "Chat calls",
     )
     loaded = [(path, json.loads(path.read_text(encoding="utf-8"))) for path in paths]
-    expected_ids: list[str] | None = None
-    for _path, value in loaded:
-        case_ids = value.get("case_ids")
-        if expected_ids is None:
-            expected_ids = case_ids
-        elif case_ids != expected_ids:
-            raise ValueError("results use different ordered routing case sets")
+    ensure_comparable([value for _path, value in loaded], suite="short_queries")
 
     rows: list[tuple[str, ...]] = []
     for path, value in loaded:
         summary = value["summary"]
         by_kind = value["by_kind"]
+        by_code_language = value["by_code_language"]
         rows.append(
             (
                 str(value.get("label", path.stem)),
@@ -621,17 +523,16 @@ def compare(paths: Iterable[Path]) -> str:
                 _percent(by_kind["path"]["top1"]),
                 _percent(by_kind["reference"]["top1"]),
                 _percent(by_kind["reference"].get("definition_top1")),
+                _percent(by_code_language["python"]["top1"]),
+                _percent(by_code_language["typescript"]["top1"]),
+                _percent(by_code_language["rust"]["top1"]),
                 _percent(summary["hit_at_10"]),
-                _percent(summary["intent_conformance"]),
-                _percent(summary["route_conformance"]),
-                _percent(summary["stage_conformance"]),
-                _percent(summary["skip_rate"]),
                 _number(summary.get("mean_returned_chars")),
                 _number(summary.get("mean_hit_count")),
                 _number(summary["p50_elapsed_ms"]),
                 _number(summary["p95_elapsed_ms"]),
-                _number(summary["mean_rerank_ms"]),
-                _number(summary["mean_llm_rerank_ms"]),
+                _model_calls(summary, "rerank"),
+                _model_calls(summary, "llm_rerank"),
             )
         )
     output = [
@@ -646,6 +547,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES)
+    parser.add_argument("--corpus", type=Path, default=DEFAULT_CORPUS)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     check = subparsers.add_parser("check", help="validate and summarize the query set")
@@ -654,8 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
     run = subparsers.add_parser("run", help="sync snapshots and execute short queries")
     run.add_argument("--api-url", default="http://127.0.0.1:8986")
     run.add_argument("--client-binary", type=Path)
-    run.add_argument("--metrics-db", type=Path, required=True)
-    run.add_argument("--metrics-timeout-seconds", type=float, default=10.0)
+    run.add_argument("--metrics-settle-seconds", type=float, default=6.0)
     run.add_argument("--label", required=True)
     run.add_argument("--output", type=Path, required=True)
     run.add_argument(
@@ -676,8 +577,10 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.handler == "check":
-        cases, anchors = prepare_cases(
-            args.workdir.expanduser().resolve(), args.cases.expanduser().resolve()
+        cases, anchors, snapshots = prepare_cases(
+            args.workdir.expanduser().resolve(),
+            args.cases.expanduser().resolve(),
+            args.corpus.expanduser().resolve(),
         )
         print(
             json.dumps(
@@ -685,16 +588,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "anchors": len(anchors),
                     "cases": len(cases),
                     "kinds": dict(Counter(case.kind for case in cases)),
-                    "languages": dict(Counter(case.language for case in cases)),
+                    "query_languages": dict(
+                        Counter(case.query_language for case in cases)
+                    ),
                     "instances": len({case.instance_id for case in cases}),
+                    "code_languages": dict(
+                        Counter(
+                            snapshot.code_language for snapshot in snapshots.values()
+                        )
+                    ),
                 },
                 indent=2,
             )
         )
         return 0
     if args.handler == "run":
-        if args.metrics_timeout_seconds <= 0:
-            raise ValueError("--metrics-timeout-seconds must be positive")
+        if args.metrics_settle_seconds < 0:
+            raise ValueError("--metrics-settle-seconds must not be negative")
         result = run_benchmark(args)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

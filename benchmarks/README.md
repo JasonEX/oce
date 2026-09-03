@@ -1,194 +1,264 @@
-# Retrieval infrastructure benchmarks
+# Retrieval benchmark system
 
-These benchmarks are lightweight engineering diagnostics. They report observations and do
-not turn thresholds into release decisions.
+The benchmark code is versioned with OCE, but product-utility evaluation is an
+external consumer of the service. It reports observations and does not turn a
+metric threshold into a release decision.
 
-## Issue-resolution retrieval
+## Architecture boundary
 
-[`swe_explore.py`](swe_explore.py) evaluates the production server through production
-upload APIs and the real `oce-client` checkpoint/retrieval path. It joins two source-pinned
-public datasets:
+```text
+benchmarks/blackbox
+        |
+        | production CLI and stable JSON output
+        v
+  oce-client binary
+        |
+        | ACE-compatible HTTP API
+        v
+     OCE server
 
-- [SWE-bench Verified](https://huggingface.co/datasets/SWE-bench/SWE-bench_Verified)
-  supplies 500 expert-validated issues, the repository base commit, and the accepted patch.
-- [SWE-Explore](https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench)
-  supplies core files and regions aggregated from successful issue-solving trajectories.
-- [SWE-Explore's reference evaluator](https://github.com/Qiushao-E/SWE-Explore-Bench/blob/5602f031f2d9562d0a805f83402b536e831a5a11/quality/bench_metrics.py)
-  supplies the official line coverage, ranking, and context-efficiency formulas.
+optional provenance only:
+benchmarks/blackbox --> /version, /admin/index-stats, /admin/stats
+```
 
-The harness pins both dataset revisions and the evaluator revision, then verifies their
-SHA256 checksums before use. It executes that pinned reference metric module locally during
-scoring; it never fetches an unversioned evaluator.
-Downloaded data, Git repositories, client state, and result files default to
-`~/.cache/oce/swe-explore-v1`; none are copied into this Apache-2.0 repository.
-SWE-Explore is licensed CC BY-NC-ND 4.0, so review its terms before using the data outside
-internal product evaluation.
+Code under [`blackbox`](blackbox) must not import `oce`, database drivers,
+SQLAlchemy, or Milvus. It never reads server persistence and does not require a
+benchmark-only API. The optional admin calls expose feature switches and
+aggregate model usage; they do not expose query text or individual retrieval
+traces. [`test_blackbox_boundary.py`](../tests/unit/benchmarks/test_blackbox_boundary.py)
+enforces this dependency rule.
 
-Four deterministic profiles trade iteration speed for coverage:
+[`internal`](internal) contains implementation microbenchmarks. Those may import
+server modules, but their results diagnose a component and cannot support a
+product-utility claim. This distinction keeps a fast Milvus experiment useful
+without coupling the black-box evaluator to the implementation under test.
+
+The black-box layer has four small infrastructure modules:
+
+- [`harness.py`](blackbox/harness.py) owns the released-client subprocess,
+  stable response parsing, safe runtime provenance, and paired-result identity.
+- [`corpus.py`](blackbox/corpus.py) owns immutable Git snapshots.
+- [`prewarm.py`](blackbox/prewarm.py) owns optional bounded index setup through
+  client admission and production upload APIs.
+- [`swe_data.py`](blackbox/swe_data.py) owns the pinned SWE-bench/SWE-Explore
+  acquisition and truth conversion; curated suites do not depend on it.
+
+The default cache is `~/.cache/oce/retrieval-bench-v1`. Datasets, repositories,
+client state, and raw results stay outside this repository.
+
+## Evaluation layers
+
+| Suite | Current coverage | Primary question | Main metrics |
+| --- | --- | --- | --- |
+| `short_queries` | 22 anchors, 7 snapshots, 132 English/Chinese queries | Are known symbols, paths, and references at the head? | Top-1, MRR, Hit@10, path recall, reference definition-first rate |
+| `semantic_queries` | 21 reviewed queries, 7 snapshots, balanced feature/overview/call-chain intents | Does broad retrieval return the right architectural owners compactly? | graded nDCG@10, weighted Recall@5/@10, primary Top-1, characters, latency |
+| `swe_explore` | real issue text and trajectory/edit truth; 5/13/53/451-case profiles | Does issue-level retrieval reach useful context and likely edit locations? | official SWE-Explore metrics, edit/core Top-1 and Recall@10, characters, latency |
+
+[`curated_corpus.json`](blackbox/curated_corpus.json) pins five Python snapshots
+from the development issue set, Redux Toolkit v2.2.7 for TypeScript, and axum
+v0.7.9 for Rust. [`short_query_anchors.json`](blackbox/short_query_anchors.json)
+and [`semantic_cases.json`](blackbox/semantic_cases.json) reference those IDs;
+the evaluator refuses unknown snapshots, mutable revisions, missing truth files,
+or comparisons with different truth digests or ordered case IDs.
+
+Use the layers at different cadences:
+
+1. During implementation, run the relevant unit/regression test and the affected
+   black-box suite.
+2. Before changing a default retrieval strategy, run paired variants on all
+   three development suites. Repeat any variant involving an external model at
+   least twice.
+3. Before making a broader product claim, add the `standard` 53-issue profile.
+   Use the 451-case `verified` profile for milestone studies, not routine edits.
+
+The curated truth is deliberately small and reviewable. It is suitable for
+regression and ablation work, but it is not an independently reviewed benchmark.
+There is not yet a downstream agent task-success suite or an ACE head-to-head
+evaluation, so retrieval scores must not be presented as either result.
+
+## Prepare and validate
+
+Validate the reviewed query sets and prepare their pinned snapshots:
+
+```bash
+uv run python -m benchmarks.blackbox.short_queries check
+uv run python -m benchmarks.blackbox.semantic_queries check
+```
+
+Prepare an issue profile separately:
+
+```bash
+uv run python -m benchmarks.blackbox.swe_explore \
+  --profile development prepare
+```
+
+On a fresh personal-mode server, synchronous embedding of a large repository may
+outlast the client's ordinary request timeout. Prewarm the shared curated corpus
+before running `short_queries` or `semantic_queries`:
+
+```bash
+export OCE_API_KEY=...
+uv run python -m benchmarks.blackbox.prewarm
+```
+
+The SWE profiles use issue-specific snapshots, so prewarm the selected profile
+separately before paired issue runs:
+
+```bash
+export OCE_API_KEY=...
+uv run python -m benchmarks.blackbox.swe_explore \
+  --profile development prewarm
+```
+
+Both commands ask the released client for each workspace's admitted file list, then
+use the production `/find-missing` and `/batch-upload` endpoints with smaller
+batches. It therefore shares the client's ignore, sensitive-file, encoding,
+size, and symlink policy while remaining setup rather than a client-throughput
+measurement. The subsequent run still performs a complete real-client sync and
+emits no quality report if a workspace fails to sync.
+
+## Run paired variants
+
+Start or restart OCE separately with the configuration being evaluated. Provide
+the data key and, optionally, the admin key:
+
+For a reranking change, the minimum useful matrix is `none` (both rerankers
+disabled), `dedicated-always`, and `dedicated-adaptive`. Add an
+`adaptive-cascade` run only when measuring the incremental value of chat-LLM
+reranking. This separates three questions: whether reranking beats disabled,
+whether adaptive preserves the quality of always, and whether chat adds enough
+utility above the dedicated model. Run external-model variants at least twice.
+
+```bash
+export OCE_API_KEY=...
+export OCE_ADMIN_API_KEY=...
+
+uv run python -m benchmarks.blackbox.short_queries run \
+  --label adaptive-r1 \
+  --metadata deployment=personal \
+  --output /tmp/oce-short-adaptive-r1.json
+
+uv run python -m benchmarks.blackbox.semantic_queries run \
+  --label adaptive-r1 \
+  --metadata deployment=personal \
+  --output /tmp/oce-semantic-adaptive-r1.json
+
+uv run python -m benchmarks.blackbox.swe_explore \
+  --profile development run \
+  --label adaptive-r1 \
+  --metadata deployment=personal \
+  --output /tmp/oce-swe-adaptive-r1.json
+```
+
+`OCE_ADMIN_API_KEY` is optional. When present, the harness reads the runtime
+retrieval switches, active index profile, store availability, and query-cache
+state, then snapshots `/admin/stats` around retrieval to report only the
+aggregate model-call/token delta. Automatic runner-environment metadata uses a
+non-secret allowlist and excludes keys and endpoint URLs; it is not presented as
+authoritative server configuration. Explicit `--metadata` remains the caller's
+responsibility. Result JSON also records benchmark timing controls and contains
+ranked paths and line spans, not retrieved source text or credentials.
+
+The default six-second settling interval exceeds OCE's default five-second
+metrics flush period. If the benchmark server uses a longer
+`MONITORING_FLUSH_INTERVAL_SECONDS`, pass a correspondingly larger
+`--metrics-settle-seconds`; this delay applies only when an admin key is present.
+
+Use an otherwise idle benchmark server for latency and model-usage comparisons.
+The admin counters are aggregate observations, so concurrent traffic would be
+included in their before/after delta.
+
+Compare like-for-like runs:
+
+```bash
+uv run python -m benchmarks.blackbox.short_queries compare \
+  /tmp/oce-short-none-r1.json /tmp/oce-short-adaptive-r1.json
+
+uv run python -m benchmarks.blackbox.semantic_queries compare \
+  /tmp/oce-semantic-none-r1.json /tmp/oce-semantic-adaptive-r1.json
+
+uv run python -m benchmarks.blackbox.swe_explore compare \
+  /tmp/oce-swe-none-r1.json /tmp/oce-swe-adaptive-r1.json
+```
+
+A retrieval error remains in the denominator as zero utility; it is never
+dropped from quality aggregates. Latency percentiles use successful calls, with
+the error count shown alongside them. This separates system reliability from
+the latency distribution without hiding either.
+
+## Reading each suite
+
+### Short structural queries
+
+Each anchor expands into `symbol`, `path`, and `reference` queries in English and
+Chinese. Definition and path truth is manually pinned. Reference truth is a
+file-level lexical derivation over tracked, non-test source files; it is useful
+for regression but is not a semantic call graph. `definition_top1` shows when a
+reference query incorrectly answers with the declaration file.
+
+This suite measures observable utility only. Whether the server internally
+selected `skip:exact_definition`, `skip:path_evidence`, or a reranker is covered
+by the retrieval strategy and pipeline unit tests. The benchmark intentionally
+does not read `retrieval_metrics` or duplicate the server's routing state
+machine.
+
+### Reviewed semantic queries
+
+Every snapshot has one feature, one architecture overview, and one call-chain
+query. Relevant files carry grades 1-3 and a short role. nDCG rewards placing
+the primary owners first; weighted recall rewards recovering the supporting
+files. Reports split metrics by intent and by Python/TypeScript/Rust so an
+overall gain cannot conceal a language or task regression.
+
+The truth records architectural ownership, not every acceptable context file.
+Review per-case ranked paths before changing grades; do not tune truth to favor a
+specific retrieval variant.
+
+### SWE-Explore issue retrieval
+
+The harness joins pinned, SHA256-verified copies of:
+
+- [SWE-bench Verified](https://huggingface.co/datasets/SWE-bench/SWE-bench_Verified),
+  for issue text, base revisions, and accepted patches;
+- [SWE-Explore](https://huggingface.co/datasets/SWE-Explore-Bench/SWE-Explore-Bench),
+  for core files and regions from successful issue-solving trajectories; and
+- [the reference evaluator](https://github.com/Qiushao-E/SWE-Explore-Bench/blob/5602f031f2d9562d0a805f83402b536e831a5a11/quality/bench_metrics.py),
+  for the published line/ranking/context-efficiency formulas.
 
 | Profile | Current size | Purpose |
 | --- | ---: | --- |
-| `pilot` | 5 issues / 5 repositories | End-to-end smoke and configuration checks |
-| `development` | 13 issues / 5 repositories | Fast paired strategy experiments |
-| `standard` | 53 issues / 12 repositories | Up to 5 issues per joined repository for broader repository-mix coverage |
-| `verified` | 451 joined issues | Full evaluation over the Verified/SWE-Explore intersection |
+| `pilot` | 5 issues / 5 repositories | end-to-end smoke |
+| `development` | 13 issues / 5 repositories | paired strategy iteration |
+| `standard` | 53 issues / 12 repositories | broader repository mix |
+| `verified` | 451 joined issues | milestone evaluation |
 
-The two smaller profiles take a SHA256-stable sample from Flask, Requests, pytest, Pylint,
-and xarray. They are development samples, not substitutes for the full profile. Run all
-variants over the same ordered case IDs; `compare` refuses mismatched result sets.
+`edit_*` measures gold-patch files and changed base-tree lines. `core_*` and
+official `swe_explore_*` measure useful trajectory context. Neither truth source
+is complete: accepted edits omit explanatory context, while trajectories are
+model-dependent and sometimes mark coarse full-file regions. Interpret both
+axes together.
 
-Prepare the pinned repositories at each issue's base commit:
+SWE-Explore is CC BY-NC-ND 4.0. Review its terms before using the downloaded
+data outside internal product evaluation.
 
-```bash
-uv run python benchmarks/swe_explore.py --profile development prepare
-```
+## Internal component diagnostics
 
-On a fresh personal-mode server, a large repository can exceed the client's fixed HTTP
-request timeout while synchronous embedding is still running. Start OCE with the common
-embedding/chunking configuration, then prewarm the index in bounded serial batches before
-starting paired runs:
+The Milvus workspace-filter microbenchmark is intentionally server-coupled:
 
 ```bash
-export OCE_API_KEY=...
-uv run python benchmarks/swe_explore.py --profile development prewarm
+uv run python -m benchmarks.internal.milvus_scope
 ```
 
-This setup step uses the production `/find-missing` and `/batch-upload` endpoints, but its
-batch size and long timeout are benchmark controls; it is not a measurement of ordinary
-client sync throughput. The subsequent `run` still requires a complete real-client sync to
-create the checkpoint, and refuses to emit quality metrics if any workspace cannot sync.
-
-Start or restart OCE separately with the reranking configuration being evaluated. Then
-export the matching client/admin keys and non-secret model settings before running the
-benchmark:
-
-```bash
-export OCE_API_KEY=...
-export OCE_ADMIN_API_KEY=...
-uv run python benchmarks/swe_explore.py --profile development run \
-  --label dedicated-rerank \
-  --metadata deployment=personal \
-  --output /tmp/oce-dedicated-rerank.json
-```
-
-`OCE_ADMIN_API_KEY` is optional. When present, the harness snapshots `/admin/stats` after
-all syncing and reports only the retrieval-phase model-call/token delta. It also reads the
-server-owned retrieval switches from `/admin/index-stats`, so feature provenance does not
-depend only on caller metadata. The report records the harness commit and dirty-worktree
-state plus a safe allowlist of model settings. Automatic metadata capture excludes API keys
-and endpoint URLs; values passed explicitly through `--metadata` remain the caller's
-responsibility. Result JSON contains ranked paths and line spans, not retrieved source text.
-
-Compare paired runs:
-
-```bash
-uv run python benchmarks/swe_explore.py compare \
-  /tmp/oce-no-rerank.json \
-  /tmp/oce-dedicated-rerank.json \
-  /tmp/oce-chat-rerank.json
-```
-
-The report keeps two notions of relevance separate:
-
-- `edit_*` measures whether retrieval reaches files and changed base-tree lines derived
-  from the SWE-bench gold patch. These Top-1, file Recall@10, region Recall@10, and MRR
-  fields are OCE diagnostics because a gold edit is objective but incomplete context.
-- `swe_explore_*` comes directly from the checksum-pinned official reference evaluator. It
-  includes line precision/recall/F1, file and region hit/noise rates, weighted core coverage,
-  context efficiency, Recall/nDCG at 100/300/500 lines, and first useful hit.
-
-The report also retains `core_*` Top-1/MRR diagnostics for quick debugging, alongside
-latency, returned characters, errors, and optional model usage. Trajectory context is useful
-empirical evidence but is model-dependent and sometimes uses coarse full-file regions.
-Interpret the official and edit axes together, repeat promising findings on `verified`, and
-keep downstream agent task success as a separate evaluation. The harness does not label a
-strategy GO/NO-GO or protect reports against modification; provenance is supplied by fixed
-source revisions, case IDs, runtime metadata, and ordinary version control.
-
-The repeated adaptive-rerank development study and its deployment recommendation are retained
-in
-[`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md).
-
-## Milvus workspace scope
-
-Measure the production dense and path search calls with 2,000, 10,000, and 50,000 SHA256
-blob names in the workspace filter:
-
-```bash
-uv run python benchmarks/milvus_scope.py
-```
-
-The command builds a temporary Milvus Lite database, prints progress to stderr, and emits
-one JSON result to stdout. Use `--iterations` and `--warmups` to trade runtime for a larger
-sample. No database or report is retained unless the caller redirects the JSON explicitly.
-
-A raw diagnostic run from the current development environment is retained in
+It creates a temporary Milvus Lite database and emits one JSON observation. A
+dated host-specific sample is retained in
 [`results/milvus-lite-scope-2026-09-01.json`](results/milvus-lite-scope-2026-09-01.json).
-It is a host-specific observation, not a release threshold: all samples stayed in scope and
-returned the target, while the 50,000-member filter reached 3.4 MB and roughly 280 ms p95.
+It is not a release threshold or evidence of end-to-end retrieval quality.
 
-## Rerank routing protocol
-
-`RETRIEVAL_RERANK_POLICY` and `RETRIEVAL_LLM_RERANK_POLICY` route authorized rerankers per
-query. Evaluate a routing change with two query sets, because they answer different
-questions:
-
-- SWE-Explore issues are long compound texts. The deterministic classifier labels all 13
-  `development` issues `compound`, so `adaptive` and `always` send them to the same rerankers.
-  Use this set to confirm that routing changes do not regress semantic ranking.
-- [`rerank_routing_cases.json`](rerank_routing_cases.json) pins 16 manually reviewed
-  definition anchors from five of the same snapshots: 10 classes and 6 module-level
-  `snake_case` functions, because single-word class names cannot exercise whole-identifier
-  matching. [`rerank_routing.py`](rerank_routing.py)
-  expands them into a balanced set of 96 short `symbol`, `path`, and `reference` queries,
-  each asked in English and in Chinese, and derives reference-file truth from tracked
-  non-test Python sources. Results report `by_kind` and `by_language` aggregates, and
-  `definition_top1` separates "answered with the declaration" from other reference misses. Use it to verify the skip
-  rules: with dedicated adaptive reranking enabled, each query's
-  `retrieval_metrics.rerank_route` should read
-  `skip:exact_definition`, `skip:path_evidence`, or `dedicated` respectively, and `rerank_ms`
-  should be absent on skipped queries.
-
-Run at least `none`, `dedicated:always`, and `dedicated:adaptive`, each with and without
-`chat:adaptive`, and repeat every variant at least twice; a single chat-20 rerun moved edit
-Top-1 by 7 points in the September 2026 study. Report semantic metrics (nDCG@500, first
-useful hit) and skip-path metrics (hit rate, `rerank_ms`, p95 latency, skip rate) separately.
-Both `compare` tables also lead with head-of-list quality: per-kind Top-1 and MRR for the
-routing set, Edit/Core Top-1 and nDCG@100 for issues, next to returned characters and p50
-latency. A change that lifts Recall@10 while pushing the answer out of the first slot fails
-these columns; the September 2026 lexical fusion did exactly that (symbol Top-1 100% → 65%)
-while Hit@10 stayed at 100%. `tests/unit/infrastructure/test_retrieval_regression.py` guards
-the same head-order contract offline on an adversarial SQLite corpus.
-The `/admin/index-stats` runtime block records both policies for every run.
-
-The routing harness deliberately does not add a benchmark-only field to the ACE response or
-an admin endpoint that exposes query text. Run a dedicated personal-mode benchmark server with
-local audit text enabled, then give the harness read-only access to that SQLite file:
-
-```bash
-MONITORING_STORE_QUERY_TEXT=true \
-MONITORING_FLUSH_INTERVAL_SECONDS=0.1 \
-uv run oce serve --data-dir ~/.cache/oce/rerank-routing-server \
-  --env-file ~/.oce/benchmark.env
-
-export OCE_API_KEY=...
-export OCE_ADMIN_API_KEY=...
-uv run python -m benchmarks.rerank_routing check
-uv run python -m benchmarks.rerank_routing run \
-  --metrics-db ~/.cache/oce/rerank-routing-server/oce.db \
-  --label dedicated-adaptive-r1 \
-  --output ~/.cache/oce/swe-explore-v1/results-routing/dedicated-adaptive-r1.json
-```
-
-The output contains case IDs, ranked paths/lines, intended and observed routes, stage timings,
-and aggregate quality/latency/context-size metrics, but not query text or source content. Raw JSON remains
-outside the repository. Use `python -m benchmarks.rerank_routing compare <results...>` for the
-paired table. This audit reader is intentionally personal-mode-only; service deployments keep
-their database boundary private and may export equivalent aggregates through their own
-observability stack.
-
-The completed six-variant, two-repeat issue and routing matrix is summarized in
-[`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md).
-The follow-up head-order study, which introduced the 96-query set and head-of-list columns and
-then retested the selected baseline with both model stages, is in
+The first black-box baseline, including the Milvus Lite flush and SQLite WAL findings it
+surfaced, is in [`results/blackbox-baseline-2026-09-03.md`](results/blackbox-baseline-2026-09-03.md).
+Earlier adaptive-rerank and head-order observations are retained in
+[`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md)
+and
 [`results/swe-explore-development-2026-09-03.md`](results/swe-explore-development-2026-09-03.md).
+Their raw result schema predates the current suite/truth identity contract, so use the reports
+as narrative history rather than inputs to the current `compare` commands.

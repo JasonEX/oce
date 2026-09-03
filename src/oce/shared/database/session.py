@@ -1,5 +1,6 @@
 """SQLAlchemy 引擎、会话工厂和 ORM 基类。"""
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -12,13 +13,31 @@ from oce.shared.config import get_settings
 from oce.shared.config.settings import DatabaseSettings
 
 
+def _configure_sqlite(dbapi_connection, _record) -> None:
+    """Personal mode serves uploads, retrieval, and metrics from one file.
+
+    The default rollback journal lets a long upload transaction lock every
+    other writer out: the metrics sink logged "database is locked" on each
+    flush during a batch upload. WAL keeps readers and one writer concurrent,
+    and the busy timeout lets a second writer wait instead of failing.
+    """
+    cursor = dbapi_connection.cursor()
+    try:
+        cursor.execute("PRAGMA busy_timeout=5000")
+        cursor.execute("PRAGMA journal_mode=WAL")
+    finally:
+        cursor.close()
+
+
 def create_engine(settings: DatabaseSettings) -> AsyncEngine:
     if settings.is_sqlite:
-        return create_async_engine(
+        async_engine = create_async_engine(
             settings.url,
             connect_args={"check_same_thread": False},
             echo=settings.echo,
         )
+        event.listen(async_engine.sync_engine, "connect", _configure_sqlite)
+        return async_engine
     return create_async_engine(
         settings.url,
         echo=settings.echo,

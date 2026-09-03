@@ -1,0 +1,268 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "flask-blueprint-registration",
+      "instance_id": "pallets__flask-5014",
+      "kind": "feature",
+      "query": "How does Flask defer blueprint setup operations and apply them when a blueprint is registered on an application?",
+      "rationale": "Blueprint owns deferred setup and Flask is the application-side registration entry point.",
+      "relevant_paths": [
+        {"path": "src/flask/blueprints.py", "grade": 3, "role": "implementation"},
+        {"path": "src/flask/app.py", "grade": 2, "role": "entry"},
+        {"path": "src/flask/scaffold.py", "grade": 1, "role": "shared API"}
+      ]
+    },
+    {
+      "id": "flask-request-context-overview",
+      "instance_id": "pallets__flask-5014",
+      "kind": "overview",
+      "query": "Explain the Flask request context lifecycle from a WSGI request through context push, dispatch, teardown, and pop.",
+      "rationale": "The lifecycle is split between the WSGI application flow and RequestContext state management.",
+      "relevant_paths": [
+        {"path": "src/flask/app.py", "grade": 3, "role": "request lifecycle"},
+        {"path": "src/flask/ctx.py", "grade": 3, "role": "context lifecycle"},
+        {"path": "src/flask/globals.py", "grade": 1, "role": "context access"}
+      ]
+    },
+    {
+      "id": "flask-wsgi-dispatch-chain",
+      "instance_id": "pallets__flask-5014",
+      "kind": "call_chain",
+      "query": "Trace how Flask turns a WSGI environ into a response, from wsgi_app through full_dispatch_request and response finalization.",
+      "rationale": "The main call chain is in Flask.app, with request-context construction in ctx.",
+      "relevant_paths": [
+        {"path": "src/flask/app.py", "grade": 3, "role": "call chain"},
+        {"path": "src/flask/ctx.py", "grade": 2, "role": "request context"},
+        {"path": "src/flask/wrappers.py", "grade": 1, "role": "request and response types"}
+      ]
+    },
+    {
+      "id": "requests-redirect-cookies",
+      "instance_id": "psf__requests-5414",
+      "kind": "feature",
+      "query": "How does Requests follow redirects while preserving cookies and rebuilding request state between responses?",
+      "rationale": "Redirect orchestration is in sessions and delegates cookie and prepared-request state to their owning modules.",
+      "relevant_paths": [
+        {"path": "requests/sessions.py", "grade": 3, "role": "redirect implementation"},
+        {"path": "requests/cookies.py", "grade": 2, "role": "cookie state"},
+        {"path": "requests/models.py", "grade": 1, "role": "prepared requests"}
+      ]
+    },
+    {
+      "id": "requests-request-architecture",
+      "instance_id": "psf__requests-5414",
+      "kind": "overview",
+      "query": "Which modules own the high-level API, session orchestration, prepared request model, and HTTP transport in Requests?",
+      "rationale": "The public request flow crosses four modules with distinct responsibilities.",
+      "relevant_paths": [
+        {"path": "requests/api.py", "grade": 3, "role": "public API"},
+        {"path": "requests/sessions.py", "grade": 3, "role": "orchestration"},
+        {"path": "requests/models.py", "grade": 2, "role": "request model"},
+        {"path": "requests/adapters.py", "grade": 3, "role": "transport"}
+      ]
+    },
+    {
+      "id": "requests-send-call-chain",
+      "instance_id": "psf__requests-5414",
+      "kind": "call_chain",
+      "query": "Trace requests.request through Session.request, request preparation, Session.send, and HTTPAdapter.send.",
+      "rationale": "These are the concrete entry, preparation, orchestration, and transport steps.",
+      "relevant_paths": [
+        {"path": "requests/api.py", "grade": 3, "role": "entry"},
+        {"path": "requests/sessions.py", "grade": 3, "role": "prepare and send"},
+        {"path": "requests/models.py", "grade": 2, "role": "prepared request"},
+        {"path": "requests/adapters.py", "grade": 3, "role": "network send"}
+      ]
+    },
+    {
+      "id": "pytest-fixture-resolution",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "feature",
+      "query": "How does pytest resolve a requested fixture value and enforce fixture scope and caching?",
+      "rationale": "FixtureRequest and fixture definitions own lookup and caching, while scope is modeled separately.",
+      "relevant_paths": [
+        {"path": "src/_pytest/fixtures.py", "grade": 3, "role": "implementation"},
+        {"path": "src/_pytest/scope.py", "grade": 2, "role": "scope model"},
+        {"path": "src/_pytest/nodes.py", "grade": 1, "role": "request nodes"}
+      ]
+    },
+    {
+      "id": "pytest-startup-collection-overview",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "overview",
+      "query": "Explain how pytest builds configuration, loads plugins, creates a session, and collects Python tests.",
+      "rationale": "Configuration, session collection, and Python collectors are separate architectural owners.",
+      "relevant_paths": [
+        {"path": "src/_pytest/config/__init__.py", "grade": 3, "role": "configuration and plugins"},
+        {"path": "src/_pytest/main.py", "grade": 3, "role": "session and collection"},
+        {"path": "src/_pytest/python.py", "grade": 2, "role": "Python collection"}
+      ]
+    },
+    {
+      "id": "pytest-main-run-chain",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "call_chain",
+      "query": "Trace pytest.main from configuration preparation through wrap_session, collection, and runtest protocol execution.",
+      "rationale": "The chain crosses public configuration entry points, the session loop, and test execution.",
+      "relevant_paths": [
+        {"path": "src/_pytest/config/__init__.py", "grade": 3, "role": "entry and configuration"},
+        {"path": "src/_pytest/main.py", "grade": 3, "role": "session and collection"},
+        {"path": "src/_pytest/runner.py", "grade": 2, "role": "test execution"}
+      ]
+    },
+    {
+      "id": "pylint-checker-messages",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "feature",
+      "query": "How does Pylint register a checker and make that checker's message definitions available for enable, disable, and emission?",
+      "rationale": "PyLinter registers checkers, the checker base declares messages, and the message store indexes definitions.",
+      "relevant_paths": [
+        {"path": "pylint/lint/pylinter.py", "grade": 3, "role": "checker registration and emission"},
+        {"path": "pylint/checkers/base_checker.py", "grade": 2, "role": "checker contract"},
+        {"path": "pylint/message/message_definition_store.py", "grade": 3, "role": "message registration"}
+      ]
+    },
+    {
+      "id": "pylint-run-overview",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "overview",
+      "query": "Explain the Pylint command-line architecture from argument and configuration initialization to plugin loading and lint execution.",
+      "rationale": "CLI setup, configuration initialization, and lint orchestration have distinct owners.",
+      "relevant_paths": [
+        {"path": "pylint/lint/run.py", "grade": 3, "role": "CLI orchestration"},
+        {"path": "pylint/config/config_initialization.py", "grade": 3, "role": "configuration"},
+        {"path": "pylint/lint/pylinter.py", "grade": 2, "role": "lint engine"}
+      ]
+    },
+    {
+      "id": "pylint-run-check-chain",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "call_chain",
+      "query": "Trace Pylint's Run command through configuration initialization into PyLinter.check and per-module checker execution.",
+      "rationale": "The concrete chain starts in Run, initializes configuration, and enters PyLinter's module pipeline.",
+      "relevant_paths": [
+        {"path": "pylint/lint/run.py", "grade": 3, "role": "entry"},
+        {"path": "pylint/config/config_initialization.py", "grade": 2, "role": "configuration"},
+        {"path": "pylint/lint/pylinter.py", "grade": 3, "role": "check execution"}
+      ]
+    },
+    {
+      "id": "xarray-combine-by-coordinates",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "feature",
+      "query": "How does xarray combine multiple datasets by coordinate order, concatenate compatible groups, and merge the result?",
+      "rationale": "combine_by_coords coordinates the feature and delegates concatenation and merge semantics.",
+      "relevant_paths": [
+        {"path": "xarray/core/combine.py", "grade": 3, "role": "feature orchestration"},
+        {"path": "xarray/core/concat.py", "grade": 2, "role": "concatenation"},
+        {"path": "xarray/core/merge.py", "grade": 2, "role": "merge semantics"}
+      ]
+    },
+    {
+      "id": "xarray-indexing-overview",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "overview",
+      "query": "Explain the xarray labeled indexing architecture across Dataset, DataArray, index objects, and low-level index adapters.",
+      "rationale": "Public containers delegate label resolution to index models and low-level indexing adapters.",
+      "relevant_paths": [
+        {"path": "xarray/core/dataset.py", "grade": 2, "role": "Dataset API"},
+        {"path": "xarray/core/dataarray.py", "grade": 2, "role": "DataArray API"},
+        {"path": "xarray/core/indexes.py", "grade": 3, "role": "label indexes"},
+        {"path": "xarray/core/indexing.py", "grade": 3, "role": "index adapters"}
+      ]
+    },
+    {
+      "id": "xarray-apply-ufunc-chain",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "call_chain",
+      "query": "Trace how xarray.apply_ufunc dispatches a function across Dataset, DataArray, and Variable inputs and reconstructs labeled outputs.",
+      "rationale": "apply_ufunc owns dispatch while the three container modules provide the data models it transforms.",
+      "relevant_paths": [
+        {"path": "xarray/core/computation.py", "grade": 3, "role": "dispatch"},
+        {"path": "xarray/core/dataset.py", "grade": 2, "role": "Dataset model"},
+        {"path": "xarray/core/dataarray.py", "grade": 2, "role": "DataArray model"},
+        {"path": "xarray/core/variable.py", "grade": 2, "role": "Variable model"}
+      ]
+    },
+    {
+      "id": "redux-create-slice",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "feature",
+      "query": "How does Redux Toolkit createSlice turn case reducer definitions into action creators, matcher rules, and a lazily built reducer?",
+      "rationale": "createSlice owns the orchestration and delegates action and reducer construction to their dedicated modules.",
+      "relevant_paths": [
+        {"path": "packages/toolkit/src/createSlice.ts", "grade": 3, "role": "feature orchestration"},
+        {"path": "packages/toolkit/src/createReducer.ts", "grade": 2, "role": "reducer construction"},
+        {"path": "packages/toolkit/src/createAction.ts", "grade": 2, "role": "action construction"},
+        {"path": "packages/toolkit/src/mapBuilders.ts", "grade": 1, "role": "builder callback"}
+      ]
+    },
+    {
+      "id": "redux-store-overview",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "overview",
+      "query": "Explain the Redux Toolkit store setup architecture across reducer combination, default middleware, enhancer composition, DevTools, and Redux createStore.",
+      "rationale": "configureStore coordinates the flow while middleware and enhancer defaults have separate owners.",
+      "relevant_paths": [
+        {"path": "packages/toolkit/src/configureStore.ts", "grade": 3, "role": "store orchestration"},
+        {"path": "packages/toolkit/src/getDefaultMiddleware.ts", "grade": 2, "role": "middleware defaults"},
+        {"path": "packages/toolkit/src/getDefaultEnhancers.ts", "grade": 2, "role": "enhancer defaults"},
+        {"path": "packages/toolkit/src/devtoolsExtension.ts", "grade": 1, "role": "DevTools integration"}
+      ]
+    },
+    {
+      "id": "redux-query-api-chain",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "call_chain",
+      "query": "Trace how RTK Query buildCreateApi initializes modules, injects endpoint definitions, builds query thunks, and wires request lifecycle middleware.",
+      "rationale": "The API builder dispatches endpoint installation into the core module, thunk builder, and middleware builder.",
+      "relevant_paths": [
+        {"path": "packages/toolkit/src/query/createApi.ts", "grade": 3, "role": "API construction and endpoint injection"},
+        {"path": "packages/toolkit/src/query/core/module.ts", "grade": 3, "role": "core module initialization"},
+        {"path": "packages/toolkit/src/query/core/buildThunks.ts", "grade": 2, "role": "request thunks"},
+        {"path": "packages/toolkit/src/query/core/buildMiddleware/index.ts", "grade": 2, "role": "request lifecycle middleware"}
+      ]
+    },
+    {
+      "id": "axum-router-composition",
+      "instance_id": "axum-v0.7.9",
+      "kind": "feature",
+      "query": "How does axum register method routes, insert them into the path router, merge or nest routers, and dispatch a matched route service?",
+      "rationale": "Router coordinates composition while path, method, and route modules own the lower-level operations.",
+      "relevant_paths": [
+        {"path": "axum/src/routing/mod.rs", "grade": 3, "role": "router composition"},
+        {"path": "axum/src/routing/path_router.rs", "grade": 3, "role": "path matching"},
+        {"path": "axum/src/routing/method_routing.rs", "grade": 2, "role": "method dispatch"},
+        {"path": "axum/src/routing/route.rs", "grade": 2, "role": "route service"}
+      ]
+    },
+    {
+      "id": "axum-handler-overview",
+      "instance_id": "axum-v0.7.9",
+      "kind": "overview",
+      "query": "Explain axum's request handling architecture from routing to handler argument extraction and conversion of handler outputs into HTTP responses.",
+      "rationale": "Routing, handler invocation, extraction, and response conversion are explicit architectural layers.",
+      "relevant_paths": [
+        {"path": "axum/src/routing/method_routing.rs", "grade": 2, "role": "route to handler service"},
+        {"path": "axum/src/handler/mod.rs", "grade": 3, "role": "handler invocation"},
+        {"path": "axum-core/src/extract/mod.rs", "grade": 3, "role": "request extraction contract"},
+        {"path": "axum-core/src/response/into_response.rs", "grade": 3, "role": "response conversion contract"}
+      ]
+    },
+    {
+      "id": "axum-serve-request-chain",
+      "instance_id": "axum-v0.7.9",
+      "kind": "call_chain",
+      "query": "Trace an axum request from serve accepting a connection through Router service dispatch, handler extraction and invocation, and IntoResponse conversion.",
+      "rationale": "The end-to-end call chain crosses the server future, router, handler, extractor, and response contracts.",
+      "relevant_paths": [
+        {"path": "axum/src/serve.rs", "grade": 3, "role": "connection and service loop"},
+        {"path": "axum/src/routing/mod.rs", "grade": 3, "role": "router service dispatch"},
+        {"path": "axum/src/handler/mod.rs", "grade": 3, "role": "handler call"},
+        {"path": "axum-core/src/extract/mod.rs", "grade": 2, "role": "argument extraction"},
+        {"path": "axum-core/src/response/into_response.rs", "grade": 2, "role": "response conversion"}
+      ]
+    }
+  ]
+}

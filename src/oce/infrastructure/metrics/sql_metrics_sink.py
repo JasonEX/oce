@@ -156,16 +156,20 @@ class SqlMetricsSink(PeriodicTask):
                     intent=r.intent,
                     path_boosted=r.path_boosted,
                     rerank_route=r.rerank_route,
+                    head_slots=r.head_slots,
                     query_text=r.query_text,
                     rewrite_ms=s.get("rewrite"),
                     embed_ms=s.get("embed"),
                     dense_ms=s.get("dense"),
                     exact_ms=s.get("exact"),
                     path_ms=s.get("path"),
+                    path_lookup_ms=s.get("path_lookup"),
+                    lexical_ms=s.get("lexical"),
                     fuse_ms=s.get("fuse"),
                     rerank_ms=s.get("rerank"),
                     llm_rerank_ms=s.get("llm_rerank"),
                     select_ms=s.get("select"),
+                    expand_ms=s.get("expand"),
                 )
             )
         return rows

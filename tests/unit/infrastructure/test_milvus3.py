@@ -156,6 +156,37 @@ class TestMilvus3Client:
         }
 
     @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
+    async def test_remote_insert_does_not_flush(self, client_class, settings):
+        mock_client = _loaded_remote_client()
+        mock_client.upsert = AsyncMock(return_value={"upsert_count": 1})
+        mock_client.flush = AsyncMock()
+        client_class.return_value = mock_client
+        client = Milvus3Client(settings, dense_dim=DIM)
+
+        await client.insert([_record(1)])
+
+        mock_client.flush.assert_not_awaited()
+
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_local_insert_and_delete_seal_segments(self, client_class):
+        settings = MilvusSettings(endpoint="./oce_milvus.db", collection_name="c")
+        mock_client = Mock()
+        mock_client.has_collection.return_value = True
+        mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.get_load_state.return_value = {"state": LoadState.Loaded}
+        mock_client.upsert.return_value = {"upsert_count": 1}
+        client_class.return_value = mock_client
+        client = Milvus3Client(settings, dense_dim=DIM)
+
+        await client.insert([_record(1)])
+        await client.delete_by_blob_names(["a" * 64])
+
+        # Fresh rows live in an unindexed growing segment on Milvus Lite;
+        # flushing after each write keeps scoped searches on the HNSW path.
+        assert mock_client.flush.call_count == 2
+        mock_client.flush.assert_called_with("c")
+
+    @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
     async def test_insert_limits_content_by_utf8_bytes(self, client_class, settings):
         mock_client = _loaded_remote_client()
         mock_client.upsert = AsyncMock(return_value={"upsert_count": 1})

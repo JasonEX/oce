@@ -1,4 +1,4 @@
-"""Measure production Milvus searches with large workspace filters."""
+"""Measure server-owned Milvus searches with large workspace filters."""
 
 from __future__ import annotations
 

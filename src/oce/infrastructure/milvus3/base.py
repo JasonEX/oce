@@ -145,7 +145,30 @@ class MilvusCollectionClient:
                 data=batch,
             )
             count += result.get("upsert_count", result.get("insert_count", len(batch)))
+        await self._seal_local_segments()
         return count
+
+    async def _seal_local_segments(self) -> None:
+        """Flush after writes on Milvus Lite so the HNSW index covers them.
+
+        Lite keeps fresh rows in a growing segment that the vector index does
+        not cover; a scoped search then scans that segment row by row. On a
+        24K-row collection one 1.4K-blob upload raised a 3.3K-blob workspace
+        search from about 30 ms to about 800 ms until the segment was sealed.
+        Server deployments seal by their own policy and search growing rows
+        with an interim index, so they are left alone.
+        """
+        if not self._local:
+            return
+        try:
+            await self._call("flush", self.collection_name)
+        except Exception as exc:
+            logger.warning(
+                "Milvus Lite flush failed for {}; searches stay slow until the "
+                "next flush: {}",
+                self.collection_name,
+                type(exc).__name__,
+            )
 
     async def _search_vector(
         self,
@@ -195,6 +218,7 @@ class MilvusCollectionClient:
             collection_name=self.collection_name,
             filter=f"blob_name in [{quoted}]",
         )
+        await self._seal_local_segments()
 
     async def read_collection_stats(self) -> tuple[bool, int]:
         """Read collection cardinality without creating or loading an index."""

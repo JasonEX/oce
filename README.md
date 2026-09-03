@@ -49,7 +49,7 @@ machines need to share one index.
 - **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
 - **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
 - **Operational admin API + monitoring** — an admin-key-scoped surface manages model credentials, the embedding queue, and garbage collection, while a bypass metrics pipeline records call/token/resource stats and per-stage retrieval audits.
-- **[Source-pinned issue-resolution evaluation](benchmarks/README.md)** — production APIs and the real client checkpoint/retrieval path run SWE-bench Verified issues against their base commits, scoring gold edit locations separately from successful SWE-Explore trajectory context, along with latency, returned context, model usage, and failures.
+- **[Black-box retrieval benchmark system](benchmarks/README.md)** — the released client and stable APIs drive multilingual short lookups, reviewed Python/TypeScript/Rust architecture queries, and source-pinned SWE-bench/SWE-Explore issue evaluation without importing server internals or reading its database.
 
 <details>
 <summary><strong>Table of contents</strong></summary>

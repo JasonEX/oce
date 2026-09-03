@@ -96,6 +96,42 @@
       "instance_id": "pytest-dev__pytest-10356",
       "identifier": "assert_never",
       "definition_path": "src/_pytest/compat.py"
+    },
+    {
+      "id": "redux-configure-store",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "identifier": "configureStore",
+      "definition_path": "packages/toolkit/src/configureStore.ts"
+    },
+    {
+      "id": "redux-create-reducer",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "identifier": "createReducer",
+      "definition_path": "packages/toolkit/src/createReducer.ts"
+    },
+    {
+      "id": "redux-create-async-thunk",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "identifier": "createAsyncThunk",
+      "definition_path": "packages/toolkit/src/createAsyncThunk.ts"
+    },
+    {
+      "id": "axum-router",
+      "instance_id": "axum-v0.7.9",
+      "identifier": "Router",
+      "definition_path": "axum/src/routing/mod.rs"
+    },
+    {
+      "id": "axum-from-request",
+      "instance_id": "axum-v0.7.9",
+      "identifier": "FromRequest",
+      "definition_path": "axum-core/src/extract/mod.rs"
+    },
+    {
+      "id": "axum-into-response",
+      "instance_id": "axum-v0.7.9",
+      "identifier": "IntoResponse",
+      "definition_path": "axum-core/src/response/into_response.rs"
     }
   ]
 }

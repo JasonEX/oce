@@ -17,11 +17,18 @@
 - **evaluation**: add six reviewed function anchors (96 routing queries), a reference definition-first diagnostic, and p50/p95 latency for issue runs
 - **evaluation**: report head-of-list quality (Top-1, MRR, nDCG@100, first useful hit) next to recall in both benchmark comparison tables, and add an adversarial SQLite regression guard for symbol/path/reference head order
 
+### Fixed
+
+- **milvus**: flush Milvus Lite after every upsert and delete so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
+- **persistence**: open personal-mode SQLite in WAL mode with a busy timeout, so the metrics sink and concurrent readers no longer fail with "database is locked" during batch uploads
+
 ### Changed
 
 - **retrieval**: restructure the pipeline as an explicit `RetrievalState` machine (route → plan → recall → fuse → prior → rerank → select → expand)
 - **retrieval**: route lexical recall to queries that benefit from it, preserve exact symbol/path answers in fixed head slots, give focused queries a smaller context budget, and constrain related definitions to relationship-oriented queries and the remaining context budget
 - **rerank**: cap the query text sent to the dedicated reranker (`RERANK_MAX_QUERY_CHARS`, default 2,400) so long issue texts no longer multiply reranker latency, and reapply the source and reference head slots after model reranking
+- **retrieval**: rank a file whose whole path is the tail of the request above sibling files that only share the two-segment suffix in exact path lookup, and treat `__tests__`, `__testfixtures__`, `*.test-d.ts`, `*.spec.*`, and `*_test.go` as test files in the source prior
+- **monitoring**: persist lexical, exact-path, and related-definition stage latency plus the number of deterministic symbol/path head slots in retrieval audits
 - **retrieval**: extend the source prior to change logs, singular `doc/` and `examples/` directories, configuration files, `.pyi` stubs, and `__init__.py` barrels, keep it active for compound issue text that merely mentions file names, and neutralize it only for short questions that ask about tests
 - **retrieval**: reserve bounded head slots for implementation files on semantic requests and for lexically verified use sites ahead of the declaration on reference requests; start exact, path-lookup, and lexical SQL recall before the query embedding round trip
 - **retrieval**: gate reference-query lexical recall on the whole-identifier surrogate so call sites outrank chunks that only share sub-words, and backfill an exact SQL path match for path requests the content index never mentions

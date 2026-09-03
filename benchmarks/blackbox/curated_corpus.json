@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "revision": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+      "code_language": "python"
+    },
+    {
+      "id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "revision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "code_language": "python"
+    },
+    {
+      "id": "pytest-dev__pytest-10356",
+      "repo": "pytest-dev/pytest",
+      "revision": "3c1534944cbd34e8a41bc9e76818018fadefc9a1",
+      "code_language": "python"
+    },
+    {
+      "id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "revision": "3c5eca2ded3dd2b59ebaf23eb289453b5d2930f0",
+      "code_language": "python"
+    },
+    {
+      "id": "pydata__xarray-7233",
+      "repo": "pydata/xarray",
+      "revision": "51d37d1be95547059251076b3fadaa317750aab3",
+      "code_language": "python"
+    },
+    {
+      "id": "redux-toolkit-v2.2.7",
+      "repo": "reduxjs/redux-toolkit",
+      "revision": "75b4f698e1c58efa6b19096abe5850da0a431da0",
+      "code_language": "typescript"
+    },
+    {
+      "id": "axum-v0.7.9",
+      "repo": "tokio-rs/axum",
+      "revision": "9983bc1da460becd3a0f08c513d610411e84dd43",
+      "code_language": "rust"
+    }
+  ]
+}

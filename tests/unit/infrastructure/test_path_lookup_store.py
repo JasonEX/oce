@@ -69,6 +69,64 @@ async def test_suffix_beats_basename_and_scope_applies(sessions):
     )
 
 
+async def test_whole_path_beats_a_sibling_crate_with_the_same_suffix(sessions):
+    paths = {
+        "core": "axum/src/routing/mod.rs",
+        "extra": "axum-extra/src/routing/mod.rs",
+    }
+    names = {key: make_sha256(key) for key in paths}
+    async with sessions() as session:
+        repo = SqlBlobRepository(session)
+        for key, path in paths.items():
+            await repo.save(Blob(names[key], path, BlobStatus.READY))
+        await session.commit()
+    store = SqlPathLookupStore(sessions)
+
+    scores = await store.match_paths(
+        filenames=("mod.rs",),
+        paths=("axum/src/routing/mod.rs",),
+        scope=SearchScope(frozenset(names.values())),
+    )
+    assert scores[names["core"]] == 1.0
+    assert scores[names["extra"]] == 0.95
+
+    # A traceback path from another checkout still ranks the whole file first.
+    scores = await store.match_paths(
+        filenames=("mod.rs",),
+        paths=("/home/u/work/axum-extra/src/routing/mod.rs",),
+        scope=SearchScope(frozenset(names.values())),
+    )
+    assert scores[names["extra"]] == 1.0
+    assert scores[names["core"]] == 0.95
+
+
+async def test_whole_path_is_ranked_before_sql_limit(sessions):
+    target_name = make_sha256("target-crate")
+    decoys = {
+        make_sha256(f"crate-{index}"): f"crate-{index:03d}/src/routing/mod.rs"
+        for index in range(100)
+    }
+    async with sessions() as session:
+        repo = SqlBlobRepository(session)
+        await repo.save_many(
+            [
+                *(Blob(name, path, BlobStatus.READY) for name, path in decoys.items()),
+                Blob(target_name, "zz-target/src/routing/mod.rs", BlobStatus.READY),
+            ]
+        )
+        await session.commit()
+
+    scores = await SqlPathLookupStore(sessions).match_paths(
+        filenames=("mod.rs",),
+        paths=("zz-target/src/routing/mod.rs",),
+        scope=SearchScope(frozenset({target_name, *decoys})),
+        limit=20,
+    )
+
+    assert scores[target_name] == 1.0
+    assert next(iter(scores)) == target_name
+
+
 async def test_full_suffix_is_not_truncated_by_many_basename_matches(sessions):
     target_name = make_sha256("target")
     decoys = {

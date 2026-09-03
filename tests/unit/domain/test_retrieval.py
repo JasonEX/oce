@@ -150,6 +150,16 @@ class TestSourcePriorityFactor:
         assert source_priority_factor("src/history.py") == 1.0
         assert source_priority_factor("history.py") == 1.0
 
+    def test_typescript_and_go_test_conventions_are_tests(self):
+        assert source_priority_factor("packages/toolkit/src/tests/a.test.ts") == 0.6
+        assert source_priority_factor("src/configureStore.test-d.ts") == 0.6
+        assert source_priority_factor("src/__tests__/store.ts") == 0.6
+        assert (
+            source_priority_factor("codemods/x/__testfixtures__/basic.input.js") == 0.6
+        )
+        assert source_priority_factor("pkg/router_test.go") == 0.6
+        assert source_priority_factor("src/_pytest/fixtures.py") == 1.0
+
     def test_config_files_and_stubs_yield_to_implementation(self):
         assert source_priority_factor(".coveragerc") == 0.7
         assert source_priority_factor("pylintrc") == 0.7
@@ -901,6 +911,7 @@ class TestRerankRouting:
 
         assert reranker.calls == 0
         assert audit.rerank_route == "skip:exact_definition"
+        assert audit.head_slots == 2
         assert results[0].path == "src/commands/profile.rs"
 
     async def test_always_policy_still_calls_dedicated_reranker(self):

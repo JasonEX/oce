@@ -208,8 +208,17 @@ async def test_flush_writes_retrieval_with_stage_columns():
                 intent="symbol",
                 path_boosted=True,
                 rerank_route="dedicated+llm",
+                head_slots=2,
                 query_text="q",
-                stages={"embed": 7, "dense": 10, "path": 3, "select": 5},
+                stages={
+                    "embed": 7,
+                    "dense": 10,
+                    "path": 3,
+                    "path_lookup": 2,
+                    "lexical": 4,
+                    "select": 5,
+                    "expand": 6,
+                },
             )
         )
         await sink._flush_once()
@@ -222,10 +231,14 @@ async def test_flush_writes_retrieval_with_stage_columns():
         assert row.embed_ms == 7
         assert row.dense_ms == 10
         assert row.path_ms == 3
+        assert row.path_lookup_ms == 2
+        assert row.lexical_ms == 4
         assert row.select_ms == 5
+        assert row.expand_ms == 6
         assert row.exact_ms is None  # 未跑的阶段留空，不冒充 0
         assert row.path_boosted is True
         assert row.rerank_route == "dedicated+llm"
+        assert row.head_slots == 2
         assert row.query_text == "q"
     finally:
         await engine.dispose()

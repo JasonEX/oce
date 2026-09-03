@@ -77,6 +77,7 @@ class RetrievalMetricRecord:
     intent: str | None = None
     path_boosted: bool = False
     rerank_route: str | None = None
+    head_slots: int = 0
     query_text: str | None = None
     stages: dict[str, int] = field(default_factory=dict)
     ts: datetime = field(default_factory=_now)
@@ -94,6 +95,8 @@ class RetrievalAudit:
     path_boosted: bool = False
     # 例如 dedicated / dedicated+llm / skip:exact_definition；None 表示没有进入重排阶段。
     rerank_route: str | None = None
+    # 确定性 symbol/path 答案实际保留的头部槽位数。
+    head_slots: int = 0
     scope_size: int | None = None
     stages: dict[str, int] = field(default_factory=dict)
 
