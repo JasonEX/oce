@@ -1,10 +1,9 @@
 """Chunk term index: SQLite FTS5 in personal mode, tsvector + GIN in PostgreSQL.
 
 Both back ends store the same document (``build_lexical_document``) keyed by
-content hash, so one row serves every file containing that chunk. Scope is
-applied after ranking through the ordinary ``blob_chunks`` relation; the
-candidate window is widened once when the scope is a small slice of a large
-shared index.
+content hash, so one row serves every file containing that chunk. Ranking is
+constrained by ``blob_chunks`` membership before ``LIMIT``; a small workspace
+therefore never scans and widens candidates from unrelated indexed projects.
 """
 
 from __future__ import annotations
@@ -14,7 +13,16 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from typing import Any
 
-from sqlalchemy import bindparam, select, text
+from sqlalchemy import (
+    bindparam,
+    column,
+    exists,
+    func,
+    literal_column,
+    select,
+    table,
+    text,
+)
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -27,9 +35,14 @@ from oce.infrastructure.persistence.models import BlobChunkModel, BlobModel, Chu
 from oce.infrastructure.persistence.scope_filter import run_scoped
 
 TABLE_NAME = "chunk_lexical"
-_MIN_CANDIDATES = 300
-_WIDEN_FACTOR = 10
 _PHRASE_BONUS = 0.5
+
+_LEXICAL = table(
+    TABLE_NAME,
+    column("content_hash"),
+    column("terms"),
+    column("terms_tsv"),
+)
 
 
 def create_lexical_table(connection: Connection) -> None:
@@ -155,16 +168,14 @@ class SqlLexicalSearchStore:
                 async with self._session_factory() as session:
                     dialect = session.get_bind().dialect.name
                     query = _build_query(dialect, term_list, phrase_lists)
-                    limit = max(_MIN_CANDIDATES, top_k * 10)
+                    # One lexical document may occur in several files. A small
+                    # scoped surplus preserves those occurrences without the
+                    # old global 300/3000-row widening loop.
+                    limit = top_k * 3
                     ranked = await self._ranked_candidates(
-                        session, dialect, query, limit
+                        session, dialect, query, scope, limit
                     )
                     hits = await self._resolve(session, scope, ranked, top_k)
-                    if len(hits) < top_k and len(ranked) >= limit:
-                        ranked = await self._ranked_candidates(
-                            session, dialect, query, limit * _WIDEN_FACTOR
-                        )
-                        hits = await self._resolve(session, scope, ranked, top_k)
         except TimeoutError:
             return []
 
@@ -189,26 +200,45 @@ class SqlLexicalSearchStore:
 
     @staticmethod
     async def _ranked_candidates(
-        session: AsyncSession, dialect: str, query: str, limit: int
+        session: AsyncSession,
+        dialect: str,
+        query: str,
+        scope: SearchScope,
+        limit: int,
     ) -> dict[str, float]:
-        if dialect == "sqlite":
-            statement = text(
-                f"SELECT content_hash, -bm25({TABLE_NAME}) AS score FROM {TABLE_NAME} "
-                f"WHERE {TABLE_NAME} MATCH :query ORDER BY bm25({TABLE_NAME}) LIMIT :limit"
+        def build(scope_predicate: ColumnElement[bool]):
+            member = exists(
+                select(1)
+                .select_from(BlobChunkModel)
+                .join(BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name)
+                .where(
+                    BlobChunkModel.content_hash == _LEXICAL.c.content_hash,
+                    BlobModel.status == BlobStatus.READY.value,
+                    scope_predicate,
+                )
             )
-        else:
-            statement = text(
-                "SELECT content_hash, ts_rank_cd(terms_tsv, q) AS score "
-                f"FROM {TABLE_NAME}, to_tsquery('simple', :query) AS q "
-                "WHERE terms_tsv @@ q ORDER BY score DESC LIMIT :limit"
+            if dialect == "sqlite":
+                score = literal_column(f"-bm25({TABLE_NAME})").label("score")
+                matches = _LEXICAL.c.terms.match(query)
+            else:
+                parsed = func.to_tsquery("simple", query)
+                score = func.ts_rank_cd(_LEXICAL.c.terms_tsv, parsed).label("score")
+                matches = _LEXICAL.c.terms_tsv.op("@@")(parsed)
+            return (
+                select(_LEXICAL.c.content_hash, score)
+                .where(matches, member)
+                .order_by(score.desc(), _LEXICAL.c.content_hash)
+                .limit(limit)
             )
-        rows = (
-            await session.execute(statement, {"query": query, "limit": limit})
-        ).all()
+
+        rows = await run_scoped(session, scope, BlobChunkModel.blob_name, build)
         ranked: dict[str, float] = {}
         for row in rows:
-            ranked.setdefault(row.content_hash, float(row.score))
-        return ranked
+            score = float(row.score)
+            ranked[row.content_hash] = max(score, ranked.get(row.content_hash, score))
+        return dict(
+            sorted(ranked.items(), key=lambda item: (-item[1], item[0]))[:limit]
+        )
 
     @staticmethod
     async def _resolve(

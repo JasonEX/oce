@@ -4,12 +4,12 @@
 
     route   查询 → intent / strategy / QueryEvidence（标识符、文件名、路径、报错短语、词元）
     plan    可选 LLM 改写 + 句子级 facet 分解 + 查询向量
-    recall  dense | exact | lexical | path（embedding 路径索引 + SQL 精确路径查找），并行
+    recall  dense | exact | 按意图 lexical | path（embedding 路径索引 + SQL 精确路径查找），并行
     fuse    dense/lexical 按 RRF 融合 → 合并 exact → 路径 boost/回填
-    prior   源码先验 × 工作集增量先验 → 可选置信度门槛
+    prior   源码先验 × 工作集增量先验 → 保护确定性头部 → 可选置信度门槛
     rerank  plan_rerank 决策 → 专用 reranker → chat-LLM reranker（均保留候选集）
     select  focused / coverage 选择（数量软上限、字符硬预算）
-    expand  同文件相邻片段合并 → 二跳拉取被引用符号的定义摘要（独立预算）
+    expand  同文件相邻片段合并 → 语义关系查询按剩余预算拉取相关定义
 
 rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余」，expand 解决「拿到的
 片段引用了什么」。关闭对应开关时每个阶段都退化为恒等变换。
@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 from loguru import logger
 
 from oce.domain.services.embedder import Embedder
+from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
@@ -131,22 +132,31 @@ _IDENTIFIER_NOISE = frozenset(
     """.split()
 )
 
+_MIN_RELATED_BUDGET = 1_000
+
 
 def _mine_identifiers(hits: Sequence[SearchHit]) -> list[str]:
-    """Identifiers referenced by the hits, most widely shared first."""
+    """Identifiers referenced by the hits, most widely shared first.
+
+    cAST may place an enclosing class or function signature in ``context``
+    rather than repeating it in a split method chunk. Treat that structural
+    header as part of the hit for relation expansion, otherwise base classes
+    disappear precisely when chunking is most accurate.
+    """
     per_hit: dict[str, set[int]] = {}
     total: dict[str, int] = {}
     for index, hit in enumerate(hits):
-        for match in _MINED_IDENTIFIER.finditer(hit.content):
-            token = match.group()
-            lowered = token.lower()
-            if lowered in _IDENTIFIER_NOISE:
-                continue
-            # A plain lowercase word needs some length to look like a symbol.
-            if token.islower() and "_" not in token and len(token) < 6:
-                continue
-            per_hit.setdefault(token, set()).add(index)
-            total[token] = total.get(token, 0) + 1
+        for text in (hit.content, hit.context or ""):
+            for match in _MINED_IDENTIFIER.finditer(text):
+                token = match.group()
+                lowered = token.lower()
+                if lowered in _IDENTIFIER_NOISE:
+                    continue
+                # A plain lowercase word needs some length to look like a symbol.
+                if token.islower() and "_" not in token and len(token) < 6:
+                    continue
+                per_hit.setdefault(token, set()).add(index)
+                total[token] = total.get(token, 0) + 1
     return sorted(
         per_hit,
         key=lambda token: (-len(per_hit[token]), -total[token], token),
@@ -253,6 +263,7 @@ class RetrievalPipeline:
                 max_per_path=self.settings.max_chunks_per_path,
                 focused_max_per_path=self.settings.focused_max_chunks_per_path,
                 max_chars=self.settings.max_context_chars,
+                focused_max_chars=self.settings.focused_max_context_chars,
                 overlap_threshold=self.settings.overlap_threshold,
             )
         else:
@@ -369,20 +380,26 @@ class RetrievalPipeline:
 
     async def _recall(self, state: RetrievalState) -> None:
         """Exact SQL, lexical FTS, dense vector I/O and the path stores are
-        independent after routing and rewrite, so they run together."""
+        independent after routing and rewrite, so semantic lexical recall runs
+        with them. Symbol/path queries defer lexical I/O until their structural
+        operator misses; that keeps the common exact path fast without giving up
+        the fallback."""
+        eager_lexical = self._should_recall_lexical_eagerly(state)
         (
             (state.dense, state.dense_error),
             state.exact,
-            state.lexical,
             state.path_scores,
             state.lookup_scores,
+            state.lexical,
         ) = await asyncio.gather(
             self._recall_dense(state),
             self._recall_exact(state),
-            self._recall_lexical(state),
             self._recall_paths(state),
             self._recall_path_lookup(state),
+            self._recall_lexical(state, routed=eager_lexical),
         )
+        if not eager_lexical and self._should_recall_lexical_fallback(state):
+            state.lexical = await self._recall_lexical(state, routed=True)
 
     async def _recall_dense(
         self, state: RetrievalState
@@ -417,11 +434,7 @@ class RetrievalPipeline:
             and (
                 (self.exact_store is not None and bool(evidence.identifiers))
                 and self.settings.exact_enabled
-                or (
-                    self.lexical_store is not None
-                    and self.settings.lexical_enabled
-                    and bool(evidence.terms or evidence.phrases)
-                )
+                or self._can_recall_lexical(state)
                 or (
                     self.path_lookup_store is not None
                     and self.path_content_store is not None
@@ -481,22 +494,44 @@ class RetrievalPipeline:
             )
             return []
 
-    async def _recall_lexical(self, state: RetrievalState) -> list[SearchHit]:
+    def _can_recall_lexical(self, state: RetrievalState) -> bool:
         evidence = state.evidence
-        if (
-            not self.settings.lexical_enabled
-            or self.lexical_store is None
-            or state.scope is None
-            or not state.scope.blob_names
-            or evidence is None
-            or not (evidence.terms or evidence.phrases)
-        ):
+        return bool(
+            self.settings.lexical_enabled
+            and self.lexical_store is not None
+            and state.scope is not None
+            and state.scope.blob_names
+            and evidence is not None
+            and (evidence.terms or evidence.phrases)
+        )
+
+    def _should_recall_lexical_eagerly(self, state: RetrievalState) -> bool:
+        evidence = state.evidence
+        return self._can_recall_lexical(state) and bool(
+            state.strategy.enable_lexical_recall
+            or (evidence is not None and evidence.phrases)
+        )
+
+    def _should_recall_lexical_fallback(self, state: RetrievalState) -> bool:
+        if not self._can_recall_lexical(state):
+            return False
+        if state.intent == QueryIntent.SYMBOL:
+            return not state.exact
+        if state.intent == QueryIntent.PATH:
+            return not state.lookup_scores
+        return False
+
+    async def _recall_lexical(
+        self, state: RetrievalState, *, routed: bool
+    ) -> list[SearchHit]:
+        evidence = state.evidence
+        if not routed or not self._can_recall_lexical(state) or evidence is None:
             return []
         try:
             with state.stage("lexical"):
                 async with asyncio.timeout(self.settings.lexical_timeout_seconds):
                     return await self.lexical_store.search_lexical(
-                        terms=evidence.terms,
+                        terms=self._lexical_terms(state),
                         phrases=evidence.phrases,
                         scope=state.scope,
                         top_k=self.settings.lexical_top_k,
@@ -507,6 +542,29 @@ class RetrievalPipeline:
         except Exception as exc:
             logger.warning("Lexical recall failed: {}", type(exc).__name__)
             return []
+
+    @staticmethod
+    def _lexical_terms(state: RetrievalState) -> tuple[str, ...]:
+        evidence = state.evidence
+        assert evidence is not None
+        if state.intent != QueryIntent.SYMBOL or not evidence.identifiers:
+            return evidence.terms
+
+        # Exact lookup already tried the identifier itself. Its lexical fallback
+        # should use the joined surrogate (TargetService -> targetservice), not
+        # broad sub-words such as target/service that dominate large term indexes.
+        # Qualified identifiers use separate index tokens, so retain each part.
+        terms: list[str] = []
+        for identifier in evidence.identifiers:
+            tokens = lexical_tokens(identifier)
+            single_lexeme = identifier.replace("_", "").isalnum()
+            selected = (
+                (max(tokens, key=len),) if single_lexeme and tokens else tuple(tokens)
+            )
+            for token in selected:
+                if token and token not in terms:
+                    terms.append(token)
+        return tuple(terms) or evidence.terms
 
     async def _recall_paths(self, state: RetrievalState) -> dict[str, float]:
         """Best path score per blob over every query variant; failures degrade to none."""
@@ -651,6 +709,21 @@ class RetrievalPipeline:
         exact_hits: list[SearchHit],
         semantic_hits: list[SearchHit],
     ) -> list[SearchHit]:
+        if intent == QueryIntent.SYMBOL and exact_hits:
+            # A definition lookup is a structural lane, not another score to
+            # calibrate against cosine/RRF. Keep its leading answer in the
+            # candidate window; _rank restores that deterministic head after
+            # source priors, while still leaving room for semantic context.
+            merged: list[SearchHit] = []
+            seen: set[SearchHitKey] = set()
+            for hit in [*exact_hits, *semantic_hits]:
+                key = search_hit_key(hit)
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(hit)
+            return merged[: self.settings.default_top_k]
+
         if intent == QueryIntent.CALL_CHAIN and semantic_hits:
             semantic_keys = {search_hit_key(hit) for hit in semantic_hits}
             exact_only = [
@@ -766,16 +839,25 @@ class RetrievalPipeline:
         hits = self._apply_source_priority(
             state.candidates, priority_factor=priority_factor, boosted=boosted
         )
+        structural_heads = self._structural_heads(state, hits)
         # This optional floor belongs to recall, before model scores can enter the
         # list. Dedicated relevance scores, dense cosine, and RRF are not calibrated
         # to a shared scale; filtering their mixture after reranking is undefined.
-        hits = self._apply_confidence_floor(hits, priority_factor=priority_factor)
+        # A deterministic exact symbol/path answer is protected for the same reason.
+        hits = self._apply_confidence_floor(
+            hits,
+            priority_factor=priority_factor,
+            protected=structural_heads,
+        )
+        hits = self._promote_heads(hits, structural_heads)
 
         decision = plan_rerank(
             state.intent,
             len(hits),
             has_exact_hits=bool(state.exact),
-            has_path_hits=bool(state.path_scores or state.lookup_scores),
+            # Embedding path similarity is useful recall but not deterministic
+            # evidence. Only an exact SQL path/basename match may skip reranking.
+            has_path_hits=bool(state.lookup_scores),
             dedicated_enabled=self.reranker is not None,
             llm_enabled=self.llm_reranker is not None,
             dedicated_policy=self.settings.rerank_policy,
@@ -790,7 +872,56 @@ class RetrievalPipeline:
         if decision.llm and self.llm_reranker is not None:
             with state.stage("llm_rerank"):
                 hits = await self.llm_reranker.rerank(state.query, hits)
-        state.candidates = hits
+        # ``always`` is an evaluation/quality policy, not permission to erase a
+        # deterministic answer. Rerank the full candidate set, then restore the
+        # bounded structural slots while preserving the model's tail order.
+        state.candidates = self._promote_heads(hits, structural_heads)
+
+    def _structural_heads(
+        self,
+        state: RetrievalState,
+        hits: Sequence[SearchHit],
+    ) -> tuple[SearchHitKey, ...]:
+        """Bounded deterministic answers protected from score mixing.
+
+        Up to three definitions cover overloads or duplicate declarations. A
+        path request may legitimately match several files, so it reserves one
+        best chunk per SQL path match up to the final result count.
+        """
+        if state.intent == QueryIntent.SYMBOL and state.exact:
+            exact_keys = {search_hit_key(hit) for hit in state.exact}
+            # ``hits`` has already received source priority. Choose within the
+            # structural lane from that order so a definition in real source
+            # beats the same signature shown in a documentation code block.
+            return tuple(
+                search_hit_key(hit) for hit in hits if search_hit_key(hit) in exact_keys
+            )[: min(3, self.settings.final_select_k)]
+        if state.intent == QueryIntent.PATH and state.lookup_scores:
+            heads: list[SearchHitKey] = []
+            blob_names = sorted(
+                state.lookup_scores,
+                key=lambda name: -state.lookup_scores[name],
+            )
+            for blob_name in blob_names:
+                for hit in hits:
+                    if hit.blob_name == blob_name:
+                        heads.append(search_hit_key(hit))
+                        break
+                if len(heads) >= self.settings.final_select_k:
+                    break
+            return tuple(heads)
+        return ()
+
+    @staticmethod
+    def _promote_heads(
+        hits: list[SearchHit],
+        heads: Sequence[SearchHitKey],
+    ) -> list[SearchHit]:
+        if not heads:
+            return hits
+        order = {key: index for index, key in enumerate(heads)}
+        tail = len(order)
+        return sorted(hits, key=lambda hit: order.get(search_hit_key(hit), tail))
 
     def _working_set(self, scope: SearchScope | None) -> frozenset[str]:
         """Blobs the request just added: the files the user is editing right now.
@@ -833,11 +964,16 @@ class RetrievalPipeline:
         self,
         hits: list[SearchHit],
         priority_factor: Callable[[str], float] | None = None,
+        protected: Collection[SearchHitKey] = (),
     ) -> list[SearchHit]:
         """逐条按有效分（score × penalty）剔除低于门槛的弱匹配"""
         factor = priority_factor or self.priority_factor
         floor = self.settings.confidence_floor
-        return [h for h in hits if h.score * factor(h.path) >= floor]
+        return [
+            hit
+            for hit in hits
+            if search_hit_key(hit) in protected or hit.score * factor(hit.path) >= floor
+        ]
 
     # ── select ───────────────────────────────────────────────────────────
 
@@ -856,6 +992,7 @@ class RetrievalPipeline:
             state.selected = merge_adjacent_hits(state.selected)
         if (
             not self.settings.related_definitions_enabled
+            or not state.strategy.expand_related_definitions
             or self.exact_store is None
             or state.scope is None
             or not state.scope.blob_names
@@ -880,6 +1017,15 @@ class RetrievalPipeline:
         """
         settings = self.settings
         assert self.exact_store is not None and state.scope is not None
+        remaining_chars = settings.max_context_chars - sum(
+            len(hit.content) for hit in state.selected
+        )
+        # A tiny tail budget produces fragmented signatures that cost another
+        # SQL lookup without explaining a relationship. Keep expansion useful
+        # and predictable instead of filling every last character.
+        if remaining_chars < _MIN_RELATED_BUDGET:
+            return []
+        related_budget = min(settings.related_max_chars, remaining_chars)
         sources = state.selected[: settings.related_source_hits]
         ordered: list[str] = []
         for identifier in (
@@ -932,7 +1078,7 @@ class RetrievalPipeline:
                 excerpt = definition_excerpt(definition, settings.related_snippet_lines)
                 if excerpt is None:
                     continue
-                if used_chars + len(excerpt.content) > settings.related_max_chars:
+                if used_chars + len(excerpt.content) > related_budget:
                     continue
                 seen.add(key)
                 related.append(excerpt)

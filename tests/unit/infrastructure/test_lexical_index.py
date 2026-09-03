@@ -130,6 +130,26 @@ async def test_scope_uses_chain_membership(sessions):
     assert [hit.path for hit in hits] == ["src/a.py"]
 
 
+async def test_scope_is_applied_before_the_lexical_limit(sessions):
+    async with sessions() as session:
+        specs = [
+            (f"noise-{index}", f"noise/{index}.py", "needle needle needle")
+            for index in range(12)
+        ]
+        specs.append(("target", "src/target.py", "needle"))
+        names = await _index(session, specs)
+    store = SqlLexicalSearchStore(sessions)
+
+    hits = await store.search_lexical(
+        terms=("needle",),
+        phrases=(),
+        scope=SearchScope(frozenset({names[-1]})),
+        top_k=1,
+    )
+
+    assert [hit.path for hit in hits] == ["src/target.py"]
+
+
 async def test_projection_is_idempotent_and_rows_follow_chunk_deletion(sessions):
     async with sessions() as session:
         content = "def keep_me(): pass"

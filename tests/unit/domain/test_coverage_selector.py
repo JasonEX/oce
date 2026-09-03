@@ -56,6 +56,20 @@ async def test_focused_mode_preserves_relevance_before_cross_file_coverage():
     ]
 
 
+async def test_focused_mode_uses_its_smaller_character_budget():
+    selector = CoverageSelector(max_chars=100, focused_max_chars=5)
+    hits = [
+        _hit("src/a.py", 1, 1, 0.9, content="12345"),
+        _hit("src/b.py", 1, 1, 0.8, content="67890"),
+    ]
+
+    focused = await selector.select(hits, 2, mode=SelectionMode.FOCUSED)
+    coverage = await selector.select(hits, 2, mode=SelectionMode.COVERAGE)
+
+    assert [hit.path for hit in focused] == ["src/a.py"]
+    assert [hit.path for hit in coverage] == ["src/a.py", "src/b.py"]
+
+
 async def test_suppresses_highly_overlapping_spans():
     selector = CoverageSelector(overlap_threshold=0.5)
     hits = [

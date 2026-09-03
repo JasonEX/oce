@@ -89,7 +89,7 @@ class TestLexicalRecall:
         )
         audit = RetrievalAudit()
         hits = await pipe.search(
-            'error "connection pool exhausted" in pool_manager',
+            'Why does request handling fail with "connection pool exhausted"?',
             SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
             audit=audit,
         )
@@ -97,7 +97,7 @@ class TestLexicalRecall:
         assert [hit.path for hit in hits][0] == "src/b.py"
         assert {hit.path for hit in hits} == {"src/a.py", "src/b.py", "src/c.py"}
         assert store.calls[0]["phrases"] == ("connection pool exhausted",)
-        assert "poolmanager" in store.calls[0]["terms"]
+        assert "request" in store.calls[0]["terms"]
         assert "lexical" in audit.stages
 
     async def test_lexical_disabled_skips_store(self):
@@ -110,6 +110,86 @@ class TestLexicalRecall:
         )
         await pipe.search("anything at all", SearchScope(frozenset({BLOB_A})))
         assert store.calls == []
+
+    @pytest.mark.parametrize(
+        ("query", "expected_calls"),
+        [
+            ("where is `TargetService` defined?", 1),
+            ("where is src/target_service.py file?", 1),
+            ("explain the repository architecture", 1),
+            ("where is `TargetService` referenced?", 1),
+            ("how is request retry behavior implemented?", 1),
+        ],
+    )
+    async def test_lexical_recall_is_routed_by_query_value(self, query, expected_calls):
+        store = FakeLexicalStore([_hit("src/a.py", 1.0)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/a.py", 0.9)]),
+            lexical_store=store,
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        await pipe.search(query, SearchScope(frozenset({BLOB_A})))
+
+        assert len(store.calls) == expected_calls
+
+    async def test_structural_symbol_and_path_hits_skip_lexical_io(self):
+        lexical = FakeLexicalStore([_hit("src/noise.py", 1.0, blob=BLOB_C)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([_hit("src/semantic.py", 0.9, blob=BLOB_A)]),
+            exact_store=FakeExactSearchStore(
+                [_hit("src/definition.py", 0.8, blob=BLOB_B)]
+            ),
+            path_lookup_store=FakePathLookupStore({BLOB_B: 1.0}),
+            lexical_store=lexical,
+            settings=_settings(related_definitions_enabled=False),
+        )
+        scope = SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
+
+        await pipe.search("where is `TargetService` defined?", scope)
+        await pipe.search("where is src/definition.py file?", scope)
+
+        assert lexical.calls == []
+
+    async def test_symbol_uses_lexical_only_after_exact_misses(self):
+        lexical = FakeLexicalStore([_hit("src/fallback.py", 1.0)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=FakeExactSearchStore(),
+            lexical_store=lexical,
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        hits = await pipe.search(
+            "where is `MissingService` defined?",
+            SearchScope(frozenset({BLOB_A})),
+        )
+
+        assert [hit.path for hit in hits] == ["src/fallback.py"]
+        assert len(lexical.calls) == 1
+        assert lexical.calls[0]["terms"] == ("missingservice",)
+
+    async def test_quoted_phrase_keeps_eager_lexical_recall_for_symbol(self):
+        lexical = FakeLexicalStore([_hit("src/error.py", 1.0, blob=BLOB_B)])
+        exact = FakeExactSearchStore([_hit("src/definition.py", 0.2)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=exact,
+            lexical_store=lexical,
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        hits = await pipe.search(
+            'where is `TargetService` defined after "connection pool exhausted"?',
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+
+        assert hits[0].path == "src/definition.py"
+        assert len(lexical.calls) == 1
 
     async def test_lexical_failure_degrades_to_dense(self):
         class Broken(FakeLexicalStore):
@@ -225,6 +305,61 @@ class TestPathLookup:
         )
         hits = await pipe.search("Where is src/b.py?", SearchScope(frozenset({BLOB_B})))
         assert [hit.path for hit in hits] == ["src/b.py"]
+
+    async def test_explicit_path_lookup_owns_the_deterministic_head(self):
+        lookup = FakePathLookupStore({BLOB_B: 1.0})
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(
+                [
+                    _hit("src/nearby.py", 0.99, blob=BLOB_A),
+                    _hit("src/target.py", 0.10, blob=BLOB_B),
+                ]
+            ),
+            lexical_store=FakeLexicalStore([_hit("src/nearby.py", 10.0, blob=BLOB_A)]),
+            path_lookup_store=lookup,
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        hits = await pipe.search(
+            "Where is the src/target.py file?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+
+        assert hits[0].path == "src/target.py"
+
+    async def test_exact_path_lookup_skips_adaptive_reranking(self):
+        class CountingReranker:
+            def __init__(self):
+                self.calls = 0
+
+            async def rerank(self, query, hits):
+                self.calls += 1
+                return hits
+
+        reranker = CountingReranker()
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(
+                [
+                    _hit("src/nearby.py", 0.9, blob=BLOB_A),
+                    _hit("src/target.py", 0.8, blob=BLOB_B),
+                ]
+            ),
+            path_lookup_store=FakePathLookupStore({BLOB_B: 1.0}),
+            reranker=reranker,
+            settings=_settings(related_definitions_enabled=False),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search(
+            "Where is the src/target.py file?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+            audit=audit,
+        )
+
+        assert reranker.calls == 0
+        assert audit.rerank_route == "skip:path_evidence"
 
 
 class TestWorkingSetPrior:
@@ -376,7 +511,8 @@ class TestRelatedDefinitions:
             settings=_settings(related_snippet_lines=1),
         )
         hits = await pipe.search(
-            "how does `Service` run", SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
+            "how does `Service` call `helper_fn`?",
+            SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
         )
         roles = [(hit.role, hit.path) for hit in hits]
         assert roles[0] == ("primary", "src/service.py")
@@ -389,6 +525,117 @@ class TestRelatedDefinitions:
         assert store.requested[0] == "Service"
         related = [hit for hit in hits if hit.role == "related"]
         assert all(hit.end_line == hit.start_line for hit in related)
+
+    async def test_chunk_context_contributes_structural_identifiers(self):
+        primary = replace(
+            _hit(
+                "src/service.py",
+                0.9,
+                content="def run(self):\n    return True",
+                hash_="1" * 64,
+            ),
+            context="class Service(BaseService):",
+        )
+        store = DefinitionStore(
+            [
+                self._definition(
+                    "BaseService",
+                    "src/base.py",
+                    BLOB_B,
+                    1,
+                    1,
+                    "class BaseService:\n    pass",
+                )
+            ]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([primary]),
+            exact_store=store,
+            settings=_settings(),
+        )
+
+        hits = await pipe.search(
+            "how is `run` called?", SearchScope(frozenset({BLOB_A, BLOB_B}))
+        )
+
+        assert "BaseService" in store.requested
+        assert any(hit.role == "related" and hit.path == "src/base.py" for hit in hits)
+
+    async def test_related_definitions_expand_semantic_relationship_queries(self):
+        primary = _hit(
+            "src/service.py",
+            0.9,
+            content="def run():\n    return helper_fn()",
+            hash_="1" * 64,
+        )
+        store = DefinitionStore(
+            [
+                self._definition(
+                    "helper_fn",
+                    "src/util.py",
+                    BLOB_B,
+                    1,
+                    1,
+                    "def helper_fn():\n    return 1",
+                )
+            ]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([primary]),
+            exact_store=store,
+            settings=_settings(),
+        )
+
+        feature = await pipe.search(
+            "explain the retry behavior", SearchScope(frozenset({BLOB_A, BLOB_B}))
+        )
+        assert any(hit.role == "related" for hit in feature)
+
+        symbol = await pipe.search(
+            "where is `run` defined?", SearchScope(frozenset({BLOB_A, BLOB_B}))
+        )
+        assert all(hit.role == "primary" for hit in symbol)
+
+        call_chain = await pipe.search(
+            "how does `run` call `helper_fn`?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert any(hit.role == "related" for hit in call_chain)
+
+    async def test_related_definitions_share_the_primary_context_budget(self):
+        primary = _hit(
+            "src/service.py",
+            0.9,
+            content="helper_fn()",
+            hash_="1" * 64,
+        )
+        store = DefinitionStore(
+            [
+                self._definition(
+                    "helper_fn",
+                    "src/util.py",
+                    BLOB_B,
+                    1,
+                    1,
+                    "def helper_fn():\n    return 1",
+                )
+            ]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([primary]),
+            exact_store=store,
+            settings=_settings(max_context_chars=len(primary.content)),
+        )
+
+        hits = await pipe.search(
+            "how does `run` call `helper_fn`?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+
+        assert all(hit.role == "primary" for hit in hits)
 
     async def test_related_budget_and_switch(self):
         primary = _hit("src/s.py", 0.9, content="use_thing()", hash_="1" * 64)

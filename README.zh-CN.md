@@ -236,7 +236,8 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 足够时跳过模型，reference 查询保留 occurrence 覆盖，feature/flow/overview/compound 查询则进行
 全局片段语义比较。最终选择对 symbol/path
 查询使用 focused 模式，按相关性顺序允许同文件提供更多片段；其他查询使用 coverage 模式，先
-覆盖不同文件再填充剩余预算。两种模式都抑制文件内重叠片段并遵守硬字符预算。设
+覆盖不同文件再填充剩余预算。两种模式都抑制文件内重叠片段；focused 使用 12K 字符预算，
+coverage 保留 32K 仓库探索预算。设
 `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询召回。
 
 精确标识符召回直接关联 checkpoint 成员关系，大型工作集不会关闭 exact recall，也不会把全部
@@ -245,12 +246,17 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 symbol index 由 tree-sitter 对整文件抽取 definition、endpoint 与 import，并保留真实行号；
 无法加载 grammar 时回退 regex。它仍不是 call/implementation graph，需要真实结构关系时应使用
 原生文本搜索或 LSP。SQLite 个人模式用 FTS5、PostgreSQL 服务模式用 `tsvector` 建立词法索引，
-补充召回 dense 不敏感的报错文案、日志文本与调用点。标识符同时按整体和子词入库，因此
+补充召回 dense 不敏感的报错文案、日志文本与调用点。词法召回用于 reference、调用链、feature、
+overview 和复合查询；symbol/path 只在确定性证据缺失时补跑，引号或报错短语会强制启用。
+标识符同时按整体和子词入库，因此
 `ParseConfig`、`parse_config` 和自然语言里的 “parse the config” 可以相互命中。请求中的
-traceback 帧会变成精确路径与函数证据，引号内报错会变成短语查询。cAST chunk 的 embedding
-输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。选择后，
-同文件相邻片段会合并；前几条结果引用的符号定义则以独立字符预算附在相关定义区。请求刚加入的
-少量 `added_blobs` 还会获得轻量工作集先验。
+traceback 帧会变成精确路径与函数证据，引号内报错会变成短语查询。exact symbol 未命中时，
+词法回退只查标识符整体代理 token，不用宽泛高频子词。cAST chunk 的 embedding
+输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。精确
+symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。选择后，同文件相邻
+片段会合并；调用链、feature 和 overview 查询可用主结果的剩余字符预算附带简短定义摘录，
+compound 查询不会对已选片段里的所有标识符扇出。请求刚加入的少量 `added_blobs` 还会获得轻量
+工作集先验。
 
 可复现消融可通过 `CHUNKING_SEMANTIC_ENABLED`、`RETRIEVAL_EXACT_ENABLED`、
 `RETRIEVAL_LEXICAL_ENABLED`、`RETRIEVAL_PATH_LOOKUP_ENABLED`、
@@ -421,12 +427,12 @@ flowchart TB
 | --- | --- |
 | route | 确定性意图，加上 `QueryEvidence`：标识符、traceback 帧、引号内报错文案、文件名、词法词元 |
 | plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
-| recall | dense（Milvus）∥ 精确符号（SQL）∥ 词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
+| recall | dense（Milvus）∥ 精确符号（SQL）∥ 按意图词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
 | fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |
-| prior | 源码先验 × 工作集先验（`added_blobs` 中的文件），可选置信度门槛 |
+| prior | 源码先验 × 工作集先验，然后保护有界的精确 symbol/path 头部槽位 |
 | rerank | `plan_rerank` 决策 → 专用 reranker → chat-LLM reranker，两者都保留候选集 |
 | select | focused / coverage 选择，字符预算为硬限制 |
-| expand | 合并同文件相邻片段，再附带被引用符号的定义签名摘录 |
+| expand | 合并同文件相邻片段；语义关系查询可用剩余上下文预算附带相关定义 |
 
 ```mermaid
 flowchart TB
@@ -437,12 +443,12 @@ flowchart TB
         direction LR
         Dense["dense<br/>Milvus"]
         Exact["精确符号<br/>symbol_occurrences"]
-        Lexical["词法 FTS<br/>chunk_lexical"]
+        Lexical["按意图词法 FTS<br/>chunk_lexical"]
         PathIdx["路径索引<br/>Milvus"]
         PathLookup["路径查找<br/>blobs.path 后缀"]
     end
     Recall --> Fuse["fuse<br/>RRF · exact 合并 · 路径 boost"]
-    Fuse --> Prior["prior<br/>源码先验 × 工作集"]
+    Fuse --> Prior["prior<br/>源码先验 · 确定性头部"]
     Prior --> Rerank["rerank<br/>专用 → chat LLM（策略）"]
     Rerank --> Select["select<br/>focused / coverage"]
     Select --> Expand["expand<br/>相邻合并 · 相关定义"]

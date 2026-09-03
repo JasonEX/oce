@@ -168,22 +168,35 @@ async def test_error_text_and_traceback_find_the_failing_code(indexed):
     primary = [hit for hit in hits if hit.role == "primary"]
     assert primary[0].path == "src/app/service.py"
     assert "connection pool exhausted" in primary[0].content
-    related = [hit for hit in hits if hit.role == "related"]
-    # The exception class named by the traceback is an exact hit; the base
-    # class referenced by the failing code is pulled in as a definition.
+    # The exception class named by the traceback is an exact hit. A compound
+    # issue query stays focused on localization instead of fanning out through
+    # every identifier mentioned by the selected code.
     assert "src/app/errors.py" in {hit.path for hit in hits}
-    assert any(hit.path == "src/app/base.py" for hit in related)
+    text = format_retrieval(hits)
+    assert RELATED_HEADER not in text
+
+
+async def test_call_chain_appends_related_definition(indexed):
+    sessions, vector_index, names = indexed
+    scope = SearchScope(frozenset(names.values()))
+    hits = await _pipeline(sessions, vector_index).search(
+        "How does `authenticate` call its base service?", scope
+    )
+
+    related = [hit for hit in hits if hit.role == "related"]
+    assert "src/app/base.py" in {hit.path for hit in hits}
+    assert any(hit.path == "src/app/errors.py" for hit in related)
     assert all(
-        hit.content.startswith("class BaseService")
+        hit.content.startswith("class PoolExhausted")
         for hit in related
-        if hit.path == "src/app/base.py"
+        if hit.path == "src/app/errors.py"
     )
     text = format_retrieval(hits)
     assert RELATED_HEADER in text
-    assert "Path: src/app/base.py" in text
+    assert "Path: src/app/errors.py" in text
 
 
-async def test_symbol_lookup_reaches_definition_with_context_and_base_class(indexed):
+async def test_symbol_lookup_reaches_definition_with_chunk_context(indexed):
     sessions, vector_index, names = indexed
     scope = SearchScope(frozenset(names.values()))
     hits = await _pipeline(sessions, vector_index).search(
@@ -197,8 +210,9 @@ async def test_symbol_lookup_reaches_definition_with_context_and_base_class(inde
     assert any(
         ctx and ctx.startswith("class UserService(BaseService):") for ctx in contexts
     ) or any("class UserService" in hit.content for hit in primary)
-    related = {hit.path for hit in hits if hit.role == "related"}
-    assert "src/app/base.py" in related
+    # Focused symbol lookups answer the requested definition directly; they do
+    # not spend the compact result budget expanding surrounding type relations.
+    assert all(hit.role == "primary" for hit in hits)
 
 
 async def test_lexical_recall_alone_finds_call_sites(indexed):

@@ -154,6 +154,8 @@ def _result(kind: str, *, elapsed: int, skipped: bool) -> dict[str, object]:
         "stage_conformant": True,
         "rerank_route": "skip:path_evidence" if skipped else "dedicated",
         "elapsed_ms": elapsed,
+        "returned_chars": 100,
+        "hit_count": 2,
         "rerank_ms": None if skipped else 4,
         "llm_rerank_ms": None,
     }
@@ -172,6 +174,8 @@ def test_aggregate_preserves_route_latency_and_quality_axes() -> None:
     assert summary["intent_conformance"] == 1.0
     assert summary["p95_elapsed_ms"] == 20
     assert summary["mean_rerank_ms"] == 4
+    assert summary["mean_returned_chars"] == 100
+    assert summary["mean_hit_count"] == 2
 
 
 def test_compare_refuses_different_case_sets(tmp_path) -> None:

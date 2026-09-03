@@ -337,6 +337,8 @@ def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     successful = [result for result in results if result["status"] == "ok"]
     quality_names = ("top1", "hit_at_10", "mrr", "path_recall_at_10")
     elapsed = [int(result["elapsed_ms"]) for result in successful]
+    returned_chars = [int(result["returned_chars"]) for result in successful]
+    hit_counts = [int(result["hit_count"]) for result in successful]
     rerank_ms = [
         int(result["rerank_ms"])
         for result in successful
@@ -375,6 +377,8 @@ def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
         ),
         "routes": dict(sorted(routes.items())),
         "mean_elapsed_ms": fmean(elapsed) if elapsed else None,
+        "mean_returned_chars": fmean(returned_chars) if returned_chars else None,
+        "mean_hit_count": fmean(hit_counts) if hit_counts else None,
         "p50_elapsed_ms": _percentile(elapsed, 50),
         "p95_elapsed_ms": _percentile(elapsed, 95),
         "mean_rerank_ms": fmean(rerank_ms) if rerank_ms else None,
@@ -465,6 +469,8 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                     "metrics": _score_paths(
                         case.expected_paths, [region.path for region in retrieved]
                     ),
+                    "returned_chars": len(formatted),
+                    "hit_count": len(retrieved),
                     "elapsed_ms": elapsed_ms,
                     "wall_elapsed_ms": int((time.perf_counter() - started) * 1000),
                     "intent": audit.intent,
@@ -555,6 +561,8 @@ def compare(paths: Iterable[Path]) -> str:
         "Route",
         "Stage",
         "Skip",
+        "Chars",
+        "Hits",
         "p50 ms",
         "p95 ms",
         "Rerank ms",
@@ -585,6 +593,8 @@ def compare(paths: Iterable[Path]) -> str:
                 _percent(summary["route_conformance"]),
                 _percent(summary["stage_conformance"]),
                 _percent(summary["skip_rate"]),
+                _number(summary.get("mean_returned_chars")),
+                _number(summary.get("mean_hit_count")),
                 _number(summary["p50_elapsed_ms"]),
                 _number(summary["p95_elapsed_ms"]),
                 _number(summary["mean_rerank_ms"]),

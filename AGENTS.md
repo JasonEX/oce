@@ -9,7 +9,7 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - cAST/tree-sitter 语义切块；每个 chunk 带封闭作用域签名链 `context`（占位于 `blob_chunks`，不参与内容哈希），embedding 输入为 `File + Context + 正文`
 - PostgreSQL/SQLite 存储元数据、`symbol_occurrences`（tree-sitter 整文件抽取 definition/endpoint/import，regex 兜底）和 `chunk_lexical` 词法索引（SQLite FTS5 / PG tsvector，DDL 在 `persistence/lexical_index.py`）
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 不回 Milvus；路径索引独立维护，另有 SQL 精确路径后缀查找
-- 检索是 `RetrievalState` 上的固定状态机：route（intent + `QueryEvidence`）→ plan → recall（dense ∥ exact ∥ lexical ∥ path ∥ path lookup）→ fuse（RRF，分数只按 rank 融合）→ prior（source priority × 工作集 boost）→ rerank（专用 → chat-LLM，均保留候选集）→ select → expand（同文件相邻合并、二跳定义摘要 role=related）
+- 检索是 `RetrievalState` 上的固定状态机：route（intent + `QueryEvidence`）→ plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup）→ fuse（RRF）→ prior（source/工作集先验 + 有界确定性 symbol/path 头部槽位）→ rerank（专用 → chat-LLM，均保留候选集）→ select → expand（相邻合并；调用链/feature/overview 按剩余预算附带定义摘要）
 - `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 是数据外发授权，`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果落 `retrieval_metrics.rerank_route`
 - 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite）+ status=active + 最小 priority 解析（`persistence/active_credential.py`），取不到回落各自环境变量
 - 向量维度只有一个来源 `EMBED_DIMENSIONS`：Milvus 两个 collection 与凭据校验都从它取值

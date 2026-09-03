@@ -269,7 +269,8 @@ and path evidence skip the model, reference queries retain occurrence coverage, 
 feature/flow/overview/compound requests use global snippet comparison. Final selection uses focused mode for symbol
 and path lookups, preserving relevance order with a higher per-path cap, and coverage mode
 for broader queries, first representing different files before filling remaining budget.
-Both modes suppress overlapping spans and enforce the same hard character budget. Disable
+Both modes suppress overlapping spans; focused queries use a 12K character budget while
+coverage queries retain the 32K repository-exploration budget. Disable
 decomposition with `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` to revert to classic
 single-query recall.
 
@@ -280,14 +281,21 @@ The symbol index is built by tree-sitter from whole files (definitions, endpoint
 imports with real spans; a regex provider covers grammars the pack cannot load). It is not
 a call or implementation graph. A lexical term index (SQLite FTS5 in personal mode,
 PostgreSQL `tsvector` in service mode) recalls error strings, log text, and call sites that
-dense vectors miss; identifiers are indexed both whole and split into sub-words so
+dense vectors miss. It is routed to reference, call-chain, feature, overview, and compound requests;
+symbol/path queries add it only when deterministic evidence is missing, while quoted or error-like
+phrases force it on.
+Identifiers are indexed both whole and split into sub-words so
 `ParseConfig`, `parse_config`, and "parse the config" meet. Traceback frames in a request
-become exact path and function evidence, and quoted error text becomes a phrase query.
+become exact path and function evidence, and quoted error text becomes a phrase query. When an
+exact symbol lookup misses, its lexical fallback uses the whole-identifier surrogate rather than
+broad common sub-words.
 Each cAST chunk is embedded with its enclosing scope chain (`class Foo > def bar`), and the
-same chain is shown as a `Context:` line in results. After selection, touching spans of one
-file are merged and the definitions of symbols referenced by the top results are appended as
-short signature excerpts under a separate character budget. Files the request just added
-(`added_blobs`) receive a small ranking prior when the delta is small.
+same chain is shown as a `Context:` line in results. Exact symbol definitions and explicit SQL
+path matches occupy bounded head slots instead of mixing incompatible structural and RRF scores.
+After selection, touching spans of one file are merged; call-chain, feature, and overview requests
+may append short definition excerpts only within the unused main context budget. Compound
+requests do not fan out through every identifier in their selected snippets. Files the
+request just added (`added_blobs`) receive a small ranking prior when the delta is small.
 Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path
 lookup, source priority, coverage selection, adjacent merging, and related definitions with
 `CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`, `RETRIEVAL_LEXICAL_ENABLED`,
@@ -468,12 +476,12 @@ fields, and every optional operator degrades to the identity transform when disa
 | --- | --- |
 | route | deterministic intent, plus `QueryEvidence`: identifiers, traceback frames, quoted error text, filenames, lexical terms |
 | plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
-| recall | dense (Milvus) ∥ exact symbols (SQL) ∥ lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
+| recall | dense (Milvus) ∥ exact symbols (SQL) ∥ intent-routed lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
 | fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |
-| prior | source priority × working-set boost (files in `added_blobs`), optional confidence floor |
+| prior | source priority × working-set boost, then protect bounded exact symbol/path head slots from heterogeneous score mixing |
 | rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
 | select | focused / coverage selection under a hard character budget |
-| expand | merge touching spans of one file, then pull signature excerpts of referenced definitions |
+| expand | merge touching spans; relationship queries may use remaining context budget for related definitions |
 
 ```mermaid
 flowchart TB
@@ -484,12 +492,12 @@ flowchart TB
         direction LR
         Dense["dense<br/>Milvus"]
         Exact["exact symbols<br/>symbol_occurrences"]
-        Lexical["lexical FTS<br/>chunk_lexical"]
+        Lexical["intent-routed lexical FTS<br/>chunk_lexical"]
         PathIdx["path index<br/>Milvus"]
         PathLookup["path lookup<br/>blobs.path suffix"]
     end
     Recall --> Fuse["fuse<br/>RRF · exact merge · path boost"]
-    Fuse --> Prior["prior<br/>source priority × working set"]
+    Fuse --> Prior["prior<br/>source priority · structural head"]
     Prior --> Rerank["rerank<br/>dedicated → chat LLM (policy)"]
     Rerank --> Select["select<br/>focused / coverage"]
     Select --> Expand["expand<br/>adjacent merge · related definitions"]

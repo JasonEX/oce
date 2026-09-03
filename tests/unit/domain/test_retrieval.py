@@ -536,6 +536,54 @@ class TestRetrievalPipeline:
         assert exact_store.scope == _scope("a" * 64)
         assert results[0].path == "src-tauri/src/commands/copilot.rs"
 
+    async def test_exact_symbol_heads_are_not_displaced_by_rrf_score_scale(self):
+        exact_doc = SearchHit(
+            blob_name="a" * 64,
+            path="docs/definition.rst",
+            content="class TargetService: pass",
+            score=0.20,
+        )
+        exact = SearchHit(
+            blob_name="c" * 64,
+            path="src/definition.py",
+            content="class TargetService: pass",
+            score=0.20,
+        )
+        second_exact = SearchHit(
+            blob_name="d" * 64,
+            path="src/alternate.py",
+            content="class TargetService: pass",
+            score=0.19,
+        )
+        semantic = SearchHit(
+            blob_name="b" * 64,
+            path="README.rst",
+            content="TargetService documentation",
+            score=1.0,
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([semantic]),
+            exact_store=FakeExactSearchStore([exact_doc, exact, second_exact]),
+            settings=_settings(confidence_floor=0.5, final_select_k=10),
+        )
+
+        results = await pipe.search(
+            "Where is `TargetService` defined?",
+            _scope(
+                exact_doc.blob_name,
+                exact.blob_name,
+                second_exact.blob_name,
+                semantic.blob_name,
+            ),
+        )
+
+        assert [result.path for result in results[:3]] == [
+            "src/definition.py",
+            "src/alternate.py",
+            "docs/definition.rst",
+        ]
+
     async def test_exact_and_dense_recall_overlap(self):
         dense_started = asyncio.Event()
         exact_started = asyncio.Event()
@@ -837,12 +885,13 @@ class TestRerankRouting:
         pipe, scope = self._exact_pipe(reranker, rerank_policy="always")
         audit = RetrievalAudit()
 
-        await pipe.search("`delete_profile` 在哪里定义？", scope, audit=audit)
+        results = await pipe.search("`delete_profile` 在哪里定义？", scope, audit=audit)
 
         assert reranker.calls == 1
         assert audit.rerank_route == "dedicated"
+        assert results[0].path == "src/commands/profile.rs"
 
-    async def test_adaptive_skips_dedicated_reranker_on_path_evidence(self):
+    async def test_adaptive_reranks_embedding_only_path_evidence(self):
         reranker = self.CountingReranker()
         hits = [_hit("docs/CHANGES.rst", 0.4), _hit("src/version.py", 0.5)]
         pipe = RetrievalPipeline(
@@ -858,8 +907,8 @@ class TestRerankRouting:
 
         await pipe.search("Where is the CHANGES.rst file?", audit=audit)
 
-        assert reranker.calls == 0
-        assert audit.rerank_route == "skip:path_evidence"
+        assert reranker.calls == 1
+        assert audit.rerank_route == "dedicated"
 
     async def test_semantic_query_uses_dedicated_reranker(self):
         reranker = self.CountingReranker()

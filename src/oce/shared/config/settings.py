@@ -324,6 +324,11 @@ class RetrievalSettings(BaseSettings):
     max_context_chars: int = Field(
         default=32_000, ge=1, description="返回代码总字符预算（硬限制）"
     )
+    focused_max_context_chars: int = Field(
+        default=12_000,
+        ge=1,
+        description="symbol/path focused 查询的字符预算（硬限制）",
+    )
     overlap_threshold: float = Field(
         default=0.6, ge=0.0, le=1.0, description="同文件片段重叠抑制阈值"
     )
@@ -358,7 +363,11 @@ class RetrievalSettings(BaseSettings):
     )
 
     # 词法召回：chunk 词元的 FTS 索引，覆盖报错文案、调用点等 dense 不敏感的线索。
-    lexical_enabled: bool = Field(default=True, description="是否启用词法召回")
+    # 这是能力开关；symbol/path 仅在结构化证据缺失时补跑，
+    # 语义类查询直接启用。
+    lexical_enabled: bool = Field(
+        default=True, description="是否允许按查询启用词法召回"
+    )
     lexical_top_k: int = Field(default=30, ge=1, le=200, description="词法召回条数")
     lexical_weight: float = Field(
         default=1.0, gt=0.0, le=2.0, description="词法结果在 RRF 融合中的权重"
@@ -381,7 +390,7 @@ class RetrievalSettings(BaseSettings):
         default=True, description="是否合并同文件相邻/重叠片段"
     )
     related_definitions_enabled: bool = Field(
-        default=True, description="是否附带被引用符号的定义摘要"
+        default=True, description="是否允许语义关系查询附带相关定义摘要"
     )
     related_source_hits: int = Field(
         default=5, ge=1, le=50, description="从前多少条主结果里抽取被引用标识符"
@@ -396,7 +405,9 @@ class RetrievalSettings(BaseSettings):
         default=12, ge=1, le=200, description="每个定义摘要最多多少行"
     )
     related_max_chars: int = Field(
-        default=4_000, ge=1, description="定义摘要总字符预算（独立于主结果预算）"
+        default=4_000,
+        ge=1,
+        description="定义摘要字符上限（同时受主结果剩余预算约束）",
     )
 
 

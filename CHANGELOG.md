@@ -18,6 +18,7 @@
 ### Changed
 
 - **retrieval**: restructure the pipeline as an explicit `RetrievalState` machine (route → plan → recall → fuse → prior → rerank → select → expand)
+- **retrieval**: route lexical recall to queries that benefit from it, preserve exact symbol/path answers in fixed head slots, give focused queries a smaller context budget, and constrain related definitions to relationship-oriented queries and the remaining context budget
 - **index lifecycle**: bump schema, chunker, embedding, and symbol versions; existing indexes require a clean data directory and full resync
 
 ## [0.3.0] - 2026-09-02

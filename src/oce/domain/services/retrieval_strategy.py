@@ -19,6 +19,8 @@ class RetrievalStrategy:
 
     enable_path_index: bool = False
     enable_query_rewrite: bool = False
+    enable_lexical_recall: bool = False
+    expand_related_definitions: bool = False
     selection_mode: SelectionMode = SelectionMode.COVERAGE
 
 
@@ -32,10 +34,17 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         selection_mode=SelectionMode.FOCUSED,
     ),
     # C (CALL_CHAIN): 调用链查询
-    # 不改写：原查询中的方向和边界信息是后续重排判断调用关系的依据。
-    QueryIntent.CALL_CHAIN: RetrievalStrategy(),
+    # 不改写：原查询中的方向和边界信息是后续重排判断调用关系的依据。词法
+    # occurrence 与二跳定义共同补足 dense 不掌握的结构关系。
+    QueryIntent.CALL_CHAIN: RetrievalStrategy(
+        enable_lexical_recall=True,
+        expand_related_definitions=True,
+    ),
     # R (REFERENCE): 引用/使用位置查询，改写补充同义调用方式。
-    QueryIntent.REFERENCE: RetrievalStrategy(enable_query_rewrite=True),
+    QueryIntent.REFERENCE: RetrievalStrategy(
+        enable_query_rewrite=True,
+        enable_lexical_recall=True,
+    ),
     # P (PATH): 文件路径查询
     # 文件语义改写补足中英文差异，路径索引负责召回，高置信结果无需 LLM。
     QueryIntent.PATH: RetrievalStrategy(
@@ -44,11 +53,21 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         selection_mode=SelectionMode.FOCUSED,
     ),
     # F (FEATURE): 功能实现查询，功能描述需要跨中英文术语召回。
-    QueryIntent.FEATURE: RetrievalStrategy(enable_query_rewrite=True),
-    # O (OVERVIEW): 架构/机制概览查询，原描述本身就是最好的召回文本。
-    QueryIntent.OVERVIEW: RetrievalStrategy(),
+    QueryIntent.FEATURE: RetrievalStrategy(
+        enable_query_rewrite=True,
+        enable_lexical_recall=True,
+        expand_related_definitions=True,
+    ),
+    # O (OVERVIEW): 架构/机制概览查询以 dense 为主，词法结果补充模块和文档术语。
+    QueryIntent.OVERVIEW: RetrievalStrategy(
+        enable_lexical_recall=True,
+        expand_related_definitions=True,
+    ),
     # M (COMPOUND): 复合查询，改写把并列条件拆成可分别召回的角度。
-    QueryIntent.COMPOUND: RetrievalStrategy(enable_query_rewrite=True),
+    QueryIntent.COMPOUND: RetrievalStrategy(
+        enable_query_rewrite=True,
+        enable_lexical_recall=True,
+    ),
 }
 
 

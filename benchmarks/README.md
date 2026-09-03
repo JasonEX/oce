@@ -172,7 +172,7 @@ uv run python -m benchmarks.rerank_routing run \
 ```
 
 The output contains case IDs, ranked paths/lines, intended and observed routes, stage timings,
-and aggregate quality/latency metrics, but not query text or source content. Raw JSON remains
+and aggregate quality/latency/context-size metrics, but not query text or source content. Raw JSON remains
 outside the repository. Use `python -m benchmarks.rerank_routing compare <results...>` for the
 paired table. This audit reader is intentionally personal-mode-only; service deployments keep
 their database boundary private and may export equivalent aggregates through their own

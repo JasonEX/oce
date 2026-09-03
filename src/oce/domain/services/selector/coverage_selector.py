@@ -17,6 +17,7 @@ class CoverageSelector:
         max_per_path: int = 2,
         focused_max_per_path: int = 4,
         max_chars: int = 32_000,
+        focused_max_chars: int = 12_000,
         overlap_threshold: float = 0.6,
     ) -> None:
         if max_per_path < 1:
@@ -25,11 +26,14 @@ class CoverageSelector:
             raise ValueError("focused_max_per_path must be positive")
         if max_chars < 1:
             raise ValueError("max_chars must be positive")
+        if focused_max_chars < 1:
+            raise ValueError("focused_max_chars must be positive")
         if not 0.0 <= overlap_threshold <= 1.0:
             raise ValueError("overlap_threshold must be between zero and one")
         self.max_per_path = max_per_path
         self.focused_max_per_path = focused_max_per_path
         self.max_chars = max_chars
+        self.focused_max_chars = focused_max_chars
         self.overlap_threshold = overlap_threshold
 
     async def select(
@@ -52,9 +56,11 @@ class CoverageSelector:
         if mode == SelectionMode.FOCUSED:
             passes = (None,)
             per_path_limit = self.focused_max_per_path
+            char_budget = self.focused_max_chars
         else:
             passes = (True, False)
             per_path_limit = self.max_per_path
+            char_budget = self.max_chars
 
         # Coverage 先让不同文件各有代表，再补同文件片段；focused 严格保留
         # relevance 顺序。两种模式共用重叠抑制和字符预算。
@@ -76,7 +82,7 @@ class CoverageSelector:
 
                 # 字符预算检查：放不下就跳过，继续尝试后面的小片段
                 hit_chars = len(hit.content)
-                if selected and used_chars + hit_chars > self.max_chars:
+                if selected and used_chars + hit_chars > char_budget:
                     continue
 
                 selected.append(hit)
