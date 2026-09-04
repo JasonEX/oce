@@ -23,12 +23,15 @@
 
 ### Fixed
 
+- **symbols**: stop recording CommonJS `var X = require(...)` aliases, Rust `impl Trait for Type` blocks, `let` bindings, and TypeScript/JavaScript `export { x } from` re-exports as definitions, and record no symbols at all for Markdown/reStructuredText/plain-text files whose fenced examples were read as project declarations (`SYMBOL_EXTRACTION_VERSION` 4; existing indexes must be rebuilt)
+- **retrieval**: diversify exact use-site evidence per file before the candidate window closes, so a test module that calls a symbol in every chunk no longer pushes the one import in each other file out of the reference head
 - **milvus**: flush Milvus Lite before the first search that follows a write so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
 - **indexing**: embed pending chunks in pages of 256 instead of 64 so the embedder's concurrent batches are actually used during synchronous uploads (about 14 chunks/s before)
 - **persistence**: open personal-mode SQLite in WAL mode with a busy timeout, so the metrics sink and concurrent readers no longer fail with "database is locked" during batch uploads
 
 ### Changed
 
+- **retrieval**: when a reference question has no evidenced use site in undemoted source, fill the head slots with evidenced use sites in test, example, or barrel files ordered by prior instead of leaving the slots to documentation without occurrence evidence (`RETRIEVAL_REFERENCE_HEAD_FALLBACK`); add two measured-neutral ablation switches that stay off: `RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` (import-only file headers yield source head slots) and `RETRIEVAL_COMPOUND_ANCHOR_SLOTS` (protected slots for the definitions an issue text names)
 - **retrieval**: classify call-chain requests by their verb even without a symbol anchor, treat dotted qualified names (`Context.ShouldBindJSON`) as symbols rather than file names, decide overview before path, and only let file/config nouns imply a path request in short questions
 - **retrieval**: neutralize the source prior only for questions that ask for tests, and demote `samples/` like `examples/`
 - **retrieval**: damp exact-symbol scores by how many places declare a name, not by how often it is used

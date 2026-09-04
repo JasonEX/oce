@@ -454,7 +454,9 @@ async def test_corpus_stays_adversarial(indexed, monkeypatch):
     the failure this file exists to catch and needs to be made harder again.
     """
     monkeypatch.setattr(
-        RetrievalPipeline, "_structural_heads", lambda self, state, hits: ()
+        RetrievalPipeline,
+        "_structural_heads",
+        lambda self, state, hits, priority_factor=None: (),
     )
     hits, _ = await _search(indexed, "Where is `build_invoice` defined?")
     assert "def build_invoice" not in hits[0].content

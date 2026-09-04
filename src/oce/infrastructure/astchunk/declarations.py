@@ -43,6 +43,8 @@ _DEFINITION_TYPES = frozenset(
 _EXCLUDED_MARKERS = (
     "parameter",
     "import",
+    # ``export { x } from './x'`` re-exports a name declared elsewhere.
+    "export_specifier",
     "package",
     "using",
     "annotation",
@@ -98,8 +100,19 @@ def declared_name(node: CompatNode) -> str | None:
     if declarator is not None:
         return declared_name(declarator) or _leaf_name(declarator)
     if node.type == "impl_item":
+        # ``impl Trait for Type`` implements a trait declared elsewhere for a
+        # type declared elsewhere; only an inherent ``impl Type`` extends the
+        # type's own definition.
+        if node.child_by_field_name("trait") is not None:
+            return None
         target = node.child_by_field_name("type")
         return _leaf_name(target) if target is not None else None
+    if node.type == "let_declaration":
+        # ``let _: Router = ...`` names a type, not a binding.
+        pattern = node.child_by_field_name("pattern")
+        if pattern is not None and pattern.type.endswith("identifier"):
+            return _leaf_name(pattern)
+        return None
     if node.type == "assignment":
         left = node.child_by_field_name("left")
         if left is not None and left.type == "identifier":
@@ -157,6 +170,43 @@ def assigned_function_name(node: CompatNode) -> str | None:
             return None
         return prop.text.decode("utf-8", errors="replace")
     return None
+
+
+def require_alias_names(node: CompatNode) -> list[str] | None:
+    """Names a CommonJS ``var X = require(...)`` declarator binds, else ``None``.
+
+    ``var Route = require('./route')``, ``var compileETag =
+    require('./utils').compileETag`` and ``const { Layer } = require('./layer')``
+    bind names declared in another module: they are imports, not definitions,
+    exactly like an ES ``import`` statement.
+    """
+    if node.type != "variable_declarator":
+        return None
+    value = node.child_by_field_name("value")
+    while value is not None and value.type == "member_expression":
+        value = value.child_by_field_name("object")
+    if value is None or value.type != "call_expression":
+        return None
+    callee = value.child_by_field_name("function")
+    if callee is None or callee.text != b"require":
+        return None
+    name = node.child_by_field_name("name")
+    if name is None:
+        return []
+    if name.type.endswith("identifier"):
+        return [name.text.decode("utf-8", errors="replace")]
+    names: list[str] = []
+    pending = [name]
+    while pending:
+        current = pending.pop(0)
+        if not current.named_children:
+            if "identifier" in current.type:
+                text = current.text.decode("utf-8", errors="replace")
+                if text not in names:
+                    names.append(text)
+            continue
+        pending.extend(current.named_children)
+    return names
 
 
 _CALL_MARKERS = ("call", "invocation")

@@ -171,3 +171,60 @@ def test_transient_grammar_failure_is_retried(monkeypatch):
     second = provider.extract(content=source, language="python")
     assert calls["n"] == 2
     assert {(o.identifier, o.kind) for o in second} == {("Foo", "definition")}
+
+
+def test_commonjs_require_aliases_are_imports_not_definitions():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    javascript = provider.extract(
+        content=(
+            "var Route = require('./router/route');\n"
+            "var compileETag = require('./utils').compileETag;\n"
+            "const { Layer, decorate } = require('./layer');\n"
+            "var proto = module.exports = function(options) {};\n"
+            "function Router() {}\n"
+        ),
+        language="javascript",
+    )
+    definitions = {o.identifier for o in javascript if o.kind == "definition"}
+    imports = {o.identifier for o in javascript if o.kind == "import"}
+    assert "Router" in definitions
+    assert definitions.isdisjoint({"Route", "compileETag", "Layer", "decorate"})
+    assert {"Route", "compileETag", "Layer", "decorate"} <= imports
+
+
+def test_rust_trait_impls_and_let_bindings_are_not_definitions():
+    rust = _extract(
+        "rust",
+        "pub struct Router<S> { inner: S }\n"
+        "impl<S> Clone for Router<S> { fn clone(&self) -> Self { todo!() } }\n"
+        "impl<S> Router<S> { pub fn new() -> Self { todo!() } }\n"
+        "fn check() { let _: Router<()> = Router::new(); let app = Router::new(); }\n",
+    )
+    router_definitions = sorted(
+        item[2] for item in rust if item[0] == "Router" and item[1] == "definition"
+    )
+    # The struct and the inherent impl; not the trait impl, not the let types.
+    assert router_definitions == [1, 3]
+    assert not any(item[0] == "app" and item[1] == "definition" for item in rust)
+    assert ("clone", "definition", 2, 2) in rust
+    assert ("new", "definition", 3, 3) in rust
+
+
+def test_re_exports_and_prose_declare_nothing():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    ts = provider.extract(
+        content=(
+            "export { configureStore, type Foo } from './configureStore'\n"
+            "export * from './x'\n"
+            "export const local = 1\n"
+        ),
+        language="typescript",
+    )
+    definitions = {o.identifier for o in ts if o.kind == "definition"}
+    assert "configureStore" not in definitions
+    assert "local" in definitions
+    prose = provider.extract(
+        content="# Usage\n\n```python\ndef configure_store():\n    pass\n```\n",
+        language="markdown",
+    )
+    assert prose == ()

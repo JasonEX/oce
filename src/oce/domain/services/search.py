@@ -121,6 +121,14 @@ class ExactSearchStore(Protocol):
         """Definitions/endpoints of the identifiers whose scope-wide count fits the cap."""
         ...
 
+    async def occurrence_kinds(
+        self,
+        occurrences: Sequence[tuple[str, str]],
+        scope: SearchScope,
+    ) -> dict[tuple[str, str], frozenset[str]]:
+        """Symbol occurrence kinds for scoped ``(blob_name, content_hash)`` pairs."""
+        ...
+
 
 class LexicalSearchStore(Protocol):
     """词法召回：对 chunk 词元索引做 term/phrase 匹配，按词法相关度排序。

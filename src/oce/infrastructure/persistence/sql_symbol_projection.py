@@ -11,6 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from oce.domain.blob.blob import Blob
 from oce.domain.chunk import Chunk
 from oce.domain.services.symbols import SymbolProvider
+from oce.infrastructure.astchunk.symbol_provider import (
+    PROSE_SUFFIXES,
+    is_prose_language,
+)
 from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.models import SymbolOccurrenceModel
 
@@ -29,6 +33,12 @@ class SqlSymbolProjection:
 
     async def index(self, blob: Blob, chunks: Sequence[Chunk], content: str) -> None:
         if not chunks:
+            return
+        if blob.path.lower().endswith(PROSE_SUFFIXES) or is_prose_language(
+            blob.language
+        ):
+            # Documentation quotes code; the exact index must not read a
+            # fenced example as a project definition.
             return
         ordered = sorted(chunks, key=lambda chunk: chunk.start_line)
         starts = [chunk.start_line for chunk in ordered]

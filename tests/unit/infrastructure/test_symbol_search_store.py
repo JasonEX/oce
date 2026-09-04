@@ -9,6 +9,7 @@ from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk
 from oce.domain.services.search import SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
+from oce.infrastructure.persistence.models import SymbolOccurrenceModel
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
@@ -162,3 +163,92 @@ async def test_calls_are_exact_reference_evidence_without_definition_damping(ses
         if hit.path == "src/invoice.py" and "def build_invoice" in hit.content
     )
     assert definition.score == 0.95
+
+
+async def test_usage_evidence_is_diversified_per_file_before_the_window_closes(
+    sessions,
+):
+    # One test module calls the symbol in both of its chunks; the imports in
+    # the other files must still fit inside a two-hit window.
+    files = {
+        "tests/test_pool.py": (
+            "from src.pool import acquire\n"
+            "def test_a():\n"
+            "    acquire()\n"
+            "    acquire()\n"
+            "def test_b():\n"
+            "    acquire()\n"
+            "    acquire()\n"
+        ),
+        "src/server.py": "from src.pool import acquire\n\n\ndef serve():\n    return 1\n",
+        "src/pool.py": "def acquire():\n    return 1\n\n\ndef release():\n    return 2\n",
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    hits = await store.search_exact(identifiers=["acquire"], scope=scope, top_k=3)
+    paths = [hit.path for hit in hits]
+    # Definition first, then the best chunk of each using file; the second
+    # test chunk waits behind the server import.
+    assert paths[0] == "src/pool.py"
+    assert set(paths[1:3]) == {"tests/test_pool.py", "src/server.py"}
+
+    kinds = await store.occurrence_kinds(
+        [(hit.blob_name, hit.content_hash) for hit in hits] + [("missing", "missing")],
+        scope,
+    )
+    assert kinds[(hits[0].blob_name, hits[0].content_hash)] == frozenset({"definition"})
+    server = next(hit for hit in hits if hit.path == "src/server.py")
+    assert kinds[(server.blob_name, server.content_hash)] == frozenset({"import"})
+    assert ("missing", "missing") not in kinds
+
+
+async def test_occurrence_kinds_is_scoped_and_disambiguates_duplicate_chunks(sessions):
+    shared = "from package import helper\n"
+    files = {
+        "src/importer.py": shared,
+        "src/definition.py": shared,
+        "vendor/importer.py": shared,
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+        shared_hash = Chunk.compute_hash(shared.rstrip("\n"))
+        session.add_all(
+            [
+                SymbolOccurrenceModel(
+                    identifier="helper",
+                    blob_name=names["src/definition.py"],
+                    content_hash=shared_hash,
+                    kind="definition",
+                    start_line=1,
+                    end_line=1,
+                ),
+                SymbolOccurrenceModel(
+                    identifier="helper",
+                    blob_name=names["vendor/importer.py"],
+                    content_hash=shared_hash,
+                    kind="definition",
+                    start_line=1,
+                    end_line=1,
+                ),
+            ]
+        )
+        await session.commit()
+
+    scope = SearchScope(
+        frozenset({names["src/importer.py"], names["src/definition.py"]})
+    )
+    kinds = await SymbolSearchStore(sessions).occurrence_kinds(
+        [
+            (names["src/importer.py"], shared_hash),
+            (names["src/definition.py"], shared_hash),
+            (names["vendor/importer.py"], shared_hash),
+        ],
+        scope,
+    )
+    assert kinds[(names["src/importer.py"], shared_hash)] == frozenset({"import"})
+    assert kinds[(names["src/definition.py"], shared_hash)] == frozenset(
+        {"import", "definition"}
+    )
+    assert (names["vendor/importer.py"], shared_hash) not in kinds

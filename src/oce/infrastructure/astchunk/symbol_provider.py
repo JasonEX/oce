@@ -22,6 +22,7 @@ from oce.infrastructure.astchunk.declarations import (
     is_call_type,
     is_definition_type,
     is_function_like,
+    require_alias_names,
 )
 from oce.infrastructure.regex_symbol_provider import LineIndex, find_endpoints
 
@@ -67,6 +68,28 @@ _OPAQUE_TYPES = frozenset(
 )
 
 
+# Documentation renders code, it does not declare it: a fenced ``def`` in a
+# README is prose about the project. Regex fallback on these files produced
+# "definitions" that outnumbered the real one and damped its exact score.
+PROSE_LANGUAGES = frozenset(
+    {"markdown", "rst", "restructuredtext", "text", "plaintext", "asciidoc", "org"}
+)
+PROSE_SUFFIXES = (
+    ".md",
+    ".mdx",
+    ".markdown",
+    ".rst",
+    ".txt",
+    ".adoc",
+    ".asciidoc",
+    ".org",
+)
+
+
+def is_prose_language(language: str | None) -> bool:
+    return language is not None and language.lower() in PROSE_LANGUAGES
+
+
 class TreeSitterSymbolProvider:
     def __init__(self, fallback: SymbolProvider) -> None:
         self._fallback = fallback
@@ -79,6 +102,8 @@ class TreeSitterSymbolProvider:
         content: str,
         language: str | None,
     ) -> Sequence[SymbolOccurrence]:
+        if is_prose_language(language):
+            return ()
         parser = self._parser(language) if language else None
         if parser is None or len(content) > MAX_TREE_SITTER_BYTES:
             return self._fallback.extract(content=content, language=language)
@@ -131,6 +156,11 @@ class TreeSitterSymbolProvider:
                     for name in _import_names(child):
                         add(name, "import", start, end)
                     continue
+                aliases = require_alias_names(child)
+                if aliases is not None:
+                    for name in aliases:
+                        add(name, "import", start, end)
+                    continue
                 # Call sites provide direct-use evidence to reference and
                 # call-chain lookups; structural answer heads never use them.
                 if is_call_type(child_type):
@@ -145,7 +175,7 @@ class TreeSitterSymbolProvider:
                     is_local = inside_function and (
                         child_type.endswith("_declarator")
                         or child_type in _ASSIGNMENT_TYPES
-                        or child_type == "property_declaration"
+                        or child_type in ("property_declaration", "let_declaration")
                     )
                     if name is not None and not is_local:
                         kind = "endpoint" if name in endpoints else "definition"

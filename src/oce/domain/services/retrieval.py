@@ -58,7 +58,7 @@ from oce.domain.services.search import (
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
-from oce.domain.services.symbols import CALL_KIND, DEFINITION_KINDS
+from oce.domain.services.symbols import CALL_KIND, DEFINITION_KINDS, IMPORT_KIND
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 
@@ -281,8 +281,14 @@ class RetrievalState:
     # from the use sites the question actually asks for.
     definitions: list[SearchHit] = field(default_factory=list)
     lexical: list[SearchHit] = field(default_factory=list)
+    # Compound requests: definition chunks of the identifiers the text names
+    # that are declared in few enough places to be unambiguous.
+    anchors: list[SearchHit] = field(default_factory=list)
     path_scores: dict[str, float] = field(default_factory=dict)
     lookup_scores: dict[str, float] = field(default_factory=dict)
+    # Candidate chunks whose only symbol evidence is imports: file headers.
+    # None when the exact store cannot tell.
+    header_keys: frozenset[tuple[str, str]] | None = None
 
     # fuse / prior / rerank / select / expand
     candidates: list[SearchHit] = field(default_factory=list)
@@ -496,6 +502,7 @@ class RetrievalPipeline:
             asyncio.create_task(self._recall_exact(state)),
             asyncio.create_task(self._recall_path_lookup(state)),
             asyncio.create_task(self._recall_lexical(state, routed=eager_lexical)),
+            asyncio.create_task(self._recall_anchors(state)),
         )
 
     async def _recall(
@@ -503,19 +510,21 @@ class RetrievalPipeline:
         state: RetrievalState,
         sql_lanes: tuple[asyncio.Task[object], ...],
     ) -> None:
-        exact_task, lookup_task, lexical_task = sql_lanes
+        exact_task, lookup_task, lexical_task, anchor_task = sql_lanes
         (
             (state.dense, state.dense_error),
             state.path_scores,
             (state.exact, state.definitions),
             state.lookup_scores,
             state.lexical,
+            state.anchors,
         ) = await asyncio.gather(
             self._recall_dense(state),
             self._recall_paths(state),
             exact_task,
             lookup_task,
             lexical_task,
+            anchor_task,
         )
         if not state.lexical and self._should_recall_lexical_fallback(state):
             state.lexical = await self._recall_lexical(state, routed=True)
@@ -632,6 +641,46 @@ class RetrievalPipeline:
                 "Exact identifier recall failed; using semantic candidates: {}", exc
             )
             return [], []
+
+    async def _recall_anchors(self, state: RetrievalState) -> list[SearchHit]:
+        """Definition chunks of the identifiers an issue-style request names.
+
+        A compound request mixes prose, tracebacks and code names; the names
+        it spells out are its strongest deterministic signal, exactly as they
+        are for a symbol request. Only identifiers declared in at most three
+        places qualify, the same ambiguity bound the related-definition
+        expansion uses, so a traceback frame called ``send`` anchors nothing.
+        """
+        evidence = state.evidence
+        if (
+            state.intent != QueryIntent.COMPOUND
+            or self.settings.compound_anchor_slots <= 0
+            or not self.settings.exact_enabled
+            or self.exact_store is None
+            or state.scope is None
+            or not state.scope.blob_names
+            or evidence is None
+            or not evidence.identifiers
+        ):
+            return []
+        try:
+            with state.stage("exact"):
+                definitions = await self.exact_store.find_definitions(
+                    identifiers=evidence.identifiers,
+                    scope=state.scope,
+                    max_per_identifier=3,
+                )
+        except Exception as exc:
+            logger.warning("Anchor definition recall failed: {}", exc)
+            return []
+        anchors: list[SearchHit] = []
+        seen: set[SearchHitKey] = set()
+        for definition in definitions:
+            key = search_hit_key(definition.hit)
+            if key not in seen:
+                seen.add(key)
+                anchors.append(definition.hit)
+        return anchors
 
     def _can_recall_lexical(self, state: RetrievalState) -> bool:
         evidence = state.evidence
@@ -805,6 +854,18 @@ class RetrievalPipeline:
                     state.lexical,
                 )
             hits = self._merge_exact_hits(state.intent, state.exact, hits)
+            if state.anchors:
+                # Anchored definitions must be in the window the head rules
+                # order; their own recall score is not comparable to RRF.
+                present = {search_hit_key(hit) for hit in hits}
+                hits = [
+                    *hits,
+                    *(
+                        hit
+                        for hit in state.anchors
+                        if search_hit_key(hit) not in present
+                    ),
+                ]
             boosts = dict(state.lookup_scores)
             for blob_name, score in state.path_scores.items():
                 boosts[blob_name] = max(score, boosts.get(blob_name, float("-inf")))
@@ -1014,8 +1075,9 @@ class RetrievalPipeline:
         hits = self._apply_source_priority(
             state.candidates, priority_factor=priority_factor, boosted=boosted
         )
+        await self._mark_header_chunks(state, hits)
         hits = self._prefer_source_head(state, hits, priority_factor)
-        structural_heads = self._structural_heads(state, hits)
+        structural_heads = self._structural_heads(state, hits, priority_factor)
         if state.audit is not None:
             state.audit.head_slots = len(structural_heads)
         # This optional floor belongs to recall, before model scores can enter the
@@ -1063,6 +1125,46 @@ class RetrievalPipeline:
             hits = self._prefer_source_head(state, hits, priority_factor)
         state.candidates = self._promote_heads(hits, structural_heads)
 
+    async def _mark_header_chunks(
+        self, state: RetrievalState, hits: Sequence[SearchHit]
+    ) -> None:
+        """Record which candidates are import-only file headers (one SQL lookup).
+
+        A chunk whose recorded symbol evidence is imports and nothing else is
+        the top of a file: ``use``/``import`` lines, a license comment, a
+        module docstring. It names every module the file touches, which is
+        why it sits close to architecture and flow questions in vector space,
+        and it implements none of them. Chunks with no evidence at all are
+        left alone: a script body or a config block may be the answer.
+        """
+        if state.header_keys is not None:
+            return
+        lookup = getattr(self.exact_store, "occurrence_kinds", None)
+        if (
+            not self.settings.head_skips_import_headers
+            or lookup is None
+            or state.scope is None
+            or state.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
+        ):
+            return
+        occurrences = tuple(
+            dict.fromkeys(
+                (hit.blob_name, hit.content_hash)
+                for hit in hits
+                if hit.blob_name and hit.content_hash
+            )
+        )
+        if not occurrences:
+            return
+        try:
+            kinds = await lookup(occurrences, state.scope)
+        except Exception as exc:
+            logger.warning("Occurrence lookup for head slots failed: {}", exc)
+            return
+        state.header_keys = frozenset(
+            key for key, seen in kinds.items() if seen and seen <= {IMPORT_KIND}
+        )
+
     def _prefer_source_head(
         self,
         state: RetrievalState,
@@ -1100,18 +1202,39 @@ class RetrievalPipeline:
                 search_hit_key(hit) for hit in (*state.exact, *state.lexical)
             }
 
-        def preferred(hit: SearchHit) -> bool:
+        def eligible(hit: SearchHit) -> bool:
             return (
-                priority_factor(hit.path) >= 1.0
                 # Root README intentionally keeps a neutral multiplicative
                 # prior, but it remains documentation and must not consume a
                 # slot reserved for implementation code.
-                and not _is_root_readme(hit.path)
+                not _is_root_readme(hit.path)
                 and hit.blob_name not in declaring_blobs
                 and (reference_keys is None or search_hit_key(hit) in reference_keys)
             )
 
-        head = [hit for hit in hits if preferred(hit)][:slots]
+        def is_header(hit: SearchHit) -> bool:
+            return (
+                state.header_keys is not None
+                and (hit.blob_name, hit.content_hash) in state.header_keys
+            )
+
+        source = [
+            hit for hit in hits if eligible(hit) and priority_factor(hit.path) >= 1.0
+        ]
+        head: list[SearchHit] = []
+        if reference_keys is None:
+            head = [hit for hit in source if not is_header(hit)][:slots]
+            if not head:
+                head = source[:slots]
+        elif source or not self.settings.reference_head_fallback:
+            head = source[:slots]
+        else:
+            # Use sites that exist only in tests, examples or package
+            # __init__ files are still deterministic use sites; the tiers
+            # keep source-like files ahead of test files within the head.
+            evidenced = [hit for hit in hits if eligible(hit)]
+            evidenced.sort(key=lambda hit: -priority_factor(hit.path))
+            head = evidenced[:slots]
         if not head:
             return hits
         head_keys = {search_hit_key(hit) for hit in head}
@@ -1121,13 +1244,24 @@ class RetrievalPipeline:
         self,
         state: RetrievalState,
         hits: Sequence[SearchHit],
+        priority_factor: Callable[[str], float] | None = None,
     ) -> tuple[SearchHitKey, ...]:
         """Bounded deterministic answers protected from score mixing.
 
         Up to three definitions cover overloads or duplicate declarations. A
         path request may legitimately match several files, so it reserves one
-        best chunk per SQL path match up to the final result count.
+        best chunk per SQL path match up to the final result count. A compound
+        request reserves a couple of slots for the definitions of the
+        unambiguous identifiers its text names, in source files only.
         """
+        if state.intent == QueryIntent.COMPOUND and state.anchors:
+            factor = priority_factor or self.priority_factor
+            anchor_keys = {search_hit_key(hit) for hit in state.anchors}
+            return tuple(
+                search_hit_key(hit)
+                for hit in hits
+                if search_hit_key(hit) in anchor_keys and factor(hit.path) >= 1.0
+            )[: self.settings.compound_anchor_slots]
         if state.intent == QueryIntent.SYMBOL and state.exact:
             exact_keys = {search_hit_key(hit) for hit in state.exact}
             # ``hits`` has already received source priority. Choose within the

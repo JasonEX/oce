@@ -7,7 +7,7 @@ import math
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
@@ -189,6 +189,69 @@ class SymbolSearchStore:
         definitions.sort(key=lambda item: (order[item.identifier], item.hit.path))
         return definitions
 
+    async def occurrence_kinds(
+        self,
+        occurrences: Sequence[tuple[str, str]],
+        scope: SearchScope,
+    ) -> dict[tuple[str, str], frozenset[str]]:
+        pairs = tuple(
+            dict.fromkeys(
+                (blob_name, content_hash)
+                for blob_name, content_hash in occurrences
+                if blob_name and content_hash
+            )
+        )
+        if not pairs or not scope.blob_names:
+            return {}
+
+        pair_predicate = or_(
+            *(
+                and_(
+                    SymbolOccurrenceModel.blob_name == blob_name,
+                    SymbolOccurrenceModel.content_hash == content_hash,
+                )
+                for blob_name, content_hash in pairs
+            )
+        )
+
+        def build(predicate: ColumnElement[bool]):
+            return (
+                select(
+                    SymbolOccurrenceModel.blob_name,
+                    SymbolOccurrenceModel.content_hash,
+                    SymbolOccurrenceModel.kind,
+                )
+                .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
+                .join(
+                    BlobChunkModel,
+                    and_(
+                        BlobChunkModel.blob_name == SymbolOccurrenceModel.blob_name,
+                        BlobChunkModel.content_hash
+                        == SymbolOccurrenceModel.content_hash,
+                    ),
+                )
+                .where(
+                    pair_predicate,
+                    BlobModel.status == BlobStatus.READY.value,
+                    predicate,
+                )
+                .distinct()
+            )
+
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    rows = await run_scoped(
+                        session, scope, SymbolOccurrenceModel.blob_name, build
+                    )
+        except TimeoutError:
+            return {}
+        kinds: dict[tuple[str, str], set[str]] = {}
+        for blob_name, content_hash, kind in rows:
+            key = (str(blob_name), str(content_hash))
+            kinds.setdefault(key, set()).add(str(kind))
+        return {key: frozenset(value) for key, value in kinds.items()}
+
     @staticmethod
     async def _definition_counts(
         session: AsyncSession,
@@ -248,7 +311,27 @@ class SymbolSearchStore:
 
         hits = list(best.values())
         hits.sort(key=lambda hit: (-hit.score, hit.path, hit.start_line))
-        return hits[:top_k]
+        # Usage evidence is diversified per file before the window closes: a
+        # test module that calls the symbol in forty chunks must not push the
+        # one import in every other file past ``top_k``. Definitions keep
+        # their order so overloads in one file stay together.
+        definition_keys = {
+            (row.blob_name, row.content_hash, row.start_line, row.end_line)
+            for row in rows
+            if row.kind in DEFINITION_KINDS
+        }
+        rank_in_file: dict[str, int] = {}
+        ordered: list[tuple[int, int, SearchHit]] = []
+        for index, hit in enumerate(hits):
+            key = (hit.blob_name, hit.content_hash, hit.start_line, hit.end_line)
+            if key in definition_keys:
+                ordered.append((0, index, hit))
+                continue
+            rank = rank_in_file.get(hit.blob_name, 0)
+            rank_in_file[hit.blob_name] = rank + 1
+            ordered.append((rank, index, hit))
+        ordered.sort(key=lambda item: (item[0], item[1]))
+        return [item[2] for item in ordered][:top_k]
 
     @staticmethod
     def _row_hit(row: Row[Any], score: float) -> SearchHit:

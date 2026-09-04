@@ -999,3 +999,195 @@ async def test_empty_scope_short_circuits(query):
         settings=_settings(),
     )
     assert await pipe.search(query, SearchScope(frozenset())) == []
+
+
+class TestHeadEvidence:
+    """Head slots follow structural facts: a declaration in the chunk, a use
+    site with occurrence evidence, or a definition the request names."""
+
+    class DefiningStore(FakeExactSearchStore):
+        def __init__(self, defining, definitions=(), headers=()):
+            super().__init__()
+            self.defining = frozenset(defining)
+            self.headers = frozenset(headers)
+            self.definitions = list(definitions)
+            self.asked: list[list[str]] = []
+
+        async def occurrence_kinds(self, occurrences, scope):
+            self.asked.append([content_hash for _, content_hash in occurrences])
+            kinds = {}
+            for blob_name, content_hash in occurrences:
+                if content_hash in self.defining:
+                    kinds[(blob_name, content_hash)] = frozenset(
+                        {"definition", "import"}
+                    )
+                elif content_hash in self.headers:
+                    kinds[(blob_name, content_hash)] = frozenset({"import"})
+            return kinds
+
+        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+            return [d for d in self.definitions if d.identifier in identifiers]
+
+    QUERY = "How does the router match a request path against registered routes?"
+
+    async def test_import_only_chunks_yield_the_head_to_declaring_chunks(self):
+        header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
+        impl = _hit(
+            "src/router/path.rs", 0.9, blob=BLOB_B, hash_="h-impl", content="fn m()"
+        )
+        docs = _hit("docs/routing.md", 0.85, blob=BLOB_C, hash_="h-docs")
+        store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, impl, docs]),
+            exact_store=store,
+            settings=_settings(
+                related_definitions_enabled=False, head_skips_import_headers=True
+            ),
+        )
+        hits = await pipe.search(
+            self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
+        )
+        assert [hit.path for hit in hits] == [
+            "src/router/path.rs",
+            "src/router/mod.rs",
+            "docs/routing.md",
+        ]
+        assert store.asked and set(store.asked[0]) == {"h-header", "h-impl", "h-docs"}
+
+    async def test_chunks_without_evidence_keep_their_slot(self):
+        # A script body or a config block records no symbols; only chunks
+        # whose sole evidence is imports are headers.
+        header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
+        script = _hit("bin/run", 0.9, blob=BLOB_B, hash_="h-script")
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, script]),
+            exact_store=self.DefiningStore(defining=set(), headers={"h-header"}),
+            settings=_settings(
+                related_definitions_enabled=False, head_skips_import_headers=True
+            ),
+        )
+        hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
+        assert [hit.path for hit in hits] == ["bin/run", "src/router/mod.rs"]
+
+    async def test_header_rule_is_off_by_default(self):
+        header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
+        impl = _hit("src/router/path.rs", 0.9, blob=BLOB_B, hash_="h-impl")
+        store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, impl]),
+            exact_store=store,
+            settings=_settings(related_definitions_enabled=False),
+        )
+        hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
+        assert [hit.path for hit in hits] == ["src/router/mod.rs", "src/router/path.rs"]
+        assert store.asked == []
+
+    async def test_reference_head_falls_back_to_evidenced_test_use_sites(self):
+        readme = _hit("README.md", 0.99, blob=BLOB_C, content="acquire a connection")
+        definition = _hit("src/pool.py", 0.95, blob=BLOB_A, content="def acquire():")
+        test_use = _hit(
+            "tests/test_pool.py", 0.9, blob=BLOB_B, content="pool.acquire()"
+        )
+
+        class ExactStore(FakeExactSearchStore):
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                self.kinds_seen.append(kinds)
+                if kinds is None:
+                    return [definition, test_use]
+                return [definition]
+
+        def pipe(**settings):
+            return RetrievalPipeline(
+                embedder=FakeEmbedder(),
+                store=FakeSearchStore([readme, definition, test_use]),
+                exact_store=ExactStore(),
+                settings=_settings(related_definitions_enabled=False, **settings),
+            )
+
+        scope = SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
+        hits = await pipe().search("Where is `acquire` used?", scope)
+        # The only evidenced use site leads even though it is a test; the
+        # README has no occurrence evidence and the declaration is not a use.
+        assert [hit.path for hit in hits][:2] == ["tests/test_pool.py", "README.md"]
+
+        hits = await pipe(reference_head_fallback=False).search(
+            "Where is `acquire` used?", scope
+        )
+        assert hits[0].path == "README.md"
+
+    async def test_compound_request_anchors_the_named_definition(self):
+        issue = (
+            "Request with binary payload fails due to calling to_native_string\n\n"
+            "```\nimport requests\n"
+            'requests.put("http://httpbin.org/put", data=u"ööö".encode("utf-8"))\n'
+            "```\n\nThis works with 2.8.1, but not with 2.9.\n"
+        )
+        header = _hit(
+            "src/requests/auth.py",
+            0.95,
+            blob=BLOB_A,
+            hash_="h-auth",
+            content="from .utils import to_native_string",
+        )
+        model = _hit(
+            "src/requests/models.py",
+            0.9,
+            blob=BLOB_B,
+            hash_="h-model",
+            content="def prepare_body",
+        )
+        utils = _hit(
+            "src/requests/utils.py",
+            0.2,
+            blob=BLOB_C,
+            hash_="h-utils",
+            content="def to_native_string(string):",
+        )
+        test_def = _hit(
+            "tests/test_utils.py",
+            0.3,
+            blob="d" * 64,
+            hash_="h-test",
+            content="def to_native_string():",
+        )
+        anchors = [
+            DefinitionHit("to_native_string", "definition", test_def, 1, 1),
+            DefinitionHit("to_native_string", "definition", utils, 1, 1),
+        ]
+        store = self.DefiningStore(
+            defining={"h-model", "h-utils", "h-test"},
+            definitions=anchors,
+            headers={"h-auth"},
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, model]),
+            exact_store=store,
+            settings=_settings(
+                related_definitions_enabled=False,
+                compound_anchor_slots=2,
+                head_skips_import_headers=True,
+            ),
+        )
+        scope = SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C, "d" * 64}))
+        hits = await pipe.search(issue, scope)
+        # The named identifier's source definition leads even though dense
+        # recall never returned it; the test-file definition takes no slot.
+        assert [hit.path for hit in hits][:2] == [
+            "src/requests/utils.py",
+            "src/requests/models.py",
+        ]
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, model]),
+            exact_store=store,
+            settings=_settings(
+                related_definitions_enabled=False, compound_anchor_slots=0
+            ),
+        )
+        hits = await pipe.search(issue, scope)
+        assert "src/requests/utils.py" not in [hit.path for hit in hits][:1]

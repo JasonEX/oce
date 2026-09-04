@@ -13,8 +13,10 @@ INDEX_SCHEMA_VERSION = 3
 CHUNKER_VERSION = 4
 # 2: embedding input = File + Context header + code.
 EMBEDDING_PIPELINE_VERSION = 2
-# 2: tree-sitter definitions/imports with real spans; regex fallback + endpoints.
-SYMBOL_EXTRACTION_VERSION = 3
+# 3: call sites. 4: CommonJS require aliases are imports; Rust trait impls,
+# let bindings and TS/JS re-exports are not definitions; prose files declare
+# nothing.
+SYMBOL_EXTRACTION_VERSION = 4
 PATH_DOCUMENT_VERSION = 1
 SOURCE_ADMISSION_VERSION = 1
 LEXICAL_INDEX_VERSION = 1

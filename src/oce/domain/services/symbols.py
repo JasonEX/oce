@@ -19,6 +19,7 @@ SymbolKind = Literal["endpoint", "definition", "import", "call"]
 
 DEFINITION_KINDS: tuple[str, ...] = ("endpoint", "definition")
 CALL_KIND = "call"
+IMPORT_KIND = "import"
 
 
 @dataclass(frozen=True)

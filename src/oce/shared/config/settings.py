@@ -419,6 +419,26 @@ class RetrievalSettings(BaseSettings):
     source_head_slots: int = Field(
         default=3, ge=0, le=10, description="语义查询保留给源码文件的头部槽位数"
     )
+    # 只含 import 证据的片段是文件头（use/import 行、license 注释、模块 docstring）：
+    # 它点名了文件接触的所有模块，所以在向量空间里离"架构/流程"措辞很近，却不
+    # 实现其中任何一个。这类片段让出头部槽位；没有任何符号证据的片段不受影响。
+    # 2026-09-04 评测：三套 bench 上净效果为零（语义 nDCG@10 -0.1，两条 overview /
+    # call-chain 用相关度更低文件的正文换掉了高相关文件的头部片段）。默认关闭。
+    head_skips_import_headers: bool = Field(
+        default=False, description="源码头部槽位是否跳过只含 import 证据的文件头片段"
+    )
+    # reference 查询：有 exact/lexical 使用证据的片段按先验分级填充头部槽位；
+    # 使用点全在测试/示例/__init__ 里时，仍胜过没有证据的文档。
+    reference_head_fallback: bool = Field(
+        default=True, description="reference 头部槽位在源码层为空时是否按先验分级回退"
+    )
+    # compound（issue 文本）查询：正文点名且在工作集内定义不超过 3 处的标识符，
+    # 其定义片段占据受保护的头部槽位；0 关闭。
+    # 在 13 条 issue 上未观察到收益（一条因锚定 MVCE 里的 setup 调用而回退），
+    # 默认关闭，保留为消融开关。
+    compound_anchor_slots: int = Field(
+        default=0, ge=0, le=5, description="compound 查询保留给点名标识符定义的槽位数"
+    )
 
     # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大
     # （首次全量同步）时先验没有区分度，直接跳过。
