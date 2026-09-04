@@ -47,6 +47,7 @@ class QueryCacheStats:
 @dataclass(frozen=True)
 class RetrievalRuntimeProfile:
     embedding_enabled: bool = True
+    embedding_query_char_limit: int = 0
     semantic_chunking_enabled: bool = True
     exact_enabled: bool = True
     path_index_enabled: bool = True
@@ -57,7 +58,12 @@ class RetrievalRuntimeProfile:
     path_lookup_enabled: bool = True
     merge_adjacent_enabled: bool = True
     related_definitions_enabled: bool = True
-    api_rerank_enabled: bool = False
+    rerank_enabled: bool = False
+    rerank_provider: str = "none"
+    rerank_candidate_limit: int = 0
+    rerank_query_char_limit: int = 0
+    rerank_document_char_limit: int = 0
+    rerank_token_limit: int = 0
     rerank_policy: str = "adaptive"
     llm_rerank_enabled: bool = False
     llm_rerank_policy: str = "adaptive"

@@ -7,6 +7,10 @@
 
 ### Added
 
+- **symbols**: record call sites (`kind=call`) from tree-sitter for every grammar, extract Bash functions and JavaScript prototype/CommonJS assignments, and retry a transiently unavailable grammar instead of pinning the regex fallback for the process
+- **rerank**: add an in-process ONNX cross-encoder provider (`RERANK_PROVIDER=local`, `uv sync --extra local-rerank`) so reranking can run without sending queries or source to a model endpoint
+- **embedding**: cap the query text sent for embedding (`EMBED_MAX_QUERY_CHARS`, default 3,000 characters)
+- **evaluation**: extend the curated black-box corpus to Go, C, C#, JavaScript, Java, and Bash (13 snapshots, 40 anchors, 39 reviewed semantic cases) with per-language report columns
 - **retrieval**: add SQL lexical recall (SQLite FTS5 / PostgreSQL tsvector) over sub-word chunk terms, fused by rank with dense results
 - **retrieval**: recover traceback frames, error phrases, and filenames from requests as exact path, symbol, and phrase evidence
 - **retrieval**: append signature excerpts of definitions referenced by the top results and merge touching spans of one file
@@ -19,11 +23,15 @@
 
 ### Fixed
 
-- **milvus**: flush Milvus Lite after every upsert and delete so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
+- **milvus**: flush Milvus Lite before the first search that follows a write so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
+- **indexing**: embed pending chunks in pages of 256 instead of 64 so the embedder's concurrent batches are actually used during synchronous uploads (about 14 chunks/s before)
 - **persistence**: open personal-mode SQLite in WAL mode with a busy timeout, so the metrics sink and concurrent readers no longer fail with "database is locked" during batch uploads
 
 ### Changed
 
+- **retrieval**: classify call-chain requests by their verb even without a symbol anchor, treat dotted qualified names (`Context.ShouldBindJSON`) as symbols rather than file names, decide overview before path, and only let file/config nouns imply a path request in short questions
+- **retrieval**: neutralize the source prior only for questions that ask for tests, and demote `samples/` like `examples/`
+- **retrieval**: damp exact-symbol scores by how many places declare a name, not by how often it is used
 - **retrieval**: restructure the pipeline as an explicit `RetrievalState` machine (route → plan → recall → fuse → prior → rerank → select → expand)
 - **retrieval**: route lexical recall to queries that benefit from it, preserve exact symbol/path answers in fixed head slots, give focused queries a smaller context budget, and constrain related definitions to relationship-oriented queries and the remaining context budget
 - **rerank**: cap the query text sent to the dedicated reranker (`RERANK_MAX_QUERY_CHARS`, default 2,400) so long issue texts no longer multiply reranker latency, and reapply the source and reference head slots after model reranking

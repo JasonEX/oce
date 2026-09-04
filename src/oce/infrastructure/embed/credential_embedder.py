@@ -30,6 +30,7 @@ class EmbeddingRuntimeConfig:
     timeout_seconds: float
     proxy: str | None
     query_instruction: str
+    max_query_chars: int = 0
     credential_id: int = 0
 
     def normalized_endpoint(self) -> str:
@@ -112,6 +113,7 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
             timeout=config.timeout_seconds,
             proxy=config.proxy,
             query_instruction=config.query_instruction,
+            max_query_chars=config.max_query_chars,
             credential_id=config.credential_id,
             on_usage=self._on_usage,
         )
@@ -142,6 +144,7 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
                 timeout_seconds=fb.timeout_seconds,
                 proxy=fb.proxy,
                 query_instruction=fb.query_instruction,
+                max_query_chars=fb.max_query_chars,
             )
         else:
             # kind 专属参数列可能为空（如仅填 endpoint/model 的最简嵌入行），逐字段回落。
@@ -163,6 +166,7 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
                 timeout_seconds=float(credential.timeout_seconds),
                 proxy=fb.proxy,
                 query_instruction=fb.query_instruction,
+                max_query_chars=fb.max_query_chars,
                 credential_id=credential.id,
             )
 

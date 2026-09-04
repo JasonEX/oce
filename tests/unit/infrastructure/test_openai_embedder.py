@@ -119,3 +119,35 @@ async def test_embed_reports_usage_with_model_and_credential_id():
 
     # 假 client 的 usage.total_tokens = len("abc") = 3；embed 无 completion，记 0
     assert captured == [(9, "embed", "test-model", 3, 0)]
+
+
+async def test_query_embedding_input_is_capped_before_the_instruction():
+    client = _FakeClient()
+    embedder = OpenAIEmbedder(
+        client,
+        "test-model",
+        2,
+        max_batch_size=32,
+        max_concurrency=1,
+        max_batch_chars=32_000,
+        max_input_chars=8_000,
+        input_overlap_chars=0,
+        query_instruction="Instruct: ",
+        max_query_chars=20,
+    )
+    await embedder.embed_query("a" * 100)
+    sent = client.embeddings.calls[0][0]
+    assert sent == "Instruct: " + "a" * 20
+
+    unlimited = OpenAIEmbedder(
+        client,
+        "test-model",
+        2,
+        max_batch_size=32,
+        max_concurrency=1,
+        max_batch_chars=32_000,
+        max_input_chars=8_000,
+        input_overlap_chars=0,
+    )
+    await unlimited.embed_query("b" * 100)
+    assert client.embeddings.calls[1][0] == "b" * 100

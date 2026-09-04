@@ -250,3 +250,41 @@ class TestBilingualSymmetry:
     def test_english_type_keyword_not_substring_false_positive(self):
         """英文类型词按词边界匹配，不应从 'structure' 误抽出标识符"""
         assert extract_code_identifiers("Explain the Data structure here") == ()
+
+
+class TestDottedQualifiedNames:
+    def test_dotted_camel_case_is_a_symbol_not_a_filename(self):
+        query = (
+            "Trace gin's JSON request binding from Context.ShouldBindJSON through "
+            "the binding package's JSON binding into struct validation."
+        )
+        assert "ShouldBindJSON" in extract_code_identifiers(query)
+        assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
+
+    def test_plain_dotted_words_and_domains_are_not_symbols(self):
+        assert extract_code_identifiers("see example.com and Foo.bar") == ()
+        assert extract_code_identifiers("Session.request sends it") == ()
+
+    def test_real_filenames_still_route_to_path(self):
+        assert classify_query_intent("where is the tsconfig.json file?") == (
+            QueryIntent.PATH
+        )
+        assert classify_query_intent("lib.rs 在哪里") == QueryIntent.PATH
+
+    def test_long_engineering_extensions_are_files_not_qualified_names(self):
+        for query in (
+            "where is build.csproj?",
+            "where is settings.gradle?",
+            "where is application.properties?",
+        ):
+            assert classify_query_intent(query) == QueryIntent.PATH
+
+
+def test_reviewed_semantic_queries_use_their_declared_routing_intent():
+    from benchmarks.blackbox.semantic_queries import DEFAULT_CASES, load_manifest
+
+    assert {
+        case.id: classify_query_intent(case.query).value
+        for case in load_manifest(DEFAULT_CASES)
+        if classify_query_intent(case.query).value != case.kind
+    } == {}

@@ -272,5 +272,6 @@ async def test_local_path_search_offloads_sync_client(client_class):
             allowed_blob_names=[blob_name],
         )
 
-    to_thread.assert_awaited_once()
+    assert to_thread.await_count == 2
+    milvus.flush.assert_called_once_with(client.collection_name)
     milvus.search.assert_called_once()

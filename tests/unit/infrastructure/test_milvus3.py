@@ -1,5 +1,6 @@
 """Milvus 3.0 内容 collection：客户端、Schema 与 SearchStore。"""
 
+import asyncio
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
@@ -178,13 +179,53 @@ class TestMilvus3Client:
         client_class.return_value = mock_client
         client = Milvus3Client(settings, dense_dim=DIM)
 
+        mock_client.search.return_value = [[]]
+        # A fresh process may inherit unsealed rows from a previous run, so the
+        # first search after start flushes once; a second search does not.
+        await client.search([0.1] * DIM, top_k=1)
+        await client.search([0.1] * DIM, top_k=1)
+        mock_client.flush.assert_called_once_with("c")
+
         await client.insert([_record(1)])
         await client.delete_by_blob_names(["a" * 64])
+        # Writes only mark the collection unsealed; a large sync must not pay
+        # for a flush per batch.
+        mock_client.flush.assert_called_once_with("c")
 
-        # Fresh rows live in an unindexed growing segment on Milvus Lite;
-        # flushing after each write keeps scoped searches on the HNSW path.
+        # Fresh rows live in an unindexed growing segment on Milvus Lite; the
+        # first search after a write seals them once, later searches do not.
+        await client.search([0.1] * DIM, top_k=1)
+        await client.search([0.1] * DIM, top_k=1)
         assert mock_client.flush.call_count == 2
-        mock_client.flush.assert_called_with("c")
+
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_local_write_during_flush_remains_unsealed(self, client_class):
+        settings = MilvusSettings(endpoint="./oce_milvus.db", collection_name="c")
+        client_class.return_value = Mock()
+        client = Milvus3Client(settings, dense_dim=DIM)
+        flush_started = asyncio.Event()
+        release_flush = asyncio.Event()
+        flushes = 0
+
+        async def call(method_name, *args, **kwargs):
+            nonlocal flushes
+            assert method_name == "flush"
+            flushes += 1
+            if flushes == 1:
+                flush_started.set()
+                await release_flush.wait()
+
+        client._call = call
+        first = asyncio.create_task(client._flush_if_unsealed())
+        await flush_started.wait()
+        client._mark_local_segments_unsealed()
+        release_flush.set()
+        await first
+
+        assert client._unsealed is True
+        await client._flush_if_unsealed()
+        assert flushes == 2
+        assert client._unsealed is False
 
     @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
     async def test_insert_limits_content_by_utf8_bytes(self, client_class, settings):

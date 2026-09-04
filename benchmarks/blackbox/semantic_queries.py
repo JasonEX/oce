@@ -17,6 +17,9 @@ from statistics import fmean
 from typing import Literal, cast
 
 from benchmarks.blackbox.corpus import (
+    LANGUAGE_LABELS,
+    LANGUAGES,
+    CodeLanguage,
     RepositorySnapshot,
     load_corpus,
     prepare_snapshots,
@@ -330,7 +333,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             language: aggregate(
                 [result for result in results if result["code_language"] == language]
             )
-            for language in ("python", "typescript", "rust")
+            for language in _present_languages(results)
         },
         "cases": results,
     }
@@ -351,9 +354,21 @@ def _model_calls(summary: dict[str, object], kind: str) -> str:
     return str(int(usage[kind].get("calls", 0)))
 
 
+def _present_languages(results: Sequence[dict[str, object]]) -> list[CodeLanguage]:
+    present = {str(result.get("code_language", "")) for result in results}
+    return [language for language in LANGUAGES if language in present]
+
+
+def _reported_languages(report: dict[str, object]) -> list[CodeLanguage]:
+    by_language = report.get("by_code_language")
+    present = set(by_language) if isinstance(by_language, dict) else set()
+    return [language for language in LANGUAGES if language in present]
+
+
 def compare(paths: Iterable[Path]) -> str:
     loaded = [(path, json.loads(path.read_text(encoding="utf-8"))) for path in paths]
     ensure_comparable([value for _path, value in loaded], suite="semantic_queries")
+    languages = _reported_languages(loaded[0][1])
 
     headers = (
         "Variant",
@@ -366,9 +381,7 @@ def compare(paths: Iterable[Path]) -> str:
         "Feature nDCG",
         "Overview nDCG",
         "Call-chain nDCG",
-        "Python nDCG",
-        "TS nDCG",
-        "Rust nDCG",
+        *(f"{LANGUAGE_LABELS[language]} nDCG" for language in languages),
         "Chars",
         "p50 ms",
         "p95 ms",
@@ -392,9 +405,10 @@ def compare(paths: Iterable[Path]) -> str:
                 _percent(by_kind["feature"]["ndcg_at_10"]),
                 _percent(by_kind["overview"]["ndcg_at_10"]),
                 _percent(by_kind["call_chain"]["ndcg_at_10"]),
-                _percent(by_language["python"]["ndcg_at_10"]),
-                _percent(by_language["typescript"]["ndcg_at_10"]),
-                _percent(by_language["rust"]["ndcg_at_10"]),
+                *(
+                    _percent(by_language[language]["ndcg_at_10"])
+                    for language in languages
+                ),
                 _number(summary["mean_returned_chars"]),
                 _number(summary["p50_elapsed_ms"]),
                 _number(summary["p95_elapsed_ms"]),

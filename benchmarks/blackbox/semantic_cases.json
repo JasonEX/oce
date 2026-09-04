@@ -8,9 +8,21 @@
       "query": "How does Flask defer blueprint setup operations and apply them when a blueprint is registered on an application?",
       "rationale": "Blueprint owns deferred setup and Flask is the application-side registration entry point.",
       "relevant_paths": [
-        {"path": "src/flask/blueprints.py", "grade": 3, "role": "implementation"},
-        {"path": "src/flask/app.py", "grade": 2, "role": "entry"},
-        {"path": "src/flask/scaffold.py", "grade": 1, "role": "shared API"}
+        {
+          "path": "src/flask/blueprints.py",
+          "grade": 3,
+          "role": "implementation"
+        },
+        {
+          "path": "src/flask/app.py",
+          "grade": 2,
+          "role": "entry"
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "grade": 1,
+          "role": "shared API"
+        }
       ]
     },
     {
@@ -20,9 +32,21 @@
       "query": "Explain the Flask request context lifecycle from a WSGI request through context push, dispatch, teardown, and pop.",
       "rationale": "The lifecycle is split between the WSGI application flow and RequestContext state management.",
       "relevant_paths": [
-        {"path": "src/flask/app.py", "grade": 3, "role": "request lifecycle"},
-        {"path": "src/flask/ctx.py", "grade": 3, "role": "context lifecycle"},
-        {"path": "src/flask/globals.py", "grade": 1, "role": "context access"}
+        {
+          "path": "src/flask/app.py",
+          "grade": 3,
+          "role": "request lifecycle"
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "grade": 3,
+          "role": "context lifecycle"
+        },
+        {
+          "path": "src/flask/globals.py",
+          "grade": 1,
+          "role": "context access"
+        }
       ]
     },
     {
@@ -32,9 +56,21 @@
       "query": "Trace how Flask turns a WSGI environ into a response, from wsgi_app through full_dispatch_request and response finalization.",
       "rationale": "The main call chain is in Flask.app, with request-context construction in ctx.",
       "relevant_paths": [
-        {"path": "src/flask/app.py", "grade": 3, "role": "call chain"},
-        {"path": "src/flask/ctx.py", "grade": 2, "role": "request context"},
-        {"path": "src/flask/wrappers.py", "grade": 1, "role": "request and response types"}
+        {
+          "path": "src/flask/app.py",
+          "grade": 3,
+          "role": "call chain"
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "grade": 2,
+          "role": "request context"
+        },
+        {
+          "path": "src/flask/wrappers.py",
+          "grade": 1,
+          "role": "request and response types"
+        }
       ]
     },
     {
@@ -44,9 +80,21 @@
       "query": "How does Requests follow redirects while preserving cookies and rebuilding request state between responses?",
       "rationale": "Redirect orchestration is in sessions and delegates cookie and prepared-request state to their owning modules.",
       "relevant_paths": [
-        {"path": "requests/sessions.py", "grade": 3, "role": "redirect implementation"},
-        {"path": "requests/cookies.py", "grade": 2, "role": "cookie state"},
-        {"path": "requests/models.py", "grade": 1, "role": "prepared requests"}
+        {
+          "path": "requests/sessions.py",
+          "grade": 3,
+          "role": "redirect implementation"
+        },
+        {
+          "path": "requests/cookies.py",
+          "grade": 2,
+          "role": "cookie state"
+        },
+        {
+          "path": "requests/models.py",
+          "grade": 1,
+          "role": "prepared requests"
+        }
       ]
     },
     {
@@ -56,10 +104,26 @@
       "query": "Which modules own the high-level API, session orchestration, prepared request model, and HTTP transport in Requests?",
       "rationale": "The public request flow crosses four modules with distinct responsibilities.",
       "relevant_paths": [
-        {"path": "requests/api.py", "grade": 3, "role": "public API"},
-        {"path": "requests/sessions.py", "grade": 3, "role": "orchestration"},
-        {"path": "requests/models.py", "grade": 2, "role": "request model"},
-        {"path": "requests/adapters.py", "grade": 3, "role": "transport"}
+        {
+          "path": "requests/api.py",
+          "grade": 3,
+          "role": "public API"
+        },
+        {
+          "path": "requests/sessions.py",
+          "grade": 3,
+          "role": "orchestration"
+        },
+        {
+          "path": "requests/models.py",
+          "grade": 2,
+          "role": "request model"
+        },
+        {
+          "path": "requests/adapters.py",
+          "grade": 3,
+          "role": "transport"
+        }
       ]
     },
     {
@@ -69,10 +133,26 @@
       "query": "Trace requests.request through Session.request, request preparation, Session.send, and HTTPAdapter.send.",
       "rationale": "These are the concrete entry, preparation, orchestration, and transport steps.",
       "relevant_paths": [
-        {"path": "requests/api.py", "grade": 3, "role": "entry"},
-        {"path": "requests/sessions.py", "grade": 3, "role": "prepare and send"},
-        {"path": "requests/models.py", "grade": 2, "role": "prepared request"},
-        {"path": "requests/adapters.py", "grade": 3, "role": "network send"}
+        {
+          "path": "requests/api.py",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "requests/sessions.py",
+          "grade": 3,
+          "role": "prepare and send"
+        },
+        {
+          "path": "requests/models.py",
+          "grade": 2,
+          "role": "prepared request"
+        },
+        {
+          "path": "requests/adapters.py",
+          "grade": 3,
+          "role": "network send"
+        }
       ]
     },
     {
@@ -82,9 +162,21 @@
       "query": "How does pytest resolve a requested fixture value and enforce fixture scope and caching?",
       "rationale": "FixtureRequest and fixture definitions own lookup and caching, while scope is modeled separately.",
       "relevant_paths": [
-        {"path": "src/_pytest/fixtures.py", "grade": 3, "role": "implementation"},
-        {"path": "src/_pytest/scope.py", "grade": 2, "role": "scope model"},
-        {"path": "src/_pytest/nodes.py", "grade": 1, "role": "request nodes"}
+        {
+          "path": "src/_pytest/fixtures.py",
+          "grade": 3,
+          "role": "implementation"
+        },
+        {
+          "path": "src/_pytest/scope.py",
+          "grade": 2,
+          "role": "scope model"
+        },
+        {
+          "path": "src/_pytest/nodes.py",
+          "grade": 1,
+          "role": "request nodes"
+        }
       ]
     },
     {
@@ -94,9 +186,21 @@
       "query": "Explain how pytest builds configuration, loads plugins, creates a session, and collects Python tests.",
       "rationale": "Configuration, session collection, and Python collectors are separate architectural owners.",
       "relevant_paths": [
-        {"path": "src/_pytest/config/__init__.py", "grade": 3, "role": "configuration and plugins"},
-        {"path": "src/_pytest/main.py", "grade": 3, "role": "session and collection"},
-        {"path": "src/_pytest/python.py", "grade": 2, "role": "Python collection"}
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "grade": 3,
+          "role": "configuration and plugins"
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "grade": 3,
+          "role": "session and collection"
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "grade": 2,
+          "role": "Python collection"
+        }
       ]
     },
     {
@@ -106,9 +210,21 @@
       "query": "Trace pytest.main from configuration preparation through wrap_session, collection, and runtest protocol execution.",
       "rationale": "The chain crosses public configuration entry points, the session loop, and test execution.",
       "relevant_paths": [
-        {"path": "src/_pytest/config/__init__.py", "grade": 3, "role": "entry and configuration"},
-        {"path": "src/_pytest/main.py", "grade": 3, "role": "session and collection"},
-        {"path": "src/_pytest/runner.py", "grade": 2, "role": "test execution"}
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "grade": 3,
+          "role": "entry and configuration"
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "grade": 3,
+          "role": "session and collection"
+        },
+        {
+          "path": "src/_pytest/runner.py",
+          "grade": 2,
+          "role": "test execution"
+        }
       ]
     },
     {
@@ -118,9 +234,21 @@
       "query": "How does Pylint register a checker and make that checker's message definitions available for enable, disable, and emission?",
       "rationale": "PyLinter registers checkers, the checker base declares messages, and the message store indexes definitions.",
       "relevant_paths": [
-        {"path": "pylint/lint/pylinter.py", "grade": 3, "role": "checker registration and emission"},
-        {"path": "pylint/checkers/base_checker.py", "grade": 2, "role": "checker contract"},
-        {"path": "pylint/message/message_definition_store.py", "grade": 3, "role": "message registration"}
+        {
+          "path": "pylint/lint/pylinter.py",
+          "grade": 3,
+          "role": "checker registration and emission"
+        },
+        {
+          "path": "pylint/checkers/base_checker.py",
+          "grade": 2,
+          "role": "checker contract"
+        },
+        {
+          "path": "pylint/message/message_definition_store.py",
+          "grade": 3,
+          "role": "message registration"
+        }
       ]
     },
     {
@@ -130,9 +258,21 @@
       "query": "Explain the Pylint command-line architecture from argument and configuration initialization to plugin loading and lint execution.",
       "rationale": "CLI setup, configuration initialization, and lint orchestration have distinct owners.",
       "relevant_paths": [
-        {"path": "pylint/lint/run.py", "grade": 3, "role": "CLI orchestration"},
-        {"path": "pylint/config/config_initialization.py", "grade": 3, "role": "configuration"},
-        {"path": "pylint/lint/pylinter.py", "grade": 2, "role": "lint engine"}
+        {
+          "path": "pylint/lint/run.py",
+          "grade": 3,
+          "role": "CLI orchestration"
+        },
+        {
+          "path": "pylint/config/config_initialization.py",
+          "grade": 3,
+          "role": "configuration"
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "grade": 2,
+          "role": "lint engine"
+        }
       ]
     },
     {
@@ -142,9 +282,21 @@
       "query": "Trace Pylint's Run command through configuration initialization into PyLinter.check and per-module checker execution.",
       "rationale": "The concrete chain starts in Run, initializes configuration, and enters PyLinter's module pipeline.",
       "relevant_paths": [
-        {"path": "pylint/lint/run.py", "grade": 3, "role": "entry"},
-        {"path": "pylint/config/config_initialization.py", "grade": 2, "role": "configuration"},
-        {"path": "pylint/lint/pylinter.py", "grade": 3, "role": "check execution"}
+        {
+          "path": "pylint/lint/run.py",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "pylint/config/config_initialization.py",
+          "grade": 2,
+          "role": "configuration"
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "grade": 3,
+          "role": "check execution"
+        }
       ]
     },
     {
@@ -154,9 +306,21 @@
       "query": "How does xarray combine multiple datasets by coordinate order, concatenate compatible groups, and merge the result?",
       "rationale": "combine_by_coords coordinates the feature and delegates concatenation and merge semantics.",
       "relevant_paths": [
-        {"path": "xarray/core/combine.py", "grade": 3, "role": "feature orchestration"},
-        {"path": "xarray/core/concat.py", "grade": 2, "role": "concatenation"},
-        {"path": "xarray/core/merge.py", "grade": 2, "role": "merge semantics"}
+        {
+          "path": "xarray/core/combine.py",
+          "grade": 3,
+          "role": "feature orchestration"
+        },
+        {
+          "path": "xarray/core/concat.py",
+          "grade": 2,
+          "role": "concatenation"
+        },
+        {
+          "path": "xarray/core/merge.py",
+          "grade": 2,
+          "role": "merge semantics"
+        }
       ]
     },
     {
@@ -166,10 +330,26 @@
       "query": "Explain the xarray labeled indexing architecture across Dataset, DataArray, index objects, and low-level index adapters.",
       "rationale": "Public containers delegate label resolution to index models and low-level indexing adapters.",
       "relevant_paths": [
-        {"path": "xarray/core/dataset.py", "grade": 2, "role": "Dataset API"},
-        {"path": "xarray/core/dataarray.py", "grade": 2, "role": "DataArray API"},
-        {"path": "xarray/core/indexes.py", "grade": 3, "role": "label indexes"},
-        {"path": "xarray/core/indexing.py", "grade": 3, "role": "index adapters"}
+        {
+          "path": "xarray/core/dataset.py",
+          "grade": 2,
+          "role": "Dataset API"
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "grade": 2,
+          "role": "DataArray API"
+        },
+        {
+          "path": "xarray/core/indexes.py",
+          "grade": 3,
+          "role": "label indexes"
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "grade": 3,
+          "role": "index adapters"
+        }
       ]
     },
     {
@@ -179,10 +359,26 @@
       "query": "Trace how xarray.apply_ufunc dispatches a function across Dataset, DataArray, and Variable inputs and reconstructs labeled outputs.",
       "rationale": "apply_ufunc owns dispatch while the three container modules provide the data models it transforms.",
       "relevant_paths": [
-        {"path": "xarray/core/computation.py", "grade": 3, "role": "dispatch"},
-        {"path": "xarray/core/dataset.py", "grade": 2, "role": "Dataset model"},
-        {"path": "xarray/core/dataarray.py", "grade": 2, "role": "DataArray model"},
-        {"path": "xarray/core/variable.py", "grade": 2, "role": "Variable model"}
+        {
+          "path": "xarray/core/computation.py",
+          "grade": 3,
+          "role": "dispatch"
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "grade": 2,
+          "role": "Dataset model"
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "grade": 2,
+          "role": "DataArray model"
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "grade": 2,
+          "role": "Variable model"
+        }
       ]
     },
     {
@@ -192,10 +388,26 @@
       "query": "How does Redux Toolkit createSlice turn case reducer definitions into action creators, matcher rules, and a lazily built reducer?",
       "rationale": "createSlice owns the orchestration and delegates action and reducer construction to their dedicated modules.",
       "relevant_paths": [
-        {"path": "packages/toolkit/src/createSlice.ts", "grade": 3, "role": "feature orchestration"},
-        {"path": "packages/toolkit/src/createReducer.ts", "grade": 2, "role": "reducer construction"},
-        {"path": "packages/toolkit/src/createAction.ts", "grade": 2, "role": "action construction"},
-        {"path": "packages/toolkit/src/mapBuilders.ts", "grade": 1, "role": "builder callback"}
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "grade": 3,
+          "role": "feature orchestration"
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "grade": 2,
+          "role": "reducer construction"
+        },
+        {
+          "path": "packages/toolkit/src/createAction.ts",
+          "grade": 2,
+          "role": "action construction"
+        },
+        {
+          "path": "packages/toolkit/src/mapBuilders.ts",
+          "grade": 1,
+          "role": "builder callback"
+        }
       ]
     },
     {
@@ -205,10 +417,26 @@
       "query": "Explain the Redux Toolkit store setup architecture across reducer combination, default middleware, enhancer composition, DevTools, and Redux createStore.",
       "rationale": "configureStore coordinates the flow while middleware and enhancer defaults have separate owners.",
       "relevant_paths": [
-        {"path": "packages/toolkit/src/configureStore.ts", "grade": 3, "role": "store orchestration"},
-        {"path": "packages/toolkit/src/getDefaultMiddleware.ts", "grade": 2, "role": "middleware defaults"},
-        {"path": "packages/toolkit/src/getDefaultEnhancers.ts", "grade": 2, "role": "enhancer defaults"},
-        {"path": "packages/toolkit/src/devtoolsExtension.ts", "grade": 1, "role": "DevTools integration"}
+        {
+          "path": "packages/toolkit/src/configureStore.ts",
+          "grade": 3,
+          "role": "store orchestration"
+        },
+        {
+          "path": "packages/toolkit/src/getDefaultMiddleware.ts",
+          "grade": 2,
+          "role": "middleware defaults"
+        },
+        {
+          "path": "packages/toolkit/src/getDefaultEnhancers.ts",
+          "grade": 2,
+          "role": "enhancer defaults"
+        },
+        {
+          "path": "packages/toolkit/src/devtoolsExtension.ts",
+          "grade": 1,
+          "role": "DevTools integration"
+        }
       ]
     },
     {
@@ -218,10 +446,26 @@
       "query": "Trace how RTK Query buildCreateApi initializes modules, injects endpoint definitions, builds query thunks, and wires request lifecycle middleware.",
       "rationale": "The API builder dispatches endpoint installation into the core module, thunk builder, and middleware builder.",
       "relevant_paths": [
-        {"path": "packages/toolkit/src/query/createApi.ts", "grade": 3, "role": "API construction and endpoint injection"},
-        {"path": "packages/toolkit/src/query/core/module.ts", "grade": 3, "role": "core module initialization"},
-        {"path": "packages/toolkit/src/query/core/buildThunks.ts", "grade": 2, "role": "request thunks"},
-        {"path": "packages/toolkit/src/query/core/buildMiddleware/index.ts", "grade": 2, "role": "request lifecycle middleware"}
+        {
+          "path": "packages/toolkit/src/query/createApi.ts",
+          "grade": 3,
+          "role": "API construction and endpoint injection"
+        },
+        {
+          "path": "packages/toolkit/src/query/core/module.ts",
+          "grade": 3,
+          "role": "core module initialization"
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildThunks.ts",
+          "grade": 2,
+          "role": "request thunks"
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/index.ts",
+          "grade": 2,
+          "role": "request lifecycle middleware"
+        }
       ]
     },
     {
@@ -231,10 +475,26 @@
       "query": "How does axum register method routes, insert them into the path router, merge or nest routers, and dispatch a matched route service?",
       "rationale": "Router coordinates composition while path, method, and route modules own the lower-level operations.",
       "relevant_paths": [
-        {"path": "axum/src/routing/mod.rs", "grade": 3, "role": "router composition"},
-        {"path": "axum/src/routing/path_router.rs", "grade": 3, "role": "path matching"},
-        {"path": "axum/src/routing/method_routing.rs", "grade": 2, "role": "method dispatch"},
-        {"path": "axum/src/routing/route.rs", "grade": 2, "role": "route service"}
+        {
+          "path": "axum/src/routing/mod.rs",
+          "grade": 3,
+          "role": "router composition"
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "grade": 3,
+          "role": "path matching"
+        },
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "grade": 2,
+          "role": "method dispatch"
+        },
+        {
+          "path": "axum/src/routing/route.rs",
+          "grade": 2,
+          "role": "route service"
+        }
       ]
     },
     {
@@ -244,10 +504,26 @@
       "query": "Explain axum's request handling architecture from routing to handler argument extraction and conversion of handler outputs into HTTP responses.",
       "rationale": "Routing, handler invocation, extraction, and response conversion are explicit architectural layers.",
       "relevant_paths": [
-        {"path": "axum/src/routing/method_routing.rs", "grade": 2, "role": "route to handler service"},
-        {"path": "axum/src/handler/mod.rs", "grade": 3, "role": "handler invocation"},
-        {"path": "axum-core/src/extract/mod.rs", "grade": 3, "role": "request extraction contract"},
-        {"path": "axum-core/src/response/into_response.rs", "grade": 3, "role": "response conversion contract"}
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "grade": 2,
+          "role": "route to handler service"
+        },
+        {
+          "path": "axum/src/handler/mod.rs",
+          "grade": 3,
+          "role": "handler invocation"
+        },
+        {
+          "path": "axum-core/src/extract/mod.rs",
+          "grade": 3,
+          "role": "request extraction contract"
+        },
+        {
+          "path": "axum-core/src/response/into_response.rs",
+          "grade": 3,
+          "role": "response conversion contract"
+        }
       ]
     },
     {
@@ -257,11 +533,548 @@
       "query": "Trace an axum request from serve accepting a connection through Router service dispatch, handler extraction and invocation, and IntoResponse conversion.",
       "rationale": "The end-to-end call chain crosses the server future, router, handler, extractor, and response contracts.",
       "relevant_paths": [
-        {"path": "axum/src/serve.rs", "grade": 3, "role": "connection and service loop"},
-        {"path": "axum/src/routing/mod.rs", "grade": 3, "role": "router service dispatch"},
-        {"path": "axum/src/handler/mod.rs", "grade": 3, "role": "handler call"},
-        {"path": "axum-core/src/extract/mod.rs", "grade": 2, "role": "argument extraction"},
-        {"path": "axum-core/src/response/into_response.rs", "grade": 2, "role": "response conversion"}
+        {
+          "path": "axum/src/serve.rs",
+          "grade": 3,
+          "role": "connection and service loop"
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "grade": 3,
+          "role": "router service dispatch"
+        },
+        {
+          "path": "axum/src/handler/mod.rs",
+          "grade": 3,
+          "role": "handler call"
+        },
+        {
+          "path": "axum-core/src/extract/mod.rs",
+          "grade": 2,
+          "role": "argument extraction"
+        },
+        {
+          "path": "axum-core/src/response/into_response.rs",
+          "grade": 2,
+          "role": "response conversion"
+        }
+      ]
+    },
+    {
+      "id": "gin-route-matching",
+      "instance_id": "gin-v1.10.0",
+      "kind": "feature",
+      "query": "How does gin match a request path against the registered routes and extract named path parameters?",
+      "rationale": "The radix tree in tree.go owns matching; handleHTTPRequest drives it per request; Context exposes the parameters.",
+      "relevant_paths": [
+        {
+          "path": "tree.go",
+          "grade": 3,
+          "role": "implementation"
+        },
+        {
+          "path": "gin.go",
+          "grade": 2,
+          "role": "entry"
+        },
+        {
+          "path": "context.go",
+          "grade": 1,
+          "role": "parameter access"
+        }
+      ]
+    },
+    {
+      "id": "gin-request-overview",
+      "instance_id": "gin-v1.10.0",
+      "kind": "overview",
+      "query": "Explain gin's request handling architecture from Engine.ServeHTTP through router groups and middleware chains to the Context and response rendering.",
+      "rationale": "Engine and RouterGroup compose the handler chain; Context executes it and renders through the render package.",
+      "relevant_paths": [
+        {
+          "path": "gin.go",
+          "grade": 3,
+          "role": "engine"
+        },
+        {
+          "path": "routergroup.go",
+          "grade": 3,
+          "role": "route composition"
+        },
+        {
+          "path": "context.go",
+          "grade": 2,
+          "role": "handler execution"
+        },
+        {
+          "path": "render/render.go",
+          "grade": 1,
+          "role": "rendering"
+        }
+      ]
+    },
+    {
+      "id": "gin-json-binding-chain",
+      "instance_id": "gin-v1.10.0",
+      "kind": "call_chain",
+      "query": "Trace gin's JSON request binding from Context.ShouldBindJSON through the binding package's JSON binding into struct validation.",
+      "rationale": "Context delegates to binding.JSON, which decodes and then validates through the default validator.",
+      "relevant_paths": [
+        {
+          "path": "context.go",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "binding/json.go",
+          "grade": 3,
+          "role": "decoding"
+        },
+        {
+          "path": "binding/binding.go",
+          "grade": 2,
+          "role": "binding registry"
+        },
+        {
+          "path": "binding/default_validator.go",
+          "grade": 2,
+          "role": "validation"
+        }
+      ]
+    },
+    {
+      "id": "jq-json-parsing",
+      "instance_id": "jq-1.7.1",
+      "kind": "feature",
+      "query": "How does jq parse JSON text into jv values, including the incremental parser used for streams of inputs?",
+      "rationale": "jv_parse.c owns the parser state machine; jv.c provides the value constructors it fills; jv.h is the public value API.",
+      "relevant_paths": [
+        {
+          "path": "src/jv_parse.c",
+          "grade": 3,
+          "role": "implementation"
+        },
+        {
+          "path": "src/jv.c",
+          "grade": 2,
+          "role": "value construction"
+        },
+        {
+          "path": "src/jv.h",
+          "grade": 1,
+          "role": "value API"
+        }
+      ]
+    },
+    {
+      "id": "jq-pipeline-overview",
+      "instance_id": "jq-1.7.1",
+      "kind": "overview",
+      "query": "Explain jq's architecture from lexing and parsing a filter program, through compiling blocks to bytecode, to executing it in the interpreter loop.",
+      "rationale": "parser.c and lexer.c are the generated front end, compile.c builds blocks and bytecode, execute.c runs it, main.c wires the CLI.",
+      "relevant_paths": [
+        {
+          "path": "src/compile.c",
+          "grade": 3,
+          "role": "compilation"
+        },
+        {
+          "path": "src/execute.c",
+          "grade": 3,
+          "role": "interpreter"
+        },
+        {
+          "path": "src/parser.c",
+          "grade": 2,
+          "role": "front end"
+        },
+        {
+          "path": "src/main.c",
+          "grade": 2,
+          "role": "CLI entry"
+        },
+        {
+          "path": "src/bytecode.c",
+          "grade": 1,
+          "role": "opcode table"
+        }
+      ]
+    },
+    {
+      "id": "jq-builtin-call-chain",
+      "instance_id": "jq-1.7.1",
+      "kind": "call_chain",
+      "query": "Trace how jq_next executes bytecode and dispatches CALL_BUILTIN instructions to the C builtin functions registered in the function list.",
+      "rationale": "execute.c dispatches opcodes; builtin.c registers the cfunction table; bytecode.c defines the opcodes.",
+      "relevant_paths": [
+        {
+          "path": "src/execute.c",
+          "grade": 3,
+          "role": "dispatch"
+        },
+        {
+          "path": "src/builtin.c",
+          "grade": 3,
+          "role": "builtin table"
+        },
+        {
+          "path": "src/bytecode.c",
+          "grade": 2,
+          "role": "opcode definitions"
+        }
+      ]
+    },
+    {
+      "id": "mediatr-request-dispatch",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "feature",
+      "query": "How does MediatR resolve the handler for a request and run it through the registered pipeline behaviors?",
+      "rationale": "Mediator.Send builds the wrapper; RequestHandlerWrapper composes behaviors around the handler.",
+      "relevant_paths": [
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "src/MediatR/Wrappers/RequestHandlerWrapper.cs",
+          "grade": 3,
+          "role": "pipeline composition"
+        },
+        {
+          "path": "src/MediatR/IPipelineBehavior.cs",
+          "grade": 2,
+          "role": "behavior contract"
+        },
+        {
+          "path": "src/MediatR/IRequestHandler.cs",
+          "grade": 1,
+          "role": "handler contract"
+        }
+      ]
+    },
+    {
+      "id": "mediatr-architecture-overview",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "overview",
+      "query": "Explain MediatR's architecture: the mediator entry point, request and notification handler contracts, pipeline behaviors, and dependency injection registration.",
+      "rationale": "Mediator is the entry; the contracts define handlers; ServiceRegistrar and the DI extensions register everything.",
+      "relevant_paths": [
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/ServiceCollectionExtensions.cs",
+          "grade": 3,
+          "role": "registration"
+        },
+        {
+          "path": "src/MediatR/Registration/ServiceRegistrar.cs",
+          "grade": 2,
+          "role": "handler scanning"
+        },
+        {
+          "path": "src/MediatR/IRequestHandler.cs",
+          "grade": 2,
+          "role": "contract"
+        },
+        {
+          "path": "src/MediatR/IPipelineBehavior.cs",
+          "grade": 2,
+          "role": "behavior contract"
+        }
+      ]
+    },
+    {
+      "id": "mediatr-publish-chain",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "call_chain",
+      "query": "Trace MediatR.Publish from the Mediator through the notification handler wrapper to the notification publisher strategy that invokes each handler.",
+      "rationale": "Mediator.Publish resolves the wrapper; the wrapper delegates to an INotificationPublisher implementation.",
+      "relevant_paths": [
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "src/MediatR/Wrappers/NotificationHandlerWrapper.cs",
+          "grade": 3,
+          "role": "wrapper"
+        },
+        {
+          "path": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+          "grade": 2,
+          "role": "default strategy"
+        },
+        {
+          "path": "src/MediatR/INotificationPublisher.cs",
+          "grade": 2,
+          "role": "strategy contract"
+        }
+      ]
+    },
+    {
+      "id": "express-route-matching",
+      "instance_id": "express-4.21.2",
+      "kind": "feature",
+      "query": "How does Express match an incoming request path against a route layer and decode the route parameters?",
+      "rationale": "Layer.match owns path matching and param decoding; the router iterates layers; Route holds the method handlers.",
+      "relevant_paths": [
+        {
+          "path": "lib/router/layer.js",
+          "grade": 3,
+          "role": "matching"
+        },
+        {
+          "path": "lib/router/index.js",
+          "grade": 2,
+          "role": "layer iteration"
+        },
+        {
+          "path": "lib/router/route.js",
+          "grade": 2,
+          "role": "route handlers"
+        }
+      ]
+    },
+    {
+      "id": "express-architecture-overview",
+      "instance_id": "express-4.21.2",
+      "kind": "overview",
+      "query": "Explain the Express architecture: application setup, the router and its layer stack, the request and response prototypes, and view rendering.",
+      "rationale": "application.js configures and delegates; router/index.js is the stack; request/response extend Node objects; view.js renders templates.",
+      "relevant_paths": [
+        {
+          "path": "lib/application.js",
+          "grade": 3,
+          "role": "application"
+        },
+        {
+          "path": "lib/router/index.js",
+          "grade": 3,
+          "role": "router"
+        },
+        {
+          "path": "lib/request.js",
+          "grade": 2,
+          "role": "request prototype"
+        },
+        {
+          "path": "lib/response.js",
+          "grade": 2,
+          "role": "response prototype"
+        },
+        {
+          "path": "lib/view.js",
+          "grade": 1,
+          "role": "views"
+        }
+      ]
+    },
+    {
+      "id": "express-request-chain",
+      "instance_id": "express-4.21.2",
+      "kind": "call_chain",
+      "query": "Trace how an incoming request flows from app.handle through router.handle, layer matching and process_params, to Route.dispatch and the route handlers.",
+      "rationale": "app.handle hands off to the router; the router walks layers and params; Route.dispatch runs the method stack.",
+      "relevant_paths": [
+        {
+          "path": "lib/router/index.js",
+          "grade": 3,
+          "role": "router handle"
+        },
+        {
+          "path": "lib/router/route.js",
+          "grade": 3,
+          "role": "dispatch"
+        },
+        {
+          "path": "lib/application.js",
+          "grade": 2,
+          "role": "entry"
+        },
+        {
+          "path": "lib/router/layer.js",
+          "grade": 2,
+          "role": "layer handle"
+        }
+      ]
+    },
+    {
+      "id": "bats-test-execution",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "feature",
+      "query": "How does bats run a single test function with setup and teardown and record its status?",
+      "rationale": "bats-exec-test drives a single test file; test_functions.bash provides the setup/teardown hooks; tracing.bash captures failures.",
+      "relevant_paths": [
+        {
+          "path": "libexec/bats-core/bats-exec-test",
+          "grade": 3,
+          "role": "test runner"
+        },
+        {
+          "path": "lib/bats-core/test_functions.bash",
+          "grade": 2,
+          "role": "hooks and helpers"
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "grade": 2,
+          "role": "failure tracing"
+        }
+      ]
+    },
+    {
+      "id": "bats-architecture-overview",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "overview",
+      "query": "Explain the bats-core architecture from the bats entry script through suite and file execution, test preprocessing, and output formatters.",
+      "rationale": "bats parses arguments and launches the suite; exec-suite and exec-file fan out; preprocess rewrites @test blocks; formatters render TAP output.",
+      "relevant_paths": [
+        {
+          "path": "libexec/bats-core/bats",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-suite",
+          "grade": 3,
+          "role": "suite execution"
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-file",
+          "grade": 2,
+          "role": "file execution"
+        },
+        {
+          "path": "lib/bats-core/preprocessing.bash",
+          "grade": 2,
+          "role": "preprocessing"
+        },
+        {
+          "path": "lib/bats-core/formatter.bash",
+          "grade": 1,
+          "role": "formatter helpers"
+        }
+      ]
+    },
+    {
+      "id": "bats-failure-trace-chain",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "call_chain",
+      "query": "Trace how a failing bats test is reported: from the ERR trap capturing the stack trace to printing the failed command and stack in the test output.",
+      "rationale": "tracing.bash installs the trap and formats the stack; bats-exec-test consumes it when a test fails; common.bash prefixes TAP output.",
+      "relevant_paths": [
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "grade": 3,
+          "role": "trace capture and printing"
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-test",
+          "grade": 3,
+          "role": "failure handling"
+        },
+        {
+          "path": "lib/bats-core/common.bash",
+          "grade": 1,
+          "role": "output helpers"
+        }
+      ]
+    },
+    {
+      "id": "gson-adapter-resolution",
+      "instance_id": "gson-2.11.0",
+      "kind": "feature",
+      "query": "How does Gson choose the TypeAdapter for a type by consulting its registered TypeAdapterFactory list and caching the result?",
+      "rationale": "Gson.getAdapter iterates factories with a per-thread cache; TypeAdapters holds the built-in factories; TypeToken is the lookup key.",
+      "relevant_paths": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "grade": 3,
+          "role": "resolution and cache"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+          "grade": 2,
+          "role": "built-in factories"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "grade": 2,
+          "role": "factory contract"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "grade": 1,
+          "role": "lookup key"
+        }
+      ]
+    },
+    {
+      "id": "gson-architecture-overview",
+      "instance_id": "gson-2.11.0",
+      "kind": "overview",
+      "query": "Explain Gson's architecture: Gson and GsonBuilder configuration, TypeAdapter factories, the streaming JsonReader and JsonWriter, and the JsonElement tree model.",
+      "rationale": "Gson/GsonBuilder configure; adapters bridge objects and streams; JsonReader/JsonWriter are the streaming layer; JsonElement is the tree model.",
+      "relevant_paths": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "grade": 3,
+          "role": "core"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "grade": 3,
+          "role": "configuration"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "grade": 2,
+          "role": "streaming input"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+          "grade": 2,
+          "role": "streaming output"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+          "grade": 2,
+          "role": "tree model"
+        }
+      ]
+    },
+    {
+      "id": "gson-fromjson-chain",
+      "instance_id": "gson-2.11.0",
+      "kind": "call_chain",
+      "query": "Trace Gson.fromJson from a JSON string through JsonReader into the reflective type adapter that constructs the object and binds its fields.",
+      "rationale": "Gson.fromJson wraps a JsonReader and resolves the adapter; ReflectiveTypeAdapterFactory reads fields; ConstructorConstructor instantiates.",
+      "relevant_paths": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "grade": 3,
+          "role": "entry"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "grade": 3,
+          "role": "field binding"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "grade": 2,
+          "role": "token stream"
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+          "grade": 2,
+          "role": "instantiation"
+        }
       ]
     }
   ]

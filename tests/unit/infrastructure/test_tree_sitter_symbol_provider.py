@@ -121,3 +121,53 @@ def test_multibyte_file_size_limit_is_measured_in_bytes():
 
     assert fallback.called is True
     assert [occurrence.identifier for occurrence in found] == ["fallback"]
+
+
+def test_bash_functions_and_commonjs_assignments_are_definitions():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+
+    bash = provider.extract(
+        content="#!/usr/bin/env bash\nbats_print_stack_trace() {\n  :\n}\nfunction skip {\n  :\n}\n",
+        language="bash",
+    )
+    assert {(o.identifier, o.kind) for o in bash} == {
+        ("bats_print_stack_trace", "definition"),
+        ("skip", "definition"),
+    }
+
+    javascript = provider.extract(
+        content=(
+            "app.use = function use(fn) {}\n"
+            "exports.query = function query(o) {}\n"
+            "Layer.prototype.match = function match(p) {}\n"
+            "module.exports = createApplication\n"
+            "function createApplication() { var x = function inner() {}; app.settings = {}; }\n"
+            "const handler = (req) => {}\n"
+        ),
+        language="javascript",
+    )
+    names = {o.identifier for o in javascript if o.kind == "definition"}
+    # Prototype and CommonJS assignments define the API; the bare re-export,
+    # the plain object assignment and the nested local function do not.
+    assert names == {"createApplication", "use", "query", "match", "handler"}
+
+
+def test_transient_grammar_failure_is_retried(monkeypatch):
+    import oce.infrastructure.astchunk.symbol_provider as module
+
+    calls = {"n": 0}
+    real = module.get_parser
+
+    def flaky(name):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise RuntimeError("download hiccup")
+        return real(name)
+
+    monkeypatch.setattr(module, "get_parser", flaky)
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    source = "class Foo:\n    pass\n"
+    assert provider.extract(content=source, language="python")  # regex fallback
+    second = provider.extract(content=source, language="python")
+    assert calls["n"] == 2
+    assert {(o.identifier, o.kind) for o in second} == {("Foo", "definition")}

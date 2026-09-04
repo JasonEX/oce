@@ -42,6 +42,42 @@
       "repo": "tokio-rs/axum",
       "revision": "9983bc1da460becd3a0f08c513d610411e84dd43",
       "code_language": "rust"
+    },
+    {
+      "id": "gin-v1.10.0",
+      "repo": "gin-gonic/gin",
+      "revision": "75ccf94d605a05fe24817fc2f166f6f2959d5cea",
+      "code_language": "go"
+    },
+    {
+      "id": "jq-1.7.1",
+      "repo": "jqlang/jq",
+      "revision": "71c2ab509a8628dbbad4bc7b3f98a64aa90d3297",
+      "code_language": "c"
+    },
+    {
+      "id": "mediatr-v12.4.1",
+      "repo": "jbogard/MediatR",
+      "revision": "fb309026775ef953a64fb5339d074426c1ad2c37",
+      "code_language": "csharp"
+    },
+    {
+      "id": "express-4.21.2",
+      "repo": "expressjs/express",
+      "revision": "1faf228935aa0a13111f92c28ee795be64ce3f0f",
+      "code_language": "javascript"
+    },
+    {
+      "id": "bats-core-v1.11.1",
+      "repo": "bats-core/bats-core",
+      "revision": "b640ec3cf2c7c9cfc9e6351479261186f76eeec8",
+      "code_language": "bash"
+    },
+    {
+      "id": "gson-2.11.0",
+      "repo": "google/gson",
+      "revision": "828a97be0f8d58108b140b77df8dc76b657f4a87",
+      "code_language": "java"
     }
   ]
 }

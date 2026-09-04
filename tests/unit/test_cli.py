@@ -43,6 +43,9 @@ def test_init_creates_env_template(tmp_path: pytest.TempPathFactory) -> None:
     content = (data_dir / ".env").read_text(encoding="utf-8")
     assert "API_KEY=" in content
     assert "EMBED_API_KEY=" in content
+    assert "EMBED_MAX_QUERY_CHARS=3000" in content
+    assert "RERANK_PROVIDER=api" in content
+    assert "RERANK_LOCAL_MODEL_DIR=" in content
     assert "LLM_RERANK_ENABLED=false" in content
 
 

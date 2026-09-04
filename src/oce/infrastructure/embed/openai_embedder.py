@@ -36,6 +36,7 @@ class OpenAIEmbedder:
         credential_id: int = 0,
         on_usage: UsageCallback | None = None,
         query_instruction: str = "",
+        max_query_chars: int = 0,
     ) -> None:
         if max_batch_size < 1 or max_concurrency < 1:
             raise ValueError("Embedding batch size and concurrency must be positive")
@@ -54,6 +55,7 @@ class OpenAIEmbedder:
         self._credential_id = credential_id
         self._on_usage = on_usage
         self._query_instruction = query_instruction
+        self._max_query_chars = max_query_chars
 
     @classmethod
     def from_endpoint(
@@ -73,6 +75,7 @@ class OpenAIEmbedder:
         on_usage: UsageCallback | None = None,
         proxy: str | None = None,
         query_instruction: str = "",
+        max_query_chars: int = 0,
     ) -> OpenAIEmbedder:
         http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout),
@@ -97,6 +100,7 @@ class OpenAIEmbedder:
             credential_id=credential_id,
             on_usage=on_usage,
             query_instruction=query_instruction,
+            max_query_chars=max_query_chars,
         )
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -117,6 +121,8 @@ class OpenAIEmbedder:
         return vectors
 
     async def embed_query(self, text: str) -> list[float]:
+        if self._max_query_chars and len(text) > self._max_query_chars:
+            text = text[: self._max_query_chars]
         # 添加 query instruction（如果配置了）
         if self._query_instruction:
             text = self._query_instruction + text

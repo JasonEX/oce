@@ -14,8 +14,16 @@ def test_metadata_uses_only_non_secret_environment_allowlist(monkeypatch) -> Non
     monkeypatch.setenv("API_KEY", "secret")
     monkeypatch.setenv("EMBED_API_KEY", "secret")
     monkeypatch.setenv("EMBED_MODEL", "example-embedder")
+    monkeypatch.setenv("EMBED_MAX_QUERY_CHARS", "3000")
+    monkeypatch.setenv("RERANK_PROVIDER", "local")
+    monkeypatch.setenv("RERANK_LOCAL_CANDIDATES", "16")
 
-    assert metadata(()) == {"EMBED_MODEL": "example-embedder"}
+    assert metadata(()) == {
+        "EMBED_MODEL": "example-embedder",
+        "EMBED_MAX_QUERY_CHARS": "3000",
+        "RERANK_PROVIDER": "local",
+        "RERANK_LOCAL_CANDIDATES": "16",
+    }
 
 
 def test_optional_admin_stats_failure_does_not_abort_quality_run(monkeypatch) -> None:

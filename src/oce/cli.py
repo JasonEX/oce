@@ -61,19 +61,30 @@ EMBED_API_KEY=YOUR_EMBEDDING_API_KEY_HERE
 # EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 # 向量维度（必须与模型输出维度一致）
 # EMBED_DIMENSIONS=1024
+# 超长 query 只取前 N 个字符做 embedding；0 不限制。
+# EMBED_MAX_QUERY_CHARS=3000
 # Query vector 进程内 LRU（只存 query 哈希与向量；0 表示禁用）
 # EMBED_QUERY_CACHE_MAX_ENTRIES=256
 # EMBED_QUERY_CACHE_TTL_SECONDS=600
 
 # ==================== 可选：专用 reranker ====================
-# 专用相关性模型是交互式检索优先评估的增强；默认关闭，启用后会外发 query 和候选源码。
+# api provider 会外发 query 和候选源码；local provider 在进程内运行且不外发。
 RERANK_ENABLED=false
+# RERANK_PROVIDER=api
 # RERANK_API_KEY=your_rerank_api_key_here
 # RERANK_ENDPOINT=https://api.siliconflow.cn/v1/rerank
 # RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
 # RERANK_TOP_N=50
 # RERANK_MAX_QUERY_CHARS=2400
 # RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
+# local 需要 `uv sync --extra local-rerank` 和本地 ONNX 模型目录。Jina 示例为 CC-BY-NC-4.0。
+# RERANK_LOCAL_MODEL_DIR=~/.cache/oce/models/jina-reranker-v2-base-multilingual
+# RERANK_LOCAL_MODEL_FILE=model_int8.onnx
+# RERANK_LOCAL_CANDIDATES=16
+# RERANK_LOCAL_MAX_DOC_CHARS=800
+# RERANK_LOCAL_MAX_TOKENS=512
+# RERANK_LOCAL_BATCH_SIZE=4
+# RERANK_LOCAL_THREADS=0
 # adaptive 在 exact/path 证据已回答问题时跳过调用；always 每次都调。
 # RETRIEVAL_RERANK_POLICY=adaptive
 

@@ -112,9 +112,8 @@ def plan_rerank(
     Both models share the same deterministic evidence. Retrieval scores are
     deliberately excluded: dense cosine, RRF, exact, path, and reranker scores do
     not share a calibrated scale, so a skip is only taken when a structural
-    operator has already answered the question. ``enabled`` flags carry the data
-    egress authorization; a policy can never switch on a model that is not
-    authorized.
+    operator has already answered the question. ``enabled`` flags authorize the
+    corresponding stage; a policy can never switch on a model that is disabled.
     """
     for name, policy in (
         ("dedicated rerank", dedicated_policy),

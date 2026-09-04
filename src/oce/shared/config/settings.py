@@ -112,6 +112,11 @@ class EmbeddingSettings(BaseSettings):
         default="",
         description="Query-side instruction（添加到 query 前，为空则不添加）",
     )
+    # 长 issue 文本整段送去做 query embedding 既慢又会稀释向量；标题和描述通常
+    # 位于前部。具体消融数据留在 benchmarks/results，避免配置代码固化实验快照。
+    max_query_chars: int = Field(
+        default=3_000, ge=0, description="query embedding 输入字符上限；0 不限制"
+    )
     query_cache_max_entries: int = Field(
         default=256,
         ge=0,
@@ -132,7 +137,12 @@ class RerankSettings(BaseSettings):
 
     enabled: bool = Field(
         default=False,
-        description="是否启用专用 rerank API",
+        description="是否启用专用 reranker",
+    )
+    # api：远端交叉编码器（外发 query 与候选源码）；local：进程内 ONNX 交叉编码器，
+    # 不外发，需要 `uv sync --extra local-rerank` 与本地模型目录。
+    provider: Literal["api", "local"] = Field(
+        default="api", description="专用 reranker 的提供方式"
     )
     endpoint: str = Field(
         default="https://api.siliconflow.cn/v1/rerank",
@@ -154,6 +164,28 @@ class RerankSettings(BaseSettings):
     # 字符的 issue 曾让单次调用接近 15 秒。截断保留开头的问题描述。
     max_query_chars: int = Field(
         default=2_400, ge=200, description="送入 reranker 的 query 字符上限"
+    )
+    # 本地 ONNX 交叉编码器窗口刻意小于远端默认值，限制 CPU 延迟。
+    local_model_dir: str = Field(
+        default="~/.cache/oce/models/jina-reranker-v2-base-multilingual",
+        description="本地 reranker 模型目录（含 model_int8.onnx 与 tokenizer.json）",
+    )
+    local_model_file: str = Field(
+        default="model_int8.onnx", description="模型目录内的 ONNX 文件名"
+    )
+    local_candidates: int = Field(
+        default=16, ge=1, le=100, description="本地 reranker 打分的候选数"
+    )
+    local_max_doc_chars: int = Field(
+        default=800, ge=100, description="每个候选送入本地 reranker 的字符上限"
+    )
+    local_max_tokens: int = Field(
+        default=512, ge=64, le=8192, description="query+候选的 token 上限"
+    )
+    local_batch_size: int = Field(default=4, ge=1, le=64, description="推理批大小")
+    # 混合大小核 CPU 上 onnxruntime 开满逻辑核可能反而更慢。
+    local_threads: int = Field(
+        default=0, ge=0, le=128, description="推理线程数；0 取物理核数的一半（上限 8）"
     )
     # Qwen3-Reranker 模型卡报告：instruction-aware 任务中常见 1%~5% 提升，
     # 且多语言场景建议用英文；其他 provider 不支持时可置空。
@@ -269,8 +301,8 @@ class RetrievalSettings(BaseSettings):
         description="进入模型重排前的召回置信度门槛",
     )
 
-    # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED 是
-    # 数据外发授权；这里的策略只决定已授权的模型对哪些查询调用：adaptive 在
+    # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED
+    # 授权对应阶段（api/chat 会外发，local 不外发）；这里的策略只决定已启用的模型对哪些查询调用：adaptive 在
     # exact/path 等确定性证据已经回答问题时跳过，always 用于质量优先或可复现对照。
     rerank_policy: RerankPolicy = Field(
         default="adaptive",

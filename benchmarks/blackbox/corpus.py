@@ -12,8 +12,41 @@ from typing import Literal, cast
 
 from benchmarks.blackbox.harness import git_output
 
-CodeLanguage = Literal["python", "typescript", "rust"]
-_LANGUAGES: tuple[CodeLanguage, ...] = ("python", "typescript", "rust")
+CodeLanguage = Literal[
+    "python",
+    "typescript",
+    "javascript",
+    "rust",
+    "go",
+    "c",
+    "csharp",
+    "java",
+    "bash",
+]
+# Report order; also the set the manifests may reference.
+LANGUAGES: tuple[CodeLanguage, ...] = (
+    "python",
+    "typescript",
+    "javascript",
+    "rust",
+    "go",
+    "c",
+    "csharp",
+    "java",
+    "bash",
+)
+LANGUAGE_LABELS: dict[CodeLanguage, str] = {
+    "python": "Python",
+    "typescript": "TS",
+    "javascript": "JS",
+    "rust": "Rust",
+    "go": "Go",
+    "c": "C",
+    "csharp": "C#",
+    "java": "Java",
+    "bash": "Bash",
+}
+_LANGUAGES = LANGUAGES
 _ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*")
 _REPOSITORY_RE = re.compile(
     r"[A-Za-z0-9](?:[A-Za-z0-9_.-]*[A-Za-z0-9])?/"

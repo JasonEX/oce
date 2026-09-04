@@ -160,6 +160,17 @@ class TestSourcePriorityFactor:
         assert source_priority_factor("pkg/router_test.go") == 0.6
         assert source_priority_factor("src/_pytest/fixtures.py") == 1.0
 
+    def test_unparsed_languages_yield_to_project_code(self):
+        assert source_priority_factor("elisp/pylint.el") == 0.85
+        assert source_priority_factor("tools/build.ps1") == 0.85
+        assert source_priority_factor("pylint/checkers/variables.py") == 1.0
+        assert source_priority_factor("Makefile") == 1.0
+
+    def test_benchmark_harnesses_are_supporting_material(self):
+        assert source_priority_factor("asv_bench/benchmarks/combine.py") == 0.6
+        assert source_priority_factor("benches/router.rs") == 0.6
+        assert source_priority_factor("src/perf/counter.py") == 0.6
+
     def test_config_files_and_stubs_yield_to_implementation(self):
         assert source_priority_factor(".coveragerc") == 0.7
         assert source_priority_factor("pylintrc") == 0.7

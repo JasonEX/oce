@@ -7,11 +7,12 @@
 OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 
 - cAST/tree-sitter 语义切块；每个 chunk 带封闭作用域签名链 `context`（占位于 `blob_chunks`，不参与内容哈希），embedding 输入为 `File + Context + 正文`
-- PostgreSQL/SQLite 存储元数据、`symbol_occurrences`（tree-sitter 整文件抽取 definition/endpoint/import，regex 兜底）和 `chunk_lexical` 词法索引（SQLite FTS5 / PG tsvector，DDL 在 `persistence/lexical_index.py`）
+- PostgreSQL/SQLite 存储元数据、`symbol_occurrences`（tree-sitter 整文件抽取 definition/endpoint/import/call，regex 兜底；call 只供 reference/call-chain 的 exact 使用证据，不参与头部判定）和 `chunk_lexical` 词法索引（SQLite FTS5 / PG tsvector，DDL 在 `persistence/lexical_index.py`）
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 不回 Milvus；路径索引独立维护，另有 SQL 精确路径后缀查找
 - 检索是 `RetrievalState` 上的固定状态机：route（intent + `QueryEvidence`）→ plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup；SQL 车道在 embedding 往返前启动）→ fuse（RRF）→ prior（source/工作集先验 + 有界头部槽位：确定性 symbol/path 答案、语义查询的源码文件、reference 的使用位置先于声明）→ rerank（专用 → chat-LLM，均保留候选集）→ select → expand（相邻合并；调用链/feature/overview 按剩余预算附带定义摘要）
-- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 是数据外发授权，`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果落 `retrieval_metrics.rerank_route`
+- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应重排阶段；只有 `RERANK_PROVIDER=api` 和 chat LLM 会外发数据，`local` 不外发。`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果落 `retrieval_metrics.rerank_route`
 - 新召回证据只能作为独立「车道」进入（固定槽位、必要条件门控或按意图开关），不得把不同标尺的分数直接混排；reference 意图的词法召回以标识符整体代理 token 为必要条件
+- `RERANK_PROVIDER=local` 是不外发的进程内 ONNX 交叉编码器（`uv sync --extra local-rerank`）；模型文件由部署者提供，必须单独核对模型许可证
 - 产品效用评测位于 `benchmarks/blackbox/`，只能通过发布版 `oce-client` 与稳定 HTTP API 驱动服务，禁止 import `oce`、直读数据库或复制服务端路由状态机；`benchmarks/internal/` 仅做实现级微基准，不作为产品效用结论
 - 改动默认检索编排前，必须在 `benchmarks.blackbox.short_queries`（Top-1/MRR/p50）、`benchmarks.blackbox.semantic_queries`（分意图/语言 nDCG@10/字符数）和 `benchmarks.blackbox.swe_explore --profile development`（Top-1/nDCG@100/字符数）上配对复跑，且 `tests/unit/infrastructure/test_retrieval_regression.py` 是头部顺序的离线回归护栏
 - 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite）+ status=active + 最小 priority 解析（`persistence/active_credential.py`），取不到回落各自环境变量

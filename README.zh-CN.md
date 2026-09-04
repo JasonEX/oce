@@ -98,11 +98,12 @@ EMBED_MODEL=Qwen/Qwen3-Embedding-4B
 嵌入会把准入后的源码块发送到配置的 endpoint；可选重排和 LLM 功能还会发送检索 query 和候选源码
 片段。私有代码只应使用获准接收这些数据的端点，优先选择本地或内网服务。
 
-新生成的个人模式配置默认关闭可选重排，需要先明确授权相应 endpoint 接收候选代码。
-专用 reranker 适合可预期的低延迟相关性排序：
+新生成的个人模式配置默认关闭可选重排，需要先选择运行方式和数据边界。
+API provider 适合可预期的相关性排序：
 
 ```dotenv
 RERANK_ENABLED=true
+RERANK_PROVIDER=api
 RERANK_API_KEY=你的 rerank 服务密钥
 RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
@@ -129,18 +130,21 @@ LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
-`RERANK_ENABLED` 与 `LLM_RERANK_ENABLED` 是数据外发授权；两个 `*_POLICY` 只决定已授权
-模型看到哪些查询，且两种模型共用同一份确定性判断。`adaptive` 在 exact symbol/path 证据
+`RERANK_ENABLED` 与 `LLM_RERANK_ENABLED` 授权各自的重排阶段；两个 `*_POLICY` 只决定已启用
+模型看到哪些查询，且两种模型共用同一份确定性判断。API provider 和 chat LLM 会向各自 endpoint 外发数据，local provider 不外发。`adaptive` 在 exact symbol/path 证据
 已足够时跳过模型调用，reference 查询不交给 chat LLM 以保留 occurrence 覆盖，而
 feature/flow/overview/compound 查询两者都用。`always` 对所有至少两个候选的结果重排，
 适合质量优先部署与受控对照。每次检索的路由（`dedicated`、`dedicated+llm` 或
-`skip:<原因>`）记录在 `retrieval_metrics.rerank_route`。同时启用两种后端时，管线按专用 reranker
-→ chat LLM 级联。默认关闭只是数据外发和延迟边界，不代表 chat LLM 的排序质量更低。
-当前重复运行的 development benchmark 支持把专用 reranker 作为交互式首选增强；有界
-chat 级联在小样本上继续提高质量，但速度不适合交互使用。由于这仍只是 13 个
-issue 的开发观察，在 full profile 重复前不修改默认授权开关。详见
-[benchmark 报告](benchmarks/results/swe-explore-development-2026-09-03.md)。无论窗口多大，
-窗口外候选都不会被 chat LLM 删除，仍可进入最终选择。
+`skip:<原因>`）记录在 `retrieval_metrics.rerank_route`。专用 reranker 有两种提供方式：
+`RERANK_PROVIDER=api` 把 query 和候选源码发到远端 rerank 端点；`RERANK_PROVIDER=local` 在进程内跑
+ONNX 交叉编码器（`uv sync --extra local-rerank`，`RERANK_LOCAL_MODEL_DIR` 指向含 `model_int8.onnx`
+与 `tokenizer.json` 的目录，例如 `jinaai/jina-reranker-v2-base-multilingual` 的 onnx 导出），不外发任何
+数据。该评测模型使用 [CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)，部署前必须单独核对模型的使用权，或改用兼容的其他导出。实测的 16 核 CPU 上 20 个候选约 1.2 秒。同时启用两种后端时，管线按专用 reranker
+→ chat LLM 级联。默认关闭只是运行成本和数据边界，不代表质量高低。当前 development
+benchmark 中，本地 reranker 明显改善长 issue 排序，保持短结构查询 Top-1，但没有改善较小的
+语义集。因此先把它作为复杂查询的可选增强；在更广泛的重复评测完成前不修改默认开关。详见
+[benchmark 报告](benchmarks/results/nine-language-utility-2026-09-03.md)。无论窗口多大，
+窗口外候选都不会被 reranker 删除，仍可进入最终选择。
 
 然后启动服务：
 
@@ -245,9 +249,10 @@ coverage 保留 32K 仓库探索预算。设
 精确标识符召回直接关联 checkpoint 成员关系，大型工作集不会关闭 exact recall，也不会把全部
 成员展开为一个 SQL `IN (...)`。仅 added 组成的 scope 与异常大的请求增量会使用固定批次查询；
 超时仍回退 dense 检索。
-symbol index 由 tree-sitter 对整文件抽取 definition、endpoint 与 import，并保留真实行号；
-无法加载 grammar 时回退 regex。它仍不是 call/implementation graph，需要真实结构关系时应使用
-原生文本搜索或 LSP。SQLite 个人模式用 FTS5、PostgreSQL 服务模式用 `tsvector` 建立词法索引，
+symbol index 由 tree-sitter 对整文件抽取 definition、endpoint、import 与调用点，并保留真实
+行号；无法加载 grammar 时回退 regex。调用点让 reference 和调用链查询拿到精确的使用证据，
+但这仍不是解析过的调用图：被调名没有绑定到接收者类型或具体实现。query embedding 最多取请求的前 `EMBED_MAX_QUERY_CHARS`（3,000）个
+字符；issue 长文超出的部分只会稀释向量并拖慢调用。SQLite 个人模式用 FTS5、PostgreSQL 服务模式用 `tsvector` 建立词法索引，
 补充召回 dense 不敏感的报错文案、日志文本与调用点。词法召回用于 reference、调用链、feature、
 overview 和复合查询；symbol/path 只在确定性证据缺失时补跑，引号或报错短语会强制启用。
 标识符同时按整体和子词入库，因此

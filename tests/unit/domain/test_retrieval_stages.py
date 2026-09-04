@@ -457,6 +457,20 @@ class TestSourceHead:
         )
         assert [hit.path for hit in hits] == ["src/pool.py", "README.md"]
 
+    async def test_domain_vocabulary_about_tests_still_prefers_source(self):
+        # bats is a test framework; "run a single test function" describes its
+        # source, it does not ask for test files.
+        dense = [
+            _hit("test/bats.bats", 0.95, blob=BLOB_A),
+            _hit("libexec/bats-core/bats-exec-test", 0.9, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense)
+        hits = await pipe.search(
+            "How does bats run a single test function with setup and teardown?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert hits[0].path == "libexec/bats-core/bats-exec-test"
+
     @pytest.mark.parametrize(
         "query",
         [
@@ -473,7 +487,7 @@ class TestSourceHead:
         hits = await pipe.search(query, SearchScope(frozenset({BLOB_A, BLOB_B})))
         assert hits[0].path == "tests/test_pool.py"
 
-    async def test_overview_requests_do_not_reserve_source_slots(self):
+    async def test_overview_keeps_raw_order_when_source_priority_is_disabled(self):
         dense = [
             _hit("docs/architecture.md", 0.95, blob=BLOB_A),
             _hit("src/pool.py", 0.9, blob=BLOB_B),
@@ -484,6 +498,18 @@ class TestSourceHead:
             SearchScope(frozenset({BLOB_A, BLOB_B})),
         )
         assert hits[0].path == "docs/architecture.md"
+
+    async def test_overview_reserves_a_bounded_source_slot(self):
+        dense = [
+            _hit("docs/architecture.md", 0.95, blob=BLOB_A),
+            _hit("src/pool.py", 0.9, blob=BLOB_B),
+        ]
+        pipe = self._pipe(dense)
+        hits = await pipe.search(
+            "explain the architecture of the connection pool subsystem",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+        assert [hit.path for hit in hits] == ["src/pool.py", "docs/architecture.md"]
 
     async def test_source_head_is_disabled_by_setting(self):
         dense = [

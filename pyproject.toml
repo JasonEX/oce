@@ -53,6 +53,10 @@ Documentation = "https://github.com/JasonEX/oce/blob/master/README.md"
 Issues = "https://github.com/JasonEX/oce/issues"
 
 [project.optional-dependencies]
+local-rerank = [
+    "onnxruntime>=1.18.0",
+    "tokenizers>=0.19.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.23.0",

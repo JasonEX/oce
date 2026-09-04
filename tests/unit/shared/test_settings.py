@@ -30,3 +30,16 @@ def test_rerank_instruction_and_policy_read_their_documented_environment_names(
     )
     assert RetrievalSettings(_env_file=None).rerank_policy == "always"
     assert RetrievalSettings(_env_file=None).path_top_k == 32
+
+
+def test_local_rerank_and_query_cap_read_documented_environment_names(monkeypatch):
+    monkeypatch.setenv("EMBED_MAX_QUERY_CHARS", "4096")
+    monkeypatch.setenv("RERANK_PROVIDER", "local")
+    monkeypatch.setenv("RERANK_LOCAL_CANDIDATES", "12")
+
+    from oce.shared.config.settings import EmbeddingSettings
+
+    assert EmbeddingSettings(_env_file=None).max_query_chars == 4096
+    rerank = RerankSettings(_env_file=None)
+    assert rerank.provider == "local"
+    assert rerank.local_candidates == 12

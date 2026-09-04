@@ -24,7 +24,7 @@ from oce.infrastructure.persistence.models import (
 from oce.infrastructure.persistence.scope_filter import run_scoped
 
 # 结构证据的优先级分：endpoint > definition > import；SQL 排序与命中打分共用一份。
-_KIND_SCORES = {"endpoint": 1.0, "definition": 0.95}
+_KIND_SCORES = {"endpoint": 1.0, "definition": 0.95, "call": 0.9}
 _DEFAULT_KIND_SCORE = 0.85
 
 
@@ -219,14 +219,21 @@ class SymbolSearchStore:
         return counts
 
     def _rows_to_hits(self, rows: Sequence[Row[Any]], top_k: int) -> list[SearchHit]:
+        # Damping measures how ambiguous a name is, i.e. how many places declare
+        # it. Call sites and imports are usage, not ambiguity: a function called
+        # from forty files is still one unambiguous definition.
         occurrences: set[tuple[str, str, int]] = set()
         per_identifier: dict[str, int] = {}
+        usage_only: dict[str, int] = {}
         for row in rows:
             occurrence = (row.identifier, row.blob_name, row.def_start)
             if occurrence in occurrences:
                 continue
             occurrences.add(occurrence)
-            per_identifier[row.identifier] = per_identifier.get(row.identifier, 0) + 1
+            counter = per_identifier if row.kind in DEFINITION_KINDS else usage_only
+            counter[row.identifier] = counter.get(row.identifier, 0) + 1
+        for identifier, count in usage_only.items():
+            per_identifier.setdefault(identifier, count)
 
         # One chunk may hold several matched identifiers; it keeps its best score.
         best: dict[tuple[str, str, int, int], SearchHit] = {}

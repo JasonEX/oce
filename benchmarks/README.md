@@ -256,6 +256,9 @@ It is not a release threshold or evidence of end-to-end retrieval quality.
 
 The first black-box baseline, including the Milvus Lite flush and SQLite WAL findings it
 surfaced, is in [`results/blackbox-baseline-2026-09-03.md`](results/blackbox-baseline-2026-09-03.md).
+The nine-language round that followed (extraction fixes, routing fixes, query cap, call-hop
+ablation, and the in-process ONNX reranker against the API reranker) is in
+[`results/nine-language-utility-2026-09-03.md`](results/nine-language-utility-2026-09-03.md).
 Earlier adaptive-rerank and head-order observations are retained in
 [`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md)
 and

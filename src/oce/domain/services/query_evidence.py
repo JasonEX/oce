@@ -12,11 +12,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from oce.domain.chunk.lang import detect_language
 from oce.domain.services.lexical import query_terms
 from oce.domain.services.query_classifier import (
     _FILENAME_TOKEN_PATTERN,
     _PATH_TOKEN_PATTERN,
+    _is_probable_filename,
     extract_code_identifiers,
 )
 
@@ -39,10 +39,6 @@ _URL = re.compile(r"[a-z][a-z0-9+.\-]*://\S+")
 _SITE_PACKAGES = re.compile(r".*?(?:site-packages|dist-packages)[/\\]")
 _NOISE_FRAMES = frozenset({"<module>", "<lambda>", "<listcomp>", "<genexpr>"})
 
-_EXTRA_FILE_EXTENSIONS = frozenset(
-    {".txt", ".cfg", ".ini", ".env", ".lock", ".rst", ".csv", ".proto", ".tf"}
-)
-
 MAX_PHRASE_CHARS = 120
 
 
@@ -59,11 +55,6 @@ class QueryEvidence:
     @property
     def has_path_evidence(self) -> bool:
         return bool(self.filenames or self.paths)
-
-
-def _is_source_filename(token: str) -> bool:
-    suffix = "." + token.rsplit(".", 1)[-1].lower()
-    return detect_language(token) is not None or suffix in _EXTRA_FILE_EXTENSIONS
 
 
 def _relative_path(raw: str) -> str:
@@ -119,11 +110,11 @@ def extract_query_evidence(query: str) -> QueryEvidence:
             _add(paths, _relative_path(token))
     for match in _FILENAME_TOKEN_PATTERN.finditer(text):
         token = match.group()
-        if _is_source_filename(token):
+        if _is_probable_filename(token):
             _add(filenames, token)
     for path in paths:
         name = path.rsplit("/", 1)[-1]
-        if _is_source_filename(name):
+        if _is_probable_filename(name):
             _add(filenames, name)
 
     terms = query_terms(

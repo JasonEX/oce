@@ -14,11 +14,11 @@ from benchmarks.blackbox.short_queries import (
 )
 
 
-def test_reviewed_anchor_manifest_covers_seven_snapshots() -> None:
+def test_reviewed_anchor_manifest_covers_all_snapshots() -> None:
     anchors = load_anchors(DEFAULT_CASES)
 
-    assert len(anchors) == 22
-    assert len({anchor.instance_id for anchor in anchors}) == 7
+    assert len(anchors) == 40
+    assert len({anchor.instance_id for anchor in anchors}) == 13
 
 
 def test_expand_cases_builds_balanced_queries_with_source_reference_truth(
@@ -78,6 +78,25 @@ def test_expand_cases_builds_balanced_queries_with_source_reference_truth(
             "src/lib.rs",
             "pub trait FromRequest {}\n",
         ),
+        ("go", "tree.go", "gin.go", "type Params []Param\n"),
+        (
+            "java",
+            "src/main/java/Gson.java",
+            "src/main/java/Other.java",
+            "public final class Gson {}\n",
+        ),
+        (
+            "c",
+            "src/jv.c",
+            "src/main.c",
+            "jv jv_string_fmt(const char* fmt, ...) {\n}\n",
+        ),
+        (
+            "bash",
+            "lib/tracing.bash",
+            "lib/common.bash",
+            "bats_print_stack_trace() {\n}\n",
+        ),
     ),
 )
 def test_expand_cases_supports_typescript_and_rust_anchors(
@@ -87,7 +106,14 @@ def test_expand_cases_supports_typescript_and_rust_anchors(
     consumer_path,
     definition,
 ) -> None:
-    identifier = "configureStore" if code_language == "typescript" else "FromRequest"
+    identifier = {
+        "typescript": "configureStore",
+        "rust": "FromRequest",
+        "go": "Params",
+        "java": "Gson",
+        "c": "jv_string_fmt",
+        "bash": "bats_print_stack_trace",
+    }[code_language]
     root = tmp_path / "snapshots" / "example-1"
     (root / definition_path).parent.mkdir(parents=True)
     (root / definition_path).write_text(definition, encoding="utf-8")

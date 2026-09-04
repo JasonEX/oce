@@ -55,6 +55,12 @@ class MilvusCollectionClient:
         self._client = client_type(uri=settings.endpoint, token=settings.token)
         self._initialize_lock = asyncio.Lock()
         self._initialized = False
+        # Milvus Lite persists growing segments across restarts, so a fresh
+        # process may still be serving rows the index does not cover; the
+        # first search after start seals them once.
+        self._unsealed = self._local
+        self._write_generation = 0
+        self._flush_lock = asyncio.Lock()
         self._closed = False
         logger.info("Connecting to Milvus: {}", settings.endpoint)
 
@@ -145,30 +151,46 @@ class MilvusCollectionClient:
                 data=batch,
             )
             count += result.get("upsert_count", result.get("insert_count", len(batch)))
-        await self._seal_local_segments()
+        self._mark_local_segments_unsealed()
         return count
 
-    async def _seal_local_segments(self) -> None:
-        """Flush after writes on Milvus Lite so the HNSW index covers them.
+    def _mark_local_segments_unsealed(self) -> None:
+        """Mark Milvus Lite rows as unsealed after a write.
 
         Lite keeps fresh rows in a growing segment that the vector index does
         not cover; a scoped search then scans that segment row by row. On a
         24K-row collection one 1.4K-blob upload raised a 3.3K-blob workspace
         search from about 30 ms to about 800 ms until the segment was sealed.
-        Server deployments seal by their own policy and search growing rows
-        with an interim index, so they are left alone.
+        Flushing after every upload batch would make a large sync pay that
+        cost dozens of times, so the flush is deferred to the first search
+        that follows a write. Server deployments seal by their own policy and
+        search growing rows with an interim index, so they are left alone.
         """
-        if not self._local:
+        if self._local:
+            self._write_generation += 1
+            self._unsealed = True
+
+    async def _flush_if_unsealed(self) -> None:
+        if not self._local or not self._unsealed:
             return
-        try:
-            await self._call("flush", self.collection_name)
-        except Exception as exc:
-            logger.warning(
-                "Milvus Lite flush failed for {}; searches stay slow until the "
-                "next flush: {}",
-                self.collection_name,
-                type(exc).__name__,
-            )
+        async with self._flush_lock:
+            if not self._unsealed:
+                return
+            generation = self._write_generation
+            try:
+                await self._call("flush", self.collection_name)
+            except Exception as exc:
+                logger.warning(
+                    "Milvus Lite flush failed for {}; searches stay slow until the "
+                    "next flush: {}",
+                    self.collection_name,
+                    type(exc).__name__,
+                )
+                return
+            # A write may finish while flush is in progress. Keep the dirty
+            # marker in that case so the next search seals those newer rows.
+            if self._write_generation == generation:
+                self._unsealed = False
 
     async def _search_vector(
         self,
@@ -180,6 +202,7 @@ class MilvusCollectionClient:
     ) -> list[tuple[dict[str, Any], float]]:
         """Run one dense search and return ``(entity, score)`` pairs for the top hits."""
         await self.initialize()
+        await self._flush_if_unsealed()
         results = await self._call(
             "search",
             collection_name=self.collection_name,
@@ -218,7 +241,7 @@ class MilvusCollectionClient:
             collection_name=self.collection_name,
             filter=f"blob_name in [{quoted}]",
         )
-        await self._seal_local_segments()
+        self._mark_local_segments_unsealed()
 
     async def read_collection_stats(self) -> tuple[bool, int]:
         """Read collection cardinality without creating or loading an index."""

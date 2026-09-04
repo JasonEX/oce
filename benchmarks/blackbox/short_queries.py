@@ -25,6 +25,8 @@ from statistics import fmean
 from typing import Literal
 
 from benchmarks.blackbox.corpus import (
+    LANGUAGE_LABELS,
+    LANGUAGES,
     CodeLanguage,
     RepositorySnapshot,
     load_corpus,
@@ -67,18 +69,45 @@ _REFERENCE_EXCLUDED_PARTS = frozenset(
 _SOURCE_EXTENSIONS: dict[CodeLanguage, frozenset[str]] = {
     "python": frozenset({".py"}),
     "typescript": frozenset({".ts", ".tsx"}),
+    "javascript": frozenset({".js", ".mjs", ".cjs"}),
     "rust": frozenset({".rs"}),
+    "go": frozenset({".go"}),
+    "c": frozenset({".c", ".h"}),
+    "csharp": frozenset({".cs"}),
+    "java": frozenset({".java"}),
+    "bash": frozenset({".sh", ".bash"}),
 }
+# The declaration check only guards the reviewed anchor against typos and
+# drift; it is deliberately loose rather than a parser.
 _DEFINITION_PATTERNS: dict[CodeLanguage, str] = {
     "python": r"(?m)^(?:async\s+def|def|class)\s+{identifier}\b",
     "typescript": (
         r"(?m)^(?:export\s+)?(?:declare\s+)?(?:abstract\s+)?"
         r"(?:class|interface|type|function|const)\s+{identifier}\b"
     ),
+    "javascript": (
+        r"(?m)(?:^|\b)(?:function|class)\s+{identifier}\b"
+        r"|^(?:exports\.|module\.exports\.)?{identifier}\s*="
+    ),
     "rust": (
         r"(?m)^(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?"
         r"(?:fn|struct|enum|trait|type|const)\s+{identifier}\b"
     ),
+    "go": r"(?m)^(?:func\s+(?:\([^)]*\)\s*)?|type\s+){identifier}\b",
+    "c": (
+        r"(?m)^(?:static\s+|extern\s+)?[A-Za-z_][^;{{}}=\n]*?\b{identifier}\s*\("
+        r"|^#define\s+{identifier}\b|^(?:struct|enum|union)\s+{identifier}\b"
+    ),
+    "csharp": (
+        r"(?m)\b(?:class|interface|record|struct|enum|delegate)\s+{identifier}\b"
+        r"|^\s+(?:public|internal|protected|private)[^;=\n]*?\s{identifier}\s*[(<]"
+    ),
+    "java": (
+        r"(?m)\b(?:class|interface|enum|record)\s+{identifier}\b"
+        r"|^\s+(?:public|protected|private|static|final|abstract|synchronized|\s)+"
+        r"[\w<>\[\],.? ]+\s+{identifier}\s*\("
+    ),
+    "bash": r"(?m)^(?:function\s+)?{identifier}\s*\(\)|^function\s+{identifier}\b",
 }
 
 
@@ -146,11 +175,24 @@ def _tracked_source_paths(root: Path, code_language: CodeLanguage) -> Iterable[P
         if not raw:
             continue
         relative = Path(raw.decode("utf-8"))
-        if relative.suffix not in _SOURCE_EXTENSIONS[
-            code_language
-        ] or _REFERENCE_EXCLUDED_PARTS.intersection(relative.parts):
+        if _REFERENCE_EXCLUDED_PARTS.intersection(relative.parts):
             continue
-        yield relative
+        if relative.suffix in _SOURCE_EXTENSIONS[code_language]:
+            yield relative
+        elif code_language == "bash" and not relative.suffix:
+            # Shell tools ship their executables without an extension; a bash
+            # shebang is the only reliable marker.
+            if _has_bash_shebang(root / relative):
+                yield relative
+
+
+def _has_bash_shebang(path: Path) -> bool:
+    try:
+        with path.open("rb") as handle:
+            first = handle.readline(120)
+    except OSError:
+        return False
+    return first.startswith(b"#!") and b"bash" in first
 
 
 def _reference_paths(
@@ -461,7 +503,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             language: aggregate(
                 [result for result in results if result["code_language"] == language]
             )
-            for language in ("python", "typescript", "rust")
+            for language in _present_languages(results)
         },
         "cases": results,
     }
@@ -482,7 +524,21 @@ def _model_calls(summary: dict[str, object], kind: str) -> str:
     return str(int(usage[kind].get("calls", 0)))
 
 
+def _present_languages(results: Sequence[dict[str, object]]) -> list[CodeLanguage]:
+    present = {str(result.get("code_language", "")) for result in results}
+    return [language for language in LANGUAGES if language in present]
+
+
+def _reported_languages(report: dict[str, object]) -> list[CodeLanguage]:
+    by_language = report.get("by_code_language")
+    present = set(by_language) if isinstance(by_language, dict) else set()
+    return [language for language in LANGUAGES if language in present]
+
+
 def compare(paths: Iterable[Path]) -> str:
+    loaded = [(path, json.loads(path.read_text(encoding="utf-8"))) for path in paths]
+    ensure_comparable([value for _path, value in loaded], suite="short_queries")
+    languages = _reported_languages(loaded[0][1])
     # Top-1 per kind is the acceptance line for the deterministic head slots;
     # Hit@10 alone stayed at 100% while symbol answers slipped to rank 2-4.
     headers = (
@@ -494,9 +550,7 @@ def compare(paths: Iterable[Path]) -> str:
         "Path Top-1",
         "Reference Top-1",
         "Ref def-first",
-        "Python Top-1",
-        "TS Top-1",
-        "Rust Top-1",
+        *(f"{LANGUAGE_LABELS[language]} Top-1" for language in languages),
         "Hit@10",
         "Chars",
         "Hits",
@@ -505,9 +559,6 @@ def compare(paths: Iterable[Path]) -> str:
         "Rerank calls",
         "Chat calls",
     )
-    loaded = [(path, json.loads(path.read_text(encoding="utf-8"))) for path in paths]
-    ensure_comparable([value for _path, value in loaded], suite="short_queries")
-
     rows: list[tuple[str, ...]] = []
     for path, value in loaded:
         summary = value["summary"]
@@ -523,9 +574,10 @@ def compare(paths: Iterable[Path]) -> str:
                 _percent(by_kind["path"]["top1"]),
                 _percent(by_kind["reference"]["top1"]),
                 _percent(by_kind["reference"].get("definition_top1")),
-                _percent(by_code_language["python"]["top1"]),
-                _percent(by_code_language["typescript"]["top1"]),
-                _percent(by_code_language["rust"]["top1"]),
+                *(
+                    _percent(by_code_language[language]["top1"])
+                    for language in languages
+                ),
                 _percent(summary["hit_at_10"]),
                 _number(summary.get("mean_returned_chars")),
                 _number(summary.get("mean_hit_count")),

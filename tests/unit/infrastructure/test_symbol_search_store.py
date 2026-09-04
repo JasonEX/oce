@@ -124,3 +124,41 @@ async def test_frequency_damping_and_definition_lookup(sessions):
     assert not any(item[0] in {"helper", "missing"} for item in found)
     # Ordered by the caller's identifier order.
     assert [d.identifier for d in definitions] == ["start_all", "BaseService"]
+
+
+async def test_calls_are_exact_reference_evidence_without_definition_damping(sessions):
+    files = {
+        "src/api.py": (
+            "from src.invoice import build_invoice\n"
+            "def create(request):\n"
+            "    total = build_invoice(request)\n"
+            "    return apply_discount(total, 10)\n"
+            "\n"
+            "def other():\n"
+            "    return len([])\n"
+        ),
+        "src/invoice.py": "def build_invoice(r):\n    return 1\n\ndef apply_discount(t, p):\n    return t\n",
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    call_hits = await store.search_exact(
+        identifiers=["build_invoice", "apply_discount", "len"],
+        scope=scope,
+        kinds=("call",),
+    )
+    assert {hit.path for hit in call_hits} == {"src/api.py"}
+    assert len(call_hits) == 2
+    assert all(hit.score == 0.9 for hit in call_hits)
+
+    hits = await store.search_exact(
+        identifiers=["build_invoice", "apply_discount"], scope=scope
+    )
+    # A definition called from many places is still one unambiguous definition.
+    definition = next(
+        hit
+        for hit in hits
+        if hit.path == "src/invoice.py" and "def build_invoice" in hit.content
+    )
+    assert definition.score == 0.95

@@ -67,11 +67,13 @@ from oce.application.service import RetrievalApplication
 from oce.application.worker import EmbedWorker
 from oce.domain.services.llm.reranker import LLMReranker
 from oce.domain.services.llm.rewriter import QueryRewriter
+from oce.domain.services.reranker import Reranker
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
 from oce.infrastructure.embed.credential_reranker import CredentialConfiguredReranker
+from oce.infrastructure.embed.local_onnx_reranker import LocalOnnxReranker
 from oce.infrastructure.embed.query_cache import QueryCachingEmbedder
 from oce.infrastructure.llm.credential_llm_client import CredentialConfiguredLLMClient
 from oce.infrastructure.metrics.cleanup import MonitoringCleaner
@@ -249,11 +251,23 @@ class Container:
             max_entries=settings.embedding.query_cache_max_entries,
             ttl_seconds=settings.embedding.query_cache_ttl_seconds,
         )
-        # RERANK_ENABLED 是数据外发授权：未授权时不构造客户端，pipeline 与审计据此
-        # 区分「未启用」和「按策略跳过」。
-        self.reranker: CredentialConfiguredReranker | None = None
-        if settings.rerank.enabled:
-            self.reranker = CredentialConfiguredReranker(
+        # RERANK_ENABLED 授权专用重排阶段；是否外发由 provider 决定。
+        # 未启用时不构造实现，pipeline 与审计据此区分未启用和按策略跳过。
+        self.reranker: Reranker | None = None
+        self.credential_reranker: CredentialConfiguredReranker | None = None
+        if settings.rerank.enabled and settings.rerank.provider == "local":
+            self.reranker = LocalOnnxReranker(
+                model_dir=settings.rerank.local_model_dir,
+                model_file=settings.rerank.local_model_file,
+                candidates=settings.rerank.local_candidates,
+                max_doc_chars=settings.rerank.local_max_doc_chars,
+                max_query_chars=settings.rerank.max_query_chars,
+                max_tokens=settings.rerank.local_max_tokens,
+                batch_size=settings.rerank.local_batch_size,
+                threads=settings.rerank.local_threads,
+            )
+        elif settings.rerank.enabled:
+            self.credential_reranker = self.reranker = CredentialConfiguredReranker(
                 async_session_factory,
                 settings.rerank,
                 fallback_embedding_key=(
@@ -301,7 +315,7 @@ class Container:
             )
         credential_runtime = _CredentialRuntime(
             self.embedding_runtime,
-            self.reranker,
+            self.credential_reranker,
             self.llm_clients,
             query_cache=self.embedder,
         )
@@ -562,6 +576,7 @@ def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
     retrieval = settings.retrieval
     return RetrievalRuntimeProfile(
         embedding_enabled=settings.embedding.enabled,
+        embedding_query_char_limit=settings.embedding.max_query_chars,
         semantic_chunking_enabled=settings.chunking.semantic_enabled,
         exact_enabled=retrieval.exact_enabled,
         path_index_enabled=retrieval.path_index_enabled,
@@ -572,7 +587,28 @@ def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
         path_lookup_enabled=retrieval.path_lookup_enabled,
         merge_adjacent_enabled=retrieval.merge_adjacent_enabled,
         related_definitions_enabled=retrieval.related_definitions_enabled,
-        api_rerank_enabled=settings.rerank.enabled,
+        rerank_enabled=settings.rerank.enabled,
+        rerank_provider=settings.rerank.provider if settings.rerank.enabled else "none",
+        rerank_candidate_limit=(
+            settings.rerank.local_candidates
+            if settings.rerank.enabled and settings.rerank.provider == "local"
+            else settings.rerank.top_n
+            if settings.rerank.enabled
+            else 0
+        ),
+        rerank_query_char_limit=(
+            settings.rerank.max_query_chars if settings.rerank.enabled else 0
+        ),
+        rerank_document_char_limit=(
+            settings.rerank.local_max_doc_chars
+            if settings.rerank.enabled and settings.rerank.provider == "local"
+            else 0
+        ),
+        rerank_token_limit=(
+            settings.rerank.local_max_tokens
+            if settings.rerank.enabled and settings.rerank.provider == "local"
+            else 0
+        ),
         rerank_policy=retrieval.rerank_policy,
         llm_rerank_enabled=settings.llm.rerank_enabled,
         llm_rerank_policy=retrieval.llm_rerank_policy,

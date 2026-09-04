@@ -22,9 +22,16 @@ class Reranker(Protocol):
         """对召回结果精排，返回包含同一候选集的新顺序。"""
         ...
 
+    async def close(self) -> None:
+        """释放重排器持有的运行时资源。"""
+        ...
+
 
 class NoopReranker:
     """不重排（原样返回）"""
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
         return hits
+
+    async def close(self) -> None:
+        return None

@@ -38,7 +38,7 @@ class IndexingPipeline:
         blob_repo: BlobRepository,
         chunk_repo: ChunkRepository,
         symbol_projection: SymbolProjection,
-        embed_batch_size: int = 64,
+        embed_batch_size: int = 256,
         path_store: PathSearchStore | None = None,
         embedding_enabled: bool = True,
         lexical_projection: LexicalProjection | None = None,
@@ -168,7 +168,9 @@ class IndexingPipeline:
             # 嵌入关闭时无法生成向量，一并跳过。
             return 0
 
-        # 第二阶段:嵌入
+        # 第二阶段:嵌入。每页交给 embedder 一次，由它按 provider 批大小并发拉取；
+        # 64 一页时同步上传是串行的 4.5 秒一页（约 14 chunk/s），256 一页让
+        # 4 路并发真正用上。
         pending = await self.chunk_repo.find_pending_for_blobs(
             [blob.blob_name for blob in blobs]
         )

@@ -16,7 +16,7 @@ from benchmarks.blackbox.semantic_queries import (
 def test_reviewed_manifest_balances_intents() -> None:
     cases = load_manifest(DEFAULT_CASES)
 
-    assert len(cases) == 21
+    assert len(cases) == 39
     assert {
         kind: sum(case.kind == kind for case in cases)
         for kind in {
@@ -24,7 +24,7 @@ def test_reviewed_manifest_balances_intents() -> None:
             "overview",
             "call_chain",
         }
-    } == {"feature": 7, "overview": 7, "call_chain": 7}
+    } == {"feature": 13, "overview": 13, "call_chain": 13}
 
 
 def test_score_paths_uses_grades_and_deduplicates_files() -> None:

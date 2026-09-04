@@ -17,11 +17,17 @@ def test_curated_corpus_has_pinned_multilanguage_snapshots() -> None:
         / "curated_corpus.json"
     )
 
-    assert len(snapshots) == 7
+    assert len(snapshots) == 13
     assert {snapshot.code_language for snapshot in snapshots} == {
         "python",
         "typescript",
+        "javascript",
         "rust",
+        "go",
+        "c",
+        "csharp",
+        "java",
+        "bash",
     }
     assert all(len(snapshot.revision) == 40 for snapshot in snapshots)
 

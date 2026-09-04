@@ -12,11 +12,13 @@ if TYPE_CHECKING:
 
 
 # endpoint: route/command handlers; definition: declared names; import: names a
-# file pulls in. Imports only serve reference-style lookups and never count as
-# structural evidence that a symbol question has been answered.
-SymbolKind = Literal["endpoint", "definition", "import"]
+# file pulls in; call: names a file invokes. Imports and calls only serve
+# reference/call-chain lookups and never count as structural evidence that a
+# symbol question has been answered.
+SymbolKind = Literal["endpoint", "definition", "import", "call"]
 
 DEFINITION_KINDS: tuple[str, ...] = ("endpoint", "definition")
+CALL_KIND = "call"
 
 
 @dataclass(frozen=True)

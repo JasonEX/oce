@@ -70,6 +70,9 @@ def _leaf_name(node: CompatNode) -> str | None:
     """
     if node.type.endswith("identifier") and not node.named_children:
         return node.text.decode("utf-8", errors="replace")
+    # Bash names functions with a bare ``word`` node.
+    if node.type == "word" and not node.named_children:
+        return node.text.decode("utf-8", errors="replace")
     for field in ("name", "type"):
         child = node.child_by_field_name(field)
         if child is not None and child is not node:
@@ -102,6 +105,8 @@ def declared_name(node: CompatNode) -> str | None:
         if left is not None and left.type == "identifier":
             return _leaf_name(left)
         return None
+    if node.type == "assignment_expression":
+        return assigned_function_name(node)
     # Kotlin/Swift properties: ``property_declaration > variable_declaration > id``.
     if node.type == "property_declaration":
         for child in node.named_children:
@@ -118,6 +123,81 @@ def declared_name(node: CompatNode) -> str | None:
         # Only the first named child may name the node; a later identifier is
         # a reference, a type, or a parameter.
         break
+    return None
+
+
+_VALUE_DEFINITION_MARKERS = ("function", "arrow", "class")
+
+
+def assigned_function_name(node: CompatNode) -> str | None:
+    """Name defined by ``x = function``-style assignments in JavaScript/TypeScript.
+
+    CommonJS and prototype code defines most of its API this way:
+    ``app.use = function use(fn)``, ``exports.query = function query()``,
+    ``Layer.prototype.match = function match(path)``. The property being
+    assigned is the symbol; ``module.exports = createApplication`` only
+    re-exports a name declared elsewhere and is skipped.
+    """
+    right = node.child_by_field_name("right")
+    if right is None or not any(
+        marker in right.type for marker in _VALUE_DEFINITION_MARKERS
+    ):
+        return None
+    left = node.child_by_field_name("left")
+    if left is None:
+        return None
+    if left.type == "identifier":
+        return _leaf_name(left)
+    if left.type == "member_expression":
+        target = left.child_by_field_name("object")
+        prop = left.child_by_field_name("property")
+        if prop is None or prop.text == b"exports":
+            return None
+        if target is not None and target.text == b"module":
+            return None
+        return prop.text.decode("utf-8", errors="replace")
+    return None
+
+
+_CALL_MARKERS = ("call", "invocation")
+_CALLEE_FIELDS = ("function", "name", "method", "callee")
+_MEMBER_FIELDS = ("property", "field", "attribute", "name", "function", "method")
+
+
+def is_call_type(node_type: str) -> bool:
+    """``call``/``call_expression``/``method_invocation``/``invocation_expression``;
+    macros and ``call_arguments``-style helper nodes are not call sites."""
+    if "macro" in node_type or "argument" in node_type:
+        return False
+    return any(marker in node_type for marker in _CALL_MARKERS)
+
+
+def callee_name(node: CompatNode) -> str | None:
+    """Last identifier of the callee: ``self.pool.acquire()`` -> ``acquire``,
+    ``a::b::c()`` -> ``c``, ``foo()`` -> ``foo``. ``None`` for computed calls."""
+    for field in _CALLEE_FIELDS:
+        target = node.child_by_field_name(field)
+        if target is not None:
+            return _member_leaf(target)
+    return None
+
+
+def _member_leaf(node: CompatNode) -> str | None:
+    if node.type.endswith("identifier") and not node.named_children:
+        return node.text.decode("utf-8", errors="replace")
+    if node.type == "word" and not node.named_children:
+        return node.text.decode("utf-8", errors="replace")
+    for field in _MEMBER_FIELDS:
+        child = node.child_by_field_name(field)
+        if child is not None and child is not node:
+            resolved = _member_leaf(child)
+            if resolved:
+                return resolved
+    identifiers = [
+        child for child in node.named_children if child.type.endswith("identifier")
+    ]
+    if identifiers:
+        return _member_leaf(identifiers[-1])
     return None
 
 

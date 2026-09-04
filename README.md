@@ -104,12 +104,12 @@ Embedding sends admitted source chunks to the configured endpoint. Optional rera
 LLM features send retrieval queries and candidate snippets as well. For private code, use
 only endpoints approved to receive that data, preferably local or internal services.
 
-The generated personal configuration keeps optional reranking disabled until you explicitly
-authorize an endpoint to receive candidate snippets. A dedicated reranker offers predictable,
-low-latency relevance ordering:
+The generated personal configuration keeps optional reranking disabled until you choose its
+runtime and data boundary. The API provider offers predictable relevance ordering:
 
 ```dotenv
 RERANK_ENABLED=true
+RERANK_PROVIDER=api
 RERANK_API_KEY=your_rerank_service_key
 RERANK_ENDPOINT=https://provider.example.com/v1/rerank
 RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
@@ -137,22 +137,30 @@ LLM_MAX_CANDIDATES=20
 LLM_RERANK_TIMEOUT_SECONDS=15
 ```
 
-`RERANK_ENABLED` and `LLM_RERANK_ENABLED` are data-egress authorizations; the two
-`*_POLICY` settings only decide which queries an authorized model sees, and both models share
-one deterministic decision. `adaptive` skips a model when exact symbol/path evidence already
+`RERANK_ENABLED` and `LLM_RERANK_ENABLED` authorize their respective ranking stages; the two
+`*_POLICY` settings only decide which queries an enabled model sees, and both models share
+one deterministic decision. The API dedicated provider and the chat LLM send data to their
+configured endpoints; the local dedicated provider does not. `adaptive` skips a model when exact symbol/path evidence already
 answers a focused lookup, keeps the chat LLM out of reference queries to preserve occurrence
 coverage, and uses both for feature, flow, overview, and compound requests. `always` reranks
 every result set with at least two candidates and is useful for quality-first deployments and
 controlled comparisons. Each retrieval records its route (`dedicated`, `dedicated+llm`, or
-`skip:<reason>`) in `retrieval_metrics.rerank_route`. Enabling
-both backends forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an
-operational data/latency boundary, not a claim that chat-LLM ranking is lower quality.
-The repeated development benchmark supports dedicated reranking as the first interactive
-opt-in; the bounded chat cascade improved the small development set further but was too slow
-for interactive use. This is still a 13-issue development observation, so authorization
-defaults stay off until replicated on the full profile. See the
-[benchmark report](benchmarks/results/swe-explore-development-2026-09-03.md). Candidates
-outside either rerank window remain available to final selection.
+`skip:<reason>`) in `retrieval_metrics.rerank_route`. The dedicated reranker has two providers:
+`RERANK_PROVIDER=api` sends the query and candidate source to a rerank endpoint, while
+`RERANK_PROVIDER=local` runs an ONNX cross-encoder in-process (install with
+`uv sync --extra local-rerank`, point `RERANK_LOCAL_MODEL_DIR` at a directory holding
+`model_int8.onnx` and `tokenizer.json`, for example the `jinaai/jina-reranker-v2-base-multilingual`
+export) and sends nothing outside the machine. That benchmark model is
+[CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual),
+so verify model-specific usage rights or choose another compatible export before deployment.
+On the measured 16-core CPU it scores 20 candidates in about 1.2 s. Enabling both backends
+forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an operational
+data/latency boundary, not a quality claim. In the current development benchmark, the local
+reranker materially improved long issue-style ranking, preserved short structural Top-1, and
+did not improve the smaller semantic suite. Treat it as a complex-query opt-in until broader
+repeated evaluation supports a wider default. See the
+[benchmark report](benchmarks/results/nine-language-utility-2026-09-03.md). Candidates outside
+either rerank window remain available to final selection.
 
 Then start the service:
 
@@ -279,9 +287,11 @@ single-query recall.
 Exact identifier recall joins checkpoint membership directly, so large workspaces keep exact
 recall without expanding every member into one SQL `IN (...)` clause. Added-only scopes and
 unusually large request deltas use bounded batches; timeout still falls back to dense retrieval.
-The symbol index is built by tree-sitter from whole files (definitions, endpoints, and
-imports with real spans; a regex provider covers grammars the pack cannot load). It is not
-a call or implementation graph. A lexical term index (SQLite FTS5 in personal mode,
+The symbol index is built by tree-sitter from whole files (definitions, endpoints, imports,
+and call sites with real spans; a regex provider covers grammars the pack cannot load). Call
+sites give reference and call-chain lookups exact use evidence, but they are not a resolved
+call graph: callee names are not bound to a receiver type or implementation. Query embeddings use at most `EMBED_MAX_QUERY_CHARS` (3,000) characters
+of the request; issue-length text beyond that only diluted the vector and slowed the call. A lexical term index (SQLite FTS5 in personal mode,
 PostgreSQL `tsvector` in service mode) recalls error strings, log text, and call sites that
 dense vectors miss. It is routed to reference, call-chain, feature, overview, and compound requests;
 symbol/path queries add it only when deterministic evidence is missing, while quoted or error-like

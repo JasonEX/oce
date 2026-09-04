@@ -132,6 +132,114 @@
       "instance_id": "axum-v0.7.9",
       "identifier": "IntoResponse",
       "definition_path": "axum-core/src/response/into_response.rs"
+    },
+    {
+      "id": "gin-handlers-chain",
+      "instance_id": "gin-v1.10.0",
+      "identifier": "HandlersChain",
+      "definition_path": "gin.go"
+    },
+    {
+      "id": "gin-response-writer",
+      "instance_id": "gin-v1.10.0",
+      "identifier": "ResponseWriter",
+      "definition_path": "response_writer.go"
+    },
+    {
+      "id": "gin-params",
+      "instance_id": "gin-v1.10.0",
+      "identifier": "Params",
+      "definition_path": "tree.go"
+    },
+    {
+      "id": "jq-jv-string-fmt",
+      "instance_id": "jq-1.7.1",
+      "identifier": "jv_string_fmt",
+      "definition_path": "src/jv.c"
+    },
+    {
+      "id": "jq-jv-array-append",
+      "instance_id": "jq-1.7.1",
+      "identifier": "jv_array_append",
+      "definition_path": "src/jv.c"
+    },
+    {
+      "id": "jq-jq-next",
+      "instance_id": "jq-1.7.1",
+      "identifier": "jq_next",
+      "definition_path": "src/execute.c"
+    },
+    {
+      "id": "mediatr-pipeline-behavior",
+      "instance_id": "mediatr-v12.4.1",
+      "identifier": "IPipelineBehavior",
+      "definition_path": "src/MediatR/IPipelineBehavior.cs"
+    },
+    {
+      "id": "mediatr-notification-handler",
+      "instance_id": "mediatr-v12.4.1",
+      "identifier": "INotificationHandler",
+      "definition_path": "src/MediatR/INotificationHandler.cs"
+    },
+    {
+      "id": "mediatr-pre-processor-behavior",
+      "instance_id": "mediatr-v12.4.1",
+      "identifier": "RequestPreProcessorBehavior",
+      "definition_path": "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs"
+    },
+    {
+      "id": "express-route",
+      "instance_id": "express-4.21.2",
+      "identifier": "Route",
+      "definition_path": "lib/router/route.js"
+    },
+    {
+      "id": "express-layer",
+      "instance_id": "express-4.21.2",
+      "identifier": "Layer",
+      "definition_path": "lib/router/layer.js"
+    },
+    {
+      "id": "express-compile-etag",
+      "instance_id": "express-4.21.2",
+      "identifier": "compileETag",
+      "definition_path": "lib/utils.js"
+    },
+    {
+      "id": "bats-print-stack-trace",
+      "instance_id": "bats-core-v1.11.1",
+      "identifier": "bats_print_stack_trace",
+      "definition_path": "lib/bats-core/tracing.bash"
+    },
+    {
+      "id": "bats-preprocess-source",
+      "instance_id": "bats-core-v1.11.1",
+      "identifier": "bats_preprocess_source",
+      "definition_path": "lib/bats-core/preprocessing.bash"
+    },
+    {
+      "id": "bats-prefix-lines",
+      "instance_id": "bats-core-v1.11.1",
+      "identifier": "bats_prefix_lines_for_tap_output",
+      "definition_path": "lib/bats-core/common.bash"
+    },
+    {
+      "id": "gson-type-adapter-factory",
+      "instance_id": "gson-2.11.0",
+      "identifier": "TypeAdapterFactory",
+      "definition_path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java"
+    },
+    {
+      "id": "gson-json-writer",
+      "instance_id": "gson-2.11.0",
+      "identifier": "JsonWriter",
+      "definition_path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java"
+    },
+    {
+      "id": "gson-type-token",
+      "instance_id": "gson-2.11.0",
+      "identifier": "TypeToken",
+      "definition_path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java"
     }
   ]
 }

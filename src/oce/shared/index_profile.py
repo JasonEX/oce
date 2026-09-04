@@ -14,7 +14,7 @@ CHUNKER_VERSION = 4
 # 2: embedding input = File + Context header + code.
 EMBEDDING_PIPELINE_VERSION = 2
 # 2: tree-sitter definitions/imports with real spans; regex fallback + endpoints.
-SYMBOL_EXTRACTION_VERSION = 2
+SYMBOL_EXTRACTION_VERSION = 3
 PATH_DOCUMENT_VERSION = 1
 SOURCE_ADMISSION_VERSION = 1
 LEXICAL_INDEX_VERSION = 1

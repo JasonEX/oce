@@ -169,6 +169,7 @@ class QueryCacheStatsResponse(BaseModel):
 
 class RetrievalRuntimeProfileResponse(BaseModel):
     embedding_enabled: bool
+    embedding_query_char_limit: int = 0
     semantic_chunking_enabled: bool
     exact_enabled: bool
     path_index_enabled: bool
@@ -179,7 +180,12 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     path_lookup_enabled: bool
     merge_adjacent_enabled: bool
     related_definitions_enabled: bool
-    api_rerank_enabled: bool
+    rerank_enabled: bool
+    rerank_provider: str = "none"
+    rerank_candidate_limit: int = 0
+    rerank_query_char_limit: int = 0
+    rerank_document_char_limit: int = 0
+    rerank_token_limit: int = 0
     rerank_policy: str
     llm_rerank_enabled: bool
     llm_rerank_policy: str

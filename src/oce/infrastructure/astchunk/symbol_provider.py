@@ -17,7 +17,9 @@ from oce.domain.services.symbols import SymbolKind, SymbolOccurrence, SymbolProv
 from oce.infrastructure.astchunk.astchunk_builder import LANGUAGE_MAP
 from oce.infrastructure.astchunk.compat import CompatNode, compat_parse
 from oce.infrastructure.astchunk.declarations import (
+    callee_name,
     declared_name,
+    is_call_type,
     is_definition_type,
     is_function_like,
 )
@@ -34,6 +36,26 @@ _STRING_TYPES = frozenset(
     {"string", "string_literal", "interpreted_string_literal", "raw_string_literal"}
 )
 _IMPORT_NOISE = frozenset({"as", "from", "import", "use", "using", "self", "super"})
+# Python ``assignment`` and JavaScript/TypeScript ``assignment_expression``
+# both declare module-level names; see ``declared_name``.
+_ASSIGNMENT_TYPES = frozenset({"assignment", "assignment_expression"})
+# Callee names too common to locate anything: language builtins and the verbs
+# every codebase repeats. Kept short on purpose; rarity is scored at query time.
+_CALL_NOISE = frozenset(
+    """
+    print len str int float bool list dict set tuple range enumerate zip map filter
+    isinstance hasattr getattr setattr format join split strip append extend pop
+    get keys values items open super type id repr sorted reversed min max sum abs
+    any all next iter push slice concat log error warn info debug require
+    string number parse assert expect vec some ok err box new from into unwrap
+    clone default println format write writeln sizeof malloc free memcpy strlen
+    strcmp printf sprintf fprintf tostring valueof equals hashcode length size
+    """.split()
+)
+_MAX_CALLS_PER_FILE = 3_000
+# A grammar download can fail transiently; do not pin the failure for the
+# life of the process, but stop retrying once it is clearly unavailable.
+_PARSER_ATTEMPTS = 3
 _OPAQUE_TYPES = frozenset(
     {
         "comment",
@@ -49,6 +71,7 @@ class TreeSitterSymbolProvider:
     def __init__(self, fallback: SymbolProvider) -> None:
         self._fallback = fallback
         self._parsers: dict[str, object | None] = {}
+        self._failures: dict[str, int] = {}
 
     def extract(
         self,
@@ -73,6 +96,7 @@ class TreeSitterSymbolProvider:
 
         endpoints = find_endpoints(content, LineIndex(content))
         occurrences: dict[tuple[str, str, int], SymbolOccurrence] = {}
+        calls = 0
 
         def add(identifier: str, kind: SymbolKind, start: int, end: int) -> None:
             if len(identifier) < 2:
@@ -80,6 +104,19 @@ class TreeSitterSymbolProvider:
             key = (identifier, kind, start)
             if key not in occurrences:
                 occurrences[key] = SymbolOccurrence(identifier, kind, start, end)
+
+        def add_call(node: CompatNode) -> None:
+            nonlocal calls
+            if calls >= _MAX_CALLS_PER_FILE:
+                return
+            name = callee_name(node)
+            if name is None or len(name) < 3 or name.lower() in _CALL_NOISE:
+                return
+            line = node.start_point.row + 1
+            key = (name, "call", line)
+            if key not in occurrences:
+                occurrences[key] = SymbolOccurrence(name, "call", line, line)
+                calls += 1
 
         # (node, inside_function): locals declared inside a function body are
         # not project symbols, but nested functions and classes still are.
@@ -94,16 +131,21 @@ class TreeSitterSymbolProvider:
                     for name in _import_names(child):
                         add(name, "import", start, end)
                     continue
+                # Call sites provide direct-use evidence to reference and
+                # call-chain lookups; structural answer heads never use them.
+                if is_call_type(child_type):
+                    add_call(child)
                 # Anything function-shaped (declaration, arrow, lambda, closure)
                 # turns the declarators below it into locals.
                 descend_inside_function = inside_function or is_function_like(
                     child_type
                 )
-                if is_definition_type(child_type) or child_type == "assignment":
+                if is_definition_type(child_type) or child_type in _ASSIGNMENT_TYPES:
                     name = declared_name(child)
                     is_local = inside_function and (
                         child_type.endswith("_declarator")
-                        or child_type in ("assignment", "property_declaration")
+                        or child_type in _ASSIGNMENT_TYPES
+                        or child_type == "property_declaration"
                     )
                     if name is not None and not is_local:
                         kind = "endpoint" if name in endpoints else "definition"
@@ -125,20 +167,26 @@ class TreeSitterSymbolProvider:
 
     def _parser(self, language: str):
         key = language.lower()
-        if key not in self._parsers:
-            grammar = LANGUAGE_MAP.get(key)
-            parser = None
-            if grammar is not None:
-                try:
-                    parser = get_parser(grammar)
-                except Exception as exc:
-                    logger.warning(
-                        "tree-sitter grammar unavailable for {}; using regex symbols: {}",
-                        language,
-                        exc,
-                    )
-            self._parsers[key] = parser
-        return self._parsers[key]
+        if key in self._parsers:
+            return self._parsers[key]
+        grammar = LANGUAGE_MAP.get(key)
+        if grammar is None:
+            self._parsers[key] = None
+            return None
+        if self._failures.get(key, 0) >= _PARSER_ATTEMPTS:
+            return None
+        try:
+            parser = get_parser(grammar)
+        except Exception as exc:
+            self._failures[key] = self._failures.get(key, 0) + 1
+            logger.warning(
+                "tree-sitter grammar unavailable for {}; using regex symbols: {}",
+                language,
+                exc,
+            )
+            return None
+        self._parsers[key] = parser
+        return parser
 
 
 def _import_names(node: CompatNode) -> list[str]:

@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from oce.domain.chunk.lang import detect_language
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
@@ -57,7 +58,7 @@ from oce.domain.services.search import (
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
-from oce.domain.services.symbols import DEFINITION_KINDS
+from oce.domain.services.symbols import CALL_KIND, DEFINITION_KINDS
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 
@@ -110,16 +111,46 @@ def source_priority_factor(path: str) -> float:
         return 0.85
     if name == "__init__.py":
         return 0.85
+    # Editor integrations, shell glue and other files in a language the index
+    # does not parse (an Emacs mode next to a Python linter) are real code but
+    # rarely what a request about the project is looking for.
+    if "." in name and detect_language(name) is None:
+        return 0.85
     return 1.0
 
 
+# Benchmarks and performance harnesses exercise the API the way tests do:
+# they call everything and define nothing a request is looking for.
 _TEST_DIRECTORIES = frozenset(
-    {"test", "tests", "testing", "__tests__", "__testfixtures__", "testfixtures"}
+    {
+        "test",
+        "tests",
+        "testing",
+        "__tests__",
+        "__testfixtures__",
+        "testfixtures",
+        "asv_bench",
+        "bench",
+        "benches",
+        "benchmark",
+        "benchmarks",
+        "perf",
+    }
 )
 # foo.test.ts, foo.spec.js, foo.test-d.ts (type tests), foo_test.go
 _TEST_FILE = re.compile(r"\.(?:test|spec)(?:-d)?\.|_test\.go$")
 _DOCUMENT_DIRECTORIES = frozenset(
-    {"docs", "doc", "examples", "example", "changelog", "changelogs", "news"}
+    {
+        "docs",
+        "doc",
+        "examples",
+        "example",
+        "samples",
+        "sample",
+        "changelog",
+        "changelogs",
+        "news",
+    }
 )
 _DOCUMENT_STEMS = frozenset(
     {"changelog", "changes", "history", "news", "authors", "contributors", "todo"}
@@ -148,9 +179,14 @@ def neutral_priority_factor(_path: str) -> float:
     return 1.0
 
 
+# Only requests that ask *for* tests get a neutral prior. "How does bats run a
+# test function" is about the framework's source, not about finding tests.
 _TEST_QUERY = re.compile(
-    r"(?i)(?<![a-z])(?:tests?|testing|spec|unittest|pytest|conftest|fixtures?)(?![a-z])"
-    r"|测试|用例"
+    r"(?i)\b(?:which|what|find|show|where\s+(?:is|are))\b[^.?\n]{0,60}\btests?\b"
+    r"|\btests?\s+(?:for|of|covering|that\s+cover)\b"
+    r"|\b(?:unit|integration|regression)\s+tests?\b"
+    r"|\btest\s*cases?\b|\bconftest\b|\bfixtures?\s+for\b"
+    r"|测试用例|单元测试|哪个测试|测试在哪|有没有测试|相关测试"
 )
 
 
@@ -584,6 +620,11 @@ class RetrievalPipeline:
                         lookup(None), lookup(DEFINITION_KINDS)
                     )
                     return occurrences, definitions
+                if state.intent == QueryIntent.CALL_CHAIN:
+                    occurrences, definitions = await asyncio.gather(
+                        lookup((*DEFINITION_KINDS, CALL_KIND)), lookup(DEFINITION_KINDS)
+                    )
+                    return occurrences, definitions
                 definitions = await lookup(DEFINITION_KINDS)
                 return definitions, definitions
         except Exception as exc:
@@ -1012,11 +1053,14 @@ class RetrievalPipeline:
         # ``always`` is an evaluation/quality policy, not permission to erase a
         # deterministic answer. Rerank the full candidate set, then restore the
         # bounded structural slots while preserving the model's tail order. The
-        # source head is reapplied as well: a small dedicated reranker can lead
-        # with a test, change log, issue template, or the declaration when the
-        # query asks for uses. Its order among preferred files is kept; only
-        # the tier boundary is enforced.
-        hits = self._prefer_source_head(state, hits, priority_factor)
+        # The source head is reapplied for focused/use-site retrieval: a small
+        # dedicated reranker can otherwise lead with a test, change log, issue
+        # template, or the declaration when the query asks for uses. Overview
+        # requests are different: source slots prepare the candidate window,
+        # but an enabled semantic reranker may legitimately put architecture
+        # documentation back first.
+        if state.intent != QueryIntent.OVERVIEW:
+            hits = self._prefer_source_head(state, hits, priority_factor)
         state.candidates = self._promote_heads(hits, structural_heads)
 
     def _prefer_source_head(
@@ -1035,13 +1079,13 @@ class RetrievalPipeline:
         dropped; they follow immediately after the reserved slots.
         """
         slots = self.settings.source_head_slots
-        # Symbol/path answers have structural heads; overview requests are the
-        # one place where documentation legitimately answers first.
+        # Symbol/path answers have their own structural heads. Broad semantic
+        # requests, including overviews, reserve a few implementation slots;
+        # documentation remains in the tail and coverage selection can retain it.
         if (
             slots <= 0
             or priority_factor is neutral_priority_factor
-            or state.intent
-            in (QueryIntent.SYMBOL, QueryIntent.PATH, QueryIntent.OVERVIEW)
+            or state.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
         ):
             return hits
         # "Where is X used" wants other places: the declaring file as a whole
