@@ -21,16 +21,36 @@ class RetrievalStrategy:
     enable_query_rewrite: bool = False
     enable_lexical_recall: bool = False
     expand_related_definitions: bool = False
+    # 关系车道：谁调用、谁实现/继承、哪些测试覆盖、哪个入口文件转出。
+    expand_callers: bool = False
+    expand_implementations: bool = False
+    expand_tests: bool = False
+    expand_reexports: bool = False
     selection_mode: SelectionMode = SelectionMode.COVERAGE
+
+    @property
+    def expands_relations(self) -> bool:
+        return (
+            self.expand_related_definitions
+            or self.expand_callers
+            or self.expand_implementations
+            or self.expand_tests
+            or self.expand_reexports
+        )
 
 
 # 决策表：意图 → 检索策略
 STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
     # S (SYMBOL): 符号定义查询
     # 符号名应在正文中定位；路径语义会把同名引用、模型和 DAO 提到定义前面。
+    # 定义之后紧跟的问题是谁调用它、谁实现它、哪些测试覆盖它、从哪里导出。
     QueryIntent.SYMBOL: RetrievalStrategy(
         enable_path_index=False,
         enable_query_rewrite=True,
+        expand_callers=True,
+        expand_implementations=True,
+        expand_tests=True,
+        expand_reexports=True,
         selection_mode=SelectionMode.FOCUSED,
     ),
     # C (CALL_CHAIN): 调用链查询
@@ -39,11 +59,16 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
     QueryIntent.CALL_CHAIN: RetrievalStrategy(
         enable_lexical_recall=True,
         expand_related_definitions=True,
+        expand_callers=True,
+        expand_tests=True,
     ),
-    # R (REFERENCE): 引用/使用位置查询，改写补充同义调用方式。
+    # R (REFERENCE): 引用/使用位置查询，改写补充同义调用方式。exact 召回已含
+    # 转出与继承行，调用方与测试小节补足窗口外的使用位置。
     QueryIntent.REFERENCE: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,
+        expand_callers=True,
+        expand_tests=True,
     ),
     # P (PATH): 文件路径查询
     # 文件语义改写补足中英文差异，路径索引负责召回，高置信结果无需 LLM。
@@ -57,6 +82,7 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         enable_query_rewrite=True,
         enable_lexical_recall=True,
         expand_related_definitions=True,
+        expand_tests=True,
     ),
     # O (OVERVIEW): 架构/机制概览查询以 dense 为主，词法结果补充模块和文档术语。
     QueryIntent.OVERVIEW: RetrievalStrategy(
@@ -67,6 +93,7 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
     QueryIntent.COMPOUND: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,
+        expand_tests=True,
     ),
 }
 
@@ -102,6 +129,9 @@ def plan_rerank(
     *,
     has_exact_hits: bool = False,
     has_path_hits: bool = False,
+    definition_sites: int = 0,
+    head_slots: int = 3,
+    rerank_ambiguous_definitions: bool = False,
     dedicated_enabled: bool = True,
     llm_enabled: bool = True,
     dedicated_policy: RerankPolicy = "adaptive",
@@ -112,8 +142,11 @@ def plan_rerank(
     Both models share the same deterministic evidence. Retrieval scores are
     deliberately excluded: dense cosine, RRF, exact, path, and reranker scores do
     not share a calibrated scale, so a skip is only taken when a structural
-    operator has already answered the question. ``enabled`` flags authorize the
-    corresponding stage; a policy can never switch on a model that is disabled.
+    operator has already answered the question. ``definition_sites`` is the
+    number of places declaring the queried name; it only matters when the
+    deployment opted into reranking ambiguous symbol tails. ``enabled`` flags
+    authorize the corresponding stage; a policy can never switch on a model
+    that is disabled.
     """
     for name, policy in (
         ("dedicated rerank", dedicated_policy),
@@ -125,7 +158,16 @@ def plan_rerank(
     if candidate_count < 2:
         return RerankDecision(False, False, "too_few_candidates")
 
-    if intent == QueryIntent.SYMBOL and has_exact_hits:
+    if (
+        intent == QueryIntent.SYMBOL
+        and has_exact_hits
+        and rerank_ambiguous_definitions
+        and definition_sites > head_slots
+    ):
+        # More declarations of the name than protected head slots: the head
+        # stays deterministic, a dedicated model may order the overflow.
+        adaptive = (True, False, "ambiguous_definition")
+    elif intent == QueryIntent.SYMBOL and has_exact_hits:
         adaptive = (False, False, "exact_definition")
     elif intent == QueryIntent.PATH and has_path_hits:
         adaptive = (False, False, "path_evidence")

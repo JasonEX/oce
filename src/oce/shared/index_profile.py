@@ -15,8 +15,10 @@ CHUNKER_VERSION = 4
 EMBEDDING_PIPELINE_VERSION = 2
 # 3: call sites. 4: CommonJS require aliases are imports; Rust trait impls,
 # let bindings and TS/JS re-exports are not definitions; prose files declare
-# nothing.
-SYMBOL_EXTRACTION_VERSION = 4
+# nothing. 5: every occurrence records its enclosing definition (caller edges)
+# and barrel re-exports (``export {} from``, ``pub use``, relative imports in
+# ``__init__.py``) are recorded as ``reexport`` rows.
+SYMBOL_EXTRACTION_VERSION = 5
 PATH_DOCUMENT_VERSION = 1
 SOURCE_ADMISSION_VERSION = 1
 LEXICAL_INDEX_VERSION = 1

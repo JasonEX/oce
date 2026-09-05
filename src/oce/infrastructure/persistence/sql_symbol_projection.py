@@ -42,10 +42,12 @@ class SqlSymbolProjection:
             return
         ordered = sorted(chunks, key=lambda chunk: chunk.start_line)
         starts = [chunk.start_line for chunk in ordered]
-        occurrences = self._provider.extract(content=content, language=blob.language)
+        occurrences = self._provider.extract(
+            content=content, language=blob.language, path=blob.path
+        )
 
         values = []
-        seen: set[tuple[str, str, str]] = set()
+        seen: set[tuple[str, str, str, str]] = set()
         for occurrence in occurrences:
             index = bisect.bisect_right(starts, occurrence.start_line) - 1
             if index < 0:
@@ -54,7 +56,14 @@ class SqlSymbolProjection:
             if occurrence.start_line > chunk.end_line:
                 # The line fell in a gap the chunker dropped (over-long line).
                 continue
-            key = (occurrence.identifier, chunk.content_hash, occurrence.kind)
+            # One row per chunk per (identifier, kind, enclosing): a symbol
+            # called twice from one function is one caller edge.
+            key = (
+                occurrence.identifier,
+                chunk.content_hash,
+                occurrence.kind,
+                occurrence.enclosing,
+            )
             if key in seen:
                 continue
             seen.add(key)
@@ -66,6 +75,7 @@ class SqlSymbolProjection:
                     "kind": occurrence.kind,
                     "start_line": occurrence.start_line,
                     "end_line": occurrence.end_line,
+                    "enclosing": occurrence.enclosing[:256],
                 }
             )
 
@@ -73,7 +83,13 @@ class SqlSymbolProjection:
             return
         stmt = upsert_insert(self._session)(SymbolOccurrenceModel).values(values)
         stmt = stmt.on_conflict_do_nothing(
-            index_elements=["identifier", "blob_name", "content_hash", "kind"]
+            index_elements=[
+                "identifier",
+                "blob_name",
+                "content_hash",
+                "kind",
+                "enclosing",
+            ]
         )
         await self._session.execute(stmt)
         logger.debug(

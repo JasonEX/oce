@@ -228,3 +228,82 @@ def test_re_exports_and_prose_declare_nothing():
         language="markdown",
     )
     assert prose == ()
+
+
+def test_occurrences_record_their_enclosing_definition_and_heritage():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    found = {
+        (o.kind, o.identifier, o.enclosing)
+        for o in provider.extract(
+            content=(
+                "class Service(BaseService, Mixin, metaclass=ABCMeta):\n"
+                "    def run(self):\n"
+                "        return helper_fn(1)\n"
+                "\n"
+                "def top():\n"
+                "    Service().run()\n"
+            ),
+            language="python",
+        )
+    }
+    assert ("definition", "run", "Service") in found
+    assert ("call", "helper_fn", "run") in found
+    assert ("call", "run", "top") in found
+    assert ("inherit", "BaseService", "Service") in found
+    assert ("inherit", "Mixin", "Service") in found
+    assert not any(kind == "inherit" and name == "ABCMeta" for kind, name, _ in found)
+
+    rust = {
+        (o.kind, o.identifier, o.enclosing)
+        for o in provider.extract(
+            content=(
+                "impl IntoResponse for StatusCode {\n"
+                "    fn into_response(self) -> Response { build(self) }\n"
+                "}\n"
+            ),
+            language="rust",
+        )
+    }
+    assert ("inherit", "IntoResponse", "StatusCode") in rust
+    assert ("definition", "into_response", "StatusCode") in rust
+
+    java = {
+        (o.kind, o.identifier, o.enclosing)
+        for o in provider.extract(
+            content="public class Handler implements Factory<Ping>, Closeable {}\n",
+            language="java",
+        )
+    }
+    assert ("inherit", "Factory", "Handler") in java
+    assert ("inherit", "Closeable", "Handler") in java
+    assert not any(name == "Ping" for _, name, _ in java)
+
+
+def test_barrel_files_and_pub_use_record_reexports():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+
+    def reexports(content, language, path):
+        return {
+            o.identifier
+            for o in provider.extract(content=content, language=language, path=path)
+            if o.kind == "reexport"
+        }
+
+    python_init = "from .app import Flask as Flask\nfrom billing.tax import TaxTable\nimport os\nfrom other import Thing\n"
+    assert reexports(python_init, "python", "src/billing/__init__.py") == {
+        "Flask",
+        "TaxTable",
+    }
+    # The same imports in an ordinary module publish nothing.
+    assert reexports(python_init, "python", "src/billing/util.py") == set()
+
+    ts_index = "export { createSlice, buildCreateSlice as build } from './createSlice'\nexport * from './x'\nimport { other } from './other'\n"
+    assert reexports(ts_index, "typescript", "src/index.ts") == {"createSlice", "build"}
+    assert reexports(ts_index, "typescript", "src/store.ts") == {"createSlice", "build"}
+
+    rust_mod = "pub use self::from_fn::{from_fn, Next};\nuse std::collections::HashMap;\npub(crate) use a::Base as Alias;\n"
+    assert reexports(rust_mod, "rust", "axum/src/middleware/mod.rs") == {
+        "from_fn",
+        "Next",
+        "Alias",
+    }

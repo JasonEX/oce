@@ -730,6 +730,70 @@ class TestRetrievalPipeline:
         ]
         assert exact_store.identifiers == ("target_symbol",)
 
+    async def test_qualified_exact_lookup_does_not_drop_other_compound_names(self):
+        session_get = SearchHit(
+            blob_name="a" * 64,
+            path="src/session.py",
+            content="def get(self):\n    pass",
+            score=1.0,
+            context="class Session",
+        )
+        other_get = SearchHit(
+            blob_name="b" * 64,
+            path="src/other.py",
+            content="def get(self):\n    pass",
+            score=1.0,
+            context="class Other",
+        )
+        cache = SearchHit(
+            blob_name="c" * 64,
+            path="src/cache.py",
+            content="class Cache:\n    pass",
+            score=1.0,
+        )
+
+        class ByIdentifierExactStore(FakeExactSearchStore):
+            def __init__(self):
+                super().__init__()
+                self.calls: list[tuple[str, ...]] = []
+
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                self.calls.append(tuple(identifiers))
+                self.scope = scope
+                self.kinds_seen.append(kinds)
+                return {
+                    "Session.get": [],
+                    "get": [session_get, other_get],
+                    "Cache": [cache],
+                }.get(identifiers[0], [])[:top_k]
+
+        exact_store = ByIdentifierExactStore()
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=exact_store,
+            settings=_settings(
+                related_definitions_enabled=False,
+                final_select_k=10,
+            ),
+        )
+
+        results = await pipe.search(
+            "Where are `Session.get` and `Cache` defined?",
+            _scope(session_get.blob_name, other_get.blob_name, cache.blob_name),
+        )
+
+        assert {result.path for result in results} == {
+            "src/session.py",
+            "src/cache.py",
+        }
+        assert "src/other.py" not in {result.path for result in results}
+        assert {call[0] for call in exact_store.calls} == {
+            "Session.get",
+            "get",
+            "Cache",
+        }
+
     def test_call_chain_exact_candidates_fill_window_without_overwriting_scores(self):
         rerank_window = 30
         semantic = [

@@ -20,4 +20,7 @@ class Selector(Protocol):
         top_k: int,
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
-    ) -> list[SearchHit]: ...
+        max_chars: int | None = None,
+    ) -> list[SearchHit]:
+        """``max_chars`` lowers the mode's character budget for this call only."""
+        ...

@@ -13,5 +13,6 @@ class TopKSelector:
         top_k: int,
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
+        max_chars: int | None = None,
     ) -> list[SearchHit]:
         return hits[:top_k]

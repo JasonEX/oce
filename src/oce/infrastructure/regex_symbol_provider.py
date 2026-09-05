@@ -76,9 +76,10 @@ class RegexSymbolProvider:
         *,
         content: str,
         language: str | None,
+        path: str | None = None,
     ) -> Sequence[SymbolOccurrence]:
         """Return de-duplicated evidence while preserving endpoint priority."""
-        _ = language
+        _ = language, path
         lines = LineIndex(content)
         symbols: dict[tuple[str, str], SymbolOccurrence] = {}
 

@@ -12,24 +12,39 @@ if TYPE_CHECKING:
 
 
 # endpoint: route/command handlers; definition: declared names; import: names a
-# file pulls in; call: names a file invokes. Imports and calls only serve
-# reference/call-chain lookups and never count as structural evidence that a
-# symbol question has been answered.
-SymbolKind = Literal["endpoint", "definition", "import", "call"]
+# file pulls in; call: names a file invokes; reexport: names a barrel file
+# forwards from another module (``export { X } from``, ``pub use``, relative
+# imports in ``__init__.py``); inherit: base classes, interfaces and traits a
+# declaration extends or implements (``enclosing`` is the subtype). Imports,
+# calls, re-exports and inheritance only serve reference/call-chain/relation
+# lookups and never count as structural evidence that a symbol question has
+# been answered.
+SymbolKind = Literal["endpoint", "definition", "import", "call", "reexport", "inherit"]
 
 DEFINITION_KINDS: tuple[str, ...] = ("endpoint", "definition")
 CALL_KIND = "call"
 IMPORT_KIND = "import"
+REEXPORT_KIND = "reexport"
+INHERIT_KIND = "inherit"
+# Kinds a file header may consist of without implementing anything.
+HEADER_KINDS: tuple[str, ...] = (IMPORT_KIND, REEXPORT_KIND)
 
 
 @dataclass(frozen=True)
 class SymbolOccurrence:
-    """One symbol occurrence with absolute 1-based file lines."""
+    """One symbol occurrence with absolute 1-based file lines.
+
+    ``enclosing`` names the innermost definition the occurrence sits in
+    (``Service`` for a method, ``run`` for a call inside ``run``); it is empty
+    at module level or when the provider cannot tell. It is what turns a call
+    row into a caller-to-callee edge.
+    """
 
     identifier: str
     kind: SymbolKind
     start_line: int
     end_line: int
+    enclosing: str = ""
 
 
 class SymbolProvider(Protocol):
@@ -40,7 +55,10 @@ class SymbolProvider(Protocol):
         *,
         content: str,
         language: str | None,
-    ) -> Sequence[SymbolOccurrence]: ...
+        path: str | None = None,
+    ) -> Sequence[SymbolOccurrence]:
+        """``path`` lets barrel-file rules (``__init__.py``) apply; it may be omitted."""
+        ...
 
 
 class SymbolProjection(Protocol):

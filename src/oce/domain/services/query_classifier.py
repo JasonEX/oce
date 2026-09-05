@@ -298,6 +298,38 @@ _EXPLICIT_PATH_KEYWORDS_RE = _terms_pattern(
 _FEATURE_MARKERS_RE = _terms_pattern(_FEATURE_MARKERS)
 
 
+# Only requests that ask *for* tests. "How does bats run a test function" is
+# about the framework's source, not about finding tests.
+_TEST_QUERY = re.compile(
+    r"(?i)\b(?:which|what|find|show|where\s+(?:is|are))\b[^.?\n]{0,60}\btests?\b"
+    r"|\btests?\s+(?:for|of|covering|that\s+cover)\b"
+    r"|\b(?:unit|integration|regression)\s+tests?\b"
+    r"|\btest\s*cases?\b|\bconftest\b|\bfixtures?\s+for\b"
+    r"|测试用例|单元测试|哪个测试|测试在哪|有没有测试|相关测试|哪些测试"
+)
+_TEST_QUERY_MAX_CHARS = 200
+# "Which classes implement X" asks for the subtypes, i.e. the places that use
+# the name in an ``extends``/``implements`` position, not for X's declaration.
+_IMPLEMENTORS_QUERY = re.compile(
+    r"(?i)\b(?:which|what|all|list|every)\b[^.?\n]{0,40}"
+    r"\b(?:implement|extend|subclass|override|inherit|derive)"
+    r"|哪些.{0,12}(?:实现|继承|重写|派生|子类)"
+)
+
+
+def asks_about_tests(query: str) -> bool:
+    """A question-sized request that names tests wants test files as the answer.
+
+    Long issue-style text mentions failing tests while asking about the code
+    under test, so the rule is limited to question-sized requests.
+    """
+    return len(query) <= _TEST_QUERY_MAX_CHARS and _TEST_QUERY.search(query) is not None
+
+
+def asks_for_implementors(query: str) -> bool:
+    return _IMPLEMENTORS_QUERY.search(query) is not None
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # 主分类函数
 # ──────────────────────────────────────────────────────────────────────────────
@@ -371,6 +403,11 @@ def classify_query_intent(query: str) -> QueryIntent:
         # 引用分析：使用/依赖类动词 + 符号（动词在反引号外）
         if _REFERENCE_VERBS_RE.search(text_outside_backticks):
             return QueryIntent.REFERENCE
+        # "Which tests cover X" and "which classes implement X" ask for the
+        # places that exercise or extend the symbol: use sites, not its
+        # declaration.
+        if asks_about_tests(query) or asks_for_implementors(text_outside_backticks):
+            return QueryIntent.REFERENCE
 
         if len(identifiers) > 1:
             return QueryIntent.COMPOUND
@@ -408,14 +445,35 @@ def classify_query_intent(query: str) -> QueryIntent:
     return QueryIntent.FEATURE
 
 
+# ``Session.get`` / ``binding.Default``: identifier segments joined by dots. The
+# qualifier is kept because it disambiguates same-named declarations; the
+# retrieval pipeline derives the leaf to look up.
+_DOTTED_QUALIFIED_PATTERN = re.compile(
+    r"^[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z_$][A-Za-z0-9_$]*)+$"
+)
+
+
 def extract_code_identifiers(query: str) -> tuple[str, ...]:
-    """提取适合精确词法召回的代码标识符，保持查询中的出现顺序。"""
+    """提取适合精确词法召回的代码标识符，保持查询中的出现顺序。
+
+    限定名（``Session.get``、``a::b::C``）整体保留一个标识符：限定词是消歧证据，
+    叶子名由检索管线派生，不在这里拆开，否则一个限定名会被算成两个符号。
+    """
     identifiers: list[str] = []
 
     def add(value: str) -> None:
         value = value.strip()
-        if _IDENTIFIER_PATTERN.fullmatch(value) and value not in identifiers:
-            identifiers.append(value)
+        if not (
+            _IDENTIFIER_PATTERN.fullmatch(value)
+            or _DOTTED_QUALIFIED_PATTERN.fullmatch(value)
+        ):
+            return
+        # The leaf of a qualified name already listed is the same symbol.
+        if value in identifiers or any(
+            item.endswith((f".{value}", f"::{value}")) for item in identifiers
+        ):
+            return
+        identifiers.append(value)
 
     for value in re.findall(r"`([^`]+)`", query):
         add(value)
@@ -432,6 +490,13 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
         _TYPE_IDENTIFIER_PATTERN,
     ):
         for match in pattern.finditer(identifier_text):
+            if pattern is _DOTTED_IDENTIFIER_PATTERN:
+                # The whole qualified spelling, unless its leaf was already
+                # named on its own (``\`get\`` and ``Session.get`` in one
+                # request describe one symbol).
+                if match.group(1) not in identifiers:
+                    add(match.group())
+                continue
             add(match.group(1) if match.lastindex else match.group())
 
     return tuple(identifiers)

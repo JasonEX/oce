@@ -178,6 +178,16 @@ FILES = {
         "from billing.invoice import InvoiceBuilder, apply_discount, build_invoice\n"
         "from billing.tax import TaxTable, compute_tax_rate\n"
     ),
+    "src/billing/plugins.py": (
+        "from billing.tax import TaxTable\n"
+        "\n"
+        "\n"
+        "class RegionalTaxTable(TaxTable):\n"
+        '    """Tax table that falls back to a default region."""\n'
+        "\n"
+        "    def lookup(self, region):\n"
+        '        return self.rates.get(region, self.rates["eu"])\n'
+    ),
     "tests/test_invoice.py": (
         "from billing.invoice import apply_discount, build_invoice\n"
         "\n"
@@ -334,10 +344,12 @@ async def indexed():
 def _pipeline(sessions, vector_index, **overrides):
     embedder = QueryCapture()
     settings = RetrievalSettings(confidence_floor=0.0, **overrides)
+    symbol_store = SymbolSearchStore(sessions)
     return RetrievalPipeline(
         embedder=embedder,
         store=TermFrequencyDense(vector_index, embedder),
-        exact_store=SymbolSearchStore(sessions),
+        exact_store=symbol_store,
+        relation_store=symbol_store,
         lexical_store=SqlLexicalSearchStore(sessions),
         path_lookup_store=SqlPathLookupStore(sessions),
         path_content_store=SqlPathContentStore(sessions),
@@ -346,12 +358,17 @@ def _pipeline(sessions, vector_index, **overrides):
 
 
 async def _search(indexed, query, **overrides):
+    hits, audit = await _search_all(indexed, query, **overrides)
+    return [hit for hit in hits if hit.role == "primary"], audit
+
+
+async def _search_all(indexed, query, **overrides):
     sessions, vector_index, names = indexed
     audit = RetrievalAudit()
     hits = await _pipeline(sessions, vector_index, **overrides).search(
         query, SearchScope(frozenset(names.values())), audit=audit
     )
-    return [hit for hit in hits if hit.role == "primary"], audit
+    return hits, audit
 
 
 SYMBOL_QUERIES = [
@@ -396,10 +413,11 @@ async def test_symbol_definition_holds_the_first_slot(indexed, query, marker):
     assert hits, query
     assert marker in hits[0].content, [hit.path for hit in hits[:3]]
     assert not hits[0].path.startswith(("docs/", "tests/"))
-    # The structural lane answered; the lexical fallback and the relation
-    # expansion are reserved for queries without a deterministic answer.
+    # The structural lane answered; the lexical fallback is reserved for
+    # queries without a deterministic answer. Relation sections follow the
+    # primary results but never enter them.
     assert "lexical" not in audit.stages
-    assert "expand" not in audit.stages
+    assert all(hit.role == "primary" for hit in hits)
     # No reranker is wired here, so the route only proves nothing else ran.
     assert audit.rerank_route and audit.rerank_route.startswith("skip:")
 
@@ -460,3 +478,86 @@ async def test_corpus_stays_adversarial(indexed, monkeypatch):
     )
     hits, _ = await _search(indexed, "Where is `build_invoice` defined?")
     assert "def build_invoice" not in hits[0].content
+
+
+def _roles(hits):
+    return {
+        role: [(hit.path, hit.start_line) for hit in hits if hit.role == role]
+        for role in ("caller", "implementation", "test", "reexport", "related")
+    }
+
+
+async def test_symbol_answer_carries_callers_tests_and_reexports(indexed):
+    # The corpus files are single chunks, so a wide primary window would show
+    # every caller in full; two primary slots leave the relations to the lanes.
+    hits, audit = await _search_all(
+        indexed, "Where is `build_invoice` defined?", final_select_k=2
+    )
+    primary = [hit for hit in hits if hit.role == "primary"]
+    sections = _roles(hits)
+    assert "def build_invoice" in primary[0].content
+    # Callers are grouped per enclosing function, source files first, and
+    # each excerpt starts at that function's header.
+    caller_paths = [path for path, _ in sections["caller"]]
+    assert caller_paths[0] in {"src/billing/api.py", "src/billing/cli.py"}
+    assert "src/billing/api.py" in caller_paths and "src/billing/cli.py" in caller_paths
+    callers = [hit for hit in hits if hit.role == "caller"]
+    assert any(hit.content.lstrip().startswith("def ") for hit in callers)
+    assert [path for path, _ in sections["test"]] == ["tests/test_invoice.py"]
+    assert [path for path, _ in sections["reexport"]] == ["src/billing/__init__.py"]
+    assert audit.relation_counts["caller"] >= 2
+    assert audit.relation_counts["test"] == 1
+    assert audit.relation_chars > 0
+    # Sections never repeat a span the primary results already show.
+    primary_spans = {(hit.path, hit.start_line, hit.end_line) for hit in primary}
+    assert not any(
+        (hit.path, hit.start_line, hit.end_line) in primary_spans
+        for hit in hits
+        if hit.role != "primary"
+    )
+
+    # With the whole corpus in the primary window every relation is already
+    # visible, and the sections stay empty instead of repeating it.
+    hits, audit = await _search_all(indexed, "Where is `build_invoice` defined?")
+    assert all(hit.role == "primary" for hit in hits)
+    assert audit.relation_counts == {}
+
+
+async def test_symbol_answer_lists_implementations(indexed):
+    hits, _ = await _search_all(
+        indexed, "Where is the `TaxTable` class defined?", final_select_k=1
+    )
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert "class TaxTable" in primary[0].content
+    implementations = [hit for hit in hits if hit.role == "implementation"]
+    assert [hit.path for hit in implementations] == ["src/billing/plugins.py"]
+    assert "class RegionalTaxTable(TaxTable)" in implementations[0].content
+
+
+async def test_reference_answer_appends_uncovered_callers(indexed):
+    hits, audit = await _search_all(indexed, "Where is `compute_tax_rate` used?")
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert audit.intent == QueryIntent.REFERENCE.value
+    assert primary[0].path == "src/billing/api.py"
+    # The invoice module calls compute_tax_rate inside build_invoice; whether
+    # it reached the primary window or the caller section, it is present once.
+    everything = [(hit.path, hit.role) for hit in hits]
+    assert any(path == "src/billing/invoice.py" for path, _ in everything)
+    assert (
+        len([item for item in everything if item[0] == "src/billing/invoice.py"]) <= 2
+    )
+
+
+async def test_test_question_leads_with_the_test_file(indexed):
+    hits, audit = await _search(indexed, "Which tests cover `build_invoice`?")
+    assert audit.intent == QueryIntent.REFERENCE.value
+    assert hits[0].path == "tests/test_invoice.py", [hit.path for hit in hits[:3]]
+
+
+async def test_qualified_symbol_drops_the_other_declaration(indexed):
+    # ``build_invoice`` is declared in invoice.py and in the legacy shim; the
+    # qualified request pins it to the shim module.
+    hits, _ = await _search(indexed, "Where is `legacy.build_invoice` defined?")
+    assert hits[0].path == "src/billing/legacy.py", [hit.path for hit in hits[:3]]
+    hits, _ = await _search(indexed, "Where is `InvoiceBuilder.add_line` defined?")
+    assert "def add_line" in hits[0].content

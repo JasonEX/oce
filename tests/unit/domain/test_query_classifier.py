@@ -258,7 +258,8 @@ class TestDottedQualifiedNames:
             "Trace gin's JSON request binding from Context.ShouldBindJSON through "
             "the binding package's JSON binding into struct validation."
         )
-        assert "ShouldBindJSON" in extract_code_identifiers(query)
+        # The qualified spelling is kept whole; the pipeline derives the leaf.
+        assert extract_code_identifiers(query) == ("Context.ShouldBindJSON",)
         assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
 
     def test_plain_dotted_words_and_domains_are_not_symbols(self):
@@ -288,3 +289,16 @@ def test_reviewed_semantic_queries_use_their_declared_routing_intent():
         for case in load_manifest(DEFAULT_CASES)
         if classify_query_intent(case.query).value != case.kind
     } == {}
+
+
+def test_test_and_implementor_questions_ask_for_use_sites():
+    from oce.domain.services.query_classifier import QueryIntent, classify_query_intent
+
+    assert classify_query_intent("Which tests cover `approx`?") == QueryIntent.REFERENCE
+    assert classify_query_intent("哪些测试覆盖了 `approx`？") == QueryIntent.REFERENCE
+    assert (
+        classify_query_intent("Which classes implement `TypeAdapterFactory`?")
+        == QueryIntent.REFERENCE
+    )
+    # A plain "how is it implemented" question still asks for the definition.
+    assert classify_query_intent("How is `approx` implemented?") == QueryIntent.SYMBOL

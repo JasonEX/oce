@@ -225,6 +225,8 @@ class SymbolOccurrenceModel(Base):
     kind: Mapped[str] = mapped_column(String(16))
     start_line: Mapped[int] = mapped_column(Integer)
     end_line: Mapped[int] = mapped_column(Integer)
+    # 所在的最内层定义名；模块级或无法判定时为空串（非 NULL，才能进唯一键去重）。
+    enclosing: Mapped[str] = mapped_column(String(256), server_default="", default="")
     created_at: Mapped[datetime] = _timestamp()
 
     __table_args__ = (
@@ -237,6 +239,7 @@ class SymbolOccurrenceModel(Base):
             "blob_name",
             "content_hash",
             "kind",
+            "enclosing",
             name="uq_symbol_occurrences_key",
         ),
     )
@@ -314,6 +317,11 @@ class RetrievalMetricModel(Base):
     path_boosted: Mapped[bool] = mapped_column(Boolean, server_default="false")
     rerank_route: Mapped[str | None] = mapped_column(String(48))
     head_slots: Mapped[int] = mapped_column(Integer, server_default="0")
+    # 路由看到的结构证据与附带的关系小节规模，供离线校准 adaptive 阈值。
+    exact_definitions: Mapped[int] = mapped_column(Integer, server_default="0")
+    definition_sites: Mapped[int] = mapped_column(Integer, server_default="0")
+    relation_hits: Mapped[int] = mapped_column(Integer, server_default="0")
+    relation_chars: Mapped[int] = mapped_column(Integer, server_default="0")
     query_text: Mapped[str | None] = mapped_column(Text)
     # 阶段耗时（毫秒）；未运行的阶段留 NULL，不冒充 0。
     rewrite_ms: Mapped[int | None] = mapped_column(Integer)

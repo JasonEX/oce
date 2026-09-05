@@ -13,8 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from oce.domain.blob.blob import BlobStatus
+from oce.domain.services.relations import RelatedOccurrence
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
-from oce.domain.services.symbols import DEFINITION_KINDS
+from oce.domain.services.symbols import (
+    CALL_KIND,
+    DEFINITION_KINDS,
+    INHERIT_KIND,
+    REEXPORT_KIND,
+)
+from oce.domain.services.test_paths import TEST_DIRECTORIES, is_test_path
 from oce.infrastructure.persistence.models import (
     BlobChunkModel,
     BlobModel,
@@ -43,6 +50,7 @@ def _occurrence_rows(
     scope_predicate: ColumnElement[bool],
     limit: int,
     kinds: Sequence[str] | None,
+    path_predicate: ColumnElement[bool] | None = None,
 ):
     """Occurrence rows joined to the chunk occurrence that contains them.
 
@@ -58,6 +66,7 @@ def _occurrence_rows(
             SymbolOccurrenceModel.content_hash,
             SymbolOccurrenceModel.start_line.label("def_start"),
             SymbolOccurrenceModel.end_line.label("def_end"),
+            SymbolOccurrenceModel.enclosing,
             BlobModel.path,
             ChunkModel.content,
             BlobChunkModel.start_line,
@@ -89,7 +98,23 @@ def _occurrence_rows(
     )
     if kinds is not None:
         stmt = stmt.where(SymbolOccurrenceModel.kind.in_(kinds))
+    if path_predicate is not None:
+        stmt = stmt.where(path_predicate)
     return stmt
+
+
+# SQL prefilter for test files; ``is_test_path`` makes the final decision.
+def _test_path_predicate() -> ColumnElement[bool]:
+    lowered = func.lower(BlobModel.path)
+    return or_(
+        lowered.like("%test%"),
+        lowered.like("%spec%"),
+        lowered.like("%conftest%"),
+        *(
+            lowered.like(f"{directory}/%") | lowered.like(f"%/{directory}/%")
+            for directory in TEST_DIRECTORIES
+        ),
+    )
 
 
 class SymbolSearchStore:
@@ -189,11 +214,147 @@ class SymbolSearchStore:
         definitions.sort(key=lambda item: (order[item.identifier], item.hit.path))
         return definitions
 
+    # ── relation lookups ────────────────────────────────────────────────
+
+    async def find_callers(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        limit: int = 8,
+    ) -> list[RelatedOccurrence]:
+        """One call site per (file, enclosing definition), source files first."""
+        rows = await self._occurrences(identifiers, scope, (CALL_KIND,), limit)
+        return _group(rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit)
+
+    async def find_test_uses(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        limit: int = 8,
+    ) -> list[RelatedOccurrence]:
+        """Occurrences in test files; every file gets one excerpt before any gets two."""
+        rows = await self._occurrences(
+            identifiers, scope, None, limit, path_predicate=_test_path_predicate()
+        )
+        rows = [row for row in rows if is_test_path(row.path)]
+        per_file = _group(rows, key=lambda row: row.blob_name, limit=limit)
+        if len(per_file) >= limit:
+            return per_file
+        seen = {(item.hit.blob_name, item.enclosing) for item in per_file}
+        second = [
+            item
+            for item in _group(
+                rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit * 2
+            )
+            if (item.hit.blob_name, item.enclosing) not in seen
+        ]
+        return [*per_file, *second][:limit]
+
+    async def find_implementations(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        limit: int = 8,
+    ) -> list[RelatedOccurrence]:
+        rows = await self._occurrences(identifiers, scope, (INHERIT_KIND,), limit)
+        return _group(rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit)
+
+    async def find_reexports(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        limit: int = 4,
+    ) -> list[RelatedOccurrence]:
+        rows = await self._occurrences(identifiers, scope, (REEXPORT_KIND,), limit)
+        return _group(rows, key=lambda row: (row.blob_name, row.def_start), limit=limit)
+
+    async def defined_identifiers(
+        self,
+        occurrences: Sequence[tuple[str, str]],
+        scope: SearchScope,
+    ) -> dict[tuple[str, str], tuple[str, ...]]:
+        rows = await self._rows_for_pairs(
+            occurrences,
+            scope,
+            (
+                SymbolOccurrenceModel.blob_name,
+                SymbolOccurrenceModel.content_hash,
+                SymbolOccurrenceModel.identifier,
+            ),
+            SymbolOccurrenceModel.kind.in_(DEFINITION_KINDS),
+        )
+        names: dict[tuple[str, str], list[str]] = {}
+        for blob_name, content_hash, identifier in rows:
+            bucket = names.setdefault((str(blob_name), str(content_hash)), [])
+            if identifier not in bucket:
+                bucket.append(str(identifier))
+        return {key: tuple(value) for key, value in names.items()}
+
+    async def _occurrences(
+        self,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        kinds: Sequence[str] | None,
+        limit: int,
+        *,
+        path_predicate: ColumnElement[bool] | None = None,
+    ) -> list[Row[Any]]:
+        identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
+        if not identifiers or limit <= 0 or not scope.blob_names:
+            return []
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    return list(
+                        await run_scoped(
+                            session,
+                            scope,
+                            SymbolOccurrenceModel.blob_name,
+                            lambda predicate: _occurrence_rows(
+                                identifiers,
+                                predicate,
+                                max(limit * 25, 200),
+                                kinds,
+                                path_predicate,
+                            ),
+                        )
+                    )
+        except TimeoutError:
+            return []
+
     async def occurrence_kinds(
         self,
         occurrences: Sequence[tuple[str, str]],
         scope: SearchScope,
     ) -> dict[tuple[str, str], frozenset[str]]:
+        rows = await self._rows_for_pairs(
+            occurrences,
+            scope,
+            (
+                SymbolOccurrenceModel.blob_name,
+                SymbolOccurrenceModel.content_hash,
+                SymbolOccurrenceModel.kind,
+            ),
+            None,
+        )
+        kinds: dict[tuple[str, str], set[str]] = {}
+        for blob_name, content_hash, kind in rows:
+            key = (str(blob_name), str(content_hash))
+            kinds.setdefault(key, set()).add(str(kind))
+        return {key: frozenset(value) for key, value in kinds.items()}
+
+    async def _rows_for_pairs(
+        self,
+        occurrences: Sequence[tuple[str, str]],
+        scope: SearchScope,
+        columns: Sequence[Any],
+        extra_predicate: ColumnElement[bool] | None,
+    ) -> Sequence[Row[Any]]:
+        """Distinct ``columns`` of the scoped occurrence rows of given chunk pairs."""
         pairs = tuple(
             dict.fromkeys(
                 (blob_name, content_hash)
@@ -202,8 +363,7 @@ class SymbolSearchStore:
             )
         )
         if not pairs or not scope.blob_names:
-            return {}
-
+            return []
         pair_predicate = or_(
             *(
                 and_(
@@ -215,12 +375,8 @@ class SymbolSearchStore:
         )
 
         def build(predicate: ColumnElement[bool]):
-            return (
-                select(
-                    SymbolOccurrenceModel.blob_name,
-                    SymbolOccurrenceModel.content_hash,
-                    SymbolOccurrenceModel.kind,
-                )
+            stmt = (
+                select(*columns)
                 .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
                 .join(
                     BlobChunkModel,
@@ -237,20 +393,18 @@ class SymbolSearchStore:
                 )
                 .distinct()
             )
+            if extra_predicate is not None:
+                stmt = stmt.where(extra_predicate)
+            return stmt
 
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
-                    rows = await run_scoped(
+                    return await run_scoped(
                         session, scope, SymbolOccurrenceModel.blob_name, build
                     )
         except TimeoutError:
-            return {}
-        kinds: dict[tuple[str, str], set[str]] = {}
-        for blob_name, content_hash, kind in rows:
-            key = (str(blob_name), str(content_hash))
-            kinds.setdefault(key, set()).add(str(kind))
-        return {key: frozenset(value) for key, value in kinds.items()}
+            return []
 
     @staticmethod
     async def _definition_counts(
@@ -349,3 +503,37 @@ class SymbolSearchStore:
     @staticmethod
     def _score_by_kind(kind: str) -> float:
         return _KIND_SCORES.get(kind, _DEFAULT_KIND_SCORE)
+
+
+def _group(
+    rows: Sequence[Row[Any]],
+    *,
+    key: Callable[[Row[Any]], object],
+    limit: int,
+) -> list[RelatedOccurrence]:
+    """First occurrence per key, source files before tests, then path order."""
+    ordered = sorted(
+        rows, key=lambda row: (is_test_path(row.path), row.path, row.def_start)
+    )
+    seen: set[object] = set()
+    grouped: list[RelatedOccurrence] = []
+    for row in ordered:
+        group_key = key(row)
+        if group_key in seen:
+            continue
+        seen.add(group_key)
+        grouped.append(
+            RelatedOccurrence(
+                identifier=row.identifier,
+                kind=row.kind,
+                hit=SymbolSearchStore._row_hit(
+                    row, SymbolSearchStore._score_by_kind(row.kind)
+                ),
+                line=row.def_start,
+                end_line=row.def_end,
+                enclosing=row.enclosing or "",
+            )
+        )
+        if len(grouped) >= limit:
+            break
+    return grouped

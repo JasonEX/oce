@@ -1,0 +1,1052 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "llm-assisted",
+    "note": "Truth regions were derived by Claude from the pinned snapshots with ast/brace span tools and grep for use sites, then reviewed once; they are curated, not independently reviewed. Regions are the enclosing definition spans (class headers are trimmed to their first lines). must_not_paths are files that do not contain the queried identifier or define an unrelated symbol of the same name."
+  },
+  "cases": [
+    {
+      "id": "flask-endpoint-from-view-func-uses",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "Where is `_endpoint_from_view_func` used?",
+      "rationale": "Both add_url_rule implementations derive the default endpoint from it; the helper itself is declared in scaffold.py.",
+      "primary_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 1019,
+          "end": 1076
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 85,
+          "end": 114
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 773,
+          "end": 778
+        }
+      ],
+      "must_not_paths": [
+        "src/flask/views.py",
+        "CHANGES.rst"
+      ]
+    },
+    {
+      "id": "flask-get-debug-flag-callers",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "哪些地方调用了 `get_debug_flag`？",
+      "rationale": "Config defaults, app.run, the CLI app loader and the run command all read the flag; the declaration and its unit test are secondary.",
+      "primary_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 607,
+          "end": 621
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 786,
+          "end": 907
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 292,
+          "end": 331
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 824,
+          "end": 933
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/flask/helpers.py",
+          "start": 28,
+          "end": 33
+        },
+        {
+          "path": "tests/test_helpers.py",
+          "start": 304,
+          "end": 316
+        }
+      ],
+      "must_not_paths": [
+        "src/flask/debughelpers.py"
+      ]
+    },
+    {
+      "id": "flask-wsgi-dispatch-chain",
+      "instance_id": "pallets__flask-5014",
+      "kind": "call_chain",
+      "query": "Trace how `Flask.wsgi_app` dispatches a request to the view function and turns its return value into a Response.",
+      "rationale": "wsgi_app -> full_dispatch_request -> dispatch_request / finalize_request -> make_response.",
+      "primary_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 2175,
+          "end": 2221,
+          "hop": 0
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1486,
+          "end": 1502,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 1461,
+          "end": 1484,
+          "hop": 2
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1504,
+          "end": 1531,
+          "hop": 2
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1732,
+          "end": 1760,
+          "hop": 3
+        }
+      ],
+      "must_not_paths": [
+        "src/flask/testing.py"
+      ]
+    },
+    {
+      "id": "flask-send-file-tests",
+      "instance_id": "pallets__flask-5014",
+      "kind": "test_mapping",
+      "query": "Which tests cover `send_file`?",
+      "rationale": "TestSendfile in tests/test_helpers.py exercises send_file and send_from_directory; the helper lives in helpers.py.",
+      "primary_regions": [
+        {
+          "path": "tests/test_helpers.py",
+          "start": 34,
+          "end": 43
+        },
+        {
+          "path": "tests/test_helpers.py",
+          "start": 92,
+          "end": 99
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/flask/helpers.py",
+          "start": 391,
+          "end": 420
+        }
+      ],
+      "must_not_paths": [
+        "src/flask/wrappers.py"
+      ],
+      "test_paths": [
+        "tests/test_helpers.py"
+      ]
+    },
+    {
+      "id": "flask-class-definition-and-reexport",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reexport",
+      "query": "Where is the `Flask` class defined?",
+      "rationale": "The class is declared in app.py and re-exported from the package __init__.",
+      "primary_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 105,
+          "end": 130
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/flask/__init__.py",
+          "start": 2,
+          "end": 2
+        }
+      ],
+      "must_not_paths": [
+        "CHANGES.rst"
+      ]
+    },
+    {
+      "id": "flask-make-response-method",
+      "instance_id": "pallets__flask-5014",
+      "kind": "multi_impl",
+      "query": "Where is `Flask.make_response` defined?",
+      "rationale": "The qualified name asks for the method on the application class, not the module-level helper of the same name.",
+      "primary_regions": [
+        {
+          "path": "src/flask/app.py",
+          "start": 1732,
+          "end": 1760
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "src/flask/helpers.py"
+      ]
+    },
+    {
+      "id": "requests-merge-setting-uses",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "query": "Where is `merge_setting` used?",
+      "rationale": "merge_hooks, Session.prepare_request and Session.merge_environment_settings call it; it is declared at the top of sessions.py.",
+      "primary_regions": [
+        {
+          "path": "requests/sessions.py",
+          "start": 81,
+          "end": 93
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 417,
+          "end": 455
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 691,
+          "end": 718
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "requests/sessions.py",
+          "start": 50,
+          "end": 78
+        }
+      ],
+      "must_not_paths": [
+        "requests/utils.py"
+      ]
+    },
+    {
+      "id": "requests-extract-cookies-callers",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "query": "Which functions call `extract_cookies_to_jar`?",
+      "rationale": "Adapter response building, redirect resolution, Session.send and digest auth retry all persist cookies through it.",
+      "primary_regions": [
+        {
+          "path": "requests/adapters.py",
+          "start": 256,
+          "end": 291
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 144,
+          "end": 252
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 613,
+          "end": 689
+        },
+        {
+          "path": "requests/auth.py",
+          "start": 234,
+          "end": 276
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "requests/cookies.py",
+          "start": 118,
+          "end": 132
+        }
+      ],
+      "must_not_paths": [
+        "requests/models.py"
+      ]
+    },
+    {
+      "id": "requests-get-to-adapter-send",
+      "instance_id": "psf__requests-5414",
+      "kind": "call_chain",
+      "query": "How does `requests.get` reach `HTTPAdapter.send`?",
+      "rationale": "api.get -> api.request -> Session.request -> Session.send -> HTTPAdapter.send.",
+      "primary_regions": [
+        {
+          "path": "requests/api.py",
+          "start": 64,
+          "end": 75,
+          "hop": 0
+        },
+        {
+          "path": "requests/api.py",
+          "start": 16,
+          "end": 61,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "requests/sessions.py",
+          "start": 457,
+          "end": 531,
+          "hop": 2
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 613,
+          "end": 689,
+          "hop": 3
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 395,
+          "end": 420,
+          "hop": 4
+        }
+      ],
+      "must_not_paths": [
+        "requests/help.py"
+      ]
+    },
+    {
+      "id": "requests-session-get-method",
+      "instance_id": "psf__requests-5414",
+      "kind": "multi_impl",
+      "query": "Where is `Session.get` defined?",
+      "rationale": "The method on Session, not the module-level requests.get shortcut.",
+      "primary_regions": [
+        {
+          "path": "requests/sessions.py",
+          "start": 533,
+          "end": 542
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "requests/api.py"
+      ]
+    },
+    {
+      "id": "requests-prepared-request-reexport",
+      "instance_id": "psf__requests-5414",
+      "kind": "reexport",
+      "query": "Where is `PreparedRequest` defined?",
+      "rationale": "Declared in models.py and re-exported from the package root.",
+      "primary_regions": [
+        {
+          "path": "requests/models.py",
+          "start": 274,
+          "end": 300
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "requests/__init__.py",
+          "start": 135,
+          "end": 135
+        }
+      ],
+      "must_not_paths": [
+        "requests/help.py"
+      ]
+    },
+    {
+      "id": "requests-redirect-cookie-tests",
+      "instance_id": "psf__requests-5414",
+      "kind": "test_mapping",
+      "query": "Which tests cover cookie persistence across redirects?",
+      "rationale": "test_cookie_sent_on_redirect and test_cookielib_cookiejar_on_redirect assert the behaviour implemented by resolve_redirects.",
+      "primary_regions": [
+        {
+          "path": "tests/test_requests.py",
+          "start": 332,
+          "end": 336
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 395,
+          "end": 425
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "requests/sessions.py",
+          "start": 144,
+          "end": 252
+        }
+      ],
+      "must_not_paths": [
+        "tests/test_utils.py"
+      ],
+      "test_paths": [
+        "tests/test_requests.py"
+      ]
+    },
+    {
+      "id": "pytest-get-unpacked-marks-uses",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "reference",
+      "query": "Where is `get_unpacked_marks` used?",
+      "rationale": "PyobjMixin.obj and Function.__init__ collect markers through it; store_mark re-reads them; the function itself sits in mark/structures.py.",
+      "primary_regions": [
+        {
+          "path": "src/_pytest/python.py",
+          "start": 305,
+          "end": 318
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "start": 1689,
+          "end": 1738
+        },
+        {
+          "path": "src/_pytest/mark/structures.py",
+          "start": 383,
+          "end": 391
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/_pytest/mark/structures.py",
+          "start": 358,
+          "end": 363
+        }
+      ],
+      "must_not_paths": [
+        "src/_pytest/mark/__init__.py"
+      ]
+    },
+    {
+      "id": "pytest-import-path-chain",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "call_chain",
+      "query": "How does collecting a test module call `import_path`?",
+      "rationale": "Module._importtestmodule imports the file through import_path; DoctestModule.collect uses the same helper.",
+      "primary_regions": [
+        {
+          "path": "src/_pytest/python.py",
+          "start": 613,
+          "end": 658,
+          "hop": 0
+        },
+        {
+          "path": "src/_pytest/pathlib.py",
+          "start": 454,
+          "end": 480,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/_pytest/doctest.py",
+          "start": 498,
+          "end": 572,
+          "hop": 0
+        }
+      ],
+      "must_not_paths": [
+        "src/_pytest/python_path.py"
+      ]
+    },
+    {
+      "id": "pytest-parser-reexport",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "reexport",
+      "query": "Where is `Parser` defined?",
+      "rationale": "Declared in config/argparsing.py and exported from the public pytest package.",
+      "primary_regions": [
+        {
+          "path": "src/_pytest/config/argparsing.py",
+          "start": 33,
+          "end": 60
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/pytest/__init__.py",
+          "start": 19,
+          "end": 19
+        }
+      ],
+      "must_not_paths": [
+        "src/_pytest/config/__init__.py"
+      ]
+    },
+    {
+      "id": "pytest-approx-tests",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "test_mapping",
+      "query": "Which tests cover `approx`?",
+      "rationale": "testing/python/approx.py holds TestApprox; approx is implemented in python_api.py.",
+      "primary_regions": [
+        {
+          "path": "testing/python/approx.py",
+          "start": 96,
+          "end": 130
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/_pytest/python_api.py",
+          "start": 520,
+          "end": 560
+        }
+      ],
+      "must_not_paths": [
+        "src/_pytest/assertion/util.py"
+      ],
+      "test_paths": [
+        "testing/python/approx.py"
+      ]
+    },
+    {
+      "id": "pylint-is-ignored-file-callers",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "reference",
+      "query": "Where is `_is_ignored_file` called?",
+      "rationale": "expand_modules and PyLinter._discover_files both filter paths through it.",
+      "primary_regions": [
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 63,
+          "end": 161
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 585,
+          "end": 619
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 49,
+          "end": 60
+        }
+      ],
+      "must_not_paths": [
+        "pylint/lint/__init__.py"
+      ]
+    },
+    {
+      "id": "pylint-expand-modules-tests",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "test_mapping",
+      "query": "Which tests cover `expand_modules`?",
+      "rationale": "tests/lint/unittest_expand_modules.py tests the ignore-list helper and expand_modules itself.",
+      "primary_regions": [
+        {
+          "path": "tests/lint/unittest_expand_modules.py",
+          "start": 18,
+          "end": 30
+        },
+        {
+          "path": "tests/lint/unittest_expand_modules.py",
+          "start": 90,
+          "end": 120
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 63,
+          "end": 90
+        }
+      ],
+      "must_not_paths": [
+        "pylint/lint/run.py"
+      ],
+      "test_paths": [
+        "tests/lint/unittest_expand_modules.py"
+      ]
+    },
+    {
+      "id": "xarray-infer-coords-uses",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "reference",
+      "query": "Where is `_infer_coords_and_dims` used?",
+      "rationale": "Only DataArray.__init__ calls it; the helper is declared earlier in the same module.",
+      "primary_regions": [
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 373,
+          "end": 432
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 101,
+          "end": 176
+        }
+      ],
+      "must_not_paths": [
+        "xarray/core/dataset.py"
+      ]
+    },
+    {
+      "id": "xarray-dataarray-to-compatible-data",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "call_chain",
+      "query": "How does constructing a `DataArray` reach `as_compatible_data`?",
+      "rationale": "DataArray.__init__ normalizes data directly and through Variable.__init__; as_variable is the other entry into the same helper.",
+      "primary_regions": [
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 373,
+          "end": 432,
+          "hop": 0
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 237,
+          "end": 294,
+          "hop": 2
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "xarray/core/variable.py",
+          "start": 343,
+          "end": 370,
+          "hop": 1
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 85,
+          "end": 167,
+          "hop": 1
+        }
+      ],
+      "must_not_paths": [
+        "xarray/core/resample.py"
+      ]
+    },
+    {
+      "id": "xarray-as-compatible-data-tests",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "test_mapping",
+      "query": "Which tests cover `as_compatible_data`?",
+      "rationale": "TestAsCompatibleData in xarray/tests/test_variable.py asserts the conversion rules.",
+      "primary_regions": [
+        {
+          "path": "xarray/tests/test_variable.py",
+          "start": 2470,
+          "end": 2540
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "xarray/core/variable.py",
+          "start": 237,
+          "end": 294
+        }
+      ],
+      "must_not_paths": [
+        "xarray/tests/test_dataarray.py"
+      ],
+      "test_paths": [
+        "xarray/tests/test_variable.py"
+      ]
+    },
+    {
+      "id": "rtk-isanyof-uses",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reference",
+      "query": "Where is `isAnyOf` used?",
+      "rationale": "RTK Query middleware handlers and the async thunk matchers combine matchers through it; the declaration is in matchers.ts.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/invalidationByTags.ts",
+          "start": 24,
+          "end": 60
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/cacheCollection.ts",
+          "start": 40,
+          "end": 80
+        },
+        {
+          "path": "packages/toolkit/src/createAsyncThunk.ts",
+          "start": 690,
+          "end": 708
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "packages/toolkit/src/matchers.ts",
+          "start": 39,
+          "end": 45
+        },
+        {
+          "path": "packages/toolkit/src/matchers.ts",
+          "start": 128,
+          "end": 140
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildSlice.ts",
+          "start": 395,
+          "end": 410
+        }
+      ],
+      "must_not_paths": [
+        "packages/toolkit/src/createAction.ts"
+      ]
+    },
+    {
+      "id": "rtk-create-async-thunk-reexport",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reexport",
+      "query": "Where is `createAsyncThunk` defined?",
+      "rationale": "Declared as an IIFE constant in createAsyncThunk.ts and re-exported from the package index.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/createAsyncThunk.ts",
+          "start": 490,
+          "end": 520
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "packages/toolkit/src/index.ts",
+          "start": 122,
+          "end": 126
+        }
+      ],
+      "must_not_paths": [
+        "packages/toolkit/src/tests/createAsyncThunk.test.ts"
+      ]
+    },
+    {
+      "id": "rtk-create-slice-built-from-factory",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "multi_impl",
+      "query": "Where is `createSlice` defined?",
+      "rationale": "createSlice is the default instance produced by buildCreateSlice; both live in createSlice.ts and are re-exported from index.ts.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 850,
+          "end": 856
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 580,
+          "end": 600
+        },
+        {
+          "path": "packages/toolkit/src/index.ts",
+          "start": 64,
+          "end": 70
+        }
+      ],
+      "must_not_paths": [
+        "packages/toolkit/src/tests/createSlice.test.ts"
+      ]
+    },
+    {
+      "id": "rtk-configure-store-tests",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "test_mapping",
+      "query": "Which tests cover `configureStore`?",
+      "rationale": "configureStore.test.ts holds the runtime tests; configureStore.ts is the implementation.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/tests/configureStore.test.ts",
+          "start": 18,
+          "end": 60
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "packages/toolkit/src/configureStore.ts",
+          "start": 116,
+          "end": 140
+        }
+      ],
+      "must_not_paths": [
+        "packages/toolkit/src/mapBuilders.ts"
+      ],
+      "test_paths": [
+        "packages/toolkit/src/tests/configureStore.test.ts"
+      ]
+    },
+    {
+      "id": "axum-from-fn-reexport",
+      "instance_id": "axum-v0.7.9",
+      "kind": "reexport",
+      "query": "Where is `from_fn` defined?",
+      "rationale": "Declared in middleware/from_fn.rs and re-exported from middleware/mod.rs.",
+      "primary_regions": [
+        {
+          "path": "axum/src/middleware/from_fn.rs",
+          "start": 110,
+          "end": 112
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "axum/src/middleware/mod.rs",
+          "start": 13,
+          "end": 13
+        }
+      ],
+      "must_not_paths": [
+        "axum/src/middleware/from_extractor.rs"
+      ]
+    },
+    {
+      "id": "axum-router-route-chain",
+      "instance_id": "axum-v0.7.9",
+      "kind": "call_chain",
+      "query": "How does `Router::route` register a `MethodRouter` into the path router?",
+      "rationale": "Router::route delegates to PathRouter::route.",
+      "primary_regions": [
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 164,
+          "end": 168,
+          "hop": 0
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 42,
+          "end": 83,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "axum/src/routing/strip_prefix.rs"
+      ]
+    },
+    {
+      "id": "axum-into-response-status-code",
+      "instance_id": "axum-v0.7.9",
+      "kind": "multi_impl",
+      "query": "Where is `IntoResponse` implemented for `StatusCode`?",
+      "rationale": "The impl block lives in axum-core, next to the other primitive impls.",
+      "primary_regions": [
+        {
+          "path": "axum-core/src/response/into_response.rs",
+          "start": 118,
+          "end": 124
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "axum/src/response/mod.rs"
+      ]
+    },
+    {
+      "id": "gin-should-bind-json-method",
+      "instance_id": "gin-v1.10.0",
+      "kind": "multi_impl",
+      "query": "Where is `Context.ShouldBindJSON` defined?",
+      "rationale": "The Context method in context.go; binding/ only provides the JSON binding it delegates to.",
+      "primary_regions": [
+        {
+          "path": "context.go",
+          "start": 711,
+          "end": 713
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "context.go",
+          "start": 751,
+          "end": 753
+        }
+      ],
+      "must_not_paths": [
+        "binding/json.go"
+      ]
+    },
+    {
+      "id": "gin-servehttp-handler-chain",
+      "instance_id": "gin-v1.10.0",
+      "kind": "call_chain",
+      "query": "How does `Engine.ServeHTTP` reach `handleHTTPRequest` and run the handler chain via `Context.Next`?",
+      "rationale": "ServeHTTP pools a Context, handleHTTPRequest matches the route and calls c.Next.",
+      "primary_regions": [
+        {
+          "path": "gin.go",
+          "start": 583,
+          "end": 592,
+          "hop": 0
+        },
+        {
+          "path": "gin.go",
+          "start": 605,
+          "end": 671,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "context.go",
+          "start": 182,
+          "end": 188,
+          "hop": 2
+        }
+      ],
+      "must_not_paths": [
+        "ginS/gins.go"
+      ]
+    },
+    {
+      "id": "gin-binding-default-tests",
+      "instance_id": "gin-v1.10.0",
+      "kind": "test_mapping",
+      "query": "Which tests cover `binding.Default`?",
+      "rationale": "TestBindingDefault and TestBindingDefaultMsgPack exercise the content-type dispatch implemented in binding.go.",
+      "primary_regions": [
+        {
+          "path": "binding/binding_test.go",
+          "start": 146,
+          "end": 172
+        },
+        {
+          "path": "binding/binding_msgpack_test.go",
+          "start": 54,
+          "end": 57
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "binding/binding.go",
+          "start": 92,
+          "end": 115
+        }
+      ],
+      "must_not_paths": [
+        "binding/form_mapping.go"
+      ],
+      "test_paths": [
+        "binding/binding_test.go",
+        "binding/binding_msgpack_test.go"
+      ]
+    },
+    {
+      "id": "express-app-render-callers",
+      "instance_id": "express-4.21.2",
+      "kind": "reference",
+      "query": "Which code calls `app.render`?",
+      "rationale": "res.render delegates to app.render; the method itself is defined in application.js.",
+      "primary_regions": [
+        {
+          "path": "lib/response.js",
+          "start": 1026,
+          "end": 1050
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/application.js",
+          "start": 548,
+          "end": 610
+        }
+      ],
+      "must_not_paths": [
+        "lib/view.js"
+      ]
+    },
+    {
+      "id": "express-handle-chain",
+      "instance_id": "express-4.21.2",
+      "kind": "call_chain",
+      "query": "How does `app.handle` delegate to the router's `handle` and `process_params`?",
+      "rationale": "app.handle -> router.handle -> process_params.",
+      "primary_regions": [
+        {
+          "path": "lib/application.js",
+          "start": 165,
+          "end": 182,
+          "hop": 0
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 136,
+          "end": 170,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/router/index.js",
+          "start": 338,
+          "end": 360,
+          "hop": 2
+        }
+      ],
+      "must_not_paths": [
+        "lib/view.js"
+      ]
+    },
+    {
+      "id": "gson-fromjson-jsonreader-overload",
+      "instance_id": "gson-2.11.0",
+      "kind": "multi_impl",
+      "query": "Where is the `fromJson` overload taking a `JsonReader` and a `TypeToken` defined?",
+      "rationale": "One of many overloads in Gson.java; the qualifying parameter types pick the JsonReader/TypeToken variant.",
+      "primary_regions": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1345,
+          "end": 1382
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "gson/src/main/java/com/google/gson/JsonParser.java"
+      ]
+    },
+    {
+      "id": "gson-type-adapter-factory-impls",
+      "instance_id": "gson-2.11.0",
+      "kind": "multi_impl",
+      "query": "Which classes implement `TypeAdapterFactory`?",
+      "rationale": "The interface is declared in TypeAdapterFactory.java; the collection, map, reflective and annotation factories implement it.",
+      "primary_regions": [
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java",
+          "start": 34,
+          "end": 40
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java",
+          "start": 115,
+          "end": 121
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 60,
+          "end": 66
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java",
+          "start": 37,
+          "end": 43
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "start": 164,
+          "end": 170
+        }
+      ],
+      "must_not_paths": [
+        "gson/src/main/java/com/google/gson/JsonParser.java"
+      ]
+    }
+  ]
+}

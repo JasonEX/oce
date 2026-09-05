@@ -147,3 +147,71 @@ def test_comparison_identity_rejects_wrong_or_incomplete_suite() -> None:
             ],
             suite="semantic_queries",
         )
+
+
+def _completed(returncode: int, stdout: str = "", stderr: str = ""):
+    import subprocess
+
+    return subprocess.CompletedProcess(
+        args=["oce-client"], returncode=returncode, stdout=stdout, stderr=stderr
+    )
+
+
+def test_run_client_retries_transient_sync_transport_error(monkeypatch, tmp_path):
+    from pathlib import Path
+
+    import benchmarks.blackbox.harness as harness
+
+    calls = {"n": 0}
+    transient = _completed(
+        1, stderr="oce-client: OCE API transport failed: error sending request for url"
+    )
+    success = _completed(0, stdout='{"uploaded_blob_names": []}')
+
+    def fake_run(*_args, **_kwargs):
+        calls["n"] += 1
+        return transient if calls["n"] < 3 else success
+
+    monkeypatch.setattr(harness.subprocess, "run", fake_run)
+    monkeypatch.setattr(harness.time, "sleep", lambda _seconds: None)
+
+    result = harness.run_client(
+        Path("oce-client"),
+        tmp_path,
+        tmp_path / "state.sqlite3",
+        "http://127.0.0.1:8986",
+        "sk-test",
+        ("sync", "--json"),
+        retries=4,
+    )
+
+    assert result == {"uploaded_blob_names": []}
+    assert calls["n"] == 3
+
+
+def test_run_client_does_not_retry_a_genuine_failure(monkeypatch, tmp_path):
+    from pathlib import Path
+
+    import benchmarks.blackbox.harness as harness
+
+    calls = {"n": 0}
+
+    def fake_run(*_args, **_kwargs):
+        calls["n"] += 1
+        return _completed(1, stderr="oce-client: case not found")
+
+    monkeypatch.setattr(harness.subprocess, "run", fake_run)
+    monkeypatch.setattr(harness.time, "sleep", lambda _seconds: None)
+
+    with pytest.raises(RuntimeError, match="case not found"):
+        harness.run_client(
+            Path("oce-client"),
+            tmp_path,
+            tmp_path / "state.sqlite3",
+            "http://127.0.0.1:8986",
+            "sk-test",
+            ("sync", "--json"),
+            retries=4,
+        )
+
+    assert calls["n"] == 1

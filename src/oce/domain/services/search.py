@@ -11,8 +11,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-# 命中在最终结果中的角色：primary 是回答查询的片段，related 是二跳拉取的定义摘要。
-HitRole = Literal["primary", "related"]
+# 命中在最终结果中的角色：primary 是回答查询的片段，其余是按关系车道附带的摘录：
+# related 是被引用符号的定义，caller 是调用方，implementation 是子类/实现，
+# test 是覆盖该符号的测试，reexport 是转出该符号的入口文件。
+HitRole = Literal["primary", "related", "caller", "implementation", "test", "reexport"]
 
 
 @dataclass(frozen=True)

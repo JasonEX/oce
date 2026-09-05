@@ -78,6 +78,13 @@ class RetrievalMetricRecord:
     path_boosted: bool = False
     rerank_route: str | None = None
     head_slots: int = 0
+    # Structural evidence the routing saw: definitions of the queried names and
+    # the largest number of places declaring one of them (ambiguity).
+    exact_definitions: int = 0
+    definition_sites: int = 0
+    # Relation sections appended after the primary results, and their size.
+    relation_hits: int = 0
+    relation_chars: int = 0
     query_text: str | None = None
     stages: dict[str, int] = field(default_factory=dict)
     ts: datetime = field(default_factory=_now)
@@ -97,6 +104,13 @@ class RetrievalAudit:
     rerank_route: str | None = None
     # 确定性 symbol/path 答案实际保留的头部槽位数。
     head_slots: int = 0
+    # 查询点名符号的定义命中数，以及同名定义最多的那个符号的定义处数（歧义度）。
+    exact_definitions: int = 0
+    definition_sites: int = 0
+    # 关系小节：各车道附带的摘录数（related/caller/implementation/test/reexport）
+    # 与总字符数。
+    relation_counts: dict[str, int] = field(default_factory=dict)
+    relation_chars: int = 0
     scope_size: int | None = None
     stages: dict[str, int] = field(default_factory=dict)
 

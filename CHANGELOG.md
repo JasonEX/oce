@@ -7,6 +7,12 @@
 
 ### Added
 
+- **retrieval**: append relation sections after the primary results: callers grouped per enclosing definition, implementations and subclasses, tests exercising the symbol, and barrel re-exports, each with its own slot and character cap, deduplicated against the primary spans and rendered as fixed-order sections (`RETRIEVAL_CALLERS_*`, `RETRIEVAL_IMPLEMENTATIONS_*`, `RETRIEVAL_TESTS_*`, `RETRIEVAL_REEXPORTS_*`, `RETRIEVAL_RELATION_RESERVE_CHARS`, `RETRIEVAL_RELATION_SNIPPET_LINES`)
+- **retrieval**: resolve qualified names (`Session.get`, `Context.ShouldBindJSON`) to the declaration inside the named scope, order same-named overloads by the parameter types the request spells out, and give every declaring file a head slot before any file gets a second
+- **retrieval**: route "which tests cover X" and "which classes implement X" to use-site retrieval, with evidenced test files taking the head for test questions
+- **symbols**: record the enclosing definition of every occurrence, barrel re-exports (`export {} from`, `pub use`, relative and self-package imports in `__init__.py`/`index.ts`/`mod.rs`), and `extends`/`implements`/trait-impl edges (`SYMBOL_EXTRACTION_VERSION` 5; existing indexes must be rebuilt)
+- **monitoring**: record the structural evidence the router saw (`exact_definitions`, `definition_sites`) and the size of the appended relation sections (`relation_hits`, `relation_chars`) per retrieval, and add an opt-in `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` route for symbol requests whose name is declared in more places than the head holds
+- **evaluation**: add `project_cases`, 35 LLM-assisted, tool-verified relation cases (reference, call-chain, test mapping, re-export, multi-implementation) with distractor files and one derived error class per case, and `csn_queries`, an 80-query CodeSearchNet docstring-to-function guard over 8 pinned repositories in four languages
 - **symbols**: record call sites (`kind=call`) from tree-sitter for every grammar, extract Bash functions and JavaScript prototype/CommonJS assignments, and retry a transiently unavailable grammar instead of pinning the regex fallback for the process
 - **rerank**: add an in-process ONNX cross-encoder provider (`RERANK_PROVIDER=local`, `uv sync --extra local-rerank`) so reranking can run without sending queries or source to a model endpoint
 - **embedding**: cap the query text sent for embedding (`EMBED_MAX_QUERY_CHARS`, default 3,000 characters)
@@ -28,6 +34,7 @@
 - **milvus**: flush Milvus Lite before the first search that follows a write so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
 - **indexing**: embed pending chunks in pages of 256 instead of 64 so the embedder's concurrent batches are actually used during synchronous uploads (about 14 chunks/s before)
 - **persistence**: open personal-mode SQLite in WAL mode with a busy timeout, so the metrics sink and concurrent readers no longer fail with "database is locked" during batch uploads
+- **evaluation**: retry the idempotent black-box `sync` on transient transport resets (`run_client(..., retries=4)`), so a momentarily busy server no longer aborts a whole suite, while `retrieve` stays single-shot; and read the offline routing/evidence view from the `retrieval` metrics source (`benchmarks.internal.rerank_evidence --source`)
 
 ### Changed
 

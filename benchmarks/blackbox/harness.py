@@ -14,6 +14,7 @@ import math
 import os
 import shutil
 import subprocess
+import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -133,6 +134,25 @@ def client_version(binary: Path) -> str:
     return completed.stdout.strip()
 
 
+# Transport-level failures (connection reset while the single worker is busy,
+# a momentarily locked SQLite) are transient: the same call succeeds on retry.
+# Only the idempotent sync path opts in; retrieve stays single-shot so a genuine
+# per-case failure is still recorded as an error rather than silently retried.
+_TRANSIENT_MARKERS = (
+    "transport failed",
+    "error sending request",
+    "connection reset",
+    "connection refused",
+    "database is locked",
+    "operation timed out",
+)
+
+
+def _is_transient(detail: str) -> bool:
+    lowered = detail.lower()
+    return any(marker in lowered for marker in _TRANSIENT_MARKERS)
+
+
 def run_client(
     binary: Path,
     root: Path,
@@ -140,32 +160,42 @@ def run_client(
     api_url: str,
     api_key: str,
     command: Sequence[str],
+    *,
+    retries: int = 0,
+    retry_sleep: float = 5.0,
 ) -> dict[str, object]:
     environment = os.environ.copy()
     environment["OCE_API_KEY"] = api_key
-    completed = subprocess.run(
-        [
-            str(binary),
-            "--root",
-            str(root),
-            "--api-url",
-            api_url,
-            "--state-path",
-            str(state_path),
-            "--ignore",
-            ".git",
-            *command,
-        ],
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        env=environment,
-    )
-    if completed.returncode != 0:
-        detail = completed.stderr.strip() or completed.stdout.strip()
-        detail = detail.replace(api_key, "[REDACTED]")
+    arguments = [
+        str(binary),
+        "--root",
+        str(root),
+        "--api-url",
+        api_url,
+        "--state-path",
+        str(state_path),
+        "--ignore",
+        ".git",
+        *command,
+    ]
+    for attempt in range(retries + 1):
+        completed = subprocess.run(
+            arguments,
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=environment,
+        )
+        if completed.returncode == 0:
+            break
+        detail = (completed.stderr.strip() or completed.stdout.strip()).replace(
+            api_key, "[REDACTED]"
+        )
+        if attempt < retries and _is_transient(detail):
+            time.sleep(retry_sleep * (attempt + 1))
+            continue
         raise RuntimeError(f"oce-client {command[0]} failed: {detail[:1000]}")
     value = json.loads(completed.stdout)
     if not isinstance(value, dict):

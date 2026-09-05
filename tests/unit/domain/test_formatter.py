@@ -1,6 +1,13 @@
 """formatted_retrieval keeps the ACE section shape and adds context/related."""
 
-from oce.domain.services.formatter import HEADER, RELATED_HEADER, format_retrieval
+from oce.domain.services.formatter import (
+    CALLER_HEADER,
+    HEADER,
+    REEXPORT_HEADER,
+    RELATED_HEADER,
+    TEST_HEADER,
+    format_retrieval,
+)
 from oce.domain.services.search import SearchHit
 
 
@@ -35,3 +42,22 @@ def test_context_line_and_related_section():
     assert RELATED_HEADER in text
     assert text.index(RELATED_HEADER) > text.index("src/a.py")
     assert "Path: src/b.py\nLines: 1-1\n     1\tclass Base:" in text
+
+
+def test_relation_sections_render_in_fixed_order():
+    text = format_retrieval(
+        [
+            _hit("src/a.py", "def run():\n    pass", 10),
+            _hit("src/init.py", "from a import run", 1, role="reexport"),
+            _hit("tests/test_a.py", "def test_run():", 3, role="test"),
+            _hit("src/b.py", "def caller():\n    run()", 7, role="caller"),
+            _hit("src/c.py", "class Base:", 1, role="related"),
+        ]
+    )
+    positions = [
+        text.index(header)
+        for header in (RELATED_HEADER, CALLER_HEADER, TEST_HEADER, REEXPORT_HEADER)
+    ]
+    assert positions == sorted(positions)
+    assert text.index("Path: src/a.py") < positions[0]
+    assert "Path: src/init.py\nLines: 1-1" in text

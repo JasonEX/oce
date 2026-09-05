@@ -56,6 +56,13 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
             blob_chunk_columns = {
                 column["name"] for column in inspector.get_columns("blob_chunks")
             }
+            occurrence_columns = {
+                column["name"] for column in inspector.get_columns("symbol_occurrences")
+            }
+            occurrence_unique = [
+                tuple(constraint["column_names"])
+                for constraint in inspector.get_unique_constraints("symbol_occurrences")
+            ]
             version = conn.execute(
                 text("SELECT version_num FROM oce_alembic_version")
             ).scalar()
@@ -78,6 +85,20 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "retrieval_metrics",
     }.issubset(tables)
     assert "rerank_route" in retrieval_columns
+    assert {
+        "exact_definitions",
+        "definition_sites",
+        "relation_hits",
+        "relation_chars",
+    } <= retrieval_columns
+    assert "enclosing" in occurrence_columns
+    assert (
+        "identifier",
+        "blob_name",
+        "content_hash",
+        "kind",
+        "enclosing",
+    ) in occurrence_unique
     assert {
         "embed_ms",
         "path_ms",

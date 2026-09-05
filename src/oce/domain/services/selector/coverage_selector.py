@@ -42,6 +42,7 @@ class CoverageSelector:
         top_k: int,
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
+        max_chars: int | None = None,
     ) -> list[SearchHit]:
         if top_k <= 0 or not hits:
             return []
@@ -61,6 +62,10 @@ class CoverageSelector:
             passes = (True, False)
             per_path_limit = self.max_per_path
             char_budget = self.max_chars
+        if max_chars is not None:
+            # A caller reserving room for relation sections lowers the budget;
+            # it can never raise it above the configured hard limit.
+            char_budget = max(1, min(char_budget, max_chars))
 
         # Coverage 先让不同文件各有代表，再补同文件片段；focused 严格保留
         # relevance 顺序。两种模式共用重叠抑制和字符预算。

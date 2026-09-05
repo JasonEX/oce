@@ -17,8 +17,10 @@ from oce.domain.services.symbols import SymbolKind, SymbolOccurrence, SymbolProv
 from oce.infrastructure.astchunk.astchunk_builder import LANGUAGE_MAP
 from oce.infrastructure.astchunk.compat import CompatNode, compat_parse
 from oce.infrastructure.astchunk.declarations import (
+    _leaf_name,
     callee_name,
     declared_name,
+    heritage_names,
     is_call_type,
     is_definition_type,
     is_function_like,
@@ -101,6 +103,7 @@ class TreeSitterSymbolProvider:
         *,
         content: str,
         language: str | None,
+        path: str | None = None,
     ) -> Sequence[SymbolOccurrence]:
         if is_prose_language(language):
             return ()
@@ -120,17 +123,23 @@ class TreeSitterSymbolProvider:
             return self._fallback.extract(content=content, language=language)
 
         endpoints = find_endpoints(content, LineIndex(content))
-        occurrences: dict[tuple[str, str, int], SymbolOccurrence] = {}
+        occurrences: dict[tuple[str, str, int, str], SymbolOccurrence] = {}
         calls = 0
+        barrel = is_barrel_path(path)
+        package = _package_name(path) if barrel else None
 
-        def add(identifier: str, kind: SymbolKind, start: int, end: int) -> None:
+        def add(
+            identifier: str, kind: SymbolKind, start: int, end: int, enclosing: str
+        ) -> None:
             if len(identifier) < 2:
                 return
-            key = (identifier, kind, start)
+            key = (identifier, kind, start, enclosing)
             if key not in occurrences:
-                occurrences[key] = SymbolOccurrence(identifier, kind, start, end)
+                occurrences[key] = SymbolOccurrence(
+                    identifier, kind, start, end, enclosing
+                )
 
-        def add_call(node: CompatNode) -> None:
+        def add_call(node: CompatNode, enclosing: str) -> None:
             nonlocal calls
             if calls >= _MAX_CALLS_PER_FILE:
                 return
@@ -138,38 +147,52 @@ class TreeSitterSymbolProvider:
             if name is None or len(name) < 3 or name.lower() in _CALL_NOISE:
                 return
             line = node.start_point.row + 1
-            key = (name, "call", line)
+            key = (name, "call", line, enclosing)
             if key not in occurrences:
-                occurrences[key] = SymbolOccurrence(name, "call", line, line)
+                occurrences[key] = SymbolOccurrence(name, "call", line, line, enclosing)
                 calls += 1
 
-        # (node, inside_function): locals declared inside a function body are
-        # not project symbols, but nested functions and classes still are.
-        stack: list[tuple[CompatNode, bool]] = [(root, False)]
+        # (node, inside_function, enclosing): locals declared inside a function
+        # body are not project symbols, but nested functions and classes still
+        # are. ``enclosing`` is the innermost named definition above the node.
+        stack: list[tuple[CompatNode, bool, str]] = [(root, False, "")]
         while stack:
-            node, inside_function = stack.pop()
+            node, inside_function, enclosing = stack.pop()
             for child in reversed(node.named_children):
                 child_type = child.type
                 start = child.start_point.row + 1
                 end = child.end_point.row + 1
                 if child_type.startswith("import") or child_type in _IMPORT_TYPES:
-                    for name in _import_names(child):
-                        add(name, "import", start, end)
+                    names = _import_names(child)
+                    for name in names:
+                        add(name, "import", start, end, enclosing)
+                    for name in _reexport_names(child, names, package=package):
+                        add(name, "reexport", start, end, enclosing)
+                    continue
+                if child_type == "export_statement" and (
+                    child.child_by_field_name("source") is not None
+                ):
+                    # ``export { X } from './x'`` forwards a name declared in
+                    # another module; the specifier itself declares nothing.
+                    for name in _export_specifier_names(child):
+                        add(name, "import", start, end, enclosing)
+                        add(name, "reexport", start, end, enclosing)
                     continue
                 aliases = require_alias_names(child)
                 if aliases is not None:
                     for name in aliases:
-                        add(name, "import", start, end)
+                        add(name, "import", start, end, enclosing)
                     continue
                 # Call sites provide direct-use evidence to reference and
                 # call-chain lookups; structural answer heads never use them.
                 if is_call_type(child_type):
-                    add_call(child)
+                    add_call(child, enclosing)
                 # Anything function-shaped (declaration, arrow, lambda, closure)
                 # turns the declarators below it into locals.
                 descend_inside_function = inside_function or is_function_like(
                     child_type
                 )
+                child_enclosing = enclosing
                 if is_definition_type(child_type) or child_type in _ASSIGNMENT_TYPES:
                     name = declared_name(child)
                     is_local = inside_function and (
@@ -179,12 +202,26 @@ class TreeSitterSymbolProvider:
                     )
                     if name is not None and not is_local:
                         kind = "endpoint" if name in endpoints else "definition"
-                        add(name, kind, start, end)
+                        add(name, kind, start, end, enclosing)
+                        child_enclosing = name
+                        for base in heritage_names(child):
+                            add(base, "inherit", start, end, name)
+                if child_type == "impl_item":
+                    # ``impl Trait for Type`` declares nothing new, but its
+                    # methods belong to ``Type`` and it implements ``Trait``.
+                    subject = child.child_by_field_name("type")
+                    trait = child.child_by_field_name("trait")
+                    subject_name = _leaf_name(subject) if subject is not None else None
+                    if subject_name:
+                        child_enclosing = subject_name
+                        trait_name = _leaf_name(trait) if trait is not None else None
+                        if trait_name:
+                            add(trait_name, "inherit", start, end, subject_name)
                 # Strings and comments never hold declarations; everything
                 # else may (one-line classes, impl blocks, nested closures).
                 if child_type in _OPAQUE_TYPES or not child.named_children:
                     continue
-                stack.append((child, descend_inside_function))
+                stack.append((child, descend_inside_function, child_enclosing))
 
         # Endpoints the tree walk did not attribute (decorator on a shape the
         # generic rules miss) keep their regex evidence.
@@ -192,7 +229,7 @@ class TreeSitterSymbolProvider:
             if not any(
                 key[0] == identifier and key[1] == "endpoint" for key in occurrences
             ):
-                add(identifier, "endpoint", line, line)
+                add(identifier, "endpoint", line, line, "")
         return tuple(occurrences.values())
 
     def _parser(self, language: str):
@@ -248,4 +285,123 @@ def _import_names(node: CompatNode) -> list[str]:
                 names.append(segment)
             continue
         pending.extend(children)
+    return names
+
+
+def is_barrel_path(path: str | None) -> bool:
+    """Package entry files whose relative imports republish other modules."""
+    if not path:
+        return False
+    name = path.replace("\\", "/").rsplit("/", 1)[-1].lower()
+    return name in _BARREL_FILENAMES
+
+
+_BARREL_FILENAMES = frozenset(
+    {
+        "__init__.py",
+        "index.ts",
+        "index.tsx",
+        "index.js",
+        "index.jsx",
+        "mod.rs",
+        "lib.rs",
+    }
+)
+
+
+def _package_name(path: str | None) -> str | None:
+    """Directory holding a barrel file: the package its absolute imports name."""
+    if not path:
+        return None
+    parts = path.replace("\\", "/").split("/")
+    return parts[-2] if len(parts) >= 2 and parts[-2] else None
+
+
+def _reexport_names(
+    node: CompatNode, imported: Sequence[str], *, package: str | None
+) -> list[str]:
+    """Names an import statement republishes to importers of this file.
+
+    Rust ``pub use`` re-exports wherever it appears. Inside a package entry
+    file (``package`` is its directory name) a relative import or an absolute
+    import of the package's own modules (``from .app import Flask``,
+    ``from billing.invoice import build_invoice``) is the Python idiom for
+    the same thing. Path segments are not republished names, only the bound
+    leaves are.
+    """
+    if node.type == "use_declaration":
+        if not any(
+            child.type == "visibility_modifier" for child in node.named_children
+        ):
+            return []
+        argument = node.child_by_field_name("argument")
+        return _use_leaf_names(argument) if argument is not None else []
+    if node.type == "import_from_statement":
+        module = node.child_by_field_name("module_name")
+        if package is None or module is None:
+            return []
+        module_text = module.text.decode("utf-8", errors="replace")
+        if module.type != "relative_import" and (
+            module_text.split(".", 1)[0] != package
+        ):
+            return []
+        leaves: list[str] = []
+        # Every named child after the module is an imported name or alias.
+        for child in node.named_children:
+            if child is module or child.type == "relative_import":
+                continue
+            target = child
+            if child.type == "aliased_import":
+                target = child.child_by_field_name("alias") or child
+            identifiers = [
+                item
+                for item in (target, *target.named_children)
+                if item.type.endswith("identifier") and not item.named_children
+            ]
+            if identifiers:
+                text = identifiers[-1].text.decode("utf-8", errors="replace")
+                if text in imported and text not in leaves:
+                    leaves.append(text)
+        return leaves
+    return []
+
+
+def _use_leaf_names(node: CompatNode) -> list[str]:
+    """Bound names of a Rust ``use`` tree: ``a::b::{C, D as E}`` -> C, E."""
+    if node.type.endswith("identifier") and not node.named_children:
+        return [node.text.decode("utf-8", errors="replace")]
+    if node.type == "use_as_clause":
+        alias = node.child_by_field_name("alias")
+        return _use_leaf_names(alias) if alias is not None else []
+    if node.type in ("scoped_identifier", "scoped_use_list"):
+        for field in ("list", "name"):
+            child = node.child_by_field_name(field)
+            if child is not None:
+                return _use_leaf_names(child)
+        return []
+    if node.type == "use_list":
+        names: list[str] = []
+        for child in node.named_children:
+            for name in _use_leaf_names(child):
+                if name not in names and name not in _IMPORT_NOISE:
+                    names.append(name)
+        return names
+    return []
+
+
+def _export_specifier_names(node: CompatNode) -> list[str]:
+    names: list[str] = []
+    pending = list(node.named_children)
+    while pending:
+        current = pending.pop(0)
+        if current.type == "export_specifier":
+            target = current.child_by_field_name(
+                "alias"
+            ) or current.child_by_field_name("name")
+            if target is not None:
+                text = target.text.decode("utf-8", errors="replace")
+                if text not in names:
+                    names.append(text)
+            continue
+        pending.extend(current.named_children)
     return names

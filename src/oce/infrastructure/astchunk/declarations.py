@@ -251,6 +251,58 @@ def _member_leaf(node: CompatNode) -> str | None:
     return None
 
 
+# Containers grammars use for "extends"/"implements" lists. Python puts base
+# classes in the declaration's ``superclasses`` argument list.
+_HERITAGE_TYPES = frozenset(
+    {
+        "superclass",
+        "super_interfaces",
+        "class_heritage",
+        "extends_clause",
+        "implements_clause",
+        "extends_type_clause",
+        "implements_type_clause",
+        "base_list",
+        "delegation_specifiers",
+        "inheritance_specifier",
+        "type_inheritance_clause",
+    }
+)
+
+
+def heritage_names(node: CompatNode) -> list[str]:
+    """Base classes, interfaces and traits a declaration extends or implements.
+
+    Generic arguments (``IRequestHandler<Ping>`` -> ``Ping``) are type
+    parameters, not supertypes, so nodes holding arguments are not descended.
+    """
+    names: list[str] = []
+    containers = [
+        child
+        for child in node.named_children
+        if child.type in _HERITAGE_TYPES
+        or (child.type == "argument_list" and node.type == "class_definition")
+    ]
+    superclasses = node.child_by_field_name("superclasses")
+    if superclasses is not None and superclasses not in containers:
+        containers.append(superclasses)
+    pending = list(containers)
+    while pending:
+        current = pending.pop(0)
+        if "argument" in current.type and current.type != "argument_list":
+            continue
+        if current.type.endswith("identifier") and not current.named_children:
+            text = current.text.decode("utf-8", errors="replace")
+            if text not in names:
+                names.append(text)
+            continue
+        if current.type == "keyword_argument":
+            # ``class Meta(metaclass=ABCMeta)`` configures, it does not inherit.
+            continue
+        pending.extend(current.named_children)
+    return names
+
+
 def is_definition_type(node_type: str) -> bool:
     if any(marker in node_type for marker in _EXCLUDED_MARKERS):
         return False

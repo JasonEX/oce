@@ -240,6 +240,7 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
                         args.api_url,
                         api_key,
                         ("sync", "--json"),
+                        retries=4,
                     )
                     break
                 except Exception:

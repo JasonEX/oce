@@ -317,8 +317,16 @@ declaration after its first use sites. Both head rules are reapplied after a mod
 runs, keeping the model's order inside each tier. The dedicated reranker also receives at most
 `RERANK_MAX_QUERY_CHARS` of the request so issue-length text does not multiply its latency.
 Exact, path-lookup, and routed lexical recall start before the query embedding round trip.
-After selection, touching spans of one file are merged; call-chain, feature, and overview requests
-may append short definition excerpts only within the unused main context budget. Compound
+After selection, touching spans of one file are merged. Requests that name a symbol then
+receive relation sections after the primary results, each with its own slot and character
+cap and deduplicated against what is already shown: signature excerpts of definitions the
+selected code refers to (call-chain, feature, overview), callers grouped per enclosing
+function (symbol, reference, call-chain), implementations and subclasses (symbol), tests
+that exercise the symbol (symbol, reference, call-chain, feature, compound), and the
+barrel file that re-exports it (symbol). Primary selection reserves
+`RETRIEVAL_RELATION_RESERVE_CHARS` for those sections when the intent enables any of
+them. Qualified names (`Session.get`) are resolved to the declaration inside the named
+scope; overloads are ordered by the parameter types the request spells out. Compound
 requests do not fan out through every identifier in their selected snippets. Files the
 request just added (`added_blobs`) receive a small ranking prior when the delta is small.
 Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path
@@ -326,7 +334,9 @@ lookup, source priority, coverage selection, adjacent merging, and related defin
 `CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`, `RETRIEVAL_LEXICAL_ENABLED`,
 `RETRIEVAL_PATH_LOOKUP_ENABLED`, `RETRIEVAL_SOURCE_PRIORITY_ENABLED`,
 `RETRIEVAL_COVERAGE_SELECTION_ENABLED`, `RETRIEVAL_MERGE_ADJACENT_ENABLED`, and
-`RETRIEVAL_RELATED_DEFINITIONS_ENABLED`.
+`RETRIEVAL_RELATED_DEFINITIONS_ENABLED`; the relation sections have their own switches
+(`RETRIEVAL_CALLERS_ENABLED`, `RETRIEVAL_IMPLEMENTATIONS_ENABLED`, `RETRIEVAL_TESTS_ENABLED`,
+`RETRIEVAL_REEXPORTS_ENABLED`) and caps (`*_MAX`, `*_MAX_CHARS`).
 Changing chunking requires a clean data directory and full resync; these switches do not
 retroactively transform an existing index.
 
@@ -506,7 +516,7 @@ fields, and every optional operator degrades to the identity transform when disa
 | prior | source priority × working-set boost; bounded head slots: exact symbol/path answers, undemoted source files for semantic requests, use sites before the declaration for reference requests |
 | rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
 | select | focused / coverage selection under a hard character budget |
-| expand | merge touching spans; relationship queries may use remaining context budget for related definitions |
+| expand | merge touching spans; append budgeted relation sections: related definitions, callers, implementations, tests, re-exports |
 
 ```mermaid
 flowchart TB
@@ -525,7 +535,7 @@ flowchart TB
     Fuse --> Prior["prior<br/>source priority · structural head"]
     Prior --> Rerank["rerank<br/>dedicated → chat LLM (policy)"]
     Rerank --> Select["select<br/>focused / coverage"]
-    Select --> Expand["expand<br/>adjacent merge · related definitions"]
+    Select --> Expand["expand<br/>adjacent merge · relation sections"]
     Expand --> Out["formatted_retrieval"]
 ```
 

@@ -252,3 +252,108 @@ async def test_occurrence_kinds_is_scoped_and_disambiguates_duplicate_chunks(ses
         {"import", "definition"}
     )
     assert (names["vendor/importer.py"], shared_hash) not in kinds
+
+
+async def test_relation_lookups_group_by_enclosing_and_prefer_source(sessions):
+    files = {
+        "src/billing/__init__.py": "from billing.invoice import build_invoice\n",
+        "src/billing/invoice.py": (
+            "class Builder:\n"
+            "    def add(self):\n"
+            "        return 1\n"
+            "\n"
+            "\n"
+            "def build_invoice(customer):\n"
+            "    return Builder().add()\n"
+        ),
+        "src/billing/api.py": (
+            "from billing.invoice import build_invoice\n"
+            "\n"
+            "\n"
+            "def create(request):\n"
+            "    first = build_invoice(request.customer)\n"
+            "    second = build_invoice(request.other)\n"
+            "    return first, second\n"
+            "\n"
+            "\n"
+            "def preview(request):\n"
+            "    return build_invoice(request.customer)\n"
+        ),
+        "src/billing/plugins.py": "from billing.invoice import Builder\n\n\nclass FancyBuilder(Builder):\n    pass\n",
+        "tests/test_invoice.py": (
+            "from billing.invoice import build_invoice\n"
+            "\n"
+            "\n"
+            "def test_totals():\n"
+            "    assert build_invoice(None)\n"
+            "\n"
+            "\n"
+            "def test_other():\n"
+            "    assert build_invoice(1)\n"
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+
+    callers = await store.find_callers(
+        identifiers=["build_invoice"], scope=scope, limit=8
+    )
+    # One edge per (file, enclosing function): the two calls inside ``create``
+    # collapse, source callers precede the test callers.
+    assert [(c.hit.path, c.enclosing) for c in callers] == [
+        ("src/billing/api.py", "create"),
+        ("src/billing/api.py", "preview"),
+        ("tests/test_invoice.py", "test_totals"),
+        ("tests/test_invoice.py", "test_other"),
+    ]
+    assert callers[0].kind == "call" and callers[0].line == 5
+
+    tests = await store.find_test_uses(
+        identifiers=["build_invoice"], scope=scope, limit=3
+    )
+    assert [(t.hit.path, t.enclosing) for t in tests][0] == (
+        "tests/test_invoice.py",
+        "",
+    )
+    assert all(t.hit.path.startswith("tests/") for t in tests)
+
+    implementations = await store.find_implementations(
+        identifiers=["Builder"], scope=scope, limit=4
+    )
+    assert [(i.hit.path, i.enclosing) for i in implementations] == [
+        ("src/billing/plugins.py", "FancyBuilder")
+    ]
+
+    reexports = await store.find_reexports(identifiers=["build_invoice"], scope=scope)
+    assert [(r.hit.path, r.line) for r in reexports] == [("src/billing/__init__.py", 1)]
+
+    definitions = await store.search_exact(
+        identifiers=["build_invoice"], scope=scope, kinds=("definition",)
+    )
+    defined = await store.defined_identifiers(
+        [(hit.blob_name, hit.content_hash) for hit in definitions], scope
+    )
+    assert set().union(*defined.values()) == {"build_invoice"}
+
+
+async def test_test_relation_prefilter_keeps_benchmark_directories(sessions):
+    files = {
+        "src/worker.py": "def run_job():\n    return 1\n",
+        "benchmarks/worker_bench.py": (
+            "from src.worker import run_job\n"
+            "def benchmark_run():\n"
+            "    return run_job()\n"
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+
+    tests = await store.find_test_uses(identifiers=["run_job"], scope=scope, limit=4)
+
+    assert tests
+    assert all(item.hit.path == "benchmarks/worker_bench.py" for item in tests)
+    assert any(item.enclosing == "benchmark_run" for item in tests)

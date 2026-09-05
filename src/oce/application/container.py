@@ -419,6 +419,12 @@ class Container:
         )
 
         query_bus = QueryBus()
+        # One store serves both the exact lane and the relation lanes; they
+        # read the same occurrence table with the same timeout.
+        symbol_store = SymbolSearchStore(
+            async_session_factory,
+            timeout_seconds=settings.retrieval.exact_timeout_seconds,
+        )
         query_bus.register(
             SearchQuery,
             SearchQueryHandler(
@@ -435,10 +441,8 @@ class Container:
                     query_rewriter=self.query_rewriter,
                     path_store=self.path_index,
                     path_content_store=self.path_content_store,
-                    exact_store=SymbolSearchStore(
-                        async_session_factory,
-                        timeout_seconds=settings.retrieval.exact_timeout_seconds,
-                    ),
+                    exact_store=symbol_store,
+                    relation_store=symbol_store,
                     lexical_store=(
                         SqlLexicalSearchStore(
                             async_session_factory,

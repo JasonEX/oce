@@ -9,7 +9,8 @@
     prior   源码先验 × 工作集增量先验 → 保护确定性头部 → 可选置信度门槛
     rerank  plan_rerank 决策 → 专用 reranker → chat-LLM reranker（均保留候选集）
     select  focused / coverage 选择（数量软上限、字符硬预算）
-    expand  同文件相邻片段合并 → 语义关系查询按剩余预算拉取相关定义
+    expand  同文件相邻片段合并 → 按意图与剩余预算附带关系小节：被引用定义、
+            调用方、实现/子类、覆盖测试、转出入口（各自独立槽位与字符上限）
 
 rerank 解决「单篇多相关」，select 解决「这一组够全且不冗余」，expand 解决「拿到的
 片段引用了什么」。关闭对应开关时每个阶段都退化为恒等变换。
@@ -19,7 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Callable, Collection, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Collection, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
@@ -28,15 +29,18 @@ from loguru import logger
 
 from oce.domain.chunk.lang import detect_language
 from oce.domain.services.embedder import Embedder
+from oce.domain.services.evidence_pack import SectionInput, assemble_sections
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
+    asks_about_tests,
     classify_query_intent,
     should_use_path_index,
 )
 from oce.domain.services.query_evidence import QueryEvidence, extract_query_evidence
 from oce.domain.services.query_planner import HeuristicQueryPlanner, QueryPlanner
+from oce.domain.services.relations import RelatedOccurrence, RelationStore
 from oce.domain.services.reranker import Reranker
 from oce.domain.services.retrieval_strategy import (
     RerankDecision,
@@ -47,6 +51,7 @@ from oce.domain.services.retrieval_strategy import (
 from oce.domain.services.search import (
     DefinitionHit,
     ExactSearchStore,
+    HitRole,
     LexicalSearchStore,
     PathLookupStore,
     SearchHit,
@@ -56,9 +61,10 @@ from oce.domain.services.search import (
     search_hit_key,
 )
 from oce.domain.services.selector.coverage_selector import CoverageSelector
-from oce.domain.services.selector.protocols import Selector
+from oce.domain.services.selector.protocols import SelectionMode, Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
-from oce.domain.services.symbols import CALL_KIND, DEFINITION_KINDS, IMPORT_KIND
+from oce.domain.services.symbols import CALL_KIND, DEFINITION_KINDS, HEADER_KINDS
+from oce.domain.services.test_paths import is_test_path
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 
@@ -96,12 +102,7 @@ def source_priority_factor(path: str) -> float:
         or ("/" not in p and "." not in name and stem in _DOCUMENT_STEMS)
     ):
         return 0.5
-    if (
-        any(f"/{part}/" in f"/{p}" for part in _TEST_DIRECTORIES)
-        or name.startswith("test_")
-        or name == "conftest.py"
-        or _TEST_FILE.search(name) is not None
-    ):
+    if is_test_path(p):
         return 0.6
     # 配置文件和类型桩：需要它们的查询会写出文件名（PATH 意图，中立先验），
     # 其余查询在找实现，这些文件只是碰巧提到同样的名字。
@@ -119,26 +120,6 @@ def source_priority_factor(path: str) -> float:
     return 1.0
 
 
-# Benchmarks and performance harnesses exercise the API the way tests do:
-# they call everything and define nothing a request is looking for.
-_TEST_DIRECTORIES = frozenset(
-    {
-        "test",
-        "tests",
-        "testing",
-        "__tests__",
-        "__testfixtures__",
-        "testfixtures",
-        "asv_bench",
-        "bench",
-        "benches",
-        "benchmark",
-        "benchmarks",
-        "perf",
-    }
-)
-# foo.test.ts, foo.spec.js, foo.test-d.ts (type tests), foo_test.go
-_TEST_FILE = re.compile(r"\.(?:test|spec)(?:-d)?\.|_test\.go$")
 _DOCUMENT_DIRECTORIES = frozenset(
     {
         "docs",
@@ -177,29 +158,6 @@ def neutral_priority_factor(_path: str) -> float:
     排序完全交由路径 boost + 内容分数 + rerank 决定。
     """
     return 1.0
-
-
-# Only requests that ask *for* tests get a neutral prior. "How does bats run a
-# test function" is about the framework's source, not about finding tests.
-_TEST_QUERY = re.compile(
-    r"(?i)\b(?:which|what|find|show|where\s+(?:is|are))\b[^.?\n]{0,60}\btests?\b"
-    r"|\btests?\s+(?:for|of|covering|that\s+cover)\b"
-    r"|\b(?:unit|integration|regression)\s+tests?\b"
-    r"|\btest\s*cases?\b|\bconftest\b|\bfixtures?\s+for\b"
-    r"|测试用例|单元测试|哪个测试|测试在哪|有没有测试|相关测试"
-)
-
-
-_TEST_QUERY_MAX_CHARS = 200
-
-
-def _asks_about_tests(query: str) -> bool:
-    """A short request that names tests wants test files ranked like any source.
-
-    Long issue-style text mentions failing tests while asking about the code
-    under test, so the rule is limited to question-sized requests.
-    """
-    return len(query) <= _TEST_QUERY_MAX_CHARS and _TEST_QUERY.search(query) is not None
 
 
 # Identifiers worth pulling a definition for: multi-part or reasonably long
@@ -261,6 +219,11 @@ class RetrievalState:
 
     # route
     evidence: QueryEvidence | None = None
+    # Names the structural lanes look up: every query identifier plus the leaf
+    # of each qualified one (``Session.get`` -> ``get``); ``qualifiers`` maps a
+    # leaf to the scopes the request pinned it to.
+    lookup_identifiers: tuple[str, ...] = ()
+    qualifiers: dict[str, tuple[str, ...]] = field(default_factory=dict)
     intent: QueryIntent = QueryIntent.FEATURE
     strategy: RetrievalStrategy = field(default_factory=RetrievalStrategy)
     use_path_index: bool = False
@@ -304,6 +267,106 @@ class RetrievalState:
         return self.audit.stage(name) if self.audit is not None else _noop_stage(name)
 
 
+@dataclass(frozen=True)
+class _RelationLane:
+    role: HitRole
+    fetch: Callable[[Sequence[str]], Awaitable[list[RelatedOccurrence]]]
+    max_items: int
+    max_chars: int
+
+
+async def _no_hits() -> list[SearchHit]:
+    return []
+
+
+async def _no_occurrences() -> list[RelatedOccurrence]:
+    return []
+
+
+_QUALIFIER_SEPARATORS = ("::", ".")
+
+
+def split_qualified_identifiers(
+    identifiers: Sequence[str],
+) -> tuple[tuple[str, ...], dict[str, tuple[str, ...]]]:
+    """``Session.get`` -> look up ``get`` and remember that it must sit in ``Session``.
+
+    The qualified spelling is kept as well: a symbol table may hold dotted
+    names verbatim. The qualifier map only records real scopes, so a bare
+    identifier contributes nothing to it.
+    """
+    lookup: list[str] = []
+    qualifiers: dict[str, list[str]] = {}
+    for identifier in identifiers:
+        if identifier not in lookup:
+            lookup.append(identifier)
+        for separator in _QUALIFIER_SEPARATORS:
+            if separator in identifier:
+                scope, leaf = identifier.rsplit(separator, 1)
+                scope_leaf = scope.rsplit(separator, 1)[-1]
+                if leaf and scope_leaf:
+                    if leaf not in lookup:
+                        lookup.append(leaf)
+                    bucket = qualifiers.setdefault(leaf, [])
+                    if scope_leaf not in bucket:
+                        bucket.append(scope_leaf)
+                break
+    return tuple(lookup), {leaf: tuple(scopes) for leaf, scopes in qualifiers.items()}
+
+
+def _word_in(word: str, text: str) -> bool:
+    return (
+        re.search(rf"(?<![A-Za-z0-9_]){re.escape(word)}(?![A-Za-z0-9_])", text)
+        is not None
+    )
+
+
+def resolve_qualified_hits(
+    hits: list[SearchHit], qualifiers: dict[str, tuple[str, ...]]
+) -> list[SearchHit]:
+    """Keep the declarations that live in the requested scope.
+
+    The scope chain (``class Session > def get``) and the file path are the
+    structural evidence; the chunk text is consulted only when neither names
+    the qualifier (Go receivers, C++ ``Type::method`` definitions). When no
+    hit matches, the request may have named a scope the index does not know,
+    so every hit stays.
+    """
+    if not qualifiers or not hits:
+        return hits
+    wanted = tuple(dict.fromkeys(q for scopes in qualifiers.values() for q in scopes))
+
+    def structural(hit: SearchHit) -> bool:
+        text = f"{hit.context or ''}\n{hit.path.replace('/', ' ')}"
+        return any(_word_in(q, text) for q in wanted)
+
+    def textual(hit: SearchHit) -> bool:
+        return any(_word_in(q, hit.content) for q in wanted)
+
+    for predicate in (structural, textual):
+        matched = [hit for hit in hits if predicate(hit)]
+        if matched:
+            return matched
+    return hits
+
+
+def order_by_comentions(hits: list[SearchHit], names: Sequence[str]) -> list[SearchHit]:
+    """Stable order by how many of the request's other names a chunk mentions.
+
+    Overloads share a name; the parameter types the request spells out
+    (``JsonReader``, ``TypeToken``) pick the right one deterministically.
+    """
+    names = tuple(dict.fromkeys(name for name in names if name))
+    if len(hits) < 2 or not names:
+        return hits
+
+    def mentions(hit: SearchHit) -> int:
+        text = f"{hit.context or ''}\n{hit.content}"
+        return sum(_word_in(name, text) for name in names)
+
+    return sorted(hits, key=lambda hit: -mentions(hit))
+
+
 class RetrievalPipeline:
     """检索管道：编排检索全流程"""
 
@@ -320,6 +383,7 @@ class RetrievalPipeline:
         path_content_store: PathContentStore | None = None,
         path_lookup_store: PathLookupStore | None = None,
         exact_store: ExactSearchStore | None = None,
+        relation_store: RelationStore | None = None,
         lexical_store: LexicalSearchStore | None = None,
         selector: Selector | None = None,
         query_planner: QueryPlanner | None = None,
@@ -340,6 +404,7 @@ class RetrievalPipeline:
         self.path_lookup_store = path_lookup_store
         self.settings = settings
         self.exact_store = exact_store
+        self.relation_store = relation_store
         self.lexical_store = lexical_store
         self.priority_factor = priority_factor or (
             source_priority_factor
@@ -420,6 +485,9 @@ class RetrievalPipeline:
     def _route(self, state: RetrievalState) -> None:
         """路由完全由可测试的确定性信号决定；模型只参与显式的 rewrite/rerank。"""
         state.evidence = extract_query_evidence(state.query)
+        state.lookup_identifiers, state.qualifiers = split_qualified_identifiers(
+            state.evidence.identifiers
+        )
         state.intent = classify_query_intent(state.query)
         state.strategy = get_strategy(state.intent)
         logger.debug(
@@ -616,11 +684,44 @@ class RetrievalPipeline:
         store = self.exact_store
         scope = state.scope
         top_k = self.settings.default_top_k
+        identifiers = state.lookup_identifiers or evidence.identifiers
+
+        async def lookup_one(
+            identifier: str, kinds: Sequence[str] | None
+        ) -> list[SearchHit]:
+            hits = await store.search_exact(
+                identifiers=(identifier,), scope=scope, top_k=top_k, kinds=kinds
+            )
+            # A qualified request can share a query with unrelated bare names
+            # (for example ``Session.get`` plus ``Cache``). Filter only the
+            # qualified identifier's own batch; applying one scope predicate to
+            # the combined result would silently discard the bare name.
+            for leaf, scopes in state.qualifiers.items():
+                if identifier == leaf or any(
+                    identifier.endswith(f"{separator}{leaf}")
+                    for separator in _QUALIFIER_SEPARATORS
+                ):
+                    return resolve_qualified_hits(hits, {leaf: scopes})
+            return hits
 
         async def lookup(kinds: Sequence[str] | None) -> list[SearchHit]:
-            return await store.search_exact(
-                identifiers=evidence.identifiers, scope=scope, top_k=top_k, kinds=kinds
+            if not state.qualifiers:
+                return await store.search_exact(
+                    identifiers=identifiers, scope=scope, top_k=top_k, kinds=kinds
+                )
+            batches = await asyncio.gather(
+                *(lookup_one(identifier, kinds) for identifier in identifiers)
             )
+            merged: list[SearchHit] = []
+            seen: set[SearchHitKey] = set()
+            for batch in batches:
+                for hit in batch:
+                    key = search_hit_key(hit)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    merged.append(hit)
+            return merged
 
         try:
             with state.stage("exact"):
@@ -628,19 +729,35 @@ class RetrievalPipeline:
                     occurrences, definitions = await asyncio.gather(
                         lookup(None), lookup(DEFINITION_KINDS)
                     )
-                    return occurrences, definitions
-                if state.intent == QueryIntent.CALL_CHAIN:
+                elif state.intent == QueryIntent.CALL_CHAIN:
                     occurrences, definitions = await asyncio.gather(
                         lookup((*DEFINITION_KINDS, CALL_KIND)), lookup(DEFINITION_KINDS)
                     )
-                    return occurrences, definitions
-                definitions = await lookup(DEFINITION_KINDS)
-                return definitions, definitions
+                else:
+                    definitions = await lookup(DEFINITION_KINDS)
+                    occurrences = definitions
         except Exception as exc:
             logger.warning(
                 "Exact identifier recall failed; using semantic candidates: {}", exc
             )
             return [], []
+        # A qualified request (``Session.get``) pins the leaf to a scope; the
+        # filtering was applied to that identifier's batch above. Among the
+        # remaining declarations, the ones that mention the request's other
+        # names (parameter types of an overload) come first.
+        if state.intent == QueryIntent.SYMBOL:
+            # The request's other names: further identifiers and the scopes of
+            # qualified ones. The looked-up name itself is in every hit.
+            others = [
+                *evidence.identifiers[1:],
+                *(scope for scopes in state.qualifiers.values() for scope in scopes),
+            ]
+            occurrences = order_by_comentions(occurrences, others)
+            definitions = order_by_comentions(definitions, others)
+        if state.audit is not None:
+            state.audit.exact_definitions = len(definitions)
+            state.audit.definition_sites = len(definitions)
+        return occurrences, definitions
 
     async def _recall_anchors(self, state: RetrievalState) -> list[SearchHit]:
         """Definition chunks of the identifiers an issue-style request names.
@@ -666,7 +783,7 @@ class RetrievalPipeline:
         try:
             with state.stage("exact"):
                 definitions = await self.exact_store.find_definitions(
-                    identifiers=evidence.identifiers,
+                    identifiers=state.lookup_identifiers or evidence.identifiers,
                     scope=state.scope,
                     max_per_identifier=3,
                 )
@@ -1065,7 +1182,7 @@ class RetrievalPipeline:
         priority_factor = (
             neutral_priority_factor
             if state.strategy.enable_path_index
-            or (state.intent != QueryIntent.COMPOUND and _asks_about_tests(state.query))
+            or (state.intent != QueryIntent.COMPOUND and asks_about_tests(state.query))
             else self.priority_factor
         )
         boosted = self._working_set(state.scope)
@@ -1098,6 +1215,9 @@ class RetrievalPipeline:
             # Embedding path similarity is useful recall but not deterministic
             # evidence. Only an exact SQL path/basename match may skip reranking.
             has_path_hits=bool(state.lookup_scores),
+            definition_sites=len(state.definitions),
+            head_slots=len(structural_heads),
+            rerank_ambiguous_definitions=self.settings.rerank_ambiguous_definitions,
             dedicated_enabled=self.reranker is not None,
             llm_enabled=self.llm_reranker is not None,
             dedicated_policy=self.settings.rerank_policy,
@@ -1114,7 +1234,7 @@ class RetrievalPipeline:
                 hits = await self.llm_reranker.rerank(state.query, hits)
         # ``always`` is an evaluation/quality policy, not permission to erase a
         # deterministic answer. Rerank the full candidate set, then restore the
-        # bounded structural slots while preserving the model's tail order. The
+        # bounded structural slots while preserving the model's tail order.
         # The source head is reapplied for focused/use-site retrieval: a small
         # dedicated reranker can otherwise lead with a test, change log, issue
         # template, or the declaration when the query asks for uses. Overview
@@ -1161,8 +1281,9 @@ class RetrievalPipeline:
         except Exception as exc:
             logger.warning("Occurrence lookup for head slots failed: {}", exc)
             return
+        header_kinds = frozenset(HEADER_KINDS)
         state.header_keys = frozenset(
-            key for key, seen in kinds.items() if seen and seen <= {IMPORT_KIND}
+            key for key, seen in kinds.items() if seen and seen <= header_kinds
         )
 
     def _prefer_source_head(
@@ -1181,6 +1302,25 @@ class RetrievalPipeline:
         dropped; they follow immediately after the reserved slots.
         """
         slots = self.settings.source_head_slots
+        if (
+            slots > 0
+            and state.intent == QueryIntent.REFERENCE
+            and asks_about_tests(state.query)
+        ):
+            # "Which tests cover X": the evidenced use sites inside test files
+            # are the answer, so they take the head instead of yielding it.
+            evidenced = {search_hit_key(hit) for hit in (*state.exact, *state.lexical)}
+            head = [
+                hit
+                for hit in hits
+                if search_hit_key(hit) in evidenced and is_test_path(hit.path)
+            ][:slots]
+            if head:
+                head_keys = {search_hit_key(hit) for hit in head}
+                return [
+                    *head,
+                    *(hit for hit in hits if search_hit_key(hit) not in head_keys),
+                ]
         # Symbol/path answers have their own structural heads. Broad semantic
         # requests, including overviews, reserve a few implementation slots;
         # documentation remains in the tail and coverage selection can retain it.
@@ -1267,9 +1407,26 @@ class RetrievalPipeline:
             # ``hits`` has already received source priority. Choose within the
             # structural lane from that order so a definition in real source
             # beats the same signature shown in a documentation code block.
-            return tuple(
-                search_hit_key(hit) for hit in hits if search_hit_key(hit) in exact_keys
-            )[: min(3, self.settings.final_select_k)]
+            # Every declaring file gets a slot before a file gets its second
+            # (overloads), so two implementations are both visible.
+            ordered = [hit for hit in hits if search_hit_key(hit) in exact_keys]
+            slots = min(3, self.settings.final_select_k)
+            heads: list[SearchHitKey] = []
+            seen_blobs: set[str] = set()
+            for hit in ordered:
+                if hit.blob_name in seen_blobs:
+                    continue
+                seen_blobs.add(hit.blob_name)
+                heads.append(search_hit_key(hit))
+                if len(heads) >= slots:
+                    break
+            for hit in ordered:
+                if len(heads) >= slots:
+                    break
+                key = search_hit_key(hit)
+                if key not in heads:
+                    heads.append(key)
+            return tuple(heads)
         if state.intent == QueryIntent.PATH and state.lookup_scores:
             heads: list[SearchHitKey] = []
             blob_names = sorted(
@@ -1357,30 +1514,187 @@ class RetrievalPipeline:
                 state.candidates,
                 self.settings.final_select_k,
                 mode=state.strategy.selection_mode,
+                max_chars=self._selection_budget(state),
             )
+
+    def _context_budget(self, state: RetrievalState) -> int:
+        if state.strategy.selection_mode == SelectionMode.FOCUSED:
+            return self.settings.focused_max_context_chars
+        return self.settings.max_context_chars
+
+    def _selection_budget(self, state: RetrievalState) -> int | None:
+        """Primary results leave room for relation sections when lanes will run.
+
+        Without the reserve a coverage selection fills the whole budget and
+        the definitions, callers and tests the request needs never fit.
+        """
+        if not self._expands_relations(state):
+            return None
+        reserve = self.settings.relation_reserve_chars
+        return max(1, self._context_budget(state) - reserve)
+
+    def _expands_relations(self, state: RetrievalState) -> bool:
+        strategy = state.strategy
+        if state.scope is None or not state.scope.blob_names:
+            return False
+        outbound = (
+            self.settings.related_definitions_enabled
+            and strategy.expand_related_definitions
+            and self.exact_store is not None
+        )
+        return outbound or bool(self._relation_lanes(state))
 
     # ── expand ───────────────────────────────────────────────────────────
 
     async def _expand(self, state: RetrievalState) -> None:
         if self.settings.merge_adjacent_enabled:
             state.selected = merge_adjacent_hits(state.selected)
-        if (
-            not self.settings.related_definitions_enabled
-            or not state.strategy.expand_related_definitions
-            or self.exact_store is None
-            or state.scope is None
-            or not state.scope.blob_names
-            or not state.selected
-        ):
+        if not state.selected or not self._expands_relations(state):
             return
+        assert state.scope is not None
+        settings = self.settings
         with state.stage("expand"):
-            try:
-                state.related = await self._related_definitions(state)
-            except Exception as exc:
-                logger.warning(
-                    "Related definition lookup failed: {}", type(exc).__name__
+            remaining = self._context_budget(state) - sum(
+                len(hit.content) for hit in state.selected
+            )
+            # A tiny tail budget produces fragmented signatures that cost
+            # another SQL lookup without explaining a relationship.
+            if remaining < _MIN_RELATED_BUDGET:
+                return
+            lanes = self._relation_lanes(state)
+            identifiers = state.lookup_identifiers
+            if lanes and not identifiers:
+                # A feature request names no symbol; the symbols its top
+                # results declare are what its tests exercise.
+                identifiers = await self._selected_definition_names(state)
+            wants_related = (
+                settings.related_definitions_enabled
+                and state.strategy.expand_related_definitions
+                and self.exact_store is not None
+            )
+            lane_tasks = [
+                lane.fetch(identifiers) if identifiers else _no_occurrences()
+                for lane in lanes
+            ]
+            results = await asyncio.gather(
+                self._related_definitions(state) if wants_related else _no_hits(),
+                *lane_tasks,
+                return_exceptions=True,
+            )
+            related = results[0] if isinstance(results[0], list) else []
+            sections: list[SectionInput] = []
+            for lane, result in zip(lanes, results[1:], strict=True):
+                if isinstance(result, BaseException):
+                    logger.warning(
+                        "{} lookup failed: {}", lane.role, type(result).__name__
+                    )
+                    continue
+                sections.append(
+                    SectionInput(lane.role, result, lane.max_items, lane.max_chars)
                 )
-                state.related = []
+            if isinstance(results[0], BaseException):
+                logger.warning(
+                    "Related definition lookup failed: {}", type(results[0]).__name__
+                )
+            pack = assemble_sections(
+                selected=state.selected,
+                related=related,
+                sections=sections,
+                remaining_chars=remaining,
+                snippet_lines=settings.relation_snippet_lines,
+            )
+            state.related = pack.hits
+            if state.audit is not None:
+                state.audit.relation_counts = dict(pack.counts)
+                state.audit.relation_chars = pack.chars
+
+    def _relation_lanes(self, state: RetrievalState) -> list[_RelationLane]:
+        """Relation sections the intent asks for, in fill order.
+
+        Re-exports are tiny and pin the public import path, so they are filled
+        first; tests come last because a test file is the largest excerpt and
+        the least specific to the exact question.
+        """
+        store = self.relation_store
+        if store is None or state.scope is None or not state.scope.blob_names:
+            return []
+        scope = state.scope
+        settings = self.settings
+        strategy = state.strategy
+        lanes: list[_RelationLane] = []
+        if strategy.expand_reexports and settings.reexports_enabled:
+            lanes.append(
+                _RelationLane(
+                    "reexport",
+                    lambda names: store.find_reexports(
+                        identifiers=names, scope=scope, limit=settings.reexports_max
+                    ),
+                    settings.reexports_max,
+                    settings.reexports_max_chars,
+                )
+            )
+        if strategy.expand_callers and settings.callers_enabled:
+            lanes.append(
+                _RelationLane(
+                    "caller",
+                    lambda names: store.find_callers(
+                        identifiers=names, scope=scope, limit=settings.callers_max * 2
+                    ),
+                    settings.callers_max,
+                    settings.callers_max_chars,
+                )
+            )
+        if strategy.expand_implementations and settings.implementations_enabled:
+            lanes.append(
+                _RelationLane(
+                    "implementation",
+                    lambda names: store.find_implementations(
+                        identifiers=names,
+                        scope=scope,
+                        limit=settings.implementations_max * 2,
+                    ),
+                    settings.implementations_max,
+                    settings.implementations_max_chars,
+                )
+            )
+        if strategy.expand_tests and settings.tests_enabled:
+            lanes.append(
+                _RelationLane(
+                    "test",
+                    lambda names: store.find_test_uses(
+                        identifiers=names, scope=scope, limit=settings.tests_max * 2
+                    ),
+                    settings.tests_max,
+                    settings.tests_max_chars,
+                )
+            )
+        return lanes
+
+    async def _selected_definition_names(
+        self, state: RetrievalState
+    ) -> tuple[str, ...]:
+        store = self.relation_store
+        if store is None or state.scope is None:
+            return ()
+        sources = state.selected[: self.settings.related_source_hits]
+        pairs = [
+            (hit.blob_name, hit.content_hash)
+            for hit in sources
+            if hit.blob_name and hit.content_hash
+        ]
+        if not pairs:
+            return ()
+        try:
+            defined = await store.defined_identifiers(pairs, state.scope)
+        except Exception as exc:
+            logger.warning("Defined-name lookup failed: {}", type(exc).__name__)
+            return ()
+        names: list[str] = []
+        for pair in pairs:
+            for name in defined.get(pair, ()):
+                if name not in names:
+                    names.append(name)
+        return tuple(names[: self.settings.related_max_symbols])
 
     async def _related_definitions(self, state: RetrievalState) -> list[SearchHit]:
         """Signature-sized excerpts of symbols the selected code refers to.
@@ -1403,7 +1717,7 @@ class RetrievalPipeline:
         sources = state.selected[: settings.related_source_hits]
         ordered: list[str] = []
         for identifier in (
-            *(state.evidence.identifiers if state.evidence else ()),
+            *state.lookup_identifiers,
             *_mine_identifiers(sources),
         ):
             if identifier not in ordered:

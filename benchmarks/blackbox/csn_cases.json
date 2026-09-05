@@ -1,0 +1,861 @@
+{
+  "schema_version": 1,
+  "source": {
+    "dataset": "code-search-net/code_search_net",
+    "dataset_revision": "bd0cf261e357a3eb5c8fba490d23ec1a1cd59555",
+    "split": "test",
+    "selection_salt": "oce-csn-v1"
+  },
+  "snapshots": [
+    {
+      "id": "csn-MisterY__price-database",
+      "repo": "MisterY/price-database",
+      "revision": "b4fd366b7763891c690fe3000b8840e656da023e",
+      "code_language": "python"
+    },
+    {
+      "id": "csn-ekzhu__datasketch",
+      "repo": "ekzhu/datasketch",
+      "revision": "b3e4129987890a2beb04f2c0b6dc618ae35f2e14",
+      "code_language": "python"
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser",
+      "repo": "pivotal-pez/pezdispenser",
+      "revision": "768e2777520868857916b66cfd4cfb7149383ca5",
+      "code_language": "go"
+    },
+    {
+      "id": "csn-segmentio__objconv",
+      "repo": "segmentio/objconv",
+      "revision": "7a1d7b8e6f3551b30751e6b2ea6bae500883870e",
+      "code_language": "go"
+    },
+    {
+      "id": "csn-phax__ph-math",
+      "repo": "phax/ph-math",
+      "revision": "9f998870c7e05226e032b1f38c23e7d45ec0169d",
+      "code_language": "java"
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet",
+      "repo": "Jasig/NotificationPortlet",
+      "revision": "a74b87c145b66166a2cb6849d17ce9b0f2c98f3b",
+      "code_language": "java"
+    },
+    {
+      "id": "csn-moxiecode__moxie",
+      "repo": "moxiecode/moxie",
+      "revision": "09eaf578f38480dc4b8e2017c473c496883b6168",
+      "code_language": "javascript"
+    },
+    {
+      "id": "csn-GitbookIO__repofs",
+      "repo": "GitbookIO/repofs",
+      "revision": "24f9880f3abb5aae4e4be56d0e88ba9d214447be",
+      "code_language": "javascript"
+    }
+  ],
+  "cases": [
+    {
+      "id": "csn-MisterY__price-database-01",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Fetches the securities that match the given filters",
+      "path": "pricedb/app.py",
+      "start": 323,
+      "end": 345,
+      "func_name": "PriceDbApplication.__get_securities",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-02",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Reads the contents of the config file",
+      "path": "pricedb/config.py",
+      "start": 100,
+      "end": 113,
+      "func_name": "Config.get_contents",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-03",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Fetches all the prices for the given arguments",
+      "path": "pricedb/app.py",
+      "start": 152,
+      "end": 172,
+      "func_name": "PriceDbApplication.get_prices",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-04",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Delete all but the latest available price for the given symbol. Returns the number of items removed.",
+      "path": "pricedb/app.py",
+      "start": 247,
+      "end": 280,
+      "func_name": "PriceDbApplication.prune",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-05",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Return the default session. The path is read from the default config.",
+      "path": "pricedb/dal.py",
+      "start": 68,
+      "end": 75,
+      "func_name": "get_default_session",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-06",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "gets the default config path from resources",
+      "path": "pricedb/config.py",
+      "start": 63,
+      "end": 68,
+      "func_name": "Config.__get_config_template_path",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-MisterY__price-database-07",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Loads the content of the text file",
+      "path": "pricedb/csv.py",
+      "start": 44,
+      "end": 48,
+      "func_name": "CsvParser.load_file",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-MisterY__price-database-08",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "displays last price, for symbol if provided",
+      "path": "pricedb/cli.py",
+      "start": 76,
+      "end": 94,
+      "func_name": "last",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-MisterY__price-database-09",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Read text lines from a file",
+      "path": "pricedb/utils.py",
+      "start": 5,
+      "end": 10,
+      "func_name": "read_lines_from_file",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-MisterY__price-database-10",
+      "instance_id": "csn-MisterY__price-database",
+      "query": "Parse into the Price entity, ready for saving",
+      "path": "pricedb/mappers.py",
+      "start": 44,
+      "end": 76,
+      "func_name": "PriceMapper.map_model",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-ekzhu__datasketch-01",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Returns the bucket allocation counts (see :func:`~datasketch.MinHashLSH.get_counts` above) restricted to the list of keys given.",
+      "path": "datasketch/lsh.py",
+      "start": 268,
+      "end": 287,
+      "func_name": "MinHashLSH.get_subset_counts",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-ekzhu__datasketch-02",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Reset the current HyperLogLog to empty.",
+      "path": "datasketch/hyperloglog.py",
+      "start": 184,
+      "end": 188,
+      "func_name": "HyperLogLog.clear",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-ekzhu__datasketch-03",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Remove the key from the index.",
+      "path": "datasketch/lsh.py",
+      "start": 213,
+      "end": 229,
+      "func_name": "MinHashLSH.remove",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-04",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Update this MinHash with a new value. The value will be hashed using the hash function specified by the `hashfunc` argument in the constructor.",
+      "path": "datasketch/minhash.py",
+      "start": 105,
+      "end": 135,
+      "func_name": "MinHash.update",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-05",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Create a MinHash which is the union of the MinHash objects passed as arguments.",
+      "path": "datasketch/minhash.py",
+      "start": 230,
+      "end": 250,
+      "func_name": "MinHash.union",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-06",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Serialize this lean MinHash and store the result in an allocated buffer.",
+      "path": "datasketch/lean_minhash.py",
+      "start": 97,
+      "end": 145,
+      "func_name": "LeanMinHash.serialize",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-07",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Computes the matrix of expected false positives for all possible sub-intervals of the complete domain of set sizes.",
+      "path": "datasketch/lshensemble_partition.py",
+      "start": 75,
+      "end": 93,
+      "func_name": "_compute_nfps_real",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-ekzhu__datasketch-08",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Merge the other HyperLogLog with this one, making this the union of the two.",
+      "path": "datasketch/hyperloglog.py",
+      "start": 145,
+      "end": 156,
+      "func_name": "HyperLogLog.merge",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-09",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Merge the other MinHash with this one, making this one the union of both.",
+      "path": "datasketch/minhash.py",
+      "start": 166,
+      "end": 179,
+      "func_name": "MinHash.merge",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-ekzhu__datasketch-10",
+      "instance_id": "csn-ekzhu__datasketch",
+      "query": "Initialize the slots of the LeanMinHash.",
+      "path": "datasketch/lean_minhash.py",
+      "start": 51,
+      "end": 60,
+      "func_name": "LeanMinHash._initialize_slots",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-01",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "NewAgent -- creates a new initialized agent object",
+      "path": "taskmanager/agent.go",
+      "start": 9,
+      "end": 18,
+      "func_name": "NewAgent",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-02",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "Update -- Safe way to update a task",
+      "path": "taskmanager/task.go",
+      "start": 52,
+      "end": 58,
+      "func_name": "Update",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-03",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "IsEnabled -- Check if this sku is enabled using cf env",
+      "path": "skus/m1small/types.go",
+      "start": 12,
+      "end": 23,
+      "func_name": "IsEnabled",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-04",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "Procurement -- use agent to run async task",
+      "path": "skus/m1small/m1small.go",
+      "start": 73,
+      "end": 96,
+      "func_name": "Procurement",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-05",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "SetPrivateMeta - set a private meta data record",
+      "path": "taskmanager/task.go",
+      "start": 9,
+      "end": 15,
+      "func_name": "SetPrivateMeta",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-06",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "PostLease -- allows a client user to post a lease to dispenser",
+      "path": "pdclient/dispenser_client.go",
+      "start": 59,
+      "end": 78,
+      "func_name": "PostLease",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-07",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "QueryTemplate - fake querying for a template",
+      "path": "fakes/fake.go",
+      "start": 135,
+      "end": 137,
+      "func_name": "QueryTemplate",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-08",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "Delete - handle a delete lease call",
+      "path": "service/lease.go",
+      "start": 29,
+      "end": 46,
+      "func_name": "Delete",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-09",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "NewClient - constructor for a new dispenser client",
+      "path": "pdclient/dispenser_client.go",
+      "start": 16,
+      "end": 22,
+      "func_name": "NewClient",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-pivotal-pez__pezdispenser-10",
+      "instance_id": "csn-pivotal-pez__pezdispenser",
+      "query": "New - create a new api client",
+      "path": "innkeeperclient/ik_client.go",
+      "start": 12,
+      "end": 18,
+      "func_name": "New",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-01",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "AppendDuration appends a human-readable representation of d to b.",
+      "path": "objutil/duration.go",
+      "start": 13,
+      "end": 84,
+      "func_name": "AppendDuration",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-02",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "fmtFrac formats the fraction of v/10**prec (e.g., \".12345\") into the tail of buf, omitting trailing zeros. it omits the decimal point too when the fraction is 0. It returns the index where the output bytes begin and the value v/10**prec.",
+      "path": "objutil/duration.go",
+      "start": 90,
+      "end": 108,
+      "func_name": "fmtFrac",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-03",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "NewValueParser creates a new parser that exposes the value v.",
+      "path": "value.go",
+      "start": 156,
+      "end": 160,
+      "func_name": "NewValueParser",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-04",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "String returns a human readable representation of the type.",
+      "path": "value.go",
+      "start": 33,
+      "end": 62,
+      "func_name": "String",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-05",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "Type returns the RESP error type, which is represented by the leading uppercase word in the error string.",
+      "path": "resp/error.go",
+      "start": 24,
+      "end": 41,
+      "func_name": "Type",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-06",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "Unmarshal decodes a JSON representation of v from b.",
+      "path": "json/decode.go",
+      "start": 22,
+      "end": 31,
+      "func_name": "Unmarshal",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-07",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "Decode expects v to be a pointer to a value in which the decoder will load the next parsed data.",
+      "path": "decode.go",
+      "start": 43,
+      "end": 78,
+      "func_name": "Decode",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-08",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "CheckUint64Bounds verifies that v is smaller than max, t represents the original type of v.",
+      "path": "objutil/limits.go",
+      "start": 90,
+      "end": 95,
+      "func_name": "CheckUint64Bounds",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-09",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "Decodes the next value from the stream into v.",
+      "path": "decode.go",
+      "start": 1318,
+      "end": 1365,
+      "func_name": "Decode",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-segmentio__objconv-10",
+      "instance_id": "csn-segmentio__objconv",
+      "query": "NewStreamDecoder returns a new stream decoder that takes input from p.",
+      "path": "decode.go",
+      "start": 1282,
+      "end": 1287,
+      "func_name": "NewStreamDecoder",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-01",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Compute e^x to a given scale by the Taylor series.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/mathutils/BigFunctions.java",
+      "start": 201,
+      "end": 233,
+      "func_name": "BigFunctions._expTaylor",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-phax__ph-math-02",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Set this column vector from an array of values.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/matrix/ColumnVector.java",
+      "start": 125,
+      "end": 135,
+      "func_name": "ColumnVector.set",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-03",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Set this square matrix from another matrix. Note that this matrix will reference the values of the argument matrix. If the values are not square, only the upper left square is used.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/matrix/SquareMatrix.java",
+      "start": 73,
+      "end": 77,
+      "func_name": "SquareMatrix._set",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-phax__ph-math-04",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Return a timestamp string that contains the elapsed time period.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/piutils/AbstractPiFormula.java",
+      "start": 81,
+      "end": 88,
+      "func_name": "AbstractPiFormula.timestamp",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-05",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Integrate the function from a to b using the trapezoidal algorithm, and return an approximation to the area. (Integrator implementation.)",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/mathutils/TrapezoidalIntegrator.java",
+      "start": 50,
+      "end": 66,
+      "func_name": "TrapezoidalIntegrator.integrate",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-06",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Add another matrix to this matrix.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/matrix/Matrix.java",
+      "start": 335,
+      "end": 355,
+      "func_name": "Matrix.add",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-07",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Validate the value of the double unbiased exponent value.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/mathutils/IEEE754.java",
+      "start": 580,
+      "end": 590,
+      "func_name": "IEEE754.validateDoubleUnbiasedExponent",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-08",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Iteratively improve the solution x to machine accuracy.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/matrix/LinearSystem.java",
+      "start": 420,
+      "end": 478,
+      "func_name": "LinearSystem._improve",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-phax__ph-math-09",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Add the value of an addend to the running sum.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/mathutils/KahanSummation.java",
+      "start": 63,
+      "end": 74,
+      "func_name": "KahanSummation.add",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-phax__ph-math-10",
+      "instance_id": "csn-phax__ph-math",
+      "query": "Compute the natural logarithm of x to a given scale, x > 0. Use Newton's algorithm.",
+      "path": "ph-math/src/main/java/com/helger/numbercruncher/mathutils/BigFunctions.java",
+      "start": 276,
+      "end": 304,
+      "func_name": "BigFunctions._lnNewton",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-01",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Helper method to determine if an SSPToken has expired.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/ssp/SSPToken.java",
+      "start": 39,
+      "end": 46,
+      "func_name": "SSPToken.hasExpired",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-02",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Search for a JpaEntry with the specified Id. If the entry exists in the persistence context, it is returned; otherwise, null is returned.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/jpa/JpaNotificationDao.java",
+      "start": 54,
+      "end": 61,
+      "func_name": "JpaNotificationDao.getEntry",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-03",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Combine the contents of this response with the provided response and return a <b>new instance</b> of {@link NotificationResponse}. The original instances are unchanged.",
+      "path": "notification-portlet-api/src/main/java/org/jasig/portlet/notice/NotificationResponse.java",
+      "start": 156,
+      "end": 161,
+      "func_name": "NotificationResponse.combine",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-04",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Provides a complete transaction log for a notification and a single recipient <strong>in chronological order</strong>.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/jpa/JpaNotificationRESTService.java",
+      "start": 188,
+      "end": 194,
+      "func_name": "JpaNotificationRESTService.getEventsByNotificationAndUser",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-05",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Return a <b>new instance</b> of {@link NotificationResponse} containing only {@link NotificationEntry} objects within this response that match the specified <code>Predicate</code>. The category structure is preserved. Empty categories are removed.",
+      "path": "notification-portlet-api/src/main/java/org/jasig/portlet/notice/NotificationResponse.java",
+      "start": 187,
+      "end": 202,
+      "func_name": "NotificationResponse.filter",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-06",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Some of the links I have seen from SSP are not well formed. Try to convert any URLs to a usable form.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/ssp/SSPTaskNotificationService.java",
+      "start": 296,
+      "end": 317,
+      "func_name": "SSPTaskNotificationService.normalizeLink",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-07",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Deserialize the given JSON formatted file back into a object.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/classloader/ClassLoaderResourceNotificationService.java",
+      "start": 158,
+      "end": 181,
+      "func_name": "ClassLoaderResourceNotificationService.readFromFile",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-08",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Set the SSP API Context. Note: this method will ensure that that the API context starts with '/' and ensures that it does not end with a '/'.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/ssp/SSPApi.java",
+      "start": 119,
+      "end": 132,
+      "func_name": "SSPApi.setSspContext",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-09",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "Get the list of notifications. Supports optional (and recommended!) paging",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/controller/rest/JPANotificationRESTController.java",
+      "start": 71,
+      "end": 78,
+      "func_name": "JPANotificationRESTController.getNotifications",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-Jasig__NotificationPortlet-10",
+      "instance_id": "csn-Jasig__NotificationPortlet",
+      "query": "When invoke is called, a configured notification state is set for the entry if it has not already been set. {@link JpaNotificationService} and {@link CacheNotificationService} are used here to add the entry state and clear the cache for the user. This class is not managed by Spring, so these objects must be obtained using the Spring context that {@code SpringContext} provides.",
+      "path": "notification-portlet-webapp/src/main/java/org/jasig/portlet/notice/service/jpa/action/CompleteOnRedirectAction.java",
+      "start": 64,
+      "end": 75,
+      "func_name": "CompleteOnRedirectAction.invoke",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-01",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Destroys the runtime (removes all events and deletes DOM structures)",
+      "path": "src/javascript/runtime/Runtime.js",
+      "start": 335,
+      "end": 353,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-02",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "give child `class` a place to define its own methods",
+      "path": "src/javascript/core/utils/Basic.js",
+      "start": 155,
+      "end": 166,
+      "func_name": "ctor",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-moxiecode__moxie-03",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Operaional interface that is used by components to invoke specific actions on the runtime (is invoked in the scope of component)",
+      "path": "src/javascript/runtime/Runtime.js",
+      "start": 321,
+      "end": 328,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-04",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Returns the absolute x, y position of an Element. The position will be returned in a object with x, y fields.",
+      "path": "src/javascript/core/utils/Dom.js",
+      "start": 107,
+      "end": 159,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-05",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Executes the callback function for each item in array/object. If you return false in the callback it will break the loop.",
+      "path": "build/utils.js",
+      "start": 12,
+      "end": 36,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-06",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Append another key-value pair to the FormData object",
+      "path": "src/javascript/xhr/FormData.js",
+      "start": 33,
+      "end": 60,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-07",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "we require this to run only once",
+      "path": "src/javascript/runtime/Transporter.js",
+      "start": 57,
+      "end": 60,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-08",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Cross-browser SWF removal - Especially needed to safely and completely remove a SWF in Internet Explorer",
+      "path": "src/javascript/runtime/flash/Runtime.js",
+      "start": 60,
+      "end": 79,
+      "func_name": "removeSWF",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-09",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "A way to inherit one `class` from another in a consisstent way (more or less)",
+      "path": "src/javascript/core/utils/Basic.js",
+      "start": 146,
+      "end": 173,
+      "func_name": "inherit",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-moxiecode__moxie-10",
+      "instance_id": "csn-moxiecode__moxie",
+      "query": "Embeds a visual representation of the image into the specified node. Depending on the runtime, it might be a canvas, an img node or a thrid party shim object (Flash or SilverLight - very rare, can be used in legacy browsers that do not have canvas or proper dataURI support).",
+      "path": "src/javascript/image/Image.js",
+      "start": 457,
+      "end": 574,
+      "func_name": "",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-GitbookIO__repofs-01",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Change current branch in the repository (sync). Requires to have fetched the branch.",
+      "path": "src/utils/repo.js",
+      "start": 57,
+      "end": 70,
+      "func_name": "checkout",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-GitbookIO__repofs-02",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Read content of a file, returns a String",
+      "path": "src/utils/file.js",
+      "start": 111,
+      "end": 114,
+      "func_name": "readAsString",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-GitbookIO__repofs-03",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Generate a files tree from the current branch, taking pending changes into account.",
+      "path": "src/utils/filestree.js",
+      "start": 46,
+      "end": 84,
+      "func_name": "get",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-GitbookIO__repofs-04",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Return true if file exists in working tree, false otherwise",
+      "path": "src/utils/file.js",
+      "start": 119,
+      "end": 124,
+      "func_name": "exists",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-GitbookIO__repofs-05",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Push a local branch to a remote repository",
+      "path": "src/utils/remote.js",
+      "start": 20,
+      "end": 32,
+      "func_name": "push",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-GitbookIO__repofs-06",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Utils to create tree structures for files.",
+      "path": "src/utils/filestree.js",
+      "start": 19,
+      "end": 27,
+      "func_name": "pathToKeySeq",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-GitbookIO__repofs-07",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Initialize a new RepositoryState from the repo of a Driver. Fetch the branches, and checkout master or the first available branch.",
+      "path": "src/utils/repo.js",
+      "start": 107,
+      "end": 122,
+      "func_name": "initialize",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-GitbookIO__repofs-08",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Fetches the given branch's tree, from its SHA, and __resets any WorkingState for it__",
+      "path": "src/utils/repo.js",
+      "start": 42,
+      "end": 48,
+      "func_name": "fetchTree",
+      "name_in_query": true
+    },
+    {
+      "id": "csn-GitbookIO__repofs-09",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Returns a Seq of tree mixing changes and the fetched tree",
+      "path": "src/utils/working.js",
+      "start": 12,
+      "end": 18,
+      "func_name": "getMergedFileSet",
+      "name_in_query": false
+    },
+    {
+      "id": "csn-GitbookIO__repofs-10",
+      "instance_id": "csn-GitbookIO__repofs",
+      "query": "Remove a directory: push REMOVE changes for all entries in the directory",
+      "path": "src/utils/directory.js",
+      "start": 130,
+      "end": 138,
+      "func_name": "remove",
+      "name_in_query": true
+    }
+  ]
+}

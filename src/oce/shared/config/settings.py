@@ -474,6 +474,42 @@ class RetrievalSettings(BaseSettings):
         description="定义摘要字符上限（同时受主结果剩余预算约束）",
     )
 
+    # 关系车道：调用方 / 实现与子类 / 测试 / 转出，各自独立槽位与字符上限，作为
+    # 主结果之后的独立小节返回。启用关系车道的意图会从主结果预算里预留
+    # relation_reserve_chars，否则主结果填满预算后车道永远没有空间。
+    relation_reserve_chars: int = Field(
+        default=6_000, ge=0, description="为关系小节从主结果预算里预留的字符数"
+    )
+    relation_snippet_lines: int = Field(
+        default=10, ge=1, le=200, description="每条关系摘录最多多少行"
+    )
+    callers_enabled: bool = Field(default=True, description="是否附带调用方小节")
+    callers_max: int = Field(default=4, ge=1, le=20, description="最多附带多少个调用方")
+    callers_max_chars: int = Field(
+        default=2_400, ge=1, description="调用方小节字符上限"
+    )
+    implementations_enabled: bool = Field(
+        default=True, description="是否附带实现/子类小节"
+    )
+    implementations_max: int = Field(
+        default=4, ge=1, le=20, description="最多附带多少个实现或子类"
+    )
+    implementations_max_chars: int = Field(
+        default=1_600, ge=1, description="实现小节字符上限"
+    )
+    tests_enabled: bool = Field(default=True, description="是否附带测试小节")
+    tests_max: int = Field(default=3, ge=1, le=20, description="最多附带多少个测试摘录")
+    tests_max_chars: int = Field(default=2_400, ge=1, description="测试小节字符上限")
+    reexports_enabled: bool = Field(default=True, description="是否附带转出小节")
+    reexports_max: int = Field(default=2, ge=1, le=10, description="最多附带多少条转出")
+    reexports_max_chars: int = Field(default=600, ge=1, description="转出小节字符上限")
+    # 同名定义数超过头部槽位时，允许 adaptive 路由为 symbol 查询启用专用重排
+    # 对尾部排序。尚无离线标签支持默认启用，作为待校准开关保留。
+    rerank_ambiguous_definitions: bool = Field(
+        default=False,
+        description="symbol 查询同名定义数超过头部槽位时是否启用专用重排",
+    )
+
 
 class RedisSettings(BaseSettings):
     """Redis 配置（任务队列）"""

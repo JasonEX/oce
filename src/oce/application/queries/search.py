@@ -74,6 +74,10 @@ class SearchQueryHandler:
                 path_boosted=audit.path_boosted,
                 rerank_route=audit.rerank_route,
                 head_slots=audit.head_slots,
+                exact_definitions=audit.exact_definitions,
+                definition_sites=audit.definition_sites,
+                relation_hits=sum(audit.relation_counts.values()),
+                relation_chars=audit.relation_chars,
                 query_text=query.query if self.store_query_text else None,
                 stages=dict(audit.stages),
             )
