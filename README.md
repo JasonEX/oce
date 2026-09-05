@@ -323,10 +323,15 @@ cap and deduplicated against what is already shown: signature excerpts of defini
 selected code refers to (call-chain, feature, overview), callers grouped per enclosing
 function (symbol, reference, call-chain), implementations and subclasses (symbol), tests
 that exercise the symbol (symbol, reference, call-chain, feature, compound), and the
-barrel file that re-exports it (symbol). Primary selection reserves
-`RETRIEVAL_RELATION_RESERVE_CHARS` for those sections when the intent enables any of
-them. Qualified names (`Session.get`) are resolved to the declaration inside the named
-scope; overloads are ordered by the parameter types the request spells out. Compound
+barrel file that re-exports it (symbol). The primary budget is not reserved up front:
+only novel relation evidence can trim its lowest-priority tail, and the relation cap
+scales with the active context budget. Qualified names (`Session.get`) are resolved to
+the declaration inside the named scope; overloads are ordered by the parameter types the
+request spells out. Call-chain queries can opt into a second upstream hop with
+`RETRIEVAL_CALL_CHAIN_MAX_HOPS=2`; expansion requires the intermediate enclosing definition
+to be uniquely indexed, and every returned hop is marked in the stable formatter. The
+default remains one hop because broader call-hop expansion must be validated across
+repository sizes before becoming a quality default. Compound
 requests do not fan out through every identifier in their selected snippets. Files the
 request just added (`added_blobs`) receive a small ranking prior when the delta is small.
 Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path

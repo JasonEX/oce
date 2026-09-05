@@ -1,13 +1,19 @@
 """Pure relation helpers: qualified names, co-mentions, excerpts, section budgets."""
 
 from oce.domain.services.evidence_pack import SectionInput, assemble_sections
+from oce.domain.services.formatter import format_retrieval
+from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
 from oce.domain.services.retrieval import (
+    RetrievalPipeline,
+    RetrievalState,
+    get_strategy,
     order_by_comentions,
     resolve_qualified_hits,
     split_qualified_identifiers,
 )
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
+from oce.shared.config.settings import RetrievalSettings
 
 
 def _hit(path, content, start=1, context=None, blob="a" * 64):
@@ -64,6 +70,34 @@ def test_qualified_resolution_prefers_scope_chain_then_path_then_text():
     ) == [
         helper,
         receiver,
+    ]
+
+
+def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
+    pipeline = RetrievalPipeline(
+        embedder=object(), store=object(), settings=RetrievalSettings()
+    )
+    state = RetrievalState(
+        query="where is Flask.make_response defined?",
+        scope=None,
+        intent=QueryIntent.SYMBOL,
+        qualifiers={"make_response": ("Flask",)},
+    )
+    method = _hit(
+        "src/flask/app.py", "def make_response(self, rv):", context="class Flask"
+    )
+    helper = _hit("src/flask/helpers.py", "def make_response(*args):")
+
+    assert pipeline._filter_qualified_candidates(state, [helper, method]) == [method]
+    unknown = RetrievalState(
+        query="where is Unknown.make_response defined?",
+        scope=None,
+        intent=QueryIntent.SYMBOL,
+        qualifiers={"make_response": ("Unknown",)},
+    )
+    assert pipeline._filter_qualified_candidates(unknown, [helper, method]) == [
+        helper,
+        method,
     ]
 
 
@@ -150,3 +184,114 @@ def test_sections_dedupe_against_primary_and_respect_budgets():
         snippet_lines=10,
     )
     assert starved.hits == [] and starved.counts == {}
+
+
+def test_relation_section_selection_prefers_novel_source_context():
+    primary = _hit("src/a.py", "def a():\n    pass", start=1)
+    same_file = RelatedOccurrence(
+        "a",
+        "call",
+        _hit("src/a.py", "def local():\n    a()", start=10, blob="a" * 64),
+        11,
+        11,
+        "local",
+    )
+    new_file = RelatedOccurrence(
+        "a",
+        "call",
+        _hit("src/b.py", "def external():\n    a()", start=10, blob="c" * 64),
+        11,
+        11,
+        "external",
+    )
+
+    pack = assemble_sections(
+        selected=[primary],
+        related=[],
+        sections=[SectionInput("caller", [same_file, new_file], 1, 2_000)],
+        remaining_chars=10_000,
+        snippet_lines=10,
+    )
+
+    assert [hit.path for hit in pack.hits] == ["src/b.py"]
+
+
+async def test_call_chain_expands_only_through_unique_definitions():
+    class RelationStore:
+        async def find_callers(self, *, identifiers, scope, limit=8):
+            values = {
+                "target": [
+                    RelatedOccurrence(
+                        "target",
+                        "call",
+                        _hit(
+                            "src/dispatch.py",
+                            "def dispatch():\n    target()",
+                            blob="b" * 64,
+                        ),
+                        2,
+                        2,
+                        "dispatch",
+                    )
+                ],
+                "dispatch": [
+                    RelatedOccurrence(
+                        "dispatch",
+                        "call",
+                        _hit(
+                            "src/main.py", "def main():\n    dispatch()", blob="c" * 64
+                        ),
+                        2,
+                        2,
+                        "main",
+                    )
+                ],
+            }
+            return [
+                item
+                for identifier in identifiers
+                for item in values.get(identifier, ())
+            ][:limit]
+
+    class ExactStore:
+        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+            return [
+                DefinitionHit(
+                    identifier=identifier,
+                    kind="definition",
+                    hit=_hit(f"src/{identifier}.py", f"def {identifier}():"),
+                    start_line=1,
+                    end_line=1,
+                )
+                for identifier in identifiers
+                if identifier == "dispatch"
+            ]
+
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=ExactStore(),
+        relation_store=RelationStore(),
+        settings=RetrievalSettings(call_chain_max_hops=2, callers_max=4),
+    )
+    state = RetrievalState(
+        query="trace target",
+        scope=SearchScope(frozenset({"a" * 64})),
+        intent=QueryIntent.CALL_CHAIN,
+        strategy=get_strategy(QueryIntent.CALL_CHAIN),
+    )
+
+    occurrences = await pipeline._call_chain_callers(
+        state, ("target",), state.scope, pipeline.relation_store
+    )
+    assert [(item.hit.path, item.hop) for item in occurrences] == [
+        ("src/dispatch.py", 1),
+        ("src/main.py", 2),
+    ]
+    excerpts = []
+    for item in occurrences:
+        excerpt = occurrence_excerpt(item, 10, "caller")
+        if excerpt is not None:
+            excerpts.append(excerpt)
+    text = format_retrieval(excerpts)
+    assert "Hop: 1" in text and "Hop: 2" in text

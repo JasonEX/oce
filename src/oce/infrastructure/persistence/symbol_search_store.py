@@ -51,6 +51,8 @@ def _occurrence_rows(
     limit: int,
     kinds: Sequence[str] | None,
     path_predicate: ColumnElement[bool] | None = None,
+    partition_by: Sequence[ColumnElement[Any]] = (),
+    partition_limit: int = 1,
 ):
     """Occurrence rows joined to the chunk occurrence that contains them.
 
@@ -58,20 +60,23 @@ def _occurrence_rows(
     containment condition picks the right occurrence when identical chunk text
     appears twice in one file.
     """
+    columns = (
+        SymbolOccurrenceModel.identifier,
+        SymbolOccurrenceModel.kind,
+        SymbolOccurrenceModel.blob_name,
+        SymbolOccurrenceModel.content_hash,
+        SymbolOccurrenceModel.start_line.label("def_start"),
+        SymbolOccurrenceModel.end_line.label("def_end"),
+        SymbolOccurrenceModel.enclosing,
+        BlobModel.path,
+        ChunkModel.content,
+        BlobChunkModel.start_line,
+        BlobChunkModel.end_line,
+        BlobChunkModel.context,
+    )
     stmt = (
         select(
-            SymbolOccurrenceModel.identifier,
-            SymbolOccurrenceModel.kind,
-            SymbolOccurrenceModel.blob_name,
-            SymbolOccurrenceModel.content_hash,
-            SymbolOccurrenceModel.start_line.label("def_start"),
-            SymbolOccurrenceModel.end_line.label("def_end"),
-            SymbolOccurrenceModel.enclosing,
-            BlobModel.path,
-            ChunkModel.content,
-            BlobChunkModel.start_line,
-            BlobChunkModel.end_line,
-            BlobChunkModel.context,
+            *columns,
         )
         .join(ChunkModel, SymbolOccurrenceModel.content_hash == ChunkModel.content_hash)
         .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
@@ -89,18 +94,46 @@ def _occurrence_rows(
             BlobModel.status == BlobStatus.READY.value,
             scope_predicate,
         )
-        .order_by(
-            _kind_priority().desc(),
-            BlobModel.path,
-            SymbolOccurrenceModel.start_line,
-        )
-        .limit(limit)
     )
     if kinds is not None:
         stmt = stmt.where(SymbolOccurrenceModel.kind.in_(kinds))
     if path_predicate is not None:
         stmt = stmt.where(path_predicate)
-    return stmt
+    if partition_by:
+        ranked = (
+            stmt.add_columns(
+                func.row_number()
+                .over(
+                    partition_by=partition_by,
+                    order_by=(
+                        _kind_priority().desc(),
+                        BlobModel.path,
+                        SymbolOccurrenceModel.start_line,
+                    ),
+                )
+                .label("_partition_rank")
+            )
+            .add_columns(
+                case((_test_path_predicate(), 1), else_=0).label("_test_priority")
+            )
+            .subquery()
+        )
+        stmt = (
+            select(*(ranked.c[column.key] for column in columns))
+            .where(ranked.c._partition_rank <= partition_limit)
+            .order_by(
+                ranked.c._test_priority,
+                ranked.c.path,
+                ranked.c.def_start,
+            )
+            .limit(limit)
+        )
+        return stmt
+    return stmt.order_by(
+        _kind_priority().desc(),
+        BlobModel.path,
+        SymbolOccurrenceModel.start_line,
+    ).limit(limit)
 
 
 # SQL prefilter for test files; ``is_test_path`` makes the final decision.
@@ -224,7 +257,16 @@ class SymbolSearchStore:
         limit: int = 8,
     ) -> list[RelatedOccurrence]:
         """One call site per (file, enclosing definition), source files first."""
-        rows = await self._occurrences(identifiers, scope, (CALL_KIND,), limit)
+        rows = await self._occurrences(
+            identifiers,
+            scope,
+            (CALL_KIND,),
+            limit,
+            partition_by=(
+                SymbolOccurrenceModel.blob_name,
+                SymbolOccurrenceModel.enclosing,
+            ),
+        )
         return _group(rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit)
 
     async def find_test_uses(
@@ -236,7 +278,13 @@ class SymbolSearchStore:
     ) -> list[RelatedOccurrence]:
         """Occurrences in test files; every file gets one excerpt before any gets two."""
         rows = await self._occurrences(
-            identifiers, scope, None, limit, path_predicate=_test_path_predicate()
+            identifiers,
+            scope,
+            None,
+            limit,
+            path_predicate=_test_path_predicate(),
+            partition_by=(SymbolOccurrenceModel.blob_name,),
+            partition_limit=max(limit, 1),
         )
         rows = [row for row in rows if is_test_path(row.path)]
         per_file = _group(rows, key=lambda row: row.blob_name, limit=limit)
@@ -259,7 +307,16 @@ class SymbolSearchStore:
         scope: SearchScope,
         limit: int = 8,
     ) -> list[RelatedOccurrence]:
-        rows = await self._occurrences(identifiers, scope, (INHERIT_KIND,), limit)
+        rows = await self._occurrences(
+            identifiers,
+            scope,
+            (INHERIT_KIND,),
+            limit,
+            partition_by=(
+                SymbolOccurrenceModel.blob_name,
+                SymbolOccurrenceModel.enclosing,
+            ),
+        )
         return _group(rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit)
 
     async def find_reexports(
@@ -269,7 +326,13 @@ class SymbolSearchStore:
         scope: SearchScope,
         limit: int = 4,
     ) -> list[RelatedOccurrence]:
-        rows = await self._occurrences(identifiers, scope, (REEXPORT_KIND,), limit)
+        rows = await self._occurrences(
+            identifiers,
+            scope,
+            (REEXPORT_KIND,),
+            limit,
+            partition_by=(SymbolOccurrenceModel.blob_name,),
+        )
         return _group(rows, key=lambda row: (row.blob_name, row.def_start), limit=limit)
 
     async def defined_identifiers(
@@ -302,6 +365,8 @@ class SymbolSearchStore:
         limit: int,
         *,
         path_predicate: ColumnElement[bool] | None = None,
+        partition_by: Sequence[ColumnElement[Any]] = (),
+        partition_limit: int = 1,
     ) -> list[Row[Any]]:
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or limit <= 0 or not scope.blob_names:
@@ -320,6 +385,8 @@ class SymbolSearchStore:
                                 max(limit * 25, 200),
                                 kinds,
                                 path_predicate,
+                                partition_by,
+                                partition_limit,
                             ),
                         )
                     )

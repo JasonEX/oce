@@ -999,10 +999,29 @@ class RetrievalPipeline:
                 hits = await self._merge_path_and_content(boosts, hits, backfill)
             elif state.use_path_index:
                 logger.info("No path results, using content-only")
+            hits = self._filter_qualified_candidates(state, hits)
             # 路径索引失败且内容检索也失败：没有任何候选时才把内容错误抛出。
             if not hits and state.dense_error is not None:
                 raise state.dense_error
             state.candidates = hits
+
+    @staticmethod
+    def _filter_qualified_candidates(
+        state: RetrievalState, hits: list[SearchHit]
+    ) -> list[SearchHit]:
+        """Keep a qualified symbol query inside its proven scope.
+
+        Exact recall applies this rule per identifier, but dense and lexical
+        candidates can still introduce an unrelated bare-name definition. Only
+        filter symbol queries, and only when a candidate actually proves the
+        requested qualifier; an unknown qualifier keeps the normal fallback.
+        """
+        if state.intent != QueryIntent.SYMBOL or not state.qualifiers or not hits:
+            return hits
+        resolved = resolve_qualified_hits(hits, state.qualifiers)
+        if len(resolved) < len(hits):
+            return resolved
+        return hits
 
     def _fuse_lists(
         self,
@@ -1523,15 +1542,14 @@ class RetrievalPipeline:
         return self.settings.max_context_chars
 
     def _selection_budget(self, state: RetrievalState) -> int | None:
-        """Primary results leave room for relation sections when lanes will run.
+        """Select primary evidence against the full budget.
 
-        Without the reserve a coverage selection fills the whole budget and
-        the definitions, callers and tests the request needs never fit.
+        Relation evidence is optional and only becomes useful after its SQL
+        lookups return something novel. Reserving a fixed block before those
+        lookups can discard primary context for a query with no relations.
+        ``_expand`` creates room only when it has evidence to spend.
         """
-        if not self._expands_relations(state):
-            return None
-        reserve = self.settings.relation_reserve_chars
-        return max(1, self._context_budget(state) - reserve)
+        return self._context_budget(state)
 
     def _expands_relations(self, state: RetrievalState) -> bool:
         strategy = state.strategy
@@ -1554,14 +1572,11 @@ class RetrievalPipeline:
         assert state.scope is not None
         settings = self.settings
         with state.stage("expand"):
+            lanes = self._relation_lanes(state)
+            relation_cap = self._relation_budget_cap(state, lanes)
             remaining = self._context_budget(state) - sum(
                 len(hit.content) for hit in state.selected
             )
-            # A tiny tail budget produces fragmented signatures that cost
-            # another SQL lookup without explaining a relationship.
-            if remaining < _MIN_RELATED_BUDGET:
-                return
-            lanes = self._relation_lanes(state)
             identifiers = state.lookup_identifiers
             if lanes and not identifiers:
                 # A feature request names no symbol; the symbols its top
@@ -1577,7 +1592,13 @@ class RetrievalPipeline:
                 for lane in lanes
             ]
             results = await asyncio.gather(
-                self._related_definitions(state) if wants_related else _no_hits(),
+                (
+                    self._related_definitions(
+                        state, budget=max(remaining, relation_cap)
+                    )
+                    if wants_related
+                    else _no_hits()
+                ),
                 *lane_tasks,
                 return_exceptions=True,
             )
@@ -1596,17 +1617,72 @@ class RetrievalPipeline:
                 logger.warning(
                     "Related definition lookup failed: {}", type(results[0]).__name__
                 )
+            preview = assemble_sections(
+                selected=state.selected,
+                related=related,
+                sections=sections,
+                remaining_chars=relation_cap if relation_cap > 0 else max(remaining, 0),
+                snippet_lines=settings.relation_snippet_lines,
+            )
+            if preview.hits and preview.chars > remaining:
+                self._make_relation_room(state, min(preview.chars, relation_cap))
+                remaining = self._context_budget(state) - sum(
+                    len(hit.content) for hit in state.selected
+                )
+                if wants_related:
+                    related = await self._related_definitions(
+                        state, budget=min(remaining, relation_cap)
+                    )
+            # A tiny tail budget produces fragmented signatures that cost
+            # another SQL lookup without explaining a relationship.
+            if remaining < _MIN_RELATED_BUDGET:
+                return
             pack = assemble_sections(
                 selected=state.selected,
                 related=related,
                 sections=sections,
-                remaining_chars=remaining,
+                remaining_chars=(
+                    min(remaining, relation_cap) if relation_cap > 0 else remaining
+                ),
                 snippet_lines=settings.relation_snippet_lines,
             )
             state.related = pack.hits
             if state.audit is not None:
                 state.audit.relation_counts = dict(pack.counts)
                 state.audit.relation_chars = pack.chars
+
+    def _relation_budget_cap(
+        self, state: RetrievalState, lanes: Sequence[_RelationLane]
+    ) -> int:
+        """Bound relation spend by active lane caps and the context scale.
+
+        The configured value remains an upper bound, not an unconditional
+        reservation. A quarter of the active context keeps answers readable
+        across focused and broad selection budgets without tying the policy to
+        one benchmark's chunk sizes.
+        """
+        active = sum(lane.max_chars for lane in lanes)
+        if state.strategy.expand_related_definitions and self.exact_store is not None:
+            active += self.settings.related_max_chars
+        if active <= 0:
+            return 0
+        context = self._context_budget(state)
+        return min(
+            self.settings.relation_reserve_chars,
+            active,
+            max(_MIN_RELATED_BUDGET, context // 4),
+        )
+
+    def _make_relation_room(self, state: RetrievalState, target: int) -> None:
+        """Trim only the lowest-priority primary tail when evidence exists."""
+        if target <= 0:
+            return
+        budget = self._context_budget(state)
+        kept = list(state.selected)
+        while kept and sum(len(hit.content) for hit in kept) + target > budget:
+            kept.pop()
+        if kept:
+            state.selected = kept
 
     def _relation_lanes(self, state: RetrievalState) -> list[_RelationLane]:
         """Relation sections the intent asks for, in fill order.
@@ -1634,12 +1710,27 @@ class RetrievalPipeline:
                 )
             )
         if strategy.expand_callers and settings.callers_enabled:
+            if state.intent == QueryIntent.CALL_CHAIN:
+
+                async def fetch_callers(
+                    names: Sequence[str],
+                ) -> list[RelatedOccurrence]:
+                    return await self._call_chain_callers(state, names, scope, store)
+            else:
+
+                async def fetch_callers(
+                    names: Sequence[str],
+                ) -> list[RelatedOccurrence]:
+                    return await store.find_callers(
+                        identifiers=names,
+                        scope=scope,
+                        limit=settings.callers_max * 2,
+                    )
+
             lanes.append(
                 _RelationLane(
                     "caller",
-                    lambda names: store.find_callers(
-                        identifiers=names, scope=scope, limit=settings.callers_max * 2
-                    ),
+                    fetch_callers,
                     settings.callers_max,
                     settings.callers_max_chars,
                 )
@@ -1696,7 +1787,83 @@ class RetrievalPipeline:
                     names.append(name)
         return tuple(names[: self.settings.related_max_symbols])
 
-    async def _related_definitions(self, state: RetrievalState) -> list[SearchHit]:
+    async def _call_chain_callers(
+        self,
+        state: RetrievalState,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        store: RelationStore,
+    ) -> list[RelatedOccurrence]:
+        direct = await store.find_callers(
+            identifiers=identifiers,
+            scope=scope,
+            limit=max(self.settings.callers_max * 2, self.settings.callers_max),
+        )
+        direct = [replace(item, hop=1) for item in direct]
+        by_hop: dict[int, list[RelatedOccurrence]] = {1: direct}
+        if self.settings.call_chain_max_hops <= 1 or self.exact_store is None:
+            return direct
+
+        seen_names = set(identifiers)
+        seen_spans = {
+            (item.hit.blob_name, item.hit.start_line, item.hit.end_line, item.enclosing)
+            for item in direct
+        }
+        frontier = tuple(
+            dict.fromkeys(
+                item.enclosing
+                for item in direct
+                if item.enclosing and item.enclosing not in seen_names
+            )
+        )
+        for hop in range(2, self.settings.call_chain_max_hops + 1):
+            if not frontier:
+                break
+            definitions = await self.exact_store.find_definitions(
+                identifiers=frontier,
+                scope=scope,
+                max_per_identifier=1,
+            )
+            resolvable = tuple(dict.fromkeys(item.identifier for item in definitions))
+            if not resolvable:
+                break
+            next_occurrences = await store.find_callers(
+                identifiers=resolvable,
+                scope=scope,
+                limit=max(self.settings.callers_max * 2, self.settings.callers_max),
+            )
+            current: list[RelatedOccurrence] = []
+            next_frontier: list[str] = []
+            for occurrence in next_occurrences:
+                key = (
+                    occurrence.hit.blob_name,
+                    occurrence.hit.start_line,
+                    occurrence.hit.end_line,
+                    occurrence.enclosing,
+                )
+                if key in seen_spans:
+                    continue
+                seen_spans.add(key)
+                current.append(replace(occurrence, hop=hop))
+                if occurrence.enclosing and occurrence.enclosing not in seen_names:
+                    next_frontier.append(occurrence.enclosing)
+            if not current:
+                break
+            by_hop[hop] = current
+            seen_names.update(resolvable)
+            frontier = tuple(dict.fromkeys(next_frontier))
+
+        ordered: list[RelatedOccurrence] = []
+        for index in range(self.settings.callers_max * 2):
+            for hop in sorted(by_hop):
+                values = by_hop[hop]
+                if index < len(values):
+                    ordered.append(values[index])
+        return ordered
+
+    async def _related_definitions(
+        self, state: RetrievalState, *, budget: int | None = None
+    ) -> list[SearchHit]:
         """Signature-sized excerpts of symbols the selected code refers to.
 
         Query identifiers come first: when the request names a symbol whose
@@ -1705,15 +1872,16 @@ class RetrievalPipeline:
         """
         settings = self.settings
         assert self.exact_store is not None and state.scope is not None
-        remaining_chars = settings.max_context_chars - sum(
+        remaining_chars = self._context_budget(state) - sum(
             len(hit.content) for hit in state.selected
         )
         # A tiny tail budget produces fragmented signatures that cost another
         # SQL lookup without explaining a relationship. Keep expansion useful
         # and predictable instead of filling every last character.
-        if remaining_chars < _MIN_RELATED_BUDGET:
+        available = max(remaining_chars, budget or 0)
+        if available < _MIN_RELATED_BUDGET:
             return []
-        related_budget = min(settings.related_max_chars, remaining_chars)
+        related_budget = min(settings.related_max_chars, available)
         sources = state.selected[: settings.related_source_hits]
         ordered: list[str] = []
         for identifier in (

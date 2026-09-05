@@ -49,6 +49,8 @@ def _section(hit: SearchHit) -> str:
     header = f"Path: {hit.path}\nLines: {hit.start_line}-{hit.end_line}\n"
     if hit.context:
         header += f"Context: {hit.context}\n"
+    if hit.hop is not None:
+        header += f"Hop: {hit.hop}\n"
     return header + "\n".join(formatted_lines)
 
 

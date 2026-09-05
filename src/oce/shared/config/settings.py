@@ -475,10 +475,10 @@ class RetrievalSettings(BaseSettings):
     )
 
     # 关系车道：调用方 / 实现与子类 / 测试 / 转出，各自独立槽位与字符上限，作为
-    # 主结果之后的独立小节返回。启用关系车道的意图会从主结果预算里预留
-    # relation_reserve_chars，否则主结果填满预算后车道永远没有空间。
+    # 主结果之后的独立小节返回。relation_reserve_chars 是有新关系证据时的上限，
+    # 不会在关系查询前从主结果预算中无条件扣除。
     relation_reserve_chars: int = Field(
-        default=6_000, ge=0, description="为关系小节从主结果预算里预留的字符数"
+        default=6_000, ge=0, description="关系小节可使用的字符上限"
     )
     relation_snippet_lines: int = Field(
         default=10, ge=1, le=200, description="每条关系摘录最多多少行"
@@ -487,6 +487,9 @@ class RetrievalSettings(BaseSettings):
     callers_max: int = Field(default=4, ge=1, le=20, description="最多附带多少个调用方")
     callers_max_chars: int = Field(
         default=2_400, ge=1, description="调用方小节字符上限"
+    )
+    call_chain_max_hops: int = Field(
+        default=1, ge=1, le=3, description="调用链最多沿唯一封闭定义向上扩展多少跳"
     )
     implementations_enabled: bool = Field(
         default=True, description="是否附带实现/子类小节"

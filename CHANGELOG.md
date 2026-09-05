@@ -7,6 +7,8 @@
 
 ### Added
 
+- **retrieval**: make relation context demand-driven: primary selection uses its full budget until novel relation evidence exists, then trims only the lowest-priority tail within a context-scaled cap; relation candidates prefer new source files and enclosing definitions per character
+- **retrieval**: add an opt-in, uniqueness-gated upstream call-chain hop (`RETRIEVAL_CALL_CHAIN_MAX_HOPS`, default `1`) with stable `Hop:` provenance; partition relation SQL by file/enclosing definition before applying global limits so large scopes do not lose whole files to repetitive occurrences
 - **retrieval**: append relation sections after the primary results: callers grouped per enclosing definition, implementations and subclasses, tests exercising the symbol, and barrel re-exports, each with its own slot and character cap, deduplicated against the primary spans and rendered as fixed-order sections (`RETRIEVAL_CALLERS_*`, `RETRIEVAL_IMPLEMENTATIONS_*`, `RETRIEVAL_TESTS_*`, `RETRIEVAL_REEXPORTS_*`, `RETRIEVAL_RELATION_RESERVE_CHARS`, `RETRIEVAL_RELATION_SNIPPET_LINES`)
 - **retrieval**: resolve qualified names (`Session.get`, `Context.ShouldBindJSON`) to the declaration inside the named scope, order same-named overloads by the parameter types the request spells out, and give every declaring file a head slot before any file gets a second
 - **retrieval**: route "which tests cover X" and "which classes implement X" to use-site retrieval, with evidenced test files taking the head for test questions

@@ -17,12 +17,14 @@ def test_metadata_uses_only_non_secret_environment_allowlist(monkeypatch) -> Non
     monkeypatch.setenv("EMBED_MAX_QUERY_CHARS", "3000")
     monkeypatch.setenv("RERANK_PROVIDER", "local")
     monkeypatch.setenv("RERANK_LOCAL_CANDIDATES", "16")
+    monkeypatch.setenv("RETRIEVAL_CALL_CHAIN_MAX_HOPS", "2")
 
     assert metadata(()) == {
         "EMBED_MODEL": "example-embedder",
         "EMBED_MAX_QUERY_CHARS": "3000",
         "RERANK_PROVIDER": "local",
         "RERANK_LOCAL_CANDIDATES": "16",
+        "RETRIEVAL_CALL_CHAIN_MAX_HOPS": "2",
     }
 
 

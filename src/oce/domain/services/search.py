@@ -31,6 +31,7 @@ class SearchHit:
     # 切块时记录的封闭作用域签名链（如 ``class Foo > def bar``）；无 AST 时为 None。
     context: str | None = None
     role: HitRole = "primary"
+    hop: int | None = None
 
 
 @dataclass(frozen=True)

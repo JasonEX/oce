@@ -28,6 +28,7 @@ class RelatedOccurrence:
     end_line: int
     # Innermost definition holding the occurrence; empty at module level.
     enclosing: str = ""
+    hop: int | None = None
 
 
 class RelationStore(Protocol):
@@ -117,6 +118,7 @@ def occurrence_excerpt(
         end_line=chunk.start_line + start + len(excerpt) - 1,
         score=0.0,
         role=role,
+        hop=occurrence.hop,
     )
 
 

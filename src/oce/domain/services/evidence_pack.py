@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
 from oce.domain.services.search import HitRole, SearchHit
+from oce.domain.services.test_paths import is_test_path
 
 # Below this many characters an extra section only fragments the answer.
 MIN_SECTION_BUDGET = 200
@@ -44,6 +45,27 @@ def _overlaps(hit: SearchHit, spans: Sequence[tuple[str, int, int]]) -> bool:
         blob == hit.blob_name and start <= hit.end_line and end >= hit.start_line
         for blob, start, end in spans
     )
+
+
+def _candidate_value(
+    occurrence: RelatedOccurrence,
+    excerpt: SearchHit,
+    spans: Sequence[tuple[str, int, int]],
+    role: HitRole,
+) -> tuple[float, int]:
+    blobs = {blob for blob, _start, _end in spans}
+    new_blob = occurrence.hit.blob_name not in blobs
+    new_enclosing = bool(occurrence.enclosing) and not any(
+        blob == occurrence.hit.blob_name and start <= occurrence.line <= end
+        for blob, start, end in spans
+    )
+    novelty = 5 if new_blob else 0
+    novelty += 2 if new_enclosing else 0
+    if role != "test" and is_test_path(occurrence.hit.path):
+        novelty -= 3
+    specificity = max(0.1, min(1.0, occurrence.hit.score or 0.1))
+    cost = max(1, len(excerpt.content))
+    return ((novelty + specificity) / (1.0 + cost / 240.0), -cost)
 
 
 def assemble_sections(
@@ -79,14 +101,26 @@ def assemble_sections(
             continue
         section_used = 0
         items = 0
-        for occurrence in section.occurrences:
-            if items >= section.max_items:
+        pending = list(enumerate(section.occurrences))
+        while pending and items < section.max_items:
+            candidates: list[tuple[tuple[float, int], int, SearchHit]] = []
+            for index, occurrence in pending:
+                excerpt = occurrence_excerpt(occurrence, snippet_lines, section.role)
+                if excerpt is None or _overlaps(excerpt, spans):
+                    continue
+                if section_used + len(excerpt.content) > budget:
+                    continue
+                candidates.append(
+                    (
+                        _candidate_value(occurrence, excerpt, spans, section.role),
+                        -index,
+                        excerpt,
+                    )
+                )
+            if not candidates:
                 break
-            excerpt = occurrence_excerpt(occurrence, snippet_lines, section.role)
-            if excerpt is None or _overlaps(excerpt, spans):
-                continue
-            if section_used + len(excerpt.content) > budget:
-                continue
+            _value, selected_index, excerpt = max(candidates)
+            pending = [item for item in pending if item[0] != -selected_index]
             hits.append(excerpt)
             spans.append(_span_key(excerpt))
             section_used += len(excerpt.content)

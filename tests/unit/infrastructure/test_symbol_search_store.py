@@ -357,3 +357,39 @@ async def test_test_relation_prefilter_keeps_benchmark_directories(sessions):
     assert tests
     assert all(item.hit.path == "benchmarks/worker_bench.py" for item in tests)
     assert any(item.enclosing == "benchmark_run" for item in tests)
+
+
+async def test_relation_queries_diversify_large_scopes_before_global_limit(sessions):
+    files = {"src/worker.py": "def run_job():\n    return 1\n"}
+    files.update(
+        {
+            f"src/caller_{index}.py": (
+                "from src.worker import run_job\n"
+                f"def caller_{index}():\n"
+                "    return run_job()\n"
+            )
+            for index in range(12)
+        }
+    )
+    files.update(
+        {
+            f"tests/test_worker_{index}.py": (
+                "from src.worker import run_job\n"
+                f"def test_worker_{index}():\n"
+                "    return run_job()\n"
+            )
+            for index in range(12)
+        }
+    )
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+
+    callers = await store.find_callers(identifiers=["run_job"], scope=scope, limit=8)
+    tests = await store.find_test_uses(identifiers=["run_job"], scope=scope, limit=8)
+
+    assert len({item.hit.path for item in callers}) == 8
+    assert all(item.hit.path.startswith("src/caller_") for item in callers)
+    assert len({item.hit.path for item in tests}) == 8
+    assert all(item.hit.path.startswith("tests/test_worker_") for item in tests)
