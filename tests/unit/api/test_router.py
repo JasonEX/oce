@@ -435,6 +435,7 @@ async def test_admin_index_stats_contract_and_auth():
     assert body["runtime"]["path_lookup_enabled"] is True
     assert body["runtime"]["merge_adjacent_enabled"] is True
     assert body["runtime"]["related_definitions_enabled"] is True
+    assert body["runtime"]["decisive_skips_dense"] is True
     assert body["runtime"]["rerank_policy"] == "adaptive"
     assert body["runtime"]["llm_rerank_policy"] == "adaptive"
     assert body["profile"]["state"] == "compatible"

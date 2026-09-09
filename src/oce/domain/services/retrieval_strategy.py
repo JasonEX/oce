@@ -43,10 +43,12 @@ class RetrievalStrategy:
 STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
     # S (SYMBOL): 符号定义查询
     # 符号名应在正文中定位；路径语义会把同名引用、模型和 DAO 提到定义前面。
-    # 定义之后紧跟的问题是谁调用它、谁实现它、哪些测试覆盖它、从哪里导出。
+    # 定义之后紧跟的问题是谁调用它、谁实现它、哪些测试覆盖它、从哪里导出，以及
+    # 定义正文引用了哪些符号（工厂、基类、被委托的方法）。
     QueryIntent.SYMBOL: RetrievalStrategy(
         enable_path_index=False,
         enable_query_rewrite=True,
+        expand_related_definitions=True,
         expand_callers=True,
         expand_implementations=True,
         expand_tests=True,
@@ -63,10 +65,12 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         expand_tests=True,
     ),
     # R (REFERENCE): 引用/使用位置查询，改写补充同义调用方式。exact 召回已含
-    # 转出与继承行，调用方与测试小节补足窗口外的使用位置。
+    # 转出与继承行，调用方与测试小节补足窗口外的使用位置；被问符号自身的声明
+    # 若没进主结果（与使用点同文件、被单文件片段上限挤出），以定义摘录附带。
     QueryIntent.REFERENCE: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,
+        expand_related_definitions=True,
         expand_callers=True,
         expand_tests=True,
     ),

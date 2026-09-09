@@ -75,25 +75,34 @@ def assemble_sections(
     sections: Sequence[SectionInput],
     remaining_chars: int,
     snippet_lines: int,
+    related_first: bool = True,
 ) -> EvidencePack:
     """Cut, dedupe and budget the relation sections.
 
-    ``related`` are already-cut definition excerpts from the outbound lane;
-    they are counted against the budget first because a definition the
-    selected code refers to explains more than a second caller.
+    ``related`` are already-cut definition excerpts from the outbound lane.
+    For a semantic request they are counted against the budget first because
+    a definition the selected code refers to explains more than a second
+    caller; when the request named the symbol itself, the callers, subtypes,
+    tests and re-exports it asked about come first and the mined definitions
+    take what is left.
     """
     hits: list[SearchHit] = []
     counts: dict[str, int] = {}
     spans = [_span_key(hit) for hit in selected]
     used = 0
 
-    for hit in related:
-        if used + len(hit.content) > remaining_chars or _overlaps(hit, spans):
-            continue
-        hits.append(hit)
-        spans.append(_span_key(hit))
-        used += len(hit.content)
-        counts["related"] = counts.get("related", 0) + 1
+    def fill_related() -> None:
+        nonlocal used
+        for hit in related:
+            if used + len(hit.content) > remaining_chars or _overlaps(hit, spans):
+                continue
+            hits.append(hit)
+            spans.append(_span_key(hit))
+            used += len(hit.content)
+            counts["related"] = counts.get("related", 0) + 1
+
+    if related_first:
+        fill_related()
 
     for section in sections:
         budget = min(section.max_chars, remaining_chars - used)
@@ -128,5 +137,8 @@ def assemble_sections(
         if items:
             counts[section.role] = counts.get(section.role, 0) + items
             used += section_used
+
+    if not related_first:
+        fill_related()
 
     return EvidencePack(hits=hits, counts=counts, chars=used)

@@ -393,3 +393,83 @@ async def test_relation_queries_diversify_large_scopes_before_global_limit(sessi
     assert all(item.hit.path.startswith("src/caller_") for item in callers)
     assert len({item.hit.path for item in tests}) == 8
     assert all(item.hit.path.startswith("tests/test_worker_") for item in tests)
+
+
+async def test_calls_within_lists_the_calls_of_one_span_with_their_enclosing(sessions):
+    files = {
+        "src/api.py": (
+            "from src.invoice import build_invoice\n"
+            "class Handler:\n"
+            "    def create(self, request):\n"
+            "        total = build_invoice(request)\n"
+            "        return apply_discount(total, 10)\n"
+            "\n"
+            "    def other(self):\n"
+            "        return build_invoice(None)\n"
+        ),
+        "src/invoice.py": "def build_invoice(r):\n    return 1\n\ndef apply_discount(t, p):\n    return t\n",
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    # The whole class span: each called name once, in line order, with the
+    # method that makes the call.
+    calls = await store.calls_within(
+        blob_name=names["src/api.py"], start_line=2, end_line=8, scope=scope
+    )
+    assert calls == [("build_invoice", 4, "create"), ("apply_discount", 5, "create")]
+    # Only the second method: the first call to build_invoice is outside.
+    calls = await store.calls_within(
+        blob_name=names["src/api.py"], start_line=7, end_line=8, scope=scope
+    )
+    assert calls == [("build_invoice", 8, "other")]
+    # Out of scope blobs return nothing.
+    assert (
+        await store.calls_within(
+            blob_name=names["src/api.py"],
+            start_line=1,
+            end_line=8,
+            scope=SearchScope(frozenset({names["src/invoice.py"]})),
+        )
+        == []
+    )
+
+
+async def test_chunk_for_line_returns_the_chunk_spanning_the_line(sessions):
+    files = {
+        "src/api.py": (
+            "from src.invoice import build_invoice\n"
+            "class Handler:\n"
+            "    def create(self, request):\n"
+            "        total = build_invoice(request)\n"
+            "        return apply_discount(total, 10)\n"
+            "\n"
+            "    def other(self):\n"
+            "        return build_invoice(None)\n"
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    # Files are indexed as two line-based halves: lines 1-4 and 5-8.
+    first = await store.chunk_for_line(
+        blob_name=names["src/api.py"], line=2, scope=scope
+    )
+    second = await store.chunk_for_line(
+        blob_name=names["src/api.py"], line=7, scope=scope
+    )
+    assert first is not None and (first.start_line, first.end_line) == (1, 4)
+    assert second is not None and (second.start_line, second.end_line) == (5, 8)
+    assert second.path == "src/api.py" and "def other" in second.content
+    assert (
+        await store.chunk_for_line(blob_name=names["src/api.py"], line=99, scope=scope)
+        is None
+    )
+    assert (
+        await store.chunk_for_line(
+            blob_name=names["src/api.py"], line=2, scope=SearchScope(frozenset())
+        )
+        is None
+    )

@@ -156,6 +156,7 @@ class SqlMetricsSink(PeriodicTask):
                     intent=r.intent,
                     path_boosted=r.path_boosted,
                     rerank_route=r.rerank_route,
+                    dense_route=r.dense_route,
                     head_slots=r.head_slots,
                     exact_definitions=r.exact_definitions,
                     definition_sites=r.definition_sites,

@@ -32,7 +32,11 @@ class QueryIntent(StrEnum):
 _IDENTIFIER_PATTERN = re.compile(
     r"^[A-Za-z_$][A-Za-z0-9_$]*(?:::[A-Za-z_$][A-Za-z0-9_$]*)*$"
 )
-_SNAKE_IDENTIFIER_PATTERN = re.compile(r"[a-z][a-z0-9]*_[a-z0-9_]+")
+# Whole identifiers only: ``__init__`` must not yield a fragment such as
+# ``init__``, and private names keep their leading underscores as spelled.
+_SNAKE_IDENTIFIER_PATTERN = re.compile(
+    r"(?<![A-Za-z0-9_])_*[a-z][a-z0-9]*_[a-z0-9_]+(?![A-Za-z0-9_])"
+)
 _QUALIFIED_IDENTIFIER_PATTERN = re.compile(
     r"[A-Za-z_$][A-Za-z0-9_$]*(?:::[A-Za-z_$][A-Za-z0-9_$]*)+"
 )
@@ -310,11 +314,47 @@ _TEST_QUERY = re.compile(
 _TEST_QUERY_MAX_CHARS = 200
 # "Which classes implement X" asks for the subtypes, i.e. the places that use
 # the name in an ``extends``/``implements`` position, not for X's declaration.
+# "Where is ``IntoResponse`` implemented for ``StatusCode``" asks for the impl
+# block, i.e. the place that uses the trait name in an implementing position.
 _IMPLEMENTORS_QUERY = re.compile(
     r"(?i)\b(?:which|what|all|list|every)\b[^.?\n]{0,40}"
     r"\b(?:implement|extend|subclass|override|inherit|derive)"
+    r"|\bimplemented\s+(?:for|by|on)\b"
     r"|哪些.{0,12}(?:实现|继承|重写|派生|子类)"
 )
+
+
+# "Which functions call X" / "哪些地方调用了 X" / "Where is X called?" ask for the
+# callers of one symbol: its use sites, a reference question. A call-chain
+# question describes a flow ("how does A reach B", "trace", "调用链") instead.
+_CALLERS_QUERY = re.compile(
+    r"(?i)\b(?:which|what|who|where|all|list|every)\b[^.?\n]{0,40}"
+    r"\b(?:calls?|called|calling|invokes?|invoked|invoking|triggers?|triggered)\b"
+    r"|哪些.{0,12}(?:调用|触发|执行)|谁.{0,6}调用|被.{0,8}调用"
+)
+# "Where is X defined?" is a definition question however many type names it
+# spells out to pick an overload; the extra names are disambiguation, not
+# further facets.
+_DEFINITION_QUERY = re.compile(
+    r"(?i)\b(?:where|which\s+file)\b[^.?\n]{0,80}\bdefined\b"
+    r"|在哪里定义|定义在哪|在哪个文件定义"
+)
+# A "how" question that names two symbols asks for the path between them.
+_HOW_QUERY = re.compile(r"(?i)\bhow\b|如何|怎样|怎么")
+_QUESTION_MAX_CHARS = 200
+
+
+def asks_for_callers(query: str) -> bool:
+    return (
+        len(query) <= _QUESTION_MAX_CHARS and _CALLERS_QUERY.search(query) is not None
+    )
+
+
+def asks_for_definition(query: str) -> bool:
+    return (
+        len(query) <= _QUESTION_MAX_CHARS
+        and _DEFINITION_QUERY.search(query) is not None
+    )
 
 
 def asks_about_tests(query: str) -> bool:
@@ -340,14 +380,15 @@ def classify_query_intent(query: str) -> QueryIntent:
     按意图分类查询，用于派发检索策略。
 
     判定优先级（从高到低）：
-    1. 标识符超过 2 个或 planner 切出至少 2 个 facet → COMPOUND
-    2. 显式 trace → CALL_CHAIN；显式架构/生命周期 → OVERVIEW
-    3. 其他调用类动词 → CALL_CHAIN
-    4. 有符号锚点（反引号/snake_case/::/限定名）：
-       - 引用类动词 → REFERENCE
-       - 标识符 2 个 → COMPOUND
+    1. 显式询问已命名符号的定义 → SYMBOL
+    2. 标识符超过 2 个或 planner 切出至少 3 个 facet → COMPOUND
+    3. 显式 trace → CALL_CHAIN；显式架构/生命周期 → OVERVIEW
+    4. 单符号调用方问题 → REFERENCE；其他调用类动词 → CALL_CHAIN
+    5. 有符号锚点（反引号/snake_case/::/限定名）：
+       - 引用、测试或实现者问题 → REFERENCE
+       - 两端点 how 问题 → CALL_CHAIN；其他多标识符问题 → COMPOUND
        - 其余 → SYMBOL
-    5. 无符号锚点：
+    6. 无符号锚点：
        - 概览词 → OVERVIEW
        - 已知文件名或短问句中的文件/配置词（非功能类）→ PATH
        - 其余 → FEATURE
@@ -369,6 +410,17 @@ def classify_query_intent(query: str) -> QueryIntent:
     identifiers = extract_code_identifiers(query)
     has_symbol = bool(identifiers)
 
+    # 提取反引号、路径和文件名之外的文本，避免符号名或路径片段被动词误匹配：
+    # `invoke_handler` 中的 invoke、src/execute.c 中的 execute 都不是调用链动词。
+    text_outside_backticks = re.sub(r"`[^`]+`", "", query_lower)
+    text_outside_backticks = _PATH_TOKEN_PATTERN.sub(" ", text_outside_backticks)
+    text_outside_backticks = _mask_filenames(text_outside_backticks)
+
+    # 「X 在哪里定义」点名再多参数类型也是一个定义问题：``fromJson`` 的重载靠
+    # ``JsonReader``/``TypeToken`` 消歧，这些名字不是新的 facet。
+    if has_symbol and asks_for_definition(text_outside_backticks):
+        return QueryIntent.SYMBOL
+
     # 多 facet 是查询本身的广度信号，不依赖是否能从自然语言中提取出代码符号。
     # 放在符号分支外，避免无显式标识符的 issue 被一个 file/config 词缩成 PATH。
     if (
@@ -377,11 +429,6 @@ def classify_query_intent(query: str) -> QueryIntent:
     ):
         return QueryIntent.COMPOUND
 
-    # 提取反引号、路径和文件名之外的文本，避免符号名或路径片段被动词误匹配：
-    # `invoke_handler` 中的 invoke、src/execute.c 中的 execute 都不是调用链动词。
-    text_outside_backticks = re.sub(r"`[^`]+`", "", query_lower)
-    text_outside_backticks = _PATH_TOKEN_PATTERN.sub(" ", text_outside_backticks)
-    text_outside_backticks = _mask_filenames(text_outside_backticks)
     word_count = len(query.split())
 
     # ``Trace ...`` 是最强的调用链证据，即使后文提到 lifecycle 也不改变意图。
@@ -392,6 +439,10 @@ def classify_query_intent(query: str) -> QueryIntent:
     # 系统覆盖面，不是追踪一条调用边。
     if _EXPLICIT_OVERVIEW_CUES_RE.search(text_outside_backticks):
         return QueryIntent.OVERVIEW
+
+    # 「哪些地方调用了 X」问的是一个符号的使用位置，不是一条调用链。
+    if len(identifiers) == 1 and asks_for_callers(text_outside_backticks):
+        return QueryIntent.REFERENCE
 
     # 调用链特征：方向性动词（trace/call/flow…）。``Trace requests.request through
     # Session.send`` 里的限定名不一定能抽成符号，动词本身已经说明了问题形态。
@@ -408,6 +459,14 @@ def classify_query_intent(query: str) -> QueryIntent:
         # declaration.
         if asks_about_tests(query) or asks_for_implementors(text_outside_backticks):
             return QueryIntent.REFERENCE
+
+        # 「A 如何到达 B」：两个端点之间的路径是一条调用链，不是两个并列问题。
+        if (
+            len(identifiers) == 2
+            and len(query) <= _QUESTION_MAX_CHARS
+            and _HOW_QUERY.search(text_outside_backticks)
+        ):
+            return QueryIntent.CALL_CHAIN
 
         if len(identifiers) > 1:
             return QueryIntent.COMPOUND
@@ -469,6 +528,8 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
         ):
             return
         # The leaf of a qualified name already listed is the same symbol.
+        # Leading underscores are significant: ``_load_config`` and
+        # ``load_config`` may both exist in the same scope.
         if value in identifiers or any(
             item.endswith((f".{value}", f"::{value}")) for item in identifiers
         ):

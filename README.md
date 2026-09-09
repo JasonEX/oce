@@ -311,16 +311,35 @@ supporting material behind implementation files; a root `README` keeps full weig
 compound, call-chain, and reference requests reserve a few leading slots for implementation
 files the path prior does not demote (the root `README` remains documentation for this rule).
 A test or document chunk that leads both the dense and lexical lists keeps a fused score no
-multiplicative prior can undercut; requests that name tests keep a neutral prior. Reference
+multiplicative prior can undercut; requests that name tests keep a neutral prior, and chunks whose only symbol evidence is imports
+(file headers) yield those slots to implementing code (`RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS`, on by
+default). Reference
 requests only promote exact or whole-identifier lexical evidence and place the symbol's own
-declaration after its first use sites. Both head rules are reapplied after a model reranker
+declaration chunk after its use sites; within that evidence, chunks that call or extend the
+symbol come before textual mentions and before mere imports, a chunk that also names the
+request's other symbol ("implemented for `StatusCode`") comes first, uses in other files come
+before uses next to the declaration, a file named after the symbol leads a test question, and
+files nearer the declaring package come before scripts and examples. "Which functions call X"
+and "哪些地方调用了 X" are reference questions; "how does A reach B" with two symbols is a
+call-chain question; "where is X defined" stays a definition question however many parameter
+types it names, and overloads are ordered by the types in their declaration line. Both head rules are reapplied after a model reranker
 runs, keeping the model's order inside each tier. The dedicated reranker also receives at most
 `RERANK_MAX_QUERY_CHARS` of the request so issue-length text does not multiply its latency.
-Exact, path-lookup, and routed lexical recall start before the query embedding round trip.
+Exact, path-lookup, and routed lexical recall start before the query embedding round trip,
+and the embedding is never waited for when they already answered: a definition of the
+requested symbol (not merely a named parameter type), a matched path, or a call/inherit
+site of the referenced symbol makes the request
+decisive, vector recall is dropped, and the remaining lexical evidence joins the exact lane by
+rank. `RETRIEVAL_DECISIVE_SKIPS_DENSE=false` restores the wait; `retrieval_metrics.dense_route`
+records `dense`, `skip:exact_definition`, `skip:path_evidence`, or `skip:use_sites` per request.
 After selection, touching spans of one file are merged. Requests that name a symbol then
 receive relation sections after the primary results, each with its own slot and character
 cap and deduplicated against what is already shown: signature excerpts of definitions the
-selected code refers to (call-chain, feature, overview), callers grouped per enclosing
+selected code refers to, the names it calls first (symbol, call-chain, feature, overview; for symbol they fill
+after the named lanes, a name declared both in the selected file and elsewhere resolves to
+the local one, a qualified name is pinned to its scope exactly as in the primary lane, and
+a reference answer appends only the asked symbol's own declaration when its use sites
+crowded it out), callers grouped per enclosing
 function (symbol, reference, call-chain), implementations and subclasses (symbol), tests
 that exercise the symbol (symbol, reference, call-chain, feature, compound), and the
 barrel file that re-exports it (symbol). The primary budget is not reserved up front:
@@ -329,9 +348,18 @@ scales with the active context budget. Qualified names (`Session.get`) are resol
 the declaration inside the named scope; overloads are ordered by the parameter types the
 request spells out. Call-chain queries can opt into a second upstream hop with
 `RETRIEVAL_CALL_CHAIN_MAX_HOPS=2`; expansion requires the intermediate enclosing definition
-to be uniquely indexed, and every returned hop is marked in the stable formatter. The
-default remains one hop because broader call-hop expansion must be validated across
-repository sizes before becoming a quality default. Compound
+to be uniquely indexed, and every returned hop is marked in the stable formatter. A
+call-chain request that names two symbols ("how does `requests.get` reach
+`HTTPAdapter.send`") protects both declarations in the head and searches the indexed call
+edges breadth first from the first to the second, following only names declared in at most
+two places, up to `RETRIEVAL_CALL_CHAIN_MAX_DEPTH` hops; the path is returned as a
+`chain` section in which every hop shows its declaration header and, when the call that
+hands over to the next hop sits deeper in the body, a second excerpt ending at that call
+(opening at the enclosing method or closure when it is close), within
+`RETRIEVAL_CALL_CHAIN_MAX_CHARS`; headers of every hop are placed before any window
+spends that budget. A one-ended trace ("trace how `wsgi_app` dispatches") protects the
+named declaration in the head the same way and gets two levels of what the symbol calls
+instead of a path. Compound
 requests do not fan out through every identifier in their selected snippets. Files the
 request just added (`added_blobs`) receive a small ranking prior when the delta is small.
 Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path

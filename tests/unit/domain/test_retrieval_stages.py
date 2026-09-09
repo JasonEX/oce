@@ -318,8 +318,10 @@ class TestPathLookup:
         exact.kinds_seen.clear()
         await pipe.search("which modules import `load_config`", scope)
         # Every occurrence kind for the use sites, plus the declarations so
-        # the head can tell them apart.
+        # the head can tell them apart, plus the call/inherit sites that make
+        # the request decisive.
         assert sorted(exact.kinds_seen, key=str) == [
+            ("call", "inherit"),
             ("endpoint", "definition"),
             None,
         ]
@@ -838,7 +840,9 @@ class TestRelatedDefinitions:
         roles = [(hit.role, hit.path) for hit in hits]
         assert roles[0] == ("primary", "src/service.py")
         assert ("related", "src/base.py") in roles
-        assert ("related", "src/util.py") in roles
+        # ``helper_fn`` is the far end of the requested chain, so its
+        # declaration is protected in the head rather than mined afterwards.
+        assert roles[1] == ("primary", "src/util.py")
         assert not any(
             hit.role == "related" and hit.path == "src/service.py" for hit in hits
         )
@@ -914,10 +918,13 @@ class TestRelatedDefinitions:
         )
         assert any(hit.role == "related" for hit in feature)
 
+        # A definition answer carries the definitions its body refers to; the
+        # declaration itself stays the only primary result.
         symbol = await pipe.search(
             "where is `run` defined?", SearchScope(frozenset({BLOB_A, BLOB_B}))
         )
-        assert all(hit.role == "primary" for hit in symbol)
+        assert [hit.role for hit in symbol][:1] == ["primary"]
+        assert any(hit.role == "related" for hit in symbol)
 
         call_chain = await pipe.search(
             "how does `run` call `helper_fn`?",
@@ -1071,7 +1078,7 @@ class TestHeadEvidence:
         hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
         assert [hit.path for hit in hits] == ["bin/run", "src/router/mod.rs"]
 
-    async def test_header_rule_is_off_by_default(self):
+    async def test_header_rule_is_on_by_default_and_can_be_switched_off(self):
         header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
         impl = _hit("src/router/path.rs", 0.9, blob=BLOB_B, hash_="h-impl")
         store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
@@ -1080,6 +1087,19 @@ class TestHeadEvidence:
             store=FakeSearchStore([header, impl]),
             exact_store=store,
             settings=_settings(related_definitions_enabled=False),
+        )
+        hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
+        assert [hit.path for hit in hits] == ["src/router/path.rs", "src/router/mod.rs"]
+        assert store.asked
+
+        store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([header, impl]),
+            exact_store=store,
+            settings=_settings(
+                related_definitions_enabled=False, head_skips_import_headers=False
+            ),
         )
         hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
         assert [hit.path for hit in hits] == ["src/router/mod.rs", "src/router/path.rs"]

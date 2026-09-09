@@ -97,7 +97,7 @@ def occurrence_excerpt(
         return None
     start = offset
     if occurrence.enclosing:
-        header = _header_offset(lines, offset, occurrence.enclosing, max_lines)
+        header = header_offset(lines, offset, occurrence.enclosing, max_lines)
         if header is not None:
             start = header
     # The occurrence line must stay inside the excerpt even when the header
@@ -122,7 +122,7 @@ def occurrence_excerpt(
     )
 
 
-def _header_offset(
+def header_offset(
     lines: Sequence[str], offset: int, enclosing: str, max_lines: int
 ) -> int | None:
     """Nearest line above ``offset`` that declares ``enclosing``, within reach."""

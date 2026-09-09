@@ -394,6 +394,16 @@ REFERENCE_QUERIES = [
         "src/billing/invoice.py",
     ),
     (
+        "Which functions call `build_invoice`?",
+        {"src/billing/api.py", "src/billing/cli.py"},
+        "src/billing/invoice.py",
+    ),
+    (
+        "哪些地方调用了 `compute_tax_rate`？",
+        {"src/billing/api.py", "src/billing/invoice.py"},
+        "src/billing/tax.py",
+    ),
+    (
         "哪些地方引用了 `compute_tax_rate`？",
         {"src/billing/api.py"},
         "src/billing/tax.py",
@@ -420,6 +430,9 @@ async def test_symbol_definition_holds_the_first_slot(indexed, query, marker):
     assert all(hit.role == "primary" for hit in hits)
     # No reranker is wired here, so the route only proves nothing else ran.
     assert audit.rerank_route and audit.rerank_route.startswith("skip:")
+    # The definition is the answer; the embedding round trip was not awaited.
+    assert audit.dense_route == "skip:exact_definition"
+    assert "embed" not in audit.stages and "dense" not in audit.stages
 
 
 @pytest.mark.parametrize(("query", "path"), PATH_QUERIES)
@@ -430,6 +443,8 @@ async def test_named_file_holds_the_first_slot(indexed, query, path):
     assert hits[0].path == path, [hit.path for hit in hits[:3]]
     assert "expand" not in audit.stages
     assert audit.rerank_route and audit.rerank_route.startswith("skip:")
+    assert audit.dense_route == "skip:path_evidence"
+    assert "embed" not in audit.stages
 
 
 @pytest.mark.parametrize(("query", "use_sites", "declaration"), REFERENCE_QUERIES)
@@ -443,6 +458,11 @@ async def test_reference_leads_with_a_use_site(indexed, query, use_sites, declar
     assert paths[0] in use_sites, paths
     assert declaration in {hit.path for hit in hits}, paths
     assert not paths[0].startswith(("tests/", "docs/"))
+    # Call sites were found, so the semantic tail was never awaited, and
+    # the chunks that only import the name never take a head slot ahead of
+    # a chunk that calls it.
+    assert audit.dense_route == "skip:use_sites"
+    assert "src/billing/__init__.py" not in paths[:2], paths
 
 
 async def test_traceback_locates_the_raising_code(indexed):
@@ -476,7 +496,11 @@ async def test_corpus_stays_adversarial(indexed, monkeypatch):
         "_structural_heads",
         lambda self, state, hits, priority_factor=None: (),
     )
-    hits, _ = await _search(indexed, "Where is `build_invoice` defined?")
+    # The fused path is the one under test: with the exact lane answering
+    # alone, dense recall is skipped and there is nothing to be adversarial to.
+    hits, _ = await _search(
+        indexed, "Where is `build_invoice` defined?", decisive_skips_dense=False
+    )
     assert "def build_invoice" not in hits[0].content
 
 
@@ -516,11 +540,19 @@ async def test_symbol_answer_carries_callers_tests_and_reexports(indexed):
         if hit.role != "primary"
     )
 
-    # With the whole corpus in the primary window every relation is already
-    # visible, and the sections stay empty instead of repeating it.
+    # The exact lane answers alone: the primary window holds the two
+    # declarations and nothing without evidence, and the relation sections
+    # carry the callers, tests and re-exports instead of a semantic tail.
     hits, audit = await _search_all(indexed, "Where is `build_invoice` defined?")
-    assert all(hit.role == "primary" for hit in hits)
-    assert audit.relation_counts == {}
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert audit.dense_route == "skip:exact_definition"
+    assert sorted(hit.path for hit in primary) == [
+        "src/billing/invoice.py",
+        "src/billing/legacy.py",
+    ]
+    assert audit.relation_counts["caller"] >= 2
+    assert audit.relation_counts["test"] == 1
+    assert audit.relation_counts["reexport"] == 1
 
 
 async def test_symbol_answer_lists_implementations(indexed):
@@ -561,3 +593,68 @@ async def test_qualified_symbol_drops_the_other_declaration(indexed):
     assert hits[0].path == "src/billing/legacy.py", [hit.path for hit in hits[:3]]
     hits, _ = await _search(indexed, "Where is `InvoiceBuilder.add_line` defined?")
     assert "def add_line" in hits[0].content
+
+
+async def test_symbol_answer_never_appends_its_own_name_from_elsewhere(indexed):
+    # The definition lane answered ``legacy.build_invoice``; the other
+    # declaration of that name is a different function and must not come back
+    # as a "related definition" (it would be the first thing after the answer).
+    hits, _ = await _search_all(
+        indexed, "Where is `legacy.build_invoice` defined?", final_select_k=1
+    )
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert primary[0].path == "src/billing/legacy.py"
+    appended = [
+        (hit.path, hit.role) for hit in hits if "def build_invoice" in hit.content
+    ]
+    assert appended == [("src/billing/legacy.py", "primary")], appended
+
+
+async def test_two_endpoint_chain_lists_the_hops_in_order(indexed):
+    # cli.main -> build_invoice -> compute_tax_rate: the far end is protected
+    # in the head and every intermediate hop is a chain excerpt with its Hop.
+    hits, audit = await _search_all(
+        indexed, "How does `main` reach `compute_tax_rate`?", final_select_k=2
+    )
+    assert audit.intent == QueryIntent.CALL_CHAIN.value
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert primary[0].path == "src/billing/cli.py"
+    assert primary[1].path == "src/billing/tax.py"
+    chain = [(hit.hop, hit.path) for hit in hits if hit.role == "chain"]
+    assert chain == [(1, "src/billing/invoice.py")], [
+        (hit.role, hit.hop, hit.path) for hit in hits
+    ]
+    hop = next(hit for hit in hits if hit.role == "chain")
+    assert hop.content.startswith("def build_invoice(")
+    assert "compute_tax_rate(region)" in hop.content
+    assert audit.relation_counts["chain"] == 1
+
+
+async def test_one_ended_trace_follows_what_the_symbol_calls(indexed):
+    # No far end named: the declarations create_invoice_endpoint calls, and
+    # what those call in turn, come as chain excerpts with their hop depth.
+    hits, audit = await _search_all(
+        indexed,
+        "Trace how `create_invoice_endpoint` turns a request into an invoice.",
+        final_select_k=1,
+    )
+    assert audit.intent == QueryIntent.CALL_CHAIN.value
+    primary = [hit for hit in hits if hit.role == "primary"]
+    assert primary[0].path == "src/billing/api.py"
+    chain = {
+        (hit.hop, hit.path, hit.content.splitlines()[0])
+        for hit in hits
+        if hit.role == "chain"
+    }
+    assert (
+        1,
+        "src/billing/invoice.py",
+        "def build_invoice(customer, lines, region):",
+    ) in chain
+    assert (1, "src/billing/config/settings.py", "def load_settings(path):") in chain
+    # compute_tax_rate is called directly (hop 1); the deeper hop stays within
+    # the chain budget and never repeats a declaration already shown.
+    assert (1, "src/billing/tax.py", "def compute_tax_rate(region):") in chain
+    assert len(
+        {(hit.path, hit.start_line) for hit in hits if hit.role == "chain"}
+    ) == len([hit for hit in hits if hit.role == "chain"])

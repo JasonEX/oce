@@ -208,6 +208,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
                 intent="symbol",
                 path_boosted=True,
                 rerank_route="dedicated+llm",
+                dense_route="skip:exact_definition",
                 head_slots=2,
                 query_text="q",
                 stages={
@@ -228,6 +229,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
         assert row.source == "retrieval"
         assert row.hit_count == 0  # 空回也落库
         assert row.total_ms == 42
+        assert row.dense_route == "skip:exact_definition"
         assert row.embed_ms == 7
         assert row.dense_ms == 10
         assert row.path_ms == 3

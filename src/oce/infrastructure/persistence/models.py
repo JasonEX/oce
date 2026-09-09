@@ -316,6 +316,7 @@ class RetrievalMetricModel(Base):
     intent: Mapped[str | None] = mapped_column(String(32))
     path_boosted: Mapped[bool] = mapped_column(Boolean, server_default="false")
     rerank_route: Mapped[str | None] = mapped_column(String(48))
+    dense_route: Mapped[str | None] = mapped_column(String(48))
     head_slots: Mapped[int] = mapped_column(Integer, server_default="0")
     # 路由看到的结构证据与附带的关系小节规模，供离线校准 adaptive 阈值。
     exact_definitions: Mapped[int] = mapped_column(Integer, server_default="0")

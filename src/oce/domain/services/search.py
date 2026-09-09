@@ -13,8 +13,11 @@ from typing import Literal, Protocol
 
 # 命中在最终结果中的角色：primary 是回答查询的片段，其余是按关系车道附带的摘录：
 # related 是被引用符号的定义，caller 是调用方，implementation 是子类/实现，
-# test 是覆盖该符号的测试，reexport 是转出该符号的入口文件。
-HitRole = Literal["primary", "related", "caller", "implementation", "test", "reexport"]
+# test 是覆盖该符号的测试，reexport 是转出该符号的入口文件，chain 是两个端点
+# 之间调用路径上的定义（按 hop 编号）。
+HitRole = Literal[
+    "primary", "related", "caller", "implementation", "test", "reexport", "chain"
+]
 
 
 @dataclass(frozen=True)
@@ -130,6 +133,27 @@ class ExactSearchStore(Protocol):
         scope: SearchScope,
     ) -> dict[tuple[str, str], frozenset[str]]:
         """Symbol occurrence kinds for scoped ``(blob_name, content_hash)`` pairs."""
+        ...
+
+    async def calls_within(
+        self,
+        *,
+        blob_name: str,
+        start_line: int,
+        end_line: int,
+        scope: SearchScope,
+    ) -> list[tuple[str, int, str]]:
+        """``(identifier, line, enclosing)`` of the calls inside one span, in line order."""
+        ...
+
+    async def chunk_for_line(
+        self,
+        *,
+        blob_name: str,
+        line: int,
+        scope: SearchScope,
+    ) -> SearchHit | None:
+        """The indexed chunk of ``blob_name`` whose line span contains ``line``."""
         ...
 
 

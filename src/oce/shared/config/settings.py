@@ -413,6 +413,14 @@ class RetrievalSettings(BaseSettings):
         default=2.0, gt=0.0, description="词法召回超时；超时后只用其他召回"
     )
 
+    # 确定性答案不等 embedding：symbol 的 exact 定义、path 的 SQL 路径命中、reference
+    # 的调用/继承使用点都来自 SQL 车道，dense 只会再补一段没有证据的语义尾部，而
+    # 远端 embedding 的往返是最慢的阶段且有长尾。门控是二值结构事实（SQL 车道是否
+    # 给出了确定结构），不看任何分数；只有 import 证据不算。
+    decisive_skips_dense: bool = Field(
+        default=True, description="SQL 车道已给出确定答案时是否跳过 dense 召回"
+    )
+
     # 源码头部槽位：语义类查询的前 N 个结果优先给未被先验降权的源码文件。乘性
     # 先验在归一化 RRF 上过弱（同时进入 dense 和 lexical 的测试片段仍居首），
     # 而重排器又不一定启用；显式提到 test/测试 的查询不适用。0 关闭。
@@ -422,10 +430,11 @@ class RetrievalSettings(BaseSettings):
     # 只含 import 证据的片段是文件头（use/import 行、license 注释、模块 docstring）：
     # 它点名了文件接触的所有模块，所以在向量空间里离"架构/流程"措辞很近，却不
     # 实现其中任何一个。这类片段让出头部槽位；没有任何符号证据的片段不受影响。
-    # 2026-09-04 评测：三套 bench 上净效果为零（语义 nDCG@10 -0.1，两条 overview /
-    # call-chain 用相关度更低文件的正文换掉了高相关文件的头部片段）。默认关闭。
+    # 2026-09-04 在旧三套 bench 上净效果为零；2026-09-08 在 project_cases 主裁判上
+    # 配对复测：唯一的头部干扰项（call-chain 查询头部的 import 文件头）消失，其余
+    # 四套逐 case 不变。默认开启。
     head_skips_import_headers: bool = Field(
-        default=False, description="源码头部槽位是否跳过只含 import 证据的文件头片段"
+        default=True, description="源码头部槽位是否跳过只含 import 证据的文件头片段"
     )
     # reference 查询：有 exact/lexical 使用证据的片段按先验分级填充头部槽位；
     # 使用点全在测试/示例/__init__ 里时，仍胜过没有证据的文档。
@@ -490,6 +499,16 @@ class RetrievalSettings(BaseSettings):
     )
     call_chain_max_hops: int = Field(
         default=1, ge=1, le=3, description="调用链最多沿唯一封闭定义向上扩展多少跳"
+    )
+    # 两端点调用链（「A 如何到达 B」）：从 A 的定义沿被调用符号向下做有界搜索，
+    # 每一跳只沿 scope 内唯一可解析（或与调用方同文件）的定义前进，找到 B 即停。
+    # 深度、每个定义考察的调用数和展开的定义总数都是常量上限，不是可调阈值。
+    call_chain_max_depth: int = Field(
+        default=4, ge=1, le=8, description="两端点调用链最多向下搜索多少跳"
+    )
+    # 每一跳最多两段摘录（声明头部 + 交接调用处的窗口），四跳约需 3,000 字。
+    call_chain_max_chars: int = Field(
+        default=3_600, ge=1, description="调用路径小节字符上限"
     )
     implementations_enabled: bool = Field(
         default=True, description="是否附带实现/子类小节"

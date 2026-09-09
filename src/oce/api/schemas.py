@@ -190,6 +190,7 @@ class RetrievalRuntimeProfileResponse(BaseModel):
     llm_rerank_enabled: bool
     llm_rerank_policy: str
     query_rewrite_enabled: bool
+    decisive_skips_dense: bool = True
 
 
 class IndexProfileStatsResponse(BaseModel):

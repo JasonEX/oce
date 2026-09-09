@@ -617,6 +617,7 @@ def _runtime_profile(settings: Settings) -> RetrievalRuntimeProfile:
         llm_rerank_enabled=settings.llm.rerank_enabled,
         llm_rerank_policy=retrieval.llm_rerank_policy,
         query_rewrite_enabled=retrieval.query_rewrite_enabled,
+        decisive_skips_dense=retrieval.decisive_skips_dense,
     )
 
 

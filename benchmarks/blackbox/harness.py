@@ -49,9 +49,12 @@ SAFE_ENVIRONMENT_KEYS = (
     "RETRIEVAL_EXACT_ENABLED",
     "RETRIEVAL_SOURCE_PRIORITY_ENABLED",
     "RETRIEVAL_COVERAGE_SELECTION_ENABLED",
+    "RETRIEVAL_DECISIVE_SKIPS_DENSE",
     "RETRIEVAL_RELATION_RESERVE_CHARS",
     "RETRIEVAL_RELATION_SNIPPET_LINES",
     "RETRIEVAL_CALL_CHAIN_MAX_HOPS",
+    "RETRIEVAL_CALL_CHAIN_MAX_DEPTH",
+    "RETRIEVAL_CALL_CHAIN_MAX_CHARS",
     "RETRIEVAL_CALLERS_ENABLED",
     "RETRIEVAL_CALLERS_MAX",
     "RETRIEVAL_CALLERS_MAX_CHARS",
@@ -160,6 +163,9 @@ _TRANSIENT_MARKERS = (
     "connection refused",
     "database is locked",
     "operation timed out",
+    # A first upload of a large snapshot can hit a locked SQLite file while the
+    # worker embeds; the server answers 500 and the idempotent sync is retried.
+    "request failed (500)",
 )
 
 

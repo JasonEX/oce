@@ -302,3 +302,92 @@ def test_test_and_implementor_questions_ask_for_use_sites():
     )
     # A plain "how is it implemented" question still asks for the definition.
     assert classify_query_intent("How is `approx` implemented?") == QueryIntent.SYMBOL
+
+
+class TestCallersDefinitionsAndEndpoints:
+    def test_callers_of_one_symbol_are_a_reference_question(self):
+        for query in (
+            "Which functions call `extract_cookies_to_jar`?",
+            "Where is `_is_ignored_file` called?",
+            "Which code calls `app.render`?",
+            "哪些地方调用了 `get_debug_flag`？",
+            "谁调用了 `get_debug_flag`？",
+        ):
+            assert classify_query_intent(query) == QueryIntent.REFERENCE, query
+
+    def test_flow_questions_stay_call_chains(self):
+        for query in (
+            "how is `add_provider` called from the frontend?",
+            "前端如何调用后端的 `add_provider` 命令？",
+            "`enable_prompt` 的调用链？",
+            "Trace how `Flask.wsgi_app` dispatches a request to the view function.",
+        ):
+            assert classify_query_intent(query) == QueryIntent.CALL_CHAIN, query
+
+    def test_two_endpoints_in_a_how_question_are_a_call_chain(self):
+        for query in (
+            "How does `requests.get` reach `HTTPAdapter.send`?",
+            "How does constructing a `DataArray` reach `as_compatible_data`?",
+            "`Engine.ServeHTTP` 如何到达 `handleHTTPRequest`？",
+        ):
+            assert classify_query_intent(query) == QueryIntent.CALL_CHAIN, query
+        # Two symbols without a flow question remain two facets, except an
+        # impl lookup, which asks for the implementing use site.
+        assert (
+            classify_query_intent(
+                "Where is `IntoResponse` implemented for `StatusCode`?"
+            )
+            == QueryIntent.REFERENCE
+        )
+        assert (
+            classify_query_intent("Compare `Session.get` with `requests.get`.")
+            == QueryIntent.COMPOUND
+        )
+
+    def test_definition_question_with_parameter_types_is_a_symbol_question(self):
+        query = (
+            "Where is the `fromJson` overload taking a `JsonReader` "
+            "and a `TypeToken` defined?"
+        )
+        assert extract_code_identifiers(query) == (
+            "fromJson",
+            "JsonReader",
+            "TypeToken",
+        )
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
+        assert classify_query_intent("`Session.get` 和 `Cache` 在哪里定义？") == (
+            QueryIntent.SYMBOL
+        )
+
+    def test_private_names_are_extracted_once(self):
+        assert extract_code_identifiers("Where is `_is_ignored_file` called?") == (
+            "_is_ignored_file",
+        )
+        assert extract_code_identifiers("Where is `_infer_coords_and_dims` used?") == (
+            "_infer_coords_and_dims",
+        )
+
+
+def test_dunder_and_private_names_are_extracted_whole():
+    # ``__init__`` used to leak a fragment (``init__``) that turned a two-symbol
+    # "how does A reach B" question into a compound one; private names keep
+    # their underscores because that is how the index spells them.
+    assert extract_code_identifiers(
+        "How does `DataArray.__init__` reach `as_compatible_data`?"
+    ) == ("DataArray.__init__", "as_compatible_data")
+    assert (
+        classify_query_intent(
+            "How does `DataArray.__init__` reach `as_compatible_data`?"
+        )
+        == QueryIntent.CALL_CHAIN
+    )
+    assert extract_code_identifiers("Where is _is_ignored_file used?") == (
+        "_is_ignored_file",
+    )
+
+
+def test_private_and_public_spellings_remain_distinct_identifiers():
+    query = "How does `_start_flow` reach `start_flow`?"
+
+    assert extract_code_identifiers(query) == ("_start_flow", "start_flow")
+    assert classify_query_intent(query) == QueryIntent.CALL_CHAIN

@@ -68,6 +68,7 @@ class RetrievalRuntimeProfile:
     llm_rerank_enabled: bool = False
     llm_rerank_policy: str = "adaptive"
     query_rewrite_enabled: bool = False
+    decisive_skips_dense: bool = True
 
 
 @dataclass(frozen=True)

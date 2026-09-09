@@ -30,8 +30,9 @@ from oce.infrastructure.persistence.models import (
 )
 from oce.infrastructure.persistence.scope_filter import run_scoped
 
-# 结构证据的优先级分：endpoint > definition > import；SQL 排序与命中打分共用一份。
-_KIND_SCORES = {"endpoint": 1.0, "definition": 0.95, "call": 0.9}
+# 结构证据的优先级分：endpoint > definition > call/inherit（使用点）> import/reexport
+# （只是点名）；SQL 排序与命中打分共用一份。
+_KIND_SCORES = {"endpoint": 1.0, "definition": 0.95, "call": 0.9, "inherit": 0.9}
 _DEFAULT_KIND_SCORE = 0.85
 
 
@@ -392,6 +393,93 @@ class SymbolSearchStore:
                     )
         except TimeoutError:
             return []
+
+    async def calls_within(
+        self,
+        *,
+        blob_name: str,
+        start_line: int,
+        end_line: int,
+        scope: SearchScope,
+    ) -> list[tuple[str, int, str]]:
+        if end_line < start_line or blob_name not in scope.blob_names:
+            return []
+        stmt = (
+            select(
+                SymbolOccurrenceModel.identifier,
+                SymbolOccurrenceModel.start_line,
+                SymbolOccurrenceModel.enclosing,
+            )
+            .where(
+                SymbolOccurrenceModel.blob_name == blob_name,
+                SymbolOccurrenceModel.kind == CALL_KIND,
+                SymbolOccurrenceModel.start_line >= start_line,
+                SymbolOccurrenceModel.start_line <= end_line,
+            )
+            .order_by(SymbolOccurrenceModel.start_line)
+        )
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    rows = (await session.execute(stmt)).all()
+        except TimeoutError:
+            return []
+        calls: list[tuple[str, int, str]] = []
+        seen: set[str] = set()
+        for identifier, line, enclosing in rows:
+            if identifier in seen:
+                continue
+            seen.add(str(identifier))
+            calls.append((str(identifier), int(line), str(enclosing or "")))
+        return calls
+
+    async def chunk_for_line(
+        self,
+        *,
+        blob_name: str,
+        line: int,
+        scope: SearchScope,
+    ) -> SearchHit | None:
+        if line < 1 or blob_name not in scope.blob_names:
+            return None
+        stmt = (
+            select(
+                BlobModel.path,
+                ChunkModel.content,
+                BlobChunkModel.content_hash,
+                BlobChunkModel.start_line,
+                BlobChunkModel.end_line,
+                BlobChunkModel.context,
+            )
+            .join(ChunkModel, BlobChunkModel.content_hash == ChunkModel.content_hash)
+            .join(BlobModel, BlobChunkModel.blob_name == BlobModel.blob_name)
+            .where(
+                BlobChunkModel.blob_name == blob_name,
+                BlobChunkModel.start_line <= line,
+                BlobChunkModel.end_line >= line,
+                BlobModel.status == BlobStatus.READY.value,
+            )
+            .order_by(BlobChunkModel.start_line)
+            .limit(1)
+        )
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    row = (await session.execute(stmt)).first()
+        except TimeoutError:
+            return None
+        if row is None:
+            return None
+        return SearchHit(
+            blob_name=blob_name,
+            path=row.path,
+            content=row.content,
+            score=0.0,
+            content_hash=row.content_hash,
+            start_line=row.start_line,
+            end_line=row.end_line,
+            context=row.context,
+        )
 
     async def occurrence_kinds(
         self,

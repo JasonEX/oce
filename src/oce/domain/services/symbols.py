@@ -28,6 +28,9 @@ REEXPORT_KIND = "reexport"
 INHERIT_KIND = "inherit"
 # Kinds a file header may consist of without implementing anything.
 HEADER_KINDS: tuple[str, ...] = (IMPORT_KIND, REEXPORT_KIND)
+# Kinds that prove a chunk uses a symbol: it invokes it or extends it. An
+# import or re-export only names it.
+USE_SITE_KINDS: tuple[str, ...] = (CALL_KIND, INHERIT_KIND)
 
 
 @dataclass(frozen=True)

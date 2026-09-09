@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "snapshots": [
+    {
+      "id": "click-6aabf09",
+      "repo": "pallets/click",
+      "revision": "6aabf099bfdd4c1e75fe8d0e0d4241372b988ab1",
+      "code_language": "python"
+    },
+    {
+      "id": "fastify-ac28821",
+      "repo": "fastify/fastify",
+      "revision": "ac28821df11d7862694900326a6cc8c831dc8bf6",
+      "code_language": "javascript"
+    },
+    {
+      "id": "chi-ae6be74",
+      "repo": "go-chi/chi",
+      "revision": "ae6be7469132cf471ca099d8c7bda4010c4ff7b2",
+      "code_language": "go"
+    },
+    {
+      "id": "jsoup-7860d08",
+      "repo": "jhy/jsoup",
+      "revision": "7860d088e044236e288c1f88a743b68b2a0edece",
+      "code_language": "java"
+    }
+  ]
+}

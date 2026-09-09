@@ -648,7 +648,9 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=CoordinatedSearchStore([_hit("src/semantic.py", 0.9)]),
             exact_store=CoordinatedExactStore([_hit("src/exact.py", 1.0)]),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(
+                confidence_floor=0.0, final_select_k=10, decisive_skips_dense=False
+            ),
         )
 
         results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
@@ -656,6 +658,105 @@ class TestRetrievalPipeline:
         assert dense_started.is_set()
         assert exact_started.is_set()
         assert [hit.path for hit in results] == ["src/exact.py", "src/semantic.py"]
+
+    async def test_symbol_definition_does_not_wait_for_the_embedding(self):
+        """The exact lane answers a symbol request; the vector lanes are dropped."""
+        released = asyncio.Event()
+
+        class SlowEmbedder(FakeEmbedder):
+            async def embed_query(self, text):
+                await released.wait()
+                return await super().embed_query(text)
+
+        store = FakeSearchStore([_hit("src/semantic.py", 0.9)])
+        embedder = SlowEmbedder()
+        pipe = RetrievalPipeline(
+            embedder=embedder,
+            store=store,
+            exact_store=FakeExactSearchStore([_hit("src/exact.py", 1.0)]),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+        results = await asyncio.wait_for(
+            pipe.search("`target_symbol` 在哪里？", _scope("a" * 64), audit=audit),
+            timeout=1.0,
+        )
+        released.set()
+
+        assert [hit.path for hit in results] == ["src/exact.py"]
+        assert store.queries == []
+        assert audit.dense_route == "skip:exact_definition"
+        assert "embed" not in audit.stages and "dense" not in audit.stages
+        # The request itself is released, not cancelled: it completes later.
+        assert embedder.queries == []
+        await asyncio.sleep(0)
+        assert embedder.queries == ["`target_symbol` 在哪里？"]
+
+    async def test_without_structural_evidence_dense_recall_is_awaited(self):
+        store = FakeSearchStore([_hit("src/semantic.py", 0.9)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=store,
+            exact_store=FakeExactSearchStore([]),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+        results = await pipe.search(
+            "`target_symbol` 在哪里？", _scope("a" * 64), audit=audit
+        )
+        assert [hit.path for hit in results] == ["src/semantic.py"]
+        assert audit.dense_route == "dense"
+        assert "embed" in audit.stages
+
+    async def test_secondary_type_definition_does_not_skip_dense_recall(self):
+        class SecondaryOnlyStore(FakeExactSearchStore):
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                if "KnownType" in identifiers:
+                    return [_hit("src/known_type.py", 1.0)]
+                return []
+
+        dense = FakeSearchStore([_hit("src/semantic.py", 0.9)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=dense,
+            exact_store=SecondaryOnlyStore(),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search(
+            "Where is `missing_symbol` taking `KnownType` defined?",
+            _scope("a" * 64),
+            audit=audit,
+        )
+
+        assert dense.queries
+        assert audit.dense_route == "dense"
+
+    async def test_secondary_use_site_does_not_make_reference_decisive(self):
+        class SecondaryUseStore(FakeExactSearchStore):
+            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                if kinds == ("call", "inherit") and "KnownType" in identifiers:
+                    return [_hit("src/known_type_use.py", 1.0)]
+                return []
+
+        dense = FakeSearchStore([_hit("src/semantic.py", 0.9)])
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=dense,
+            exact_store=SecondaryUseStore(),
+            settings=_settings(confidence_floor=0.0, final_select_k=10),
+        )
+        audit = RetrievalAudit()
+
+        await pipe.search(
+            "Where is `MissingTrait` implemented for `KnownType`?",
+            _scope("a" * 64),
+            audit=audit,
+        )
+
+        assert dense.queries
+        assert audit.dense_route == "dense"
 
     async def test_path_branch_keeps_exact_identifier_recall(self):
         exact = _hit("src/exact.py", 1.0)
@@ -714,7 +815,9 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
             exact_store=exact_store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(
+                confidence_floor=0.0, final_select_k=10, decisive_skips_dense=False
+            ),
         )
 
         unbounded = await pipe.search("`target_symbol` 在哪里？")

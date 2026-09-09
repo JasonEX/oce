@@ -1,5 +1,7 @@
 """Pure relation helpers: qualified names, co-mentions, excerpts, section budgets."""
 
+from dataclasses import replace
+
 from oce.domain.services.evidence_pack import SectionInput, assemble_sections
 from oce.domain.services.formatter import format_retrieval
 from oce.domain.services.query_classifier import QueryIntent
@@ -9,6 +11,7 @@ from oce.domain.services.retrieval import (
     RetrievalState,
     get_strategy,
     order_by_comentions,
+    order_by_signature_comentions,
     resolve_qualified_hits,
     split_qualified_identifiers,
 )
@@ -295,3 +298,178 @@ async def test_call_chain_expands_only_through_unique_definitions():
             excerpts.append(excerpt)
     text = format_retrieval(excerpts)
     assert "Hop: 1" in text and "Hop: 2" in text
+
+
+def test_signature_comentions_pick_the_overload_declared_with_the_named_types():
+    # Both chunks mention JsonReader and TypeToken somewhere (javadoc); only
+    # the second declares the overload that takes them.
+    reader_doc = _hit(
+        "Gson.java",
+        "/** Like fromJson(JsonReader, TypeToken) but for strings. */\n"
+        "public <T> T fromJson(String json, Class<T> classOfT) {\n  return null;\n}",
+        start=100,
+    )
+    reader_impl = _hit(
+        "Gson.java",
+        "/** Reads JSON. */\n"
+        "public <T> T fromJson(JsonReader reader, TypeToken<T> typeOfT) {\n"
+        "  return null;\n}",
+        start=200,
+    )
+    definitions = [
+        DefinitionHit("fromJson", "definition", reader_doc, 101, 103),
+        DefinitionHit("fromJson", "definition", reader_impl, 201, 203),
+    ]
+    ordered = order_by_signature_comentions(
+        [reader_doc, reader_impl], definitions, ["JsonReader", "TypeToken"]
+    )
+    assert [hit.start_line for hit in ordered] == [200, 100]
+    # Without signature evidence the chunk-level count alone cannot tell.
+    assert order_by_comentions([reader_doc, reader_impl], ["JsonReader"]) == [
+        reader_doc,
+        reader_impl,
+    ]
+
+
+async def test_two_endpoint_chain_renders_header_and_handover_window():
+    """A hop whose delegating call sits deep in its body gets two excerpts.
+
+    The header names the declaration the flow passes through; the window ends
+    at the line that hands over to the next hop. Headers of every hop are
+    placed before any window spends the chain budget.
+    """
+    body = (
+        ["def main():"] + [f"    step_{i}()" for i in range(1, 14)] + ["    target()"]
+    )
+    body += ["    return 0"] * 10
+    main_chunk = _hit("src/main.py", "\n".join(body), start=1, blob="a" * 64)
+    target_chunk = _hit(
+        "src/target.py", "def target():\n    return 1", start=1, blob="b" * 64
+    )
+    main = DefinitionHit("main", "definition", main_chunk, 1, len(body))
+    target = DefinitionHit("target", "definition", target_chunk, 1, 2)
+
+    class ExactStore:
+        async def calls_within(self, *, blob_name, start_line, end_line, scope):
+            return [("target", 15, "main")] if blob_name == "a" * 64 else []
+
+        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+            return [target] if "target" in identifiers else []
+
+        async def chunk_for_line(self, *, blob_name, line, scope):
+            return main_chunk if blob_name == "a" * 64 else None
+
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=ExactStore(),
+        settings=RetrievalSettings(related_snippet_lines=10),
+    )
+    state = RetrievalState(
+        query="How does `main` reach `target`?",
+        scope=SearchScope(frozenset({"a" * 64, "b" * 64})),
+        intent=QueryIntent.CALL_CHAIN,
+        strategy=get_strategy(QueryIntent.CALL_CHAIN),
+        endpoints=[("main", [main]), ("target", [target])],
+    )
+
+    chain = await pipeline._call_chain_path(state)
+
+    assert [(hit.hop, hit.path, hit.start_line, hit.end_line) for hit in chain] == [
+        (0, "src/main.py", 1, 10),
+        (0, "src/main.py", 11, 15),
+        (1, "src/target.py", 1, 2),
+    ]
+    assert chain[0].content.startswith("def main():")
+    assert chain[1].content.splitlines()[-1].strip() == "target()"
+    assert all(hit.role == "chain" for hit in chain)
+
+    # A tight chain budget keeps every hop's header and drops the window.
+    pipeline.settings = RetrievalSettings(
+        related_snippet_lines=10,
+        call_chain_max_chars=len(chain[0].content) + len(chain[2].content),
+    )
+    chain = await pipeline._call_chain_path(state)
+    assert [(hit.hop, hit.start_line) for hit in chain] == [(0, 1), (1, 1)]
+
+
+async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
+    target_chunk = _hit("src/target.py", "def target():\n    return 1", blob="b" * 64)
+    target = DefinitionHit("target", "definition", target_chunk, 1, 2)
+
+    class ExactStore:
+        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+            return [target] if "target" in identifiers else []
+
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=ExactStore(),
+        settings=RetrievalSettings(),
+    )
+    state = RetrievalState(
+        query="How does `missing_start` reach `target`?",
+        scope=SearchScope(frozenset({"b" * 64})),
+        intent=QueryIntent.CALL_CHAIN,
+        strategy=get_strategy(QueryIntent.CALL_CHAIN),
+    )
+
+    endpoints = await pipeline._resolve_endpoints(state, ("missing_start", "target"))
+
+    assert endpoints == []
+
+
+async def test_chain_and_relation_sections_share_the_hard_context_budget():
+    primary = [
+        _hit("src/first.py", "a" * 1_000, blob="a" * 64),
+        _hit("src/second.py", "b" * 700, blob="b" * 64),
+        _hit("src/third.py", "c" * 500, blob="c" * 64),
+    ]
+    chain_hit = replace(
+        _hit("src/hop.py", "h" * 400, blob="d" * 64), role="chain", hop=1
+    )
+    caller_hit = _hit("src/caller.py", "x" * 600, blob="e" * 64)
+    caller = RelatedOccurrence("start", "call", caller_hit, 1, 1, "caller")
+    start = DefinitionHit("start", "definition", primary[0], 1, 1)
+
+    class ExactStore:
+        async def calls_within(self, *, blob_name, start_line, end_line, scope):
+            return []
+
+    class RelationStore:
+        async def find_callers(self, *, identifiers, scope, limit=8):
+            return [caller]
+
+    class Pipeline(RetrievalPipeline):
+        async def _call_chain_callees(self, state, *, max_chars=None):
+            assert max_chars is not None and len(chain_hit.content) <= max_chars
+            return [chain_hit]
+
+    pipeline = Pipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=ExactStore(),
+        relation_store=RelationStore(),
+        settings=RetrievalSettings(
+            max_context_chars=2_500,
+            relation_reserve_chars=1_000,
+            related_definitions_enabled=False,
+            tests_enabled=False,
+            merge_adjacent_enabled=False,
+        ),
+    )
+    state = RetrievalState(
+        query="Trace how `start` dispatches.",
+        scope=SearchScope(frozenset({"a" * 64, "b" * 64, "c" * 64})),
+        intent=QueryIntent.CALL_CHAIN,
+        strategy=get_strategy(QueryIntent.CALL_CHAIN),
+        lookup_identifiers=("start",),
+        endpoints=[("start", [start])],
+        selected=primary,
+    )
+
+    await pipeline._expand(state)
+
+    hits = [*state.selected, *state.related]
+    assert sum(len(hit.content) for hit in hits) <= 2_500
+    assert {hit.role for hit in state.related} == {"chain", "caller"}

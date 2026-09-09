@@ -85,6 +85,7 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "retrieval_metrics",
     }.issubset(tables)
     assert "rerank_route" in retrieval_columns
+    assert "dense_route" in retrieval_columns
     assert {
         "exact_definitions",
         "definition_sites",

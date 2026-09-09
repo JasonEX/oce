@@ -77,6 +77,9 @@ class RetrievalMetricRecord:
     intent: str | None = None
     path_boosted: bool = False
     rerank_route: str | None = None
+    # ``dense`` when vector recall ran, ``skip:<evidence>`` when the SQL lanes had
+    # already answered and the embedding round trip was not awaited.
+    dense_route: str | None = None
     head_slots: int = 0
     # Structural evidence the routing saw: definitions of the queried names and
     # the largest number of places declaring one of them (ambiguity).
@@ -102,6 +105,9 @@ class RetrievalAudit:
     path_boosted: bool = False
     # 例如 dedicated / dedicated+llm / skip:exact_definition；None 表示没有进入重排阶段。
     rerank_route: str | None = None
+    # dense / skip:exact_definition / skip:path_evidence / skip:use_sites；None 表示
+    # 没有进入召回阶段。
+    dense_route: str | None = None
     # 确定性 symbol/path 答案实际保留的头部槽位数。
     head_slots: int = 0
     # 查询点名符号的定义命中数，以及同名定义最多的那个符号的定义处数（歧义度）。
@@ -121,7 +127,11 @@ class RetrievalAudit:
             yield
         finally:
             elapsed = int((perf_counter() - start) * 1000)
-            self.stages[name] = self.stages.get(name, 0) + elapsed
+            self.record(name, elapsed)
+
+    def record(self, name: str, elapsed_ms: int) -> None:
+        """Add a stage duration measured elsewhere (a task awaited later)."""
+        self.stages[name] = self.stages.get(name, 0) + elapsed_ms
 
 
 class MetricsSink(Protocol):

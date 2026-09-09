@@ -73,6 +73,7 @@ class SearchQueryHandler:
                 intent=audit.intent,
                 path_boosted=audit.path_boosted,
                 rerank_route=audit.rerank_route,
+                dense_route=audit.dense_route,
                 head_slots=audit.head_slots,
                 exact_definitions=audit.exact_definitions,
                 definition_sites=audit.definition_sites,

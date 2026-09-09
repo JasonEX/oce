@@ -183,16 +183,15 @@ async def test_call_chain_appends_related_definition(indexed):
         "How does `authenticate` call its base service?", scope
     )
 
-    related = [hit for hit in hits if hit.role == "related"]
+    # A one-ended trace lists what ``authenticate`` calls as chain hops; the
+    # remaining referenced definitions follow as related excerpts. The
+    # exception class it raises is shown once, as a signature excerpt.
+    excerpts = [hit for hit in hits if hit.role in ("related", "chain")]
     assert "src/app/base.py" in {hit.path for hit in hits}
-    assert any(hit.path == "src/app/errors.py" for hit in related)
-    assert all(
-        hit.content.startswith("class PoolExhausted")
-        for hit in related
-        if hit.path == "src/app/errors.py"
-    )
+    errors = [hit for hit in excerpts if hit.path == "src/app/errors.py"]
+    assert len(errors) == 1
+    assert errors[0].content.startswith("class PoolExhausted")
     text = format_retrieval(hits)
-    assert RELATED_HEADER in text
     assert "Path: src/app/errors.py" in text
 
 
@@ -210,9 +209,14 @@ async def test_symbol_lookup_reaches_definition_with_chunk_context(indexed):
     assert any(
         ctx and ctx.startswith("class UserService(BaseService):") for ctx in contexts
     ) or any("class UserService" in hit.content for hit in primary)
-    # Focused symbol lookups answer the requested definition directly; they do
-    # not spend the compact result budget expanding surrounding type relations.
-    assert all(hit.role == "primary" for hit in hits)
+    # Focused symbol lookups answer the requested definition directly; the
+    # relations that follow (callers, the definitions its body calls, tests)
+    # are labelled sections, never more primary results.
+    assert hits[0].role == "primary"
+    assert all(
+        hit.role in ("related", "caller", "implementation", "test", "reexport")
+        for hit in hits[len(primary) :]
+    )
 
 
 async def test_lexical_recall_alone_finds_call_sites(indexed):

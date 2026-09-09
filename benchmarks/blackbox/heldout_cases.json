@@ -1,0 +1,743 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "llm-assisted",
+    "note": "Held-out set for the 2026-09-05 utility round. Four repositories outside the curated corpus and the CSN set, pinned before any code change of the round was measured on this set. Regions are enclosing definition spans derived with the tree-sitter symbol provider (offline helper) plus a read of each site; reviewed once, not iterated against retrieval output. The manifest hash is recorded in the round report and the suite is run once at the end of the round."
+  },
+  "cases": [
+    {
+      "id": "click-make-context-callers",
+      "instance_id": "click-6aabf09",
+      "kind": "reference",
+      "query": "Which functions call `make_context`?",
+      "rationale": "Command.main builds the root context, Group.invoke builds sub-contexts, and shell completion resolves contexts the same way; the declaration is secondary.",
+      "primary_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 1489,
+          "end": 1623
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2026,
+          "end": 2092
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 696,
+          "end": 754
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 1333,
+          "end": 1368
+        }
+      ],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "click-main-to-invoke-chain",
+      "instance_id": "click-6aabf09",
+      "kind": "call_chain",
+      "query": "How does `Command.main` reach `Context.invoke`?",
+      "rationale": "Command.main -> Command.invoke -> Context.invoke runs the callback.",
+      "primary_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 1489,
+          "end": 1623,
+          "hop": 0
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1406,
+          "end": 1420,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 862,
+          "end": 915,
+          "hop": 2
+        }
+      ],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "click-make-pass-decorator-tests",
+      "instance_id": "click-6aabf09",
+      "kind": "test_mapping",
+      "query": "Which tests cover `make_pass_decorator`?",
+      "rationale": "tests/test_context.py exercises make_pass_decorator directly; the decorator is implemented in decorators.py.",
+      "primary_regions": [
+        {
+          "path": "tests/test_context.py",
+          "start": 663,
+          "end": 697
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 17,
+          "end": 36
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/click/decorators.py",
+          "start": 51,
+          "end": 97
+        }
+      ],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": [
+        "tests/test_context.py"
+      ]
+    },
+    {
+      "id": "click-pass-context-reexport",
+      "instance_id": "click-6aabf09",
+      "kind": "reexport",
+      "query": "Where is `pass_context` defined?",
+      "rationale": "Defined in decorators.py and re-exported from the package __init__.",
+      "primary_regions": [
+        {
+          "path": "src/click/decorators.py",
+          "start": 28,
+          "end": 36
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/click/__init__.py",
+          "start": 26,
+          "end": 26
+        }
+      ],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "click-resolve-command-overrides",
+      "instance_id": "click-6aabf09",
+      "kind": "multi_impl",
+      "query": "Which classes override `resolve_command`?",
+      "rationale": "AliasedGroup in the aliases example and in the tests override Group.resolve_command.",
+      "primary_regions": [
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 70,
+          "end": 73
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 334,
+          "end": 336
+        },
+        {
+          "path": "tests/typing/typing_aliased_group.py",
+          "start": 22,
+          "end": 28
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 2094,
+          "end": 2118
+        }
+      ],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "click-parse-args-definitions",
+      "instance_id": "click-6aabf09",
+      "kind": "multi_impl",
+      "query": "Where is `parse_args` defined?",
+      "rationale": "Command.parse_args, Group.parse_args and the low-level _OptionParser.parse_args all declare the name.",
+      "primary_regions": [
+        {
+          "path": "src/click/core.py",
+          "start": 1370,
+          "end": 1404
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2012,
+          "end": 2024
+        },
+        {
+          "path": "src/click/parser.py",
+          "start": 298,
+          "end": 314
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "src/click/termui.py"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "fastify-wrap-thenable-callers",
+      "instance_id": "fastify-ac28821",
+      "kind": "reference",
+      "query": "Which functions call `wrapThenable`?",
+      "rationale": "handleError and the pre-handler callback hand promise results to wrapThenable.",
+      "primary_regions": [
+        {
+          "path": "lib/error-handler.js",
+          "start": 30,
+          "end": 76
+        },
+        {
+          "path": "lib/handle-request.js",
+          "start": 184,
+          "end": 227
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/wrap-thenable.js",
+          "start": 12,
+          "end": 82
+        }
+      ],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "fastify-build-error-handler-callers",
+      "instance_id": "fastify-ac28821",
+      "kind": "reference",
+      "query": "Where is `buildErrorHandler` called?",
+      "rationale": "setErrorHandler, the 404 handler setup and route registration each build an error handler.",
+      "primary_regions": [
+        {
+          "path": "fastify.js",
+          "start": 766,
+          "end": 780
+        },
+        {
+          "path": "lib/four-oh-four.js",
+          "start": 128,
+          "end": 158
+        },
+        {
+          "path": "lib/route.js",
+          "start": 274,
+          "end": 456
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/error-handler.js",
+          "start": 124,
+          "end": 132
+        }
+      ],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "fastify-send-to-onsend-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "query": "How does `Reply.send` reach `onSendHookRunner`?",
+      "rationale": "Reply.send -> onSendHook -> onSendHookRunner in lib/hooks.js.",
+      "primary_regions": [
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 241,
+          "hop": 0
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 561,
+          "end": 573,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/hooks.js",
+          "start": 278,
+          "end": 325,
+          "hop": 2
+        }
+      ],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "fastify-onsend-runner-tests",
+      "instance_id": "fastify-ac28821",
+      "kind": "test_mapping",
+      "query": "Which tests cover `onSendHookRunner`?",
+      "rationale": "test/internals/hook-runner.test.js drives onSendHookRunner directly.",
+      "primary_regions": [
+        {
+          "path": "test/internals/hook-runner.test.js",
+          "start": 251,
+          "end": 300
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "lib/hooks.js",
+          "start": 278,
+          "end": 325
+        }
+      ],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": [
+        "test/internals/hook-runner.test.js"
+      ]
+    },
+    {
+      "id": "fastify-handle-request-definition",
+      "instance_id": "fastify-ac28821",
+      "kind": "multi_impl",
+      "query": "Where is `handleRequest` defined?",
+      "rationale": "A single module-level function in lib/handle-request.js.",
+      "primary_regions": [
+        {
+          "path": "lib/handle-request.js",
+          "start": 25,
+          "end": 93
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "fastify-set-error-handler-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "query": "How does `setErrorHandler` reach `buildErrorHandler`?",
+      "rationale": "setErrorHandler wraps the handler by calling buildErrorHandler.",
+      "primary_regions": [
+        {
+          "path": "fastify.js",
+          "start": 766,
+          "end": 780,
+          "hop": 0
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 124,
+          "end": 132,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "lib/context.js"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "chi-chain-callers",
+      "instance_id": "chi-ae6be74",
+      "kind": "reference",
+      "query": "Which functions call `Chain`?",
+      "rationale": "NotFound, MethodNotAllowed and handle compose middlewares with Chain.",
+      "primary_regions": [
+        {
+          "path": "mux.go",
+          "start": 203,
+          "end": 219
+        },
+        {
+          "path": "mux.go",
+          "start": 223,
+          "end": 239
+        },
+        {
+          "path": "mux.go",
+          "start": 430,
+          "end": 451
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "chain.go",
+          "start": 6,
+          "end": 8
+        }
+      ],
+      "must_not_paths": [
+        "middleware/logger.go"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "chi-new-route-context-callers",
+      "instance_id": "chi-ae6be74",
+      "kind": "reference",
+      "query": "Where is `NewRouteContext` called?",
+      "rationale": "NewMux allocates the pool context and GetHead middleware builds a routing context.",
+      "primary_regions": [
+        {
+          "path": "mux.go",
+          "start": 52,
+          "end": 58
+        },
+        {
+          "path": "middleware/get_head.go",
+          "start": 10,
+          "end": 39
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "context.go",
+          "start": 31,
+          "end": 33
+        }
+      ],
+      "must_not_paths": [
+        "chain.go"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "chi-mount-tests",
+      "instance_id": "chi-ae6be74",
+      "kind": "test_mapping",
+      "query": "Which tests cover `Mount`?",
+      "rationale": "TestMuxMounts exercises Mount; Mount is implemented in mux.go.",
+      "primary_regions": [
+        {
+          "path": "mux_test.go",
+          "start": 208,
+          "end": 243
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "mux.go",
+          "start": 295,
+          "end": 354
+        }
+      ],
+      "must_not_paths": [
+        "chain.go"
+      ],
+      "test_paths": [
+        "mux_test.go"
+      ]
+    },
+    {
+      "id": "chi-route-to-mount-chain",
+      "instance_id": "chi-ae6be74",
+      "kind": "call_chain",
+      "query": "How does `Mux.Route` reach `Mount`?",
+      "rationale": "Route builds a sub-router and mounts it via Mount.",
+      "primary_regions": [
+        {
+          "path": "mux.go",
+          "start": 278,
+          "end": 286,
+          "hop": 0
+        },
+        {
+          "path": "mux.go",
+          "start": 295,
+          "end": 354,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "chain.go"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "chi-walk-tests",
+      "instance_id": "chi-ae6be74",
+      "kind": "test_mapping",
+      "query": "Which tests cover `Walk`?",
+      "rationale": "TestWalker in tree_test.go walks a router; Walk is declared in tree.go.",
+      "primary_regions": [
+        {
+          "path": "tree_test.go",
+          "start": 512,
+          "end": 523
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "tree.go",
+          "start": 882,
+          "end": 884
+        }
+      ],
+      "must_not_paths": [
+        "chain.go"
+      ],
+      "test_paths": [
+        "tree_test.go"
+      ]
+    },
+    {
+      "id": "chi-urlparam-definitions",
+      "instance_id": "chi-ae6be74",
+      "kind": "multi_impl",
+      "query": "Where is `URLParam` defined?",
+      "rationale": "A package-level function and a Context method share the name in context.go.",
+      "primary_regions": [
+        {
+          "path": "context.go",
+          "start": 124,
+          "end": 131
+        },
+        {
+          "path": "context.go",
+          "start": 11,
+          "end": 13
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "chain.go"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "jsoup-run-parser-callers",
+      "instance_id": "jsoup-7860d08",
+      "kind": "reference",
+      "query": "Which methods call `runParser`?",
+      "rationale": "TreeBuilder.parse/parseFragment and StreamParser.complete/completeFragment drive the token loop.",
+      "primary_regions": [
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 81,
+          "end": 85
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 87,
+          "end": 92
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 193,
+          "end": 197
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 206,
+          "end": 209
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 111,
+          "end": 114
+        }
+      ],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "jsoup-parse-input-callers",
+      "instance_id": "jsoup-7860d08",
+      "kind": "reference",
+      "query": "Where is `parseInput` called?",
+      "rationale": "Jsoup.parse overloads and DataUtil charset handling call Parser.parseInput.",
+      "primary_regions": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 50,
+          "end": 52
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 64,
+          "end": 66
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/DataUtil.java",
+          "start": 251,
+          "end": 321
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/DataUtil.java",
+          "start": 323,
+          "end": 346
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 88,
+          "end": 95
+        }
+      ],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "jsoup-parse-to-run-parser-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "query": "How does `Jsoup.parse` reach `runParser`?",
+      "rationale": "Jsoup.parse -> Parser.parseInput -> TreeBuilder.parse -> runParser.",
+      "primary_regions": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 50,
+          "end": 52,
+          "hop": 0
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 88,
+          "end": 95,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 81,
+          "end": 85,
+          "hop": 2
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 111,
+          "end": 114,
+          "hop": 3
+        }
+      ],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "jsoup-is-valid-tests",
+      "instance_id": "jsoup-7860d08",
+      "kind": "test_mapping",
+      "query": "Which tests cover `isValid`?",
+      "rationale": "CleanerTest exercises Jsoup.isValid; the entry point is in Jsoup.java.",
+      "primary_regions": [
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 199,
+          "end": 219
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 434,
+          "end": 436
+        }
+      ],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": [
+        "src/test/java/org/jsoup/safety/CleanerTest.java"
+      ]
+    },
+    {
+      "id": "jsoup-clean-definitions",
+      "instance_id": "jsoup-7860d08",
+      "kind": "multi_impl",
+      "query": "Where is `clean` defined?",
+      "rationale": "Three Jsoup.clean overloads delegate to Cleaner.clean.",
+      "primary_regions": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 346,
+          "end": 355
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 387,
+          "end": 389
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 405,
+          "end": 411
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 62,
+          "end": 70
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": []
+    },
+    {
+      "id": "jsoup-clean-to-cleaner-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "query": "How does `Jsoup.clean` reach `Cleaner.clean`?",
+      "rationale": "Jsoup.clean builds a Cleaner and calls its clean method.",
+      "primary_regions": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 346,
+          "end": 355,
+          "hop": 0
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 62,
+          "end": 70,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "src/main/java/org/jsoup/nodes/Attribute.java"
+      ],
+      "test_paths": []
+    }
+  ]
+}
