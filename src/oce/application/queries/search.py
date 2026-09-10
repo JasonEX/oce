@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from time import perf_counter
 
 from oce.application.messages import Query
-from oce.domain.services.retrieval import RetrievalPipeline
+from oce.application.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.metrics import (
     MetricsSink,

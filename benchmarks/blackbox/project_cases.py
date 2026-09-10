@@ -96,6 +96,8 @@ class ProjectCase:
     supporting_regions: tuple[TruthRegion, ...]
     must_not_paths: tuple[str, ...]
     test_paths: tuple[str, ...]
+    family_id: str | None = None
+    query_form: str | None = None
 
 
 def _region(raw: object) -> TruthRegion:
@@ -150,6 +152,8 @@ def load_manifest(path: Path) -> tuple[ProjectCase, ...]:
             supporting_regions=supporting,
             must_not_paths=must_not,
             test_paths=tests,
+            family_id=raw.get("family_id"),
+            query_form=raw.get("query_form"),
         )
         if (
             not case.id
@@ -162,6 +166,9 @@ def load_manifest(path: Path) -> tuple[ProjectCase, ...]:
             or (case.kind == "test_mapping" and not case.test_paths)
             or len(set(must_not)) != len(must_not)
             or len(set(tests)) != len(tests)
+            or bool(case.family_id) != bool(case.query_form)
+            or (case.family_id is not None and not isinstance(case.family_id, str))
+            or (case.query_form is not None and not isinstance(case.query_form, str))
         ):
             raise ValueError(f"invalid or duplicate project case: {case.id!r}")
         truth_paths = {region.path for region in (*primary, *supporting)}
@@ -171,6 +178,22 @@ def load_manifest(path: Path) -> tuple[ProjectCase, ...]:
         cases.append(case)
     if not cases:
         raise ValueError("project case manifest is empty")
+    families: dict[str, tuple[object, ...]] = {}
+    for case in cases:
+        if case.family_id is None:
+            continue
+        truth = (
+            case.instance_id,
+            case.kind,
+            case.primary_regions,
+            case.supporting_regions,
+            case.must_not_paths,
+            case.test_paths,
+        )
+        if families.setdefault(case.family_id, truth) != truth:
+            raise ValueError(
+                f"{case.family_id}: query variants must share snapshot and truth"
+            )
     return tuple(cases)
 
 
@@ -377,6 +400,51 @@ def aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
     }
 
 
+def query_family_results(results: Sequence[dict[str, object]]) -> dict[str, object]:
+    """Report independent needs equally, including each need's weakest wording."""
+    families = sorted(
+        {str(row["family_id"]) for row in results if row.get("family_id")}
+    )
+    if not families:
+        return {}
+    groups = {
+        family: [row for row in results if row.get("family_id") == family]
+        for family in families
+    }
+    complete = [
+        rows for rows in groups.values() if all(row["status"] == "ok" for row in rows)
+    ]
+    summary: dict[str, object] = {
+        "families": len(groups),
+        "successful_families": len(complete),
+        "error_families": len(groups) - len(complete),
+    }
+    for metric in ("primary_hit_at_3", "primary_mrr", "relation_recall", "test_recall"):
+        values = [
+            [
+                float(cast(dict, row["metrics"])[metric])
+                if row["status"] == "ok"
+                else 0.0
+                for row in rows
+            ]
+            for rows in groups.values()
+        ]
+        summary[metric] = fmean(fmean(group) for group in values) if values else None
+        summary[f"worst_{metric}"] = (
+            fmean(min(group) for group in values) if values else None
+        )
+    return {
+        "family_summary": summary,
+        "by_family": {family: aggregate(rows) for family, rows in groups.items()},
+        "by_query_form": {
+            form: aggregate([row for row in results if row.get("query_form") == form])
+            for form in sorted(
+                {str(row["query_form"]) for row in results if row.get("query_form")}
+            )
+        },
+    }
+
+
 def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
     workdir = args.workdir.expanduser().resolve()
     manifest = args.cases.expanduser().resolve()
@@ -419,6 +487,8 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             "kind": case.kind,
             "code_language": snapshots[case.instance_id].code_language,
         }
+        if case.family_id is not None:
+            base.update(family_id=case.family_id, query_form=case.query_form)
         try:
             response = run_client(
                 binary,
@@ -485,7 +555,14 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
             kind: aggregate([result for result in results if result["kind"] == kind])
             for kind in KINDS
         },
+        "by_snapshot": {
+            snapshot: aggregate(
+                [row for row in results if row["instance_id"] == snapshot]
+            )
+            for snapshot in sorted({row["instance_id"] for row in results})
+        },
         "cases": results,
+        **query_family_results(results),
     }
 
 
@@ -584,6 +661,79 @@ def compare(paths: Iterable[Path]) -> str:
     )
     output.append("")
     output.extend(_table(("Variant", *ERROR_CLASSES), class_rows))
+    family_rows = []
+    form_rows = []
+    for path, value in loaded:
+        label = str(value.get("label", path.stem))
+        family = value.get("family_summary")
+        if family:
+            family_rows.append(
+                (
+                    label,
+                    str(family["families"]),
+                    _percent(family["primary_hit_at_3"]),
+                    _percent(family["worst_primary_hit_at_3"]),
+                    _ratio(family["primary_mrr"]),
+                    _ratio(family["worst_primary_mrr"]),
+                    _percent(family["relation_recall"]),
+                    _percent(family["worst_relation_recall"]),
+                )
+            )
+        for form, summary in value.get("by_query_form", {}).items():
+            form_rows.append(
+                (
+                    label,
+                    form,
+                    _percent(summary["primary_hit_at_3"]),
+                    _ratio(summary["primary_mrr"]),
+                    _percent(summary["relation_recall"]),
+                    _percent(summary["distractor_head"]),
+                )
+            )
+    if family_rows:
+        output.append("")
+        output.extend(
+            _table(
+                (
+                    "Variant",
+                    "Needs",
+                    "Mean Hit@3",
+                    "Worst Hit@3",
+                    "Mean MRR",
+                    "Worst MRR",
+                    "Mean RelR",
+                    "Worst RelR",
+                ),
+                family_rows,
+            )
+        )
+        output.append("")
+        output.extend(
+            _table(
+                ("Variant", "Wording", "Hit@3", "MRR", "RelR", "Distractor head"),
+                form_rows,
+            )
+        )
+    snapshot_rows = [
+        (
+            str(value.get("label", path.stem)),
+            snapshot,
+            _percent(summary["primary_hit_at_3"]),
+            _ratio(summary["primary_mrr"]),
+            _percent(summary["relation_recall"]),
+            _percent(summary["distractor_head"]),
+        )
+        for path, value in loaded
+        for snapshot, summary in value.get("by_snapshot", {}).items()
+    ]
+    if snapshot_rows:
+        output.append("")
+        output.extend(
+            _table(
+                ("Variant", "Snapshot", "Hit@3", "MRR", "RelR", "Distractor head"),
+                snapshot_rows,
+            )
+        )
     return "\n".join(output)
 
 

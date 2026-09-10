@@ -33,7 +33,7 @@ server modules, but their results diagnose a component and cannot support a
 product-utility claim. This distinction keeps a fast Milvus experiment useful
 without coupling the black-box evaluator to the implementation under test.
 
-The black-box layer has four small infrastructure modules:
+The black-box layer has five infrastructure modules:
 
 - [`harness.py`](blackbox/harness.py) owns the released-client subprocess,
   stable response parsing, safe runtime provenance, and paired-result identity.
@@ -52,11 +52,32 @@ client state, and raw results stay outside this repository.
 
 | Suite | Current coverage | Primary question | Main metrics |
 | --- | --- | --- | --- |
-| `short_queries` | 22 anchors, 7 snapshots, 132 English/Chinese queries | Are known symbols, paths, and references at the head? | Top-1, MRR, Hit@10, path recall, reference definition-first rate |
-| `semantic_queries` | 21 reviewed queries, 7 snapshots, balanced feature/overview/call-chain intents | Does broad retrieval return the right architectural owners compactly? | graded nDCG@10, weighted Recall@5/@10, primary Top-1, characters, latency |
+| `short_queries` | 40 anchors, 13 snapshots, 240 English/Chinese queries | Are known symbols, paths, and references at the head? | Top-1, MRR, Hit@10, path recall, reference definition-first rate |
+| `semantic_queries` | 39 reviewed queries, 13 snapshots, balanced feature/overview/call-chain intents | Does broad retrieval return the right architectural owners compactly? | graded nDCG@10, weighted Recall@5/@10, primary Top-1, characters, latency |
 | `swe_explore` | real issue text and trajectory/edit truth; 5/13/53/451-case profiles | Does issue-level retrieval reach useful context and likely edit locations? | official SWE-Explore metrics, edit/core Top-1 and Recall@10, characters, latency |
 | `project_cases` | 35 relation cases, 10 snapshots: reference, call-chain, test mapping, re-export, multi-implementation | Does the answer close the relation an edit needs: callers, hops, tests, public entry, right overload? | primary Hit@3/MRR, relation and supporting recall, hop coverage, chain closure, test recall, distractor-in-head rate, truth-region share, one error class per case |
 | `csn_queries` | 80 docstring queries, 8 pinned CodeSearchNet repositories, 4 languages | External sanity guard: does a plain description still reach its function? | region Top-1/Hit@5/Hit@10/MRR, file Top-1, split by whether the query names the function |
+
+The 240 short queries are variants of 40 anchors, not 240 independent needs.
+[`query_variants.json`](blackbox/query_variants.json) fixes 12 needs with six
+wordings each (72 queries): quoted/unquoted identifiers, nominal and imperative
+forms, Chinese and an informational preamble. It inherits reviewed region truth
+from `project_cases` unchanged. `project_cases` reports equal-need means and each
+need's worst wording, together with wording and repository breakdowns. All forms
+of a need belong to one split. These assistant-authored forms are development
+controls and are not independent human annotations or untouched held-out data.
+
+[`layout_controls.py`](blackbox/layout_controls.py) generates four synthetic needs
+in Python and TypeScript over 20 code layouts (80 queries). Names, module filenames
+(including `index.ts`, `types.ts`, and `__init__.py`) and declaration offsets vary;
+imports and target line labels change with them. Its spec digest includes source,
+queries and truth, and evaluation uses the released client. This isolates layout
+sensitivity; it does not measure real-project or downstream agent success.
+
+```bash
+uv run python -m benchmarks.blackbox.project_cases --cases benchmarks/blackbox/query_variants.json run --api-url http://127.0.0.1:8986 --label candidate --output /tmp/query-variants.json
+uv run python -m benchmarks.blackbox.layout_controls run --api-url http://127.0.0.1:8986 --label candidate --output /tmp/layout-controls.json
+```
 
 `project_cases` is the main judge for relation work; the public suites are
 guard rails. Its truth ([`project_cases.json`](blackbox/project_cases.json))
@@ -81,9 +102,8 @@ reachable ones; the parquet files are needed only to regenerate the manifest
 dataset license is listed as "other" on Hugging Face; review it before any use
 beyond internal evaluation.
 
-[`curated_corpus.json`](blackbox/curated_corpus.json) pins five Python snapshots
-from the development issue set, Redux Toolkit v2.2.7 for TypeScript, and axum
-v0.7.9 for Rust. [`short_query_anchors.json`](blackbox/short_query_anchors.json)
+[`curated_corpus.json`](blackbox/curated_corpus.json) pins the 13 repository snapshots
+used by the curated suites. [`short_query_anchors.json`](blackbox/short_query_anchors.json)
 and [`semantic_cases.json`](blackbox/semantic_cases.json) reference those IDs;
 the evaluator refuses unknown snapshots, mutable revisions, missing truth files,
 or comparisons with different truth digests or ordered case IDs.
@@ -102,6 +122,9 @@ Use the layers at different cadences:
 
 The curated truth is deliberately small and reviewable. It is suitable for
 regression and ablation work, but it is not an independently reviewed benchmark.
+The historical `heldout_*` manifests have also informed the September 10 routing
+review and are now development regression sets. Their filenames and frozen truth
+remain for paired replay; they no longer provide untouched validation evidence.
 
 Work on utility first: locate the right implementation, return the requested use
 sites, and cover the required relation steps. Optimize latency after those gains
@@ -117,6 +140,15 @@ the development profile, and the same run-to-run noise on `project_cases`
 (one case, about 3 points on any rate).
 There is not yet a downstream agent task-success suite or an ACE head-to-head
 evaluation, so retrieval scores must not be presented as either result.
+
+The [September 10 state-machine evaluation](results/state-machine-2026-09-10.md)
+records the repeated baseline/candidate comparison, wording and layout controls,
+and separate source-prior ablations. It retains the semantic regressions that
+exceed the current tolerance; passing unit checks is not a utility qualification.
+The [follow-up evaluation](results/state-machine-followup-2026-09-10.md) records
+the subsequent test-to-implementation and explicit-implementor repairs. It keeps
+the earlier semantic losses visible without restoring filename-specific priors
+to recover scores on those cases.
 
 ### Upstream question supplement
 

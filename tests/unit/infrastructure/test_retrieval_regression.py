@@ -21,11 +21,11 @@ from collections import Counter
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from oce.application.retrieval import RetrievalPipeline
 from oce.application.service import compute_blob_name
 from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope, VectorRecord
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
@@ -343,7 +343,7 @@ async def indexed():
 
 def _pipeline(sessions, vector_index, **overrides):
     embedder = QueryCapture()
-    settings = RetrievalSettings(confidence_floor=0.0, **overrides)
+    settings = RetrievalSettings(**overrides)
     symbol_store = SymbolSearchStore(sessions)
     return RetrievalPipeline(
         embedder=embedder,
@@ -461,7 +461,7 @@ async def test_reference_leads_with_a_use_site(indexed, query, use_sites, declar
     # Call sites were found, so the semantic tail was never awaited, and
     # the chunks that only import the name never take a head slot ahead of
     # a chunk that calls it.
-    assert audit.dense_route == "skip:use_sites"
+    assert audit.dense_route == "dense"
     assert "src/billing/__init__.py" not in paths[:2], paths
 
 
@@ -492,9 +492,8 @@ async def test_corpus_stays_adversarial(indexed, monkeypatch):
     the failure this file exists to catch and needs to be made harder again.
     """
     monkeypatch.setattr(
-        RetrievalPipeline,
-        "_structural_heads",
-        lambda self, state, hits, priority_factor=None: (),
+        "oce.application.retrieval.structural_heads",
+        lambda hits, **kwargs: (),
     )
     # The fused path is the one under test: with the exact lane answering
     # alone, dense recall is skipped and there is nothing to be adversarial to.

@@ -2,21 +2,27 @@
 
 from dataclasses import replace
 
-from oce.domain.services.evidence_pack import SectionInput, assemble_sections
-from oce.domain.services.formatter import format_retrieval
-from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
-from oce.domain.services.retrieval import (
+import pytest
+
+from oce.application.call_chain import resolve_endpoints, trace_callers, trace_path
+from oce.application.retrieval import (
     RetrievalPipeline,
     RetrievalState,
     get_strategy,
+)
+from oce.domain.services.evidence_pack import SectionInput, assemble_sections
+from oce.domain.services.formatter import format_retrieval
+from oce.domain.services.query_classifier import QueryIntent, QueryRoute
+from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
+from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
+from oce.domain.services.symbol_resolution import (
     order_by_comentions,
     order_by_signature_comentions,
     resolve_qualified_hits,
     split_qualified_identifiers,
 )
-from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
+from tests.unit.application.fakes import EmptyExactSearchStore
 
 
 def _hit(path, content, start=1, context=None, blob="a" * 64):
@@ -30,6 +36,67 @@ def _hit(path, content, start=1, context=None, blob="a" * 64):
         end_line=start + len(content.splitlines()) - 1,
         context=context,
     )
+
+
+@pytest.mark.parametrize("path", ["src/local.py", "src/__init__.py"])
+async def test_implementation_request_reuses_inherit_facts_after_selection(path):
+    local = _hit(path, "class LocalDriver(SocketDriver):\n    pass")
+    remote = _hit(
+        "src/remote.py", "class RemoteDriver(SocketDriver):\n    pass", blob="b" * 64
+    )
+    factory = _hit(
+        "src/factory.py", "def make():\n    return SocketDriver()", blob="c" * 64
+    )
+
+    class Implementations:
+        lookups = 0
+
+        async def find_implementations(self, *, identifiers, scope, limit=8):
+            self.lookups += 1
+            assert identifiers == ("SocketDriver",)
+            return [
+                RelatedOccurrence(
+                    "SocketDriver", "inherit", local, 1, 2, "LocalDriver"
+                ),
+                RelatedOccurrence(
+                    "SocketDriver", "inherit", remote, 1, 2, "RemoteDriver"
+                ),
+            ]
+
+    relations = Implementations()
+    pipe = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        relation_store=relations,
+        settings=RetrievalSettings(
+            final_select_k=1,
+            callers_enabled=False,
+            tests_enabled=False,
+            related_definitions_enabled=False,
+        ),
+    )
+    state = RetrievalState(
+        query="Which classes implement `SocketDriver`?",
+        scope=SearchScope(
+            frozenset({local.blob_name, remote.blob_name, factory.blob_name})
+        ),
+        candidates=[factory, local],
+        # Dense recalled the class; the bounded implementation lookup proves
+        # its role even when it fell outside the general exact recall window.
+        exact=[factory],
+        use_sites=[factory],
+    )
+    pipe._route(state)
+
+    await pipe._rank(state)
+    await pipe._select(state)
+    await pipe._expand(state)
+
+    assert state.selected == [local]
+    assert [(hit.path, hit.role) for hit in state.related] == [
+        (remote.path, "implementation")
+    ]
+    assert relations.lookups == 1
 
 
 def test_split_qualified_keeps_spelling_and_records_scope():
@@ -83,7 +150,7 @@ def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
     state = RetrievalState(
         query="where is Flask.make_response defined?",
         scope=None,
-        intent=QueryIntent.SYMBOL,
+        route=QueryRoute(QueryIntent.SYMBOL),
         qualifiers={"make_response": ("Flask",)},
     )
     method = _hit(
@@ -95,7 +162,7 @@ def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
     unknown = RetrievalState(
         query="where is Unknown.make_response defined?",
         scope=None,
-        intent=QueryIntent.SYMBOL,
+        route=QueryRoute(QueryIntent.SYMBOL),
         qualifiers={"make_response": ("Unknown",)},
     )
     assert pipeline._filter_qualified_candidates(unknown, [helper, method]) == [
@@ -256,7 +323,7 @@ async def test_call_chain_expands_only_through_unique_definitions():
                 for item in values.get(identifier, ())
             ][:limit]
 
-    class ExactStore:
+    class ExactStore(EmptyExactSearchStore):
         async def find_definitions(
             self, *, identifiers, scope, max_per_identifier=3, enclosing=None
         ):
@@ -282,12 +349,17 @@ async def test_call_chain_expands_only_through_unique_definitions():
     state = RetrievalState(
         query="trace target",
         scope=SearchScope(frozenset({"a" * 64})),
-        intent=QueryIntent.CALL_CHAIN,
+        route=QueryRoute(QueryIntent.CALL_CHAIN),
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
-    occurrences = await pipeline._call_chain_callers(
-        state, ("target",), state.scope, pipeline.relation_store
+    occurrences = await trace_callers(
+        pipeline.relation_store,
+        pipeline.exact_store,
+        ("target",),
+        state.scope,
+        max_hops=2,
+        max_callers=4,
     )
     assert [(item.hit.path, item.hop) for item in occurrences] == [
         ("src/dispatch.py", 1),
@@ -351,7 +423,7 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
     main = DefinitionHit("main", "definition", main_chunk, 1, len(body))
     target = DefinitionHit("target", "definition", target_chunk, 1, 2)
 
-    class ExactStore:
+    class ExactStore(EmptyExactSearchStore):
         async def calls_within(self, *, blob_name, start_line, end_line, scope):
             return [("target", 15, "main")] if blob_name == "a" * 64 else []
 
@@ -372,12 +444,18 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
     state = RetrievalState(
         query="How does `main` reach `target`?",
         scope=SearchScope(frozenset({"a" * 64, "b" * 64})),
-        intent=QueryIntent.CALL_CHAIN,
+        route=QueryRoute(QueryIntent.CALL_CHAIN),
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
         endpoints=[("main", [main]), ("target", [target])],
     )
 
-    chain = await pipeline._call_chain_path(state)
+    chain = await trace_path(
+        pipeline.exact_store,
+        state.scope,
+        state.endpoints,
+        state.selected,
+        pipeline.settings,
+    )
 
     assert [(hit.hop, hit.path, hit.start_line, hit.end_line) for hit in chain] == [
         (0, "src/main.py", 1, 10),
@@ -393,7 +471,13 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
         related_snippet_lines=10,
         call_chain_max_chars=len(chain[0].content) + len(chain[2].content),
     )
-    chain = await pipeline._call_chain_path(state)
+    chain = await trace_path(
+        pipeline.exact_store,
+        state.scope,
+        state.endpoints,
+        state.selected,
+        pipeline.settings,
+    )
     assert [(hit.hop, hit.start_line) for hit in chain] == [(0, 1), (1, 1)]
 
 
@@ -401,7 +485,7 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
     target_chunk = _hit("src/target.py", "def target():\n    return 1", blob="b" * 64)
     target = DefinitionHit("target", "definition", target_chunk, 1, 2)
 
-    class ExactStore:
+    class ExactStore(EmptyExactSearchStore):
         async def find_definitions(
             self, *, identifiers, scope, max_per_identifier=3, enclosing=None
         ):
@@ -416,16 +500,18 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
     state = RetrievalState(
         query="How does `missing_start` reach `target`?",
         scope=SearchScope(frozenset({"b" * 64})),
-        intent=QueryIntent.CALL_CHAIN,
+        route=QueryRoute(QueryIntent.CALL_CHAIN),
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
-    endpoints = await pipeline._resolve_endpoints(state, ("missing_start", "target"))
+    endpoints = await resolve_endpoints(
+        pipeline.exact_store, state.scope, ("missing_start", "target"), state.qualifiers
+    )
 
     assert endpoints == []
 
 
-async def test_chain_and_relation_sections_share_the_hard_context_budget():
+async def test_chain_and_relation_sections_share_the_hard_context_budget(monkeypatch):
     primary = [
         _hit("src/first.py", "a" * 1_000, blob="a" * 64),
         _hit("src/second.py", "b" * 700, blob="b" * 64),
@@ -438,7 +524,7 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
     caller = RelatedOccurrence("start", "call", caller_hit, 1, 1, "caller")
     start = DefinitionHit("start", "definition", primary[0], 1, 1)
 
-    class ExactStore:
+    class ExactStore(EmptyExactSearchStore):
         async def calls_within(self, *, blob_name, start_line, end_line, scope):
             return []
 
@@ -446,12 +532,14 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
         async def find_callers(self, *, identifiers, scope, limit=8):
             return [caller]
 
-    class Pipeline(RetrievalPipeline):
-        async def _call_chain_callees(self, state, *, max_chars=None):
-            assert max_chars is not None and len(chain_hit.content) <= max_chars
-            return [chain_hit]
+    async def fake_callees(
+        store, scope, endpoints, selected, settings, *, max_chars=None
+    ):
+        assert max_chars is not None and len(chain_hit.content) <= max_chars
+        return [chain_hit]
 
-    pipeline = Pipeline(
+    monkeypatch.setattr("oce.application.retrieval.trace_callees", fake_callees)
+    pipeline = RetrievalPipeline(
         embedder=object(),
         store=object(),
         exact_store=ExactStore(),
@@ -467,7 +555,7 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
     state = RetrievalState(
         query="Trace how `start` dispatches.",
         scope=SearchScope(frozenset({"a" * 64, "b" * 64, "c" * 64})),
-        intent=QueryIntent.CALL_CHAIN,
+        route=QueryRoute(QueryIntent.CALL_CHAIN),
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
         lookup_identifiers=("start",),
         endpoints=[("start", [start])],
@@ -479,3 +567,68 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
     hits = [*state.selected, *state.related]
     assert sum(len(hit.content) for hit in hits) <= 2_500
     assert {hit.role for hit in state.related} == {"chain", "caller"}
+
+
+async def test_relation_room_reuses_facts_and_reconsiders_a_removed_primary_tail():
+    from oce.domain.services.query_evidence import extract_query_evidence
+    from tests.unit.application.fakes import EmptyExactSearchStore
+
+    primary = _hit("src/main.py", "m" * 1600, blob="a" * 64)
+    tail = _hit(
+        "src/target.py",
+        "def target():\n    " + "x" * 180 + "\n    return 1\n#" + "p" * 500,
+        blob="b" * 64,
+    )
+    caller_hit = _hit(
+        "src/caller.py",
+        "def caller():\n    target()\n    # " + "c" * 320,
+        blob="c" * 64,
+    )
+    caller = RelatedOccurrence("target", "call", caller_hit, 2, 1, "caller")
+
+    class ExactStore(EmptyExactSearchStore):
+        lookups = 0
+
+        async def find_definitions(
+            self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+        ):
+            self.lookups += 1
+            return [DefinitionHit("target", "definition", tail, 1, 3)]
+
+    class RelationStore:
+        async def find_callers(self, *, identifiers, scope, limit=8):
+            return [caller]
+
+    store = ExactStore()
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=store,
+        relation_store=RelationStore(),
+        settings=RetrievalSettings(
+            focused_max_context_chars=2500,
+            relation_reserve_chars=1000,
+            related_definitions_enabled=True,
+            tests_enabled=False,
+            implementations_enabled=False,
+            reexports_enabled=False,
+            merge_adjacent_enabled=False,
+        ),
+    )
+    state = RetrievalState(
+        query="Where is `target` defined?",
+        scope=SearchScope(
+            frozenset(hit.blob_name for hit in (primary, tail, caller_hit))
+        ),
+        route=QueryRoute(QueryIntent.SYMBOL, ("target",)),
+        evidence=extract_query_evidence("Where is `target` defined?"),
+        lookup_identifiers=("target",),
+        strategy=get_strategy(QueryIntent.SYMBOL),
+        selected=[primary, tail],
+    )
+    await pipeline._expand(state)
+    assert store.lookups == 1
+    assert state.selected == [primary]
+    assert any(hit.role == "related" and hit.path == tail.path for hit in state.related)
+    assert any(hit.role == "caller" for hit in state.related)
+    assert sum(len(hit.content) for hit in (*state.selected, *state.related)) <= 2500

@@ -5,9 +5,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from oce.application.call_chain import resolve_endpoints
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk
-from oce.domain.services.retrieval import RetrievalPipeline, RetrievalState
 from oce.domain.services.search import SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.persistence.models import SymbolOccurrenceModel
@@ -16,7 +16,6 @@ from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
-from oce.shared.config.settings import RetrievalSettings
 from oce.shared.database.session import Base
 from tests.conftest import make_sha256
 
@@ -382,43 +381,6 @@ async def test_caller_filter_keeps_source_paths_containing_test_or_spec(sessions
     ]
 
 
-async def test_hub_definitions_report_fan_in_packages_and_ambiguity(sessions):
-    files = {
-        "src/router.py": "class Router:\n    pass\n",
-        "src/api.py": (
-            "from src.router import Router\ndef build_api():\n    return Router()\n"
-        ),
-        "src/cli.py": (
-            "from src.router import Router\ndef build_cli():\n    return Router()\n"
-        ),
-        "routing/__init__.py": "def routing():\n    return 1\n",
-        "src/use_routing.py": (
-            "from routing import routing\ndef select_route():\n    return routing()\n"
-        ),
-        **{
-            f"src/common_{index}.py": "def common():\n    return 1\n"
-            for index in range(4)
-        },
-    }
-    async with sessions() as session:
-        names = await _index_files(session, files)
-    store = SymbolSearchStore(sessions)
-    scope = SearchScope(frozenset(names.values()))
-
-    hubs = await store.find_hub_definitions(
-        spellings=["Router", "routing", "common", "Missing"],
-        scope=scope,
-        max_per_identifier=3,
-    )
-
-    assert [hub.identifier for hub in hubs] == ["Router", "routing"]
-    assert hubs[0].referencing_files == 2
-    assert [item.hit.path for item in hubs[0].definitions] == ["src/router.py"]
-    assert hubs[0].names_package is False
-    assert hubs[1].referencing_files == 1
-    assert hubs[1].names_package is True
-
-
 async def test_relation_queries_diversify_large_scopes_before_global_limit(sessions):
     files = {"src/worker.py": "def run_job():\n    return 1\n"}
     files.update(
@@ -602,19 +564,11 @@ async def test_qualified_endpoints_survive_scope_wide_homonyms(sessions):
         )
         == []
     )
-    pipeline = RetrievalPipeline(
-        embedder=object(),
-        store=object(),
-        exact_store=store,
-        settings=RetrievalSettings(),
-    )
-    endpoints = await pipeline._resolve_endpoints(
-        RetrievalState(
-            query="Trace Gate.enter_request to Sink.handle_request",
-            scope=scope,
-            qualifiers={"enter_request": ("Gate",), "handle_request": ("Sink",)},
-        ),
+    endpoints = await resolve_endpoints(
+        store,
+        scope,
         ("Gate.enter_request", "Sink.handle_request"),
+        {"enter_request": ("Gate",), "handle_request": ("Sink",)},
     )
     assert [
         (leaf, [(hit.hit.path, hit.enclosing) for hit in hits])

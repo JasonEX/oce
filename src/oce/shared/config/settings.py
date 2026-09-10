@@ -293,14 +293,6 @@ class RetrievalSettings(BaseSettings):
     # 多查询融合
     rrf_k: int = Field(default=60, ge=1, description="多查询结果融合平滑常数")
 
-    # 置信度门槛
-    confidence_floor: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="进入模型重排前的召回置信度门槛",
-    )
-
     # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED
     # 授权对应阶段（api/chat 会外发，local 不外发）；这里的策略只决定已启用的模型对哪些查询调用：adaptive 在
     # exact/path 等确定性证据已经回答问题时跳过，always 用于质量优先或可复现对照。
@@ -413,10 +405,8 @@ class RetrievalSettings(BaseSettings):
         default=2.0, gt=0.0, description="词法召回超时；超时后只用其他召回"
     )
 
-    # 确定性答案不等 embedding：symbol 的 exact 定义、path 的 SQL 路径命中、reference
-    # 的调用/继承使用点都来自 SQL 车道，dense 只会再补一段没有证据的语义尾部，而
-    # 远端 embedding 的往返是最慢的阶段且有长尾。门控是二值结构事实（SQL 车道是否
-    # 给出了确定结构），不看任何分数；只有 import 证据不算。
+    # 只有请求目标的定义全部命中，或 SQL 路径命中且可展示内容时，才不等
+    # embedding。存在一个使用点不代表覆盖完引用请求，reference 保留 dense。
     decisive_skips_dense: bool = Field(
         default=True, description="SQL 车道已给出确定答案时是否跳过 dense 召回"
     )
@@ -439,7 +429,8 @@ class RetrievalSettings(BaseSettings):
     # reference 查询：有 exact/lexical 使用证据的片段按先验分级填充头部槽位；
     # 使用点全在测试/示例/__init__ 里时，仍胜过没有证据的文档。
     reference_head_fallback: bool = Field(
-        default=True, description="reference 头部槽位在源码层为空时是否按先验分级回退"
+        default=True,
+        description="reference 源码头部槽位不足时是否用其他有证据的使用点补足",
     )
     # compound（issue 文本）查询：traceback 帧（函数 + 声明它的文件）和标题点名的
     # 标识符（定义不超过 3 处）的定义片段占据受保护的头部槽位；只在正文出现的
@@ -447,24 +438,6 @@ class RetrievalSettings(BaseSettings):
     # 锚定曾因锁定 MVCE 里的 setup 调用而回退，因此锚点只取这两类结构事实。
     compound_anchor_slots: int = Field(
         default=3, ge=0, le=5, description="compound 查询保留给帧/标题锚点定义的槽位数"
-    )
-
-    # 入口车道：overview / 无符号 call_chain 查询的词能拼出的已声明名字（``Router``、
-    # ``register_checker``、``createSlice``）按被引用文件数排序，最大的声明占据
-    # 受保护的头部槽位；包名（同时是目录）不领头。声明处超过 hub_max_definitions
-    # 的名字视为过于常见。2026-09-09 配对复测：精选 overview nDCG@10 67.8→74.3，
-    # 但封存的 held-out 语义集 overview 66.4→54.1、call-chain 85.6→78.2，收益没有
-    # 泛化，默认关闭（0），保留为可测量的开关。
-    hub_head_slots: int = Field(
-        default=0, ge=0, le=5, description="语义查询保留给入口定义的头部槽位数；0 关闭"
-    )
-    hub_max_definitions: int = Field(
-        default=3, ge=1, le=20, description="入口名字在 scope 内的声明数上限"
-    )
-    # feature 问句（「X 如何实现」）上配对复测：入口定义把实现函数从头部挤开，
-    # semantic feature nDCG@10 73.5→68.8、CSN Region Top-1 62.5→60.0，默认关闭。
-    hub_feature_enabled: bool = Field(
-        default=False, description="feature 问句是否也启用入口车道"
     )
 
     # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大
@@ -543,12 +516,6 @@ class RetrievalSettings(BaseSettings):
     reexports_enabled: bool = Field(default=True, description="是否附带转出小节")
     reexports_max: int = Field(default=2, ge=1, le=10, description="最多附带多少条转出")
     reexports_max_chars: int = Field(default=600, ge=1, description="转出小节字符上限")
-    # 同名定义数超过头部槽位时，允许 adaptive 路由为 symbol 查询启用专用重排
-    # 对尾部排序。尚无离线标签支持默认启用，作为待校准开关保留。
-    rerank_ambiguous_definitions: bool = Field(
-        default=False,
-        description="symbol 查询同名定义数超过头部槽位时是否启用专用重排",
-    )
 
 
 class RedisSettings(BaseSettings):

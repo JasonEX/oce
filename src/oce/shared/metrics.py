@@ -105,7 +105,7 @@ class RetrievalAudit:
     path_boosted: bool = False
     # 例如 dedicated / dedicated+llm / skip:exact_definition；None 表示没有进入重排阶段。
     rerank_route: str | None = None
-    # dense / skip:exact_definition / skip:path_evidence / skip:use_sites；None 表示
+    # dense / skip:exact_definition / skip:path_evidence；None 表示
     # 没有进入召回阶段。
     dense_route: str | None = None
     # 确定性 symbol/path 答案实际保留的头部槽位数。

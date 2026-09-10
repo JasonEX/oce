@@ -265,20 +265,36 @@ traceback 帧会变成精确路径与函数证据，引号内报错会变成短�
 词法回退只查标识符整体代理 token，不用宽泛高频子词。reference 查询会以该代理 token 作为
 词法召回的必要条件：片段必须包含完整标识符才能进入这一路，排序仍由全部词元决定。cAST chunk 的 embedding
 输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。精确
-symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。路径先验把文档目录
-（`docs/`、`doc/`、`examples/`、changelog）、变更记录、配置文件、`.pyi` 桩、`__init__.py`
-桶文件和测试文件视为实现文件之后的辅助材料，仓库根目录的 `README` 保持全权重。feature、
-compound、调用链和 reference 查询会给未被路径先验降权的实现文件保留前几个槽位（根目录
-`README` 在这条规则里仍按文档处理）：同时领先
-dense 和词法列表的测试或文档片段，其融合分数是乘性先验压不下去的；明确问测试的查询保持
-中立先验。reference 查询只提升 exact 或整标识符词法证据，并把被问符号自身的声明排在最先
-出现的使用位置之后。这两条头部规则在模型重排之后会再应用一次，层内保持模型给出的顺序；
-专用 reranker 最多只收到
-`RERANK_MAX_QUERY_CHARS` 个字符的请求文本，issue 长文不再成倍放大它的延迟。exact、
-路径查找和按意图的词法召回在 query embedding 往返之前就开始执行。选择后，同文件相邻
-片段会合并；调用链、feature 和 overview 查询可用主结果的剩余字符预算附带简短定义摘录，
-compound 查询不会对已选片段里的所有标识符扇出。请求刚加入的少量 `added_blobs` 还会获得轻量
-工作集先验。
+symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。
+
+`QueryEvidence` 提取实体，`QueryRoute` 记录请求目标和所需证据。提到符号不自动获得 focused
+预算或跳过 dense 的权限；完整标识符和限定名不依赖反引号，参数类型与被问函数分开。
+说明性前言不会制造额外请求，调用链中的中间名字不会自动成为起点或终点。
+
+源码路径先验对文档、配置、类型桩和测试降权，根目录 `README` 保持全权重；`index.ts`、
+`types.ts`、`__init__.py` 等普通源码文件名没有额外惩罚。源码与工作集先验只运行一次；
+`RETRIEVAL_SOURCE_HEAD_SLOTS` 控制语义源码头部槽位，仅有 import 证据的文件头让出槽位。
+结构头部计算一次，用于准备模型窗口并在重排后恢复；源码先验不会覆盖模型的最终语义顺序。
+reference 的使用证据先于声明，问覆写时先放同名方法声明，问测试时先看声明/调用证据；
+带引号的测试标题按完整名称比较，不在连字符处截断。
+明确问实现者时，同一批有界 inherit 事实用于头部证据及实现小节，普通构造调用不充当继承证明。
+没有具名目标的测试请求可展开已选测试调用的实现；只有具名 reference 才将相关定义限制为被问符号。
+
+SQL 召回在 embedding 往返前启动。只有全部被问定义分别命中，或 SQL 路径命中且可取内容时，
+才允许不等 dense；reference 保留 dense，主候选须有 SQL occurrence 或完整名字及作用域证据。
+限定名声明按 enclosing、声明行和片段中的完整限定名解析，路径组件须整段相等；同叶子的不同
+请求作用域分别核验。使用点查询可以用作用域提及关联实例调用，不套用声明行规则。
+这些是有界静态证据，不是类型解析后的接收者证明。
+embedding 请求只释放、不取消；`retrieval_metrics.dense_route` 记录实际路由。
+
+adaptive 重排保留 symbol/path 的结构跳过条件；reference 可用专用 reranker，chat LLM 默认
+跳过以保留覆盖，`always` 仍可运行已授权模型。`RERANK_MAX_QUERY_CHARS` 限制专用模型输入。
+未使用的 hub 实验、未校准的 ambiguous-definition 分支和混合分数 `confidence_floor` 已退役。
+
+选择后合并相邻片段；有新关系证据时才裁剪主结果尾部。定义候选有界获取一次，裁剪后在内存中
+重算摘录、去重和来源，已移除片段独有的名字不继续扩展。调用链、相关定义、调用方、实现者、
+测试和转出入口按需装配，各有槽位与字符上限。compound 不会对所有片段标识符扇出。
+请求刚加入的少量 `added_blobs` 保留轻量工作集先验。
 
 可复现消融可通过 `CHUNKING_SEMANTIC_ENABLED`、`RETRIEVAL_EXACT_ENABLED`、
 `RETRIEVAL_LEXICAL_ENABLED`、`RETRIEVAL_PATH_LOOKUP_ENABLED`、
@@ -393,13 +409,14 @@ flowchart TB
     subgraph APP["Application 层 · CQRS (application/)"]
         direction LR
         AppSvc["RetrievalApplication"]
+        Pipeline["RetrievalPipeline · 调用边遍历"]
         Buses["CommandBus · QueryBus"]
         Worker["EmbedWorker · 服务模式"]
     end
 
     subgraph DOMAIN["Domain 层 (domain/services/)"]
         direction LR
-        Pipeline["RetrievalPipeline"]
+        Policies["查询路由 · 名字解析<br/>排序 · 证据装配"]
         Indexing["Indexing · cAST 编排"]
         Proto["Protocols<br/>Embedder·SearchStore<br/>Reranker·Repository"]
     end
@@ -442,23 +459,24 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval.py`）是 `RetrievalState` 上的一条固定
-状态转移序列：每个阶段只读写属于自己的字段，任何可选算子关闭后都退化为恒等变换。
+`RetrievalPipeline.search`（`application/retrieval.py`）在 `RetrievalState` 上协调固定阶段。
+应用层负责 I/O；名字解析、排序和证据装配位于领域层。`application/call_chain.py` 接收显式
+scope、端点、已选片段和预算来遍历调用边，不依赖可变的管线状态。
 
 | 阶段 | 职责 |
 | --- | --- |
-| route | 确定性意图，加上 `QueryEvidence`：标识符、traceback 帧、引号内报错文案、文件名、词法词元 |
+| route | `QueryEvidence` 提取实体；`QueryRoute` 区分请求目标、证据和路径算子 |
 | plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
 | recall | dense（Milvus）∥ 精确符号（SQL）∥ 按意图词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
 | fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |
-| prior | 源码先验 × 工作集先验；有界头部槽位：精确 symbol/path 答案、语义查询的未降权源码文件、reference 查询里排在声明之前的使用位置 |
+| prior | 源码与工作集先验执行一次；计算结构头部和可选语义源码槽位 |
 | rerank | `plan_rerank` 决策 → 专用 reranker → chat-LLM reranker，两者都保留候选集 |
 | select | focused / coverage 选择，字符预算为硬限制 |
-| expand | 合并同文件相邻片段；语义关系查询可用剩余上下文预算附带相关定义 |
+| expand | 合并同文件相邻片段；有界获取关系事实，按预算装配各证据小节 |
 
 ```mermaid
 flowchart TB
-    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
+    Q["query + SearchScope"] --> Route["route<br/>QueryEvidence + QueryRoute"]
     Route --> Plan["plan<br/>改写（可选）· facet · embed"]
     Plan --> Recall
     subgraph Recall["recall（并发）"]

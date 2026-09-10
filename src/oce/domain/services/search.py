@@ -106,22 +106,6 @@ class DefinitionHit:
     enclosing: str = ""
 
 
-@dataclass(frozen=True)
-class HubDefinition:
-    """A declared name the request's words spell, with how widely it is used.
-
-    ``referencing_files`` counts the scoped files that call, import or
-    extend the name; ``names_package`` says the name is also a directory of
-    the scope (``_pytest``, ``routing``), in which case the references are
-    to the package rather than to this declaration.
-    """
-
-    identifier: str
-    definitions: tuple[DefinitionHit, ...]
-    referencing_files: int
-    names_package: bool
-
-
 class ExactSearchStore(Protocol):
     """按代码标识符精确召回已索引片段。"""
 
@@ -179,16 +163,6 @@ class ExactSearchStore(Protocol):
         scope: SearchScope,
     ) -> SearchHit | None:
         """The indexed chunk of ``blob_name`` whose line span contains ``line``."""
-        ...
-
-    async def find_hub_definitions(
-        self,
-        *,
-        spellings: Sequence[str],
-        scope: SearchScope,
-        max_per_identifier: int = 6,
-    ) -> list[HubDefinition]:
-        """Declared names among ``spellings`` with their reference fan-in."""
         ...
 
 

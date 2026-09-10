@@ -133,10 +133,6 @@ def plan_rerank(
     *,
     has_exact_hits: bool = False,
     has_path_hits: bool = False,
-    dense_skipped: bool = False,
-    definition_sites: int = 0,
-    head_slots: int = 3,
-    rerank_ambiguous_definitions: bool = False,
     dedicated_enabled: bool = True,
     llm_enabled: bool = True,
     dedicated_policy: RerankPolicy = "adaptive",
@@ -147,9 +143,7 @@ def plan_rerank(
     Both models share the same deterministic evidence. Retrieval scores are
     deliberately excluded: dense cosine, RRF, exact, path, and reranker scores do
     not share a calibrated scale, so a skip is only taken when a structural
-    operator has already answered the question. ``definition_sites`` is the
-    number of places declaring the queried name; it only matters when the
-    deployment opted into reranking ambiguous symbol tails. ``enabled`` flags
+    operator has already answered the question. ``enabled`` flags
     authorize the corresponding stage; a policy can never switch on a model
     that is disabled.
     """
@@ -163,16 +157,7 @@ def plan_rerank(
     if candidate_count < 2:
         return RerankDecision(False, False, "too_few_candidates")
 
-    if (
-        intent == QueryIntent.SYMBOL
-        and has_exact_hits
-        and rerank_ambiguous_definitions
-        and definition_sites > head_slots
-    ):
-        # More declarations of the name than protected head slots: the head
-        # stays deterministic, a dedicated model may order the overflow.
-        adaptive = (True, False, "ambiguous_definition")
-    elif intent == QueryIntent.SYMBOL and has_exact_hits:
+    if intent == QueryIntent.SYMBOL and has_exact_hits:
         adaptive = (False, False, "exact_definition")
     elif intent == QueryIntent.PATH and has_path_hits:
         adaptive = (False, False, "path_evidence")
@@ -184,13 +169,6 @@ def plan_rerank(
         adaptive = (True, False, "reference_keep_coverage")
     else:
         adaptive = (True, True, "semantic")
-    if dense_skipped and (adaptive[0] or adaptive[1]):
-        # The SQL lanes answered and vector recall was never awaited: the
-        # candidates are the structural answer plus its lexical companions,
-        # which the head rules already order. A cross-encoder pass would
-        # spend a second on a list it may not reorder. ``always`` still runs.
-        adaptive = (False, False, "deterministic")
-
     dedicated = dedicated_enabled and (dedicated_policy == "always" or adaptive[0])
     llm = llm_enabled and (llm_policy == "always" or adaptive[1])
     reason = adaptive[2]

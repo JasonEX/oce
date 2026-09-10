@@ -7,15 +7,14 @@ from dataclasses import replace
 
 import pytest
 
-from oce.domain.services.retrieval import (
+from oce.application.retrieval import (
     RetrievalPipeline,
-    definition_excerpt,
-    merge_adjacent_hits,
 )
+from oce.domain.services.evidence_pack import definition_excerpt, merge_adjacent_hits
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
-from tests.unit.domain.test_retrieval import (
+from tests.unit.application.test_retrieval import (
     FakeEmbedder,
     FakeExactSearchStore,
     FakePathContentStore,
@@ -75,10 +74,106 @@ class DefinitionStore(FakeExactSearchStore):
 
 
 def _settings(**kwargs):
-    return RetrievalSettings(confidence_floor=0.0, final_select_k=10, **kwargs)
+    return RetrievalSettings(final_select_k=10, **kwargs)
 
 
 class TestLexicalRecall:
+    async def test_unnamed_test_request_expands_the_implementation_its_tests_call(self):
+        test = _hit(
+            "tests/test_cache.py",
+            0.9,
+            content="def test_expiration():\n    pruneEntries()",
+            start=10,
+            end=11,
+        )
+        implementation = _hit(
+            "src/cache.py",
+            0.0,
+            blob=BLOB_B,
+            content="def pruneEntries():\n    return remove_expired()",
+            start=20,
+            end=21,
+        )
+
+        class CalledDefinitionStore(DefinitionStore):
+            async def calls_within(self, *, blob_name, start_line, end_line, scope):
+                assert blob_name == BLOB_A
+                return [("pruneEntries", 11, "test_expiration")]
+
+        exact = CalledDefinitionStore(
+            [DefinitionHit("pruneEntries", "definition", implementation, 20, 21)]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([test]),
+            exact_store=exact,
+            settings=_settings(),
+        )
+
+        hits = await pipe.search(
+            "Which tests cover cache expiration?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+
+        assert hits[0].path == test.path
+        assert any(
+            hit.path == implementation.path and hit.role == "related" for hit in hits
+        )
+        assert "pruneEntries" in exact.requested
+
+    async def test_unnamed_test_requests_keep_the_semantic_coverage_budget(self):
+        test = _hit("tests/cache.py", 0.9, content="cache invalidation " * 90)
+        support = _hit(
+            "src/cleanup.py", 0.8, blob=BLOB_B, content="remove expired entries " * 75
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([test, support]),
+            settings=_settings(
+                focused_max_context_chars=2000,
+                max_context_chars=6000,
+                related_definitions_enabled=False,
+            ),
+        )
+
+        hits = await pipe.search(
+            "Which tests cover cache invalidation?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+        )
+
+        assert {hit.path for hit in hits} == {"tests/cache.py", "src/cleanup.py"}
+        assert 2000 < sum(len(hit.content) for hit in hits) <= 6000
+
+    @pytest.mark.parametrize("complete", [False, True])
+    async def test_same_leaf_definitions_require_each_requested_scope(self, complete):
+        session_get = replace(
+            _hit("src/session.py", 0.8, content="def get(self): pass"),
+            context="class Session > def get",
+        )
+        cache_get = replace(
+            _hit("src/cache.py", 0.9, blob=BLOB_B, content="def get(self): pass"),
+            context="class Cache > def get",
+        )
+        exact = FakeExactSearchStore(
+            [session_get, cache_get] if complete else [session_get]
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([cache_get]),
+            exact_store=exact,
+            settings=_settings(related_definitions_enabled=False),
+        )
+        audit = RetrievalAudit()
+
+        hits = await pipe.search(
+            "Where are `Session.get` and `Cache.get` defined?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+            audit=audit,
+        )
+
+        assert audit.dense_route == ("skip:exact_definition" if complete else "dense")
+        assert {hit.path for hit in hits} == {"src/session.py", "src/cache.py"}
+
     async def test_lexical_hits_are_fused_by_rank(self):
         dense = [_hit("src/a.py", 0.9, blob=BLOB_A), _hit("src/b.py", 0.8, blob=BLOB_B)]
         lexical = [
@@ -568,12 +663,7 @@ class TestSourceHead:
 
         class DenseFirstReranker:
             async def rerank(self, query, hits):
-                by_path = {hit.path: hit for hit in hits}
-                return [
-                    by_path["src/scheduler.py"],
-                    by_path["src/pool.py"],
-                    by_path["src/server.py"],
-                ]
+                return sorted(hits, key=lambda hit: hit.path != "src/pool.py")
 
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
@@ -589,11 +679,98 @@ class TestSourceHead:
         )
         assert [hit.path for hit in hits] == [
             "src/server.py",
-            "src/scheduler.py",
             "src/pool.py",
         ]
 
-    async def test_source_head_is_reapplied_after_the_dedicated_reranker(self):
+    async def test_qualified_reference_dense_candidates_need_the_requested_scope(self):
+        definition = replace(
+            _hit("src/session.py", 0.7, content="def get(self): pass"),
+            context="class Session > def get",
+        )
+        use = _hit("src/consumer.py", 0.8, blob=BLOB_B, content="return Session.get()")
+        unrelated = _hit(
+            "src/other.py",
+            0.99,
+            blob=BLOB_C,
+            content="// Session can share a cache\nreturn Cache.get()",
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([unrelated, use, definition]),
+            exact_store=FakeExactSearchStore([definition]),
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        hits = await pipe.search(
+            "Where is `Session.get` used?",
+            SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
+        )
+
+        assert {hit.path for hit in hits} == {"src/session.py", "src/consumer.py"}
+
+    async def test_override_requests_prioritize_method_declarations_over_calls(self):
+        method = replace(
+            _hit("examples/custom.py", 0.5, content="def resolve_item(self): pass"),
+            context="class CustomResolver > def resolve_item",
+        )
+        call = _hit(
+            "src/consumer.py", 0.99, blob=BLOB_B, content="return obj.resolve_item()"
+        )
+
+        class MethodStore(FakeExactSearchStore):
+            async def search_exact(self, *, kinds=None, **kwargs):
+                if kinds and "definition" in kinds:
+                    return [method]
+                if kinds:
+                    return [call]
+                return [call, method]
+
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([call]),
+            exact_store=MethodStore(),
+            settings=_settings(related_definitions_enabled=False),
+        )
+        audit = RetrievalAudit()
+
+        hits = await pipe.search(
+            "Which classes override `resolve_item`?",
+            SearchScope(frozenset({BLOB_A, BLOB_B})),
+            audit=audit,
+        )
+
+        assert hits[0].path == "examples/custom.py"
+        assert audit.dense_route == "dense"
+
+    async def test_named_test_heads_compare_the_full_quoted_title(self):
+        long_title = _hit(
+            "tests/reader.test.js",
+            0.99,
+            content="test('readPacket - rejects multiple invalid records', () => {})",
+            start=100,
+            end=104,
+        )
+        short_title = _hit(
+            "tests/reader.test.js",
+            0.7,
+            content="test('readPacket - basic', () => {})",
+            start=10,
+            end=14,
+        )
+        pipe = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore([long_title, short_title]),
+            exact_store=FakeExactSearchStore([long_title, short_title]),
+            settings=_settings(related_definitions_enabled=False),
+        )
+
+        hits = await pipe.search(
+            "Which tests cover `readPacket`?", SearchScope(frozenset({BLOB_A}))
+        )
+
+        assert hits[0].start_line == 10
+
+    async def test_semantic_reranker_owns_the_final_order(self):
         class TestFirstReranker:
             async def rerank(self, query, hits):
                 # A small cross-encoder that leads with the test file but
@@ -622,11 +799,10 @@ class TestSourceHead:
             "connection pool exhausted when acquiring a connection",
             SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C})),
         )
-        # Model order among source files is kept; the test file follows.
         assert [hit.path for hit in hits] == [
+            "tests/test_pool.py",
             "src/conn.py",
             "src/pool.py",
-            "tests/test_pool.py",
         ]
 
     async def test_sql_lanes_start_before_the_query_embedding(self):

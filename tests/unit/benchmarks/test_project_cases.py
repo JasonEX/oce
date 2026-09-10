@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from benchmarks.blackbox.project_cases import (
     classify_error,
     compare,
     load_manifest,
+    query_family_results,
     score_case,
 )
 
@@ -24,6 +26,54 @@ def test_manifest_covers_every_relation_kind() -> None:
     assert all(count >= 5 for count in counts.values()), counts
     assert all(case.test_paths for case in cases if case.kind == "test_mapping")
     assert len({case.instance_id for case in cases}) >= 7
+
+
+def test_query_family_variants_cannot_change_truth(tmp_path: Path) -> None:
+    manifest = json.loads(DEFAULT_CASES.read_text())
+    case = manifest["cases"][0]
+    manifest["cases"] = [
+        {**case, "family_id": "need", "query_form": "original"},
+        {
+            **case,
+            "id": "paraphrase",
+            "query": "Find its uses",
+            "family_id": "need",
+            "query_form": "imperative",
+            "supporting_regions": [],
+        },
+    ]
+    path = tmp_path / "cases.json"
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match="share snapshot and truth"):
+        load_manifest(path)
+
+
+def test_query_families_weight_needs_equally_and_keep_transport_errors() -> None:
+    metrics = score_case(_case(), (RetrievedRegion("src/a.py", 10, 10),))
+    rows = [
+        {
+            "family_id": "many",
+            "query_form": str(i),
+            "kind": "call_chain",
+            "status": "ok",
+            "metrics": metrics,
+            "elapsed_ms": 10,
+        }
+        for i in range(4)
+    ]
+    rows.append(
+        {
+            "family_id": "single",
+            "query_form": "original",
+            "kind": "call_chain",
+            "status": "error",
+        }
+    )
+    grouped = query_family_results(rows)
+    assert aggregate(rows)["primary_hit_at_3"] == 0.8
+    assert grouped["family_summary"]["primary_hit_at_3"] == 0.5
+    assert grouped["family_summary"]["worst_primary_hit_at_3"] == 0.5
+    assert grouped["family_summary"]["error_families"] == 1
 
 
 def _case(**overrides) -> ProjectCase:
