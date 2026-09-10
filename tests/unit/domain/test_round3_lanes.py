@@ -200,7 +200,9 @@ def test_deterministic_requests_skip_adaptive_rerankers_but_not_always():
 
 
 class _Store:
-    async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+    async def find_definitions(
+        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+    ):
         return []
 
 

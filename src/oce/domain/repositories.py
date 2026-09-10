@@ -34,6 +34,10 @@ class BlobRepository(Protocol):
         """全部 pending blob 的名字。只取标识，不组装聚合。"""
         ...
 
+    async def list_ready_names(self, limit: int) -> list[str]:
+        """A bounded sample of indexed blobs for storage initialization."""
+        ...
+
     async def find_expired(self, ttl_days: int, batch_size: int = 1000) -> list[str]:
         """返回超过 TTL 且未被任何 checkpoint chain 引用的 blob。"""
         ...

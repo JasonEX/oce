@@ -47,6 +47,11 @@ class FakeBlobRepo:
             and (names is None or b.blob_name in names)
         ]
 
+    async def list_ready_names(self, limit: int) -> list[str]:
+        return sorted(
+            name for name, blob in self.blobs.items() if blob.status == BlobStatus.READY
+        )[: max(0, limit)]
+
     async def delete(self, blob_name: str) -> None:
         self.blobs.pop(blob_name, None)
 

@@ -101,7 +101,9 @@ class FakeExactSearchStore:
             raise self.error
         return list(self.hits[:top_k])
 
-    async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+    async def find_definitions(
+        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+    ):
         return []
 
 

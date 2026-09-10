@@ -60,6 +60,7 @@ def _occurrence_rows(
     path_predicate: ColumnElement[bool] | None = None,
     partition_by: Sequence[ColumnElement[Any]] = (),
     partition_limit: int = 1,
+    enclosing: Sequence[str] | None = None,
 ):
     """Occurrence rows joined to the chunk occurrence that contains them.
 
@@ -104,6 +105,8 @@ def _occurrence_rows(
     )
     if kinds is not None:
         stmt = stmt.where(SymbolOccurrenceModel.kind.in_(kinds))
+    if enclosing is not None:
+        stmt = stmt.where(SymbolOccurrenceModel.enclosing.in_(enclosing))
     if path_predicate is not None:
         stmt = stmt.where(path_predicate)
     if partition_by:
@@ -205,14 +208,21 @@ class SymbolSearchStore:
         identifiers: Sequence[str],
         scope: SearchScope,
         max_per_identifier: int = 3,
+        enclosing: Sequence[str] | None = None,
     ) -> list[DefinitionHit]:
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or not scope.blob_names:
             return []
+        if enclosing is not None:
+            enclosing = tuple(dict.fromkeys(item for item in enclosing if item))
+            if not enclosing:
+                return []
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
-                    counts = await self._definition_counts(session, identifiers, scope)
+                    counts = await self._definition_counts(
+                        session, identifiers, scope, enclosing=enclosing
+                    )
                     wanted = tuple(
                         identifier
                         for identifier in identifiers
@@ -229,6 +239,7 @@ class SymbolSearchStore:
                             predicate,
                             len(wanted) * max_per_identifier * 2,
                             DEFINITION_KINDS,
+                            enclosing=enclosing,
                         ),
                     )
         except TimeoutError:
@@ -737,9 +748,10 @@ class SymbolSearchStore:
         session: AsyncSession,
         identifiers: Sequence[str],
         scope: SearchScope,
+        enclosing: Sequence[str] | None = None,
     ) -> dict[str, int]:
         def build(predicate: ColumnElement[bool]):
-            return (
+            stmt = (
                 select(
                     SymbolOccurrenceModel.identifier,
                     func.count().label("total"),
@@ -753,6 +765,9 @@ class SymbolSearchStore:
                 )
                 .group_by(SymbolOccurrenceModel.identifier)
             )
+            if enclosing is not None:
+                stmt = stmt.where(SymbolOccurrenceModel.enclosing.in_(enclosing))
+            return stmt
 
         counts: dict[str, int] = {}
         for row in await run_scoped(

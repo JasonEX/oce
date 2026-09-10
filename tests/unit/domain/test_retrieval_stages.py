@@ -67,7 +67,9 @@ class DefinitionStore(FakeExactSearchStore):
         self.definitions = definitions
         self.requested: list[str] = []
 
-    async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+    async def find_definitions(
+        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+    ):
         self.requested = list(identifiers)
         return [d for d in self.definitions if d.identifier in identifiers]
 
@@ -1032,7 +1034,9 @@ class TestHeadEvidence:
                     kinds[(blob_name, content_hash)] = frozenset({"import"})
             return kinds
 
-        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+        async def find_definitions(
+            self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+        ):
             return [d for d in self.definitions if d.identifier in identifiers]
 
     QUERY = "How does the router match a request path against registered routes?"
@@ -1062,11 +1066,20 @@ class TestHeadEvidence:
         ]
         assert store.asked and set(store.asked[0]) == {"h-header", "h-impl", "h-docs"}
 
-    async def test_chunks_without_evidence_keep_their_slot(self):
+    @pytest.mark.parametrize(
+        "path, content",
+        [
+            ("bin/run", "echo ready"),
+            ("bin/run.sh", "echo ready"),
+            ("src/layout.css", ".sidebar { width: 240px; }"),
+            ("src/i18n/runtime.ts", "export default () => translations[current];"),
+        ],
+    )
+    async def test_chunks_without_evidence_keep_their_slot(self, path, content):
         # A script body or a config block records no symbols; only chunks
         # whose sole evidence is imports are headers.
         header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
-        script = _hit("bin/run", 0.9, blob=BLOB_B, hash_="h-script")
+        script = _hit(path, 0.9, blob=BLOB_B, hash_="h-script", content=content)
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore([header, script]),
@@ -1076,7 +1089,7 @@ class TestHeadEvidence:
             ),
         )
         hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
-        assert [hit.path for hit in hits] == ["bin/run", "src/router/mod.rs"]
+        assert [hit.path for hit in hits] == [path, "src/router/mod.rs"]
 
     async def test_header_rule_is_on_by_default_and_can_be_switched_off(self):
         header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")

@@ -110,6 +110,7 @@ class TestMilvus3Client:
         mock_client = Mock()
         mock_client.has_collection.return_value = True
         mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {"index_type": "HNSW"}
         mock_client.get_load_state.return_value = {"state": LoadState.Loaded}
         client_class.return_value = mock_client
 
@@ -174,6 +175,7 @@ class TestMilvus3Client:
         mock_client = Mock()
         mock_client.has_collection.return_value = True
         mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {"index_type": "HNSW"}
         mock_client.get_load_state.return_value = {"state": LoadState.Loaded}
         mock_client.upsert.return_value = {"upsert_count": 1}
         client_class.return_value = mock_client
@@ -279,6 +281,7 @@ class TestMilvus3Client:
         mock_client = Mock()
         mock_client.has_collection.return_value = True
         mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {"index_type": "HNSW"}
         mock_client.get_load_state.return_value = {"state": LoadState.Loaded}
         mock_client.search.return_value = [
             [
@@ -401,3 +404,98 @@ def _hit(record: VectorRecord, score: float):
         start_line=record.start_line,
         end_line=record.end_line,
     )
+
+
+class TestLocalIndexType:
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_unknown_index_type_is_not_treated_as_compatible(self, client_class):
+        mock_client = client_class.return_value
+        mock_client.has_collection.return_value = True
+        mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {}
+        client = Milvus3Client(
+            MilvusSettings(endpoint="./oce_milvus.db"), dense_dim=DIM
+        )
+        with pytest.raises(RuntimeError, match="index type is missing"):
+            await client.initialize()
+        assert not client._initialized
+        mock_client.drop_index.assert_not_called()
+
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_failed_index_build_does_not_mark_the_collection_ready(
+        self, client_class
+    ):
+        mock_client = client_class.return_value
+        mock_client.has_collection.return_value = True
+        mock_client.list_indexes.return_value = []
+        mock_client.create_index.side_effect = RuntimeError("failed")
+        client = Milvus3Client(
+            MilvusSettings(endpoint="./oce_milvus.db"), dense_dim=DIM
+        )
+        with pytest.raises(RuntimeError, match="Failed to create Milvus index"):
+            await client.initialize()
+        assert not client._initialized
+
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_local_hnsw_index_is_rebuilt_as_flat_in_place(self, client_class):
+        settings = MilvusSettings(
+            endpoint="./oce_milvus.db", collection_name="c", dense_index_type="FLAT"
+        )
+        mock_client = Mock()
+        mock_client.has_collection.return_value = True
+        mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {"index_type": "HNSW"}
+        mock_client.get_load_state.return_value = {"state": LoadState.NotLoad}
+        mock_client.prepare_index_params = Mock(return_value=Mock())
+        client_class.return_value = mock_client
+
+        client = Milvus3Client(settings, dense_dim=DIM)
+        await client.initialize()
+
+        mock_client.release_collection.assert_called_once_with("c")
+        mock_client.drop_index.assert_called_once_with(
+            collection_name="c", index_name="dense_vector"
+        )
+        added = mock_client.prepare_index_params.return_value.add_index.call_args
+        assert added.kwargs["index_type"] == "FLAT"
+        assert added.kwargs["params"] == {}
+        mock_client.create_index.assert_called_once()
+        mock_client.load_collection.assert_called_once_with("c")
+
+    @patch("oce.infrastructure.milvus3.base.MilvusClient")
+    async def test_local_flat_index_is_kept_and_searched_without_ef(self, client_class):
+        settings = MilvusSettings(
+            endpoint="./oce_milvus.db", collection_name="c", dense_index_type="FLAT"
+        )
+        mock_client = Mock()
+        mock_client.has_collection.return_value = True
+        mock_client.list_indexes.return_value = ["dense_vector"]
+        mock_client.describe_index.return_value = {"index_type": "FLAT"}
+        mock_client.get_load_state.return_value = {"state": LoadState.Loaded}
+        mock_client.search.return_value = [[]]
+        client_class.return_value = mock_client
+
+        client = Milvus3Client(settings, dense_dim=DIM)
+        await client.search([0.1] * DIM, top_k=50)
+
+        mock_client.drop_index.assert_not_called()
+        mock_client.create_index.assert_not_called()
+        assert mock_client.search.call_args.kwargs["search_params"]["params"] == {}
+
+    @patch("oce.infrastructure.milvus3.base.AsyncMilvusClient")
+    async def test_remote_server_keeps_hnsw_without_inspecting_the_index(
+        self, client_class
+    ):
+        settings = MilvusSettings(
+            endpoint="http://localhost:19530", collection_name="c"
+        )
+        mock_client = _loaded_remote_client()
+        mock_client.describe_index = AsyncMock(return_value={"index_type": "HNSW"})
+        client_class.return_value = mock_client
+
+        client = Milvus3Client(settings, dense_dim=DIM)
+        await client.initialize()
+
+        assert client.settings.dense_index_type == "HNSW"
+        mock_client.describe_index.assert_not_awaited()
+        mock_client.create_index.assert_not_called()

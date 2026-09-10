@@ -4,6 +4,8 @@
 无需 Docker，数据存储在 ./test_data/milvus.db
 """
 
+import math
+import random
 import shutil
 
 import pytest
@@ -13,6 +15,56 @@ from oce.infrastructure.milvus3.client import Milvus3Client
 from oce.infrastructure.milvus3.path_index import PathIndexClient
 from oce.infrastructure.milvus3.search_store import Milvus3SearchStore
 from oce.shared.config.settings import MilvusSettings
+
+
+@pytest.mark.integration
+async def test_local_index_upgrade_preserves_vectors_and_scoped_nearest_neighbors(
+    tmp_path,
+):
+    settings = MilvusSettings(
+        endpoint=str(tmp_path / "scoped.db"), dense_index_type="HNSW"
+    )
+    rng = random.Random(7281)
+    query = [rng.random() for _ in range(8)]
+    records = [
+        VectorRecord(
+            chunk_id=f"{index:064x}",
+            content_hash=f"content-{index}",
+            blob_name=("a" if index < 32 else "b") * 64,
+            path=f"src/{index}.py",
+            content="source",
+            start_line=1,
+            end_line=1,
+            vector=[rng.random() for _ in range(8)],
+        )
+        for index in range(192)
+    ]
+    original = Milvus3Client(settings, dense_dim=8)
+    try:
+        await original.insert(records)
+    finally:
+        await original.close()
+
+    upgraded = Milvus3Client(
+        settings.model_copy(update={"dense_index_type": "FLAT"}), dense_dim=8
+    )
+    try:
+        hits = await upgraded.search(query, blob_filter=["a" * 64], top_k=20)
+
+        def cosine(record):
+            return sum(a * b for a, b in zip(query, record.vector, strict=True)) / (
+                math.sqrt(sum(v * v for v in query))
+                * math.sqrt(sum(v * v for v in record.vector))
+            )
+
+        expected = sorted(records[:32], key=cosine, reverse=True)[:20]
+        assert [hit.content_hash for hit in hits] == [
+            record.content_hash for record in expected
+        ]
+        assert all(hit.blob_name == "a" * 64 for hit in hits)
+        assert (await upgraded.index_stats()).entities == len(records)
+    finally:
+        await upgraded.close()
 
 
 @pytest.fixture(scope="module")

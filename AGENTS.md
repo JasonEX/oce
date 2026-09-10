@@ -24,6 +24,9 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - 监控子系统旁路采集调用/token/资源与检索阶段审计，落 metrics 表
 - query vector 使用只保存 query 哈希与向量的进程内 TTL LRU；源码向量与 retrieval result 不缓存，凭据热重载后清空
 - FastAPI + DDD/CQRS 分层
+- Milvus 索引类型由 `MILVUS_DENSE_INDEX_TYPE` 配置（默认 HNSW）；显式更改本地索引类型时原地重建索引并保留向量。索引类型不可核验或构建失败时不得标记初始化成功
+- 限定名调用链端点先按已记录的 `enclosing` 约束 SQL 查询，再检查同名声明数；作用域隔离与歧义上限仍然生效
+- 启动预热通过仓储接口获取有限个 ready blob，在接收请求前对 dense/path/lexical 做有界探测；失败记录日志并保留冷状态，不把后台预热视为首个请求已就绪的保证
 
 依赖方向：`shared <- domain <- application <- api`。`infrastructure` 实现 shared/domain
 协议，只能由 composition root 装配；API router 不编排业务流程。

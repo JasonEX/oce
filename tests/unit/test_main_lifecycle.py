@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
@@ -26,6 +27,7 @@ def _container(*, metrics_start_side_effect=None):
         resource_sampler=resource_sampler,
         monitoring_cleaner=monitoring_cleaner,
         ensure_index_compatible=AsyncMock(),
+        warm_up=AsyncMock(),
         close=AsyncMock(),
     )
 
@@ -50,6 +52,7 @@ async def test_lifespan_closes_resources_and_clears_cached_container(monkeypatch
         container.metrics.start.assert_awaited_once_with()
         container.resource_sampler.start.assert_awaited_once_with()
         container.monitoring_cleaner.start.assert_awaited_once_with()
+        container.warm_up.assert_awaited_once_with()
 
     container.close.assert_awaited_once_with()
     provider.cache_clear.assert_called_once_with()
@@ -67,3 +70,26 @@ async def test_lifespan_cleans_up_after_partial_startup(monkeypatch):
     container.close.assert_awaited_once_with()
     provider.cache_clear.assert_called_once_with()
     dispose.assert_awaited_once_with()
+
+
+async def test_requests_start_only_after_storage_probes_finish(monkeypatch):
+    container = _container()
+    entered, finish, serving = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def warm_up():
+        entered.set()
+        await finish.wait()
+
+    container.warm_up.side_effect = warm_up
+    _patch_lifespan_dependencies(monkeypatch, container)
+
+    async def start():
+        async with main.lifespan(main.app):
+            serving.set()
+
+    task = asyncio.create_task(start())
+    await entered.wait()
+    assert not serving.is_set()
+    finish.set()
+    await task
+    assert serving.is_set()

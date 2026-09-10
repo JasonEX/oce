@@ -307,3 +307,20 @@ def test_barrel_files_and_pub_use_record_reexports():
         "Next",
         "Alias",
     }
+
+
+def test_macro_token_text_does_not_create_call_edges():
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    source = (
+        "fn entry() {\n"
+        "    let _ = stringify!(remove_record());\n"
+        "    custom_language!(literal_tokens(nested_tokens()));\n"
+        "    actual_call();\n"
+        "}\n"
+    )
+    calls = {
+        (o.identifier, o.enclosing)
+        for o in provider.extract(content=source, language="rust", path="src/lib.rs")
+        if o.kind == "call"
+    }
+    assert calls == {("actual_call", "entry")}

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk
+from oce.domain.services.retrieval import RetrievalPipeline, RetrievalState
 from oce.domain.services.search import SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.persistence.models import SymbolOccurrenceModel
@@ -15,6 +16,7 @@ from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
+from oce.shared.config.settings import RetrievalSettings
 from oce.shared.database.session import Base
 from tests.conftest import make_sha256
 
@@ -531,3 +533,93 @@ async def test_chunk_for_line_returns_the_chunk_spanning_the_line(sessions):
         )
         is None
     )
+
+
+async def test_find_definitions_pinned_to_an_enclosing_definition(sessions):
+    files = {
+        "src/router.py": "class Router:\n    def route(self):\n        return 1\n",
+        "src/resource.py": "class Resource:\n    def route(self):\n        return 2\n",
+        "src/free.py": "def route():\n    return 3\n",
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    # Three declarations exceed the cap; the pin counts only Router's.
+    assert (
+        await store.find_definitions(
+            identifiers=["route"], scope=scope, max_per_identifier=1
+        )
+        == []
+    )
+    pinned = await store.find_definitions(
+        identifiers=["route"], scope=scope, max_per_identifier=1, enclosing=["Router"]
+    )
+    assert [(d.hit.path, d.enclosing) for d in pinned] == [("src/router.py", "Router")]
+    assert (
+        await store.find_definitions(
+            identifiers=["route"],
+            scope=SearchScope(frozenset({names["src/resource.py"]})),
+            max_per_identifier=1,
+            enclosing=["Router"],
+        )
+        == []
+    )
+    assert (
+        await store.find_definitions(
+            identifiers=["route"],
+            scope=scope,
+            max_per_identifier=3,
+            enclosing=["Missing"],
+        )
+        == []
+    )
+
+
+async def test_qualified_endpoints_survive_scope_wide_homonyms(sessions):
+    files = {
+        "src/gate.py": "class Gate:\n    def enter_request(self):\n        return 1\n",
+        "src/sink.py": "class Sink:\n    def handle_request(self):\n        return 2\n",
+        "src/others.py": "\n".join(
+            f"class Other{i}:\n"
+            "    def enter_request(self):\n        return 3\n"
+            "    def handle_request(self):\n        return 4\n"
+            for i in range(41)
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+    # Both leaves exceed the old wide lookup cap, but each qualified
+    # endpoint has one declaration. Exercise the pipeline and real SQL
+    # together so neither a mock nor an unqualified lookup can hide the loss.
+    assert (
+        await store.find_definitions(
+            identifiers=("enter_request", "handle_request"),
+            scope=scope,
+            max_per_identifier=40,
+        )
+        == []
+    )
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=store,
+        settings=RetrievalSettings(),
+    )
+    endpoints = await pipeline._resolve_endpoints(
+        RetrievalState(
+            query="Trace Gate.enter_request to Sink.handle_request",
+            scope=scope,
+            qualifiers={"enter_request": ("Gate",), "handle_request": ("Sink",)},
+        ),
+        ("Gate.enter_request", "Sink.handle_request"),
+    )
+    assert [
+        (leaf, [(hit.hit.path, hit.enclosing) for hit in hits])
+        for leaf, hits in endpoints
+    ] == [
+        ("enter_request", [("src/gate.py", "Gate")]),
+        ("handle_request", [("src/sink.py", "Sink")]),
+    ]

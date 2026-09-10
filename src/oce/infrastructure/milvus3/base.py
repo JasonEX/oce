@@ -111,7 +111,21 @@ class MilvusCollectionClient:
             field_name=self._vector_field,
         )
         if indexes:
-            return
+            if not self._local or await self._index_matches(indexes[0]):
+                return
+            # An explicit local index-type change must take effect on existing
+            # collections too. Rebuild only the index, retaining every row
+            # and its embedding.
+            logger.warning(
+                "Rebuilding the {} vector index as {}",
+                self.collection_name,
+                self.settings.dense_index_type,
+            )
+            await self._call("release_collection", self.collection_name)
+            for name in indexes:
+                await self._call(
+                    "drop_index", collection_name=self.collection_name, index_name=name
+                )
         try:
             await self._call(
                 "create_index",
@@ -119,22 +133,43 @@ class MilvusCollectionClient:
                 index_params=self._build_index_params(),
             )
         except Exception as exc:
-            if not self._local:
-                raise RuntimeError(
-                    f"Failed to create Milvus index for {self.collection_name}"
-                ) from exc
-            logger.warning("Milvus Lite did not create the vector index: {}", exc)
+            raise RuntimeError(
+                f"Failed to create Milvus index for {self.collection_name}"
+            ) from exc
+
+    async def _index_matches(self, index_name: str) -> bool:
+        """Whether the existing index already has the configured type."""
+        try:
+            description = await self._call(
+                "describe_index",
+                collection_name=self.collection_name,
+                index_name=index_name,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Cannot verify Milvus index type for {self.collection_name}"
+            ) from exc
+        found = description.get("index_type") if isinstance(description, dict) else None
+        if not found:
+            raise RuntimeError(
+                f"Milvus index type is missing for {self.collection_name}"
+            )
+        return str(found).upper() == self.settings.dense_index_type.upper()
 
     def _build_index_params(self):
         index_params = self._client.prepare_index_params()
-        index_params.add_index(
-            field_name=self._vector_field,
-            index_type=self.settings.dense_index_type,
-            metric_type=self.settings.dense_metric_type,
-            params={
+        index_type = self.settings.dense_index_type
+        params: dict[str, Any] = {}
+        if index_type.upper() == "HNSW":
+            params = {
                 "M": self.settings.hnsw_m,
                 "efConstruction": self.settings.hnsw_ef_construction,
-            },
+            }
+        index_params.add_index(
+            field_name=self._vector_field,
+            index_type=index_type,
+            metric_type=self.settings.dense_metric_type,
+            params=params,
         )
         return index_params
 
@@ -210,7 +245,11 @@ class MilvusCollectionClient:
             anns_field=self._vector_field,
             search_params={
                 "metric_type": self.settings.dense_metric_type,
-                "params": {"ef": max(self.settings.hnsw_ef_search, top_k * 2)},
+                "params": (
+                    {"ef": max(self.settings.hnsw_ef_search, top_k * 2)}
+                    if self.settings.dense_index_type.upper() == "HNSW"
+                    else {}
+                ),
             },
             limit=top_k,
             filter=filter_expr,

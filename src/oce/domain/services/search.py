@@ -142,8 +142,14 @@ class ExactSearchStore(Protocol):
         identifiers: Sequence[str],
         scope: SearchScope,
         max_per_identifier: int = 3,
+        enclosing: Sequence[str] | None = None,
     ) -> list[DefinitionHit]:
-        """Definitions/endpoints of the identifiers whose scope-wide count fits the cap."""
+        """Definitions/endpoints of the identifiers whose scope-wide count fits the cap.
+
+        ``enclosing`` restricts the rows to declarations recorded inside one
+        of the named definitions (``Router`` for ``Router::route``), so the
+        cap measures the pinned name rather than every ``route`` in scope.
+        """
         ...
 
     async def occurrence_kinds(

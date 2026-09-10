@@ -1301,16 +1301,40 @@ class RetrievalPipeline:
         # for those and tight for bare names.
         qualified = [leaf for leaf in leaves if leaf in state.qualifiers]
         bare = [leaf for leaf in leaves if leaf not in state.qualifiers]
+        # A qualifier that is the recorded enclosing definition (``Router``
+        # for ``Router::route``) pins the leaf in SQL, so ``route`` declared
+        # in fifty routers is no obstacle; qualifiers that are only a file or
+        # a text mention fall back to the wide lookup resolved below.
+        pinned_batches = await asyncio.gather(
+            *(
+                store.find_definitions(
+                    identifiers=(leaf,),
+                    scope=state.scope,
+                    max_per_identifier=6,
+                    enclosing=state.qualifiers[leaf],
+                )
+                for leaf in qualified
+            )
+        )
+        pinned = {
+            leaf: batch
+            for leaf, batch in zip(qualified, pinned_batches, strict=True)
+            if batch
+        }
+        unpinned = [leaf for leaf in qualified if leaf not in pinned]
         batches = await asyncio.gather(
             *(
                 store.find_definitions(
                     identifiers=group, scope=state.scope, max_per_identifier=bound
                 )
-                for group, bound in ((qualified, 40), (bare, 6))
+                for group, bound in ((unpinned, 40), (bare, 6))
                 if group
             )
         )
-        definitions = [item for batch in batches for item in batch]
+        definitions = [
+            *(item for batch in pinned.values() for item in batch),
+            *(item for batch in batches for item in batch),
+        ]
         endpoints: list[tuple[str, list[DefinitionHit]]] = []
         for leaf in leaves:
             found = [item for item in definitions if item.identifier == leaf]

@@ -147,6 +147,17 @@ class SqlBlobRepository(BlobRepository):
         chunks = await self._load_chunks_many([row.blob_name for row in rows])
         return [self._row_to_domain(row, chunks.get(row.blob_name, [])) for row in rows]
 
+    async def list_ready_names(self, limit: int) -> list[str]:
+        if limit < 1:
+            return []
+        result = await self.session.execute(
+            select(BlobModel.blob_name)
+            .where(BlobModel.status == BlobStatus.READY.value)
+            .order_by(BlobModel.blob_name)
+            .limit(limit)
+        )
+        return list(result.scalars())
+
     async def find_expired(self, ttl_days: int, batch_size: int = 1000) -> list[str]:
         threshold = datetime.now(timezone.utc) - timedelta(days=ttl_days)
         referenced = select(ChainMemberModel.chain_id).where(

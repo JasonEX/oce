@@ -64,6 +64,7 @@ from oce.application.queries.status import (
     ResolveScopeQueryHandler,
 )
 from oce.application.service import RetrievalApplication
+from oce.application.warmup import warm_retrieval_stores
 from oce.application.worker import EmbedWorker
 from oce.domain.services.llm.reranker import LLMReranker
 from oce.domain.services.llm.rewriter import QueryRewriter
@@ -419,6 +420,14 @@ class Container:
         )
 
         query_bus = QueryBus()
+        self.lexical_store: SqlLexicalSearchStore | None = (
+            SqlLexicalSearchStore(
+                async_session_factory,
+                timeout_seconds=settings.retrieval.lexical_timeout_seconds,
+            )
+            if settings.retrieval.lexical_enabled
+            else None
+        )
         # One store serves both the exact lane and the relation lanes; they
         # read the same occurrence table with the same timeout.
         symbol_store = SymbolSearchStore(
@@ -443,14 +452,7 @@ class Container:
                     path_content_store=self.path_content_store,
                     exact_store=symbol_store,
                     relation_store=symbol_store,
-                    lexical_store=(
-                        SqlLexicalSearchStore(
-                            async_session_factory,
-                            timeout_seconds=settings.retrieval.lexical_timeout_seconds,
-                        )
-                        if settings.retrieval.lexical_enabled
-                        else None
-                    ),
+                    lexical_store=self.lexical_store,
                     path_lookup_store=(
                         SqlPathLookupStore(async_session_factory)
                         if settings.retrieval.path_lookup_enabled
@@ -521,6 +523,17 @@ class Container:
             raise
         await self.embedding_runtime.activate_prepared(replacement)
         return True
+
+    async def warm_up(self) -> dict[str, int]:
+        """Finish bounded storage probes before accepting the first request."""
+        settings = get_settings()
+        return await warm_retrieval_stores(
+            uow_factory=self._uow_factory,
+            search_store=self.search_store,
+            dimensions=settings.embedding.dimensions,
+            path_store=self.path_index,
+            lexical_store=self.lexical_store,
+        )
 
     async def close(self) -> None:
         if self.worker is not None:

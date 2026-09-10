@@ -42,6 +42,7 @@ async def lifespan(app: FastAPI):
             await container.resource_sampler.start()
         if container.monitoring_cleaner is not None:
             await container.monitoring_cleaner.start()
+        await container.warm_up()
         yield
     finally:
         try:

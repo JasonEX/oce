@@ -257,7 +257,9 @@ async def test_call_chain_expands_only_through_unique_definitions():
             ][:limit]
 
     class ExactStore:
-        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+        async def find_definitions(
+            self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+        ):
             return [
                 DefinitionHit(
                     identifier=identifier,
@@ -353,7 +355,9 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
         async def calls_within(self, *, blob_name, start_line, end_line, scope):
             return [("target", 15, "main")] if blob_name == "a" * 64 else []
 
-        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+        async def find_definitions(
+            self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+        ):
             return [target] if "target" in identifiers else []
 
         async def chunk_for_line(self, *, blob_name, line, scope):
@@ -398,7 +402,9 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
     target = DefinitionHit("target", "definition", target_chunk, 1, 2)
 
     class ExactStore:
-        async def find_definitions(self, *, identifiers, scope, max_per_identifier=3):
+        async def find_definitions(
+            self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+        ):
             return [target] if "target" in identifiers else []
 
     pipeline = RetrievalPipeline(

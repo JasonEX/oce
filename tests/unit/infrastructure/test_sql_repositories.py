@@ -128,6 +128,22 @@ async def test_blob_repository_crud(sqlite_session):
 
 
 @pytest.mark.asyncio
+async def test_ready_sample_excludes_pending_blobs_and_respects_limit(sqlite_session):
+    repo = _blob_repository(sqlite_session)
+    await repo.save_many(
+        [
+            Blob(blob_name="a" * 64, path="a.py", status=BlobStatus.PENDING),
+            Blob(blob_name="b" * 64, path="b.py", status=BlobStatus.READY),
+            Blob(blob_name="c" * 64, path="c.py", status=BlobStatus.READY),
+        ]
+    )
+    await sqlite_session.commit()
+    assert await repo.list_ready_names(1) == ["b" * 64]
+    assert await repo.list_ready_names(10) == ["b" * 64, "c" * 64]
+    assert await repo.list_ready_names(0) == []
+
+
+@pytest.mark.asyncio
 async def test_expired_blob_remains_while_referenced_by_chain(sqlite_session):
     blob_repo = _blob_repository(sqlite_session)
     chain_repo = SqlChainRepository(sqlite_session)
