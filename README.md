@@ -157,9 +157,12 @@ On the measured 16-core CPU it scores 20 candidates in about 1.2 s. Enabling bot
 forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an operational
 data/latency boundary, not a quality claim. In the current development benchmark, the local
 reranker materially improved long issue-style ranking, preserved short structural Top-1, and
-did not improve the smaller semantic suite. Treat it as a complex-query opt-in until broader
+did not improve the smaller semantic suite; measured again on top of the structural head lanes
+added later (frame anchors, hub lane), it was net-negative on every suite (semantic nDCG@10
+74.9→72.9, issue nDCG@100 74.3→62.0, about 1.2 s added per vector-backed request), so it remains
+off. Treat it as a complex-query opt-in until broader
 repeated evaluation supports a wider default. See the
-[benchmark report](benchmarks/results/nine-language-utility-2026-09-03.md). Candidates outside
+[round-three benchmark report](benchmarks/results/utility-round3-2026-09-09.md). Candidates outside
 either rerank window remain available to final selection.
 
 Then start the service:
@@ -319,7 +322,11 @@ declaration chunk after its use sites; within that evidence, chunks that call or
 symbol come before textual mentions and before mere imports, a chunk that also names the
 request's other symbol ("implemented for `StatusCode`") comes first, uses in other files come
 before uses next to the declaration, a file named after the symbol leads a test question, and
-files nearer the declaring package come before scripts and examples. "Which functions call X"
+files nearer the declaring package come before scripts and examples; a test question leads
+with the test whose declared name is closest to the symbol (`TestWalker` for `Walk`). Qualified
+names are pinned by the recorded enclosing declaration, then by a declaration line naming both
+scope and leaf (`app.render = function render`), then by chunk text, and path evidence must match
+a whole path component. "Which functions call X"
 and "哪些地方调用了 X" are reference questions; "how does A reach B" with two symbols is a
 call-chain question; "where is X defined" stays a definition question however many parameter
 types it names, and overloads are ordered by the types in their declaration line. Both head rules are reapplied after a model reranker
@@ -332,6 +339,24 @@ site of the referenced symbol makes the request
 decisive, vector recall is dropped, and the remaining lexical evidence joins the exact lane by
 rank. `RETRIEVAL_DECISIVE_SKIPS_DENSE=false` restores the wait; `retrieval_metrics.dense_route`
 records `dense`, `skip:exact_definition`, `skip:path_evidence`, or `skip:use_sites` per request.
+Under the adaptive policies, a reference request whose SQL use sites made dense recall unnecessary
+also skips the dedicated reranker (`rerank_route = skip:deterministic`); symbol and path requests
+retain their existing `skip:exact_definition` and `skip:path_evidence` routes. `always` still runs.
+Overview requests and flow questions that name no symbol get a hub lane: the request's words are
+joined into the identifier spellings a declaration could use (`Router`, `register_checker`,
+`createSlice`), the scope's declarations of those spellings are fetched with the number of files
+that call, import or extend each, and the most widely referenced ones that are not package
+names take protected head slots, one file each (`RETRIEVAL_HUB_HEAD_SLOTS`, off by default at 0:
+it raised the curated overview nDCG@10 67.8→74.3 but lowered a sealed held-out semantic set's
+overview 66.4→54.1 and call-chain 85.6→78.2, so the gain did not generalize;
+`RETRIEVAL_HUB_MAX_DEFINITIONS` bounds how many places a hub may be declared in;
+`RETRIEVAL_HUB_FEATURE_ENABLED` would extend the lane to feature questions and displaced the
+implementing function there). Issue-style requests are anchored on their
+deterministic facts: each traceback frame (Python, IPython and Node forms) is resolved to the
+declaration of that function in that file at that line, the title's identifiers are resolved with
+their qualifier pinned strictly, and those declarations take protected head slots in trace order
+(`RETRIEVAL_COMPOUND_ANCHOR_SLOTS`, default 3); the rest of an issue's identifiers join fusion by
+rank rather than by score.
 After selection, touching spans of one file are merged. Requests that name a symbol then
 receive relation sections after the primary results, each with its own slot and character
 cap and deduplicated against what is already shown: signature excerpts of definitions the

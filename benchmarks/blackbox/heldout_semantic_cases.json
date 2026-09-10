@@ -1,0 +1,471 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "llm-assisted",
+    "note": "Held-out semantic set for the 2026-09-09 utility round (round 3). Eighteen feature/overview/call-chain/issue-style requests over the four round-2 held-out repositories (click, fastify, chi, jsoup), which no semantic, CSN or issue suite has used. Relevant files and grades were written from a read of each repository's source before any round-3 code change was measured and were never compared against retrieval output. The manifest hash is recorded in the round report and the suite is run once per side at the end of the round."
+  },
+  "cases": [
+    {
+      "id": "click-arg-parsing-overview",
+      "instance_id": "click-6aabf09",
+      "kind": "overview",
+      "query": "Explain how click parses command-line arguments: from Command.main creating a Context, through the option parser, to converting parameter values with their types.",
+      "rationale": "Command/Context live in core.py, the parser in parser.py, value conversion in types.py.",
+      "relevant_paths": [
+        {
+          "path": "src/click/core.py",
+          "grade": 3,
+          "role": "command and context"
+        },
+        {
+          "path": "src/click/parser.py",
+          "grade": 3,
+          "role": "option parser"
+        },
+        {
+          "path": "src/click/types.py",
+          "grade": 2,
+          "role": "value conversion"
+        }
+      ]
+    },
+    {
+      "id": "click-shell-completion",
+      "instance_id": "click-6aabf09",
+      "kind": "feature",
+      "query": "How does click implement shell tab completion for commands, options, and their values?",
+      "rationale": "Completion classes and the entry point are in shell_completion.py; Command/Parameter and ParamType provide shell_complete hooks.",
+      "relevant_paths": [
+        {
+          "path": "src/click/shell_completion.py",
+          "grade": 3,
+          "role": "completion engine"
+        },
+        {
+          "path": "src/click/core.py",
+          "grade": 2,
+          "role": "command/parameter completion hooks"
+        },
+        {
+          "path": "src/click/types.py",
+          "grade": 1,
+          "role": "type completion hook"
+        }
+      ]
+    },
+    {
+      "id": "click-help-formatting",
+      "instance_id": "click-6aabf09",
+      "kind": "feature",
+      "query": "How does click render the --help page: the usage line, the options table, and the list of subcommands with text wrapping?",
+      "rationale": "HelpFormatter in formatting.py renders sections; Command/Group in core.py assemble usage, options and command lists.",
+      "relevant_paths": [
+        {
+          "path": "src/click/formatting.py",
+          "grade": 3,
+          "role": "help formatter"
+        },
+        {
+          "path": "src/click/core.py",
+          "grade": 2,
+          "role": "format_help and sections"
+        }
+      ]
+    },
+    {
+      "id": "click-echo-chain",
+      "instance_id": "click-6aabf09",
+      "kind": "call_chain",
+      "query": "Trace click.echo from writing a message to resolving the output stream and stripping ANSI color codes when the stream is not a terminal.",
+      "rationale": "echo lives in utils.py and delegates stream resolution and ANSI handling to _compat.py; Windows console streams are in _winconsole.py.",
+      "relevant_paths": [
+        {
+          "path": "src/click/utils.py",
+          "grade": 3,
+          "role": "echo"
+        },
+        {
+          "path": "src/click/_compat.py",
+          "grade": 3,
+          "role": "stream resolution and ANSI stripping"
+        },
+        {
+          "path": "src/click/_winconsole.py",
+          "grade": 1,
+          "role": "Windows console streams"
+        }
+      ]
+    },
+    {
+      "id": "click-choice-case-insensitive-issue",
+      "instance_id": "click-6aabf09",
+      "kind": "issue",
+      "query": "Choice with case_sensitive=False returns the user's spelling instead of the declared choice\n\nWhen a `click.Choice` is declared with `case_sensitive=False`, a value that differs only in case is accepted, but the callback receives the value exactly as the user typed it rather than the canonical choice string.\n\n```python\n@click.command()\n@click.option('--mode', type=click.Choice(['Fast', 'Slow'], case_sensitive=False))\ndef cli(mode):\n    click.echo(mode)\n```\n\n`cli --mode fast` prints `fast`; I expected `Fast`, matching the declared choice, so downstream comparisons against the declared list keep working.",
+      "rationale": "Choice.convert in types.py normalises and returns the value; Parameter.process_value in core.py invokes the conversion.",
+      "relevant_paths": [
+        {
+          "path": "src/click/types.py",
+          "grade": 3,
+          "role": "Choice.convert"
+        },
+        {
+          "path": "src/click/core.py",
+          "grade": 1,
+          "role": "parameter value processing"
+        }
+      ]
+    },
+    {
+      "id": "fastify-request-lifecycle-overview",
+      "instance_id": "fastify-ac28821",
+      "kind": "overview",
+      "query": "Explain fastify's request lifecycle from the HTTP server accepting a request, through routing and the onRequest and preHandler hooks, to the handler and reply serialization.",
+      "rationale": "route.js registers routes and the router handler, handle-request.js runs the hook/handler sequence, hooks.js runs hooks, reply.js serializes and sends, server.js creates the server.",
+      "relevant_paths": [
+        {
+          "path": "lib/route.js",
+          "grade": 3,
+          "role": "routing and route handler"
+        },
+        {
+          "path": "lib/handle-request.js",
+          "grade": 3,
+          "role": "hook and handler sequence"
+        },
+        {
+          "path": "lib/hooks.js",
+          "grade": 2,
+          "role": "hook runners"
+        },
+        {
+          "path": "lib/reply.js",
+          "grade": 2,
+          "role": "reply serialization"
+        },
+        {
+          "path": "lib/server.js",
+          "grade": 1,
+          "role": "server creation"
+        }
+      ]
+    },
+    {
+      "id": "fastify-schema-validation",
+      "instance_id": "fastify-ac28821",
+      "kind": "feature",
+      "query": "How does fastify compile a route's JSON schemas into validators and validate the incoming body, querystring, params, and headers?",
+      "rationale": "validation.js compiles and runs validators; schema-controller.js owns the compilers and shared schemas; route.js triggers compilation; schemas.js normalises schema shapes.",
+      "relevant_paths": [
+        {
+          "path": "lib/validation.js",
+          "grade": 3,
+          "role": "validator compilation and validation"
+        },
+        {
+          "path": "lib/schema-controller.js",
+          "grade": 2,
+          "role": "schema controller and compilers"
+        },
+        {
+          "path": "lib/route.js",
+          "grade": 1,
+          "role": "compilation trigger"
+        },
+        {
+          "path": "lib/schemas.js",
+          "grade": 1,
+          "role": "schema normalisation"
+        }
+      ]
+    },
+    {
+      "id": "fastify-body-parsing",
+      "instance_id": "fastify-ac28821",
+      "kind": "feature",
+      "query": "How does fastify parse request bodies by content type and where are the default JSON and plain text parsers registered?",
+      "rationale": "ContentTypeParser in content-type-parser.js holds the parsers and default JSON/text parsers; content-type.js parses the header; fastify.js constructs the parser.",
+      "relevant_paths": [
+        {
+          "path": "lib/content-type-parser.js",
+          "grade": 3,
+          "role": "content type parser"
+        },
+        {
+          "path": "lib/content-type.js",
+          "grade": 1,
+          "role": "content-type header parsing"
+        },
+        {
+          "path": "fastify.js",
+          "grade": 1,
+          "role": "parser construction"
+        }
+      ]
+    },
+    {
+      "id": "fastify-reply-send-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "query": "Trace reply.send from a JavaScript object payload through the preSerialization and onSend hooks and the route's serializer to writing the response.",
+      "rationale": "Reply.send and the serialization steps are in reply.js; the onSend/preSerialization runners in hooks.js; the serializer compiler is owned by schema-controller.js.",
+      "relevant_paths": [
+        {
+          "path": "lib/reply.js",
+          "grade": 3,
+          "role": "send and serialization"
+        },
+        {
+          "path": "lib/hooks.js",
+          "grade": 2,
+          "role": "onSend and preSerialization runners"
+        },
+        {
+          "path": "lib/schema-controller.js",
+          "grade": 1,
+          "role": "serializer compiler"
+        }
+      ]
+    },
+    {
+      "id": "fastify-head-route-issue",
+      "instance_id": "fastify-ac28821",
+      "kind": "issue",
+      "query": "exposeHeadRoute registers a HEAD route even when the plugin already declared one for the same path\n\nWith `exposeHeadRoutes: true` (the default) a plugin that declares both `GET /items` and `HEAD /items` fails at startup with a duplicate route error for `HEAD /items`. Expected: when a HEAD route for the path already exists, fastify should skip the automatic HEAD route instead of adding it twice.\n\n```js\nfastify.get('/items', handler)\nfastify.head('/items', headHandler)\n```",
+      "rationale": "route.js decides whether to add the automatic HEAD route; head-route.js holds the automatic HEAD onSend handler.",
+      "relevant_paths": [
+        {
+          "path": "lib/route.js",
+          "grade": 3,
+          "role": "automatic HEAD route registration"
+        },
+        {
+          "path": "lib/head-route.js",
+          "grade": 2,
+          "role": "HEAD route handler"
+        }
+      ]
+    },
+    {
+      "id": "chi-routing-overview",
+      "instance_id": "chi-ae6be74",
+      "kind": "overview",
+      "query": "Explain how chi routes an incoming request: from Mux.ServeHTTP through the middleware chain and the radix tree lookup to the route context that exposes URL parameters.",
+      "rationale": "Mux in mux.go, radix tree in tree.go, route Context in context.go, middleware chaining in chain.go.",
+      "relevant_paths": [
+        {
+          "path": "mux.go",
+          "grade": 3,
+          "role": "mux and dispatch"
+        },
+        {
+          "path": "tree.go",
+          "grade": 3,
+          "role": "radix tree"
+        },
+        {
+          "path": "context.go",
+          "grade": 2,
+          "role": "route context"
+        },
+        {
+          "path": "chain.go",
+          "grade": 1,
+          "role": "middleware chain"
+        }
+      ]
+    },
+    {
+      "id": "chi-pattern-matching",
+      "instance_id": "chi-ae6be74",
+      "kind": "feature",
+      "query": "How does chi match route patterns with named parameters, regular expressions, and wildcards against the request path?",
+      "rationale": "Pattern segmentation and matching are in tree.go; matched parameters are stored on the Context; Mux drives the lookup.",
+      "relevant_paths": [
+        {
+          "path": "tree.go",
+          "grade": 3,
+          "role": "pattern matching"
+        },
+        {
+          "path": "context.go",
+          "grade": 1,
+          "role": "URL parameters"
+        },
+        {
+          "path": "mux.go",
+          "grade": 1,
+          "role": "lookup entry"
+        }
+      ]
+    },
+    {
+      "id": "chi-mount-chain",
+      "instance_id": "chi-ae6be74",
+      "kind": "call_chain",
+      "query": "Trace how Mux.Mount attaches a sub-router and how a request is dispatched into it with the remaining route path.",
+      "rationale": "Mount and the mount handler are in mux.go; the route path and pattern bookkeeping in context.go; the tree stores the wildcard mount node.",
+      "relevant_paths": [
+        {
+          "path": "mux.go",
+          "grade": 3,
+          "role": "Mount and dispatch"
+        },
+        {
+          "path": "context.go",
+          "grade": 2,
+          "role": "route path bookkeeping"
+        },
+        {
+          "path": "tree.go",
+          "grade": 1,
+          "role": "mount node"
+        }
+      ]
+    },
+    {
+      "id": "chi-compress-content-length-issue",
+      "instance_id": "chi-ae6be74",
+      "kind": "issue",
+      "query": "Compress middleware keeps the original Content-Length header after compressing the body\n\nWhen a handler sets `Content-Length` explicitly before writing and the response goes through `middleware.Compress`, the client receives the compressed body with the uncompressed length, so the body is truncated or the connection is held open.\n\n```go\nr.Use(middleware.Compress(5))\nr.Get(\"/\", func(w http.ResponseWriter, r *http.Request) {\n    w.Header().Set(\"Content-Length\", strconv.Itoa(len(payload)))\n    w.Write(payload)\n})\n```\n\nExpected: the compressing writer removes or rewrites Content-Length when it decides to compress.",
+      "rationale": "The compressing response writer in compress.go decides when to compress and touches headers; wrap_writer.go provides the wrapped writer it builds on.",
+      "relevant_paths": [
+        {
+          "path": "middleware/compress.go",
+          "grade": 3,
+          "role": "compress writer"
+        },
+        {
+          "path": "middleware/wrap_writer.go",
+          "grade": 1,
+          "role": "wrapped response writer"
+        }
+      ]
+    },
+    {
+      "id": "jsoup-parsing-overview",
+      "instance_id": "jsoup-7860d08",
+      "kind": "overview",
+      "query": "Explain jsoup's HTML parsing architecture: how the tokeniser turns characters into tokens, how the tree builder state machine consumes them, and how the Document tree is assembled.",
+      "rationale": "Tokeniser/TokeniserState produce tokens, HtmlTreeBuilder/HtmlTreeBuilderState insert nodes, TreeBuilder is the shared driver and Parser the entry point.",
+      "relevant_paths": [
+        {
+          "path": "src/main/java/org/jsoup/parser/Tokeniser.java",
+          "grade": 3,
+          "role": "tokeniser"
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilder.java",
+          "grade": 3,
+          "role": "tree builder"
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java",
+          "grade": 2,
+          "role": "insertion modes"
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TokeniserState.java",
+          "grade": 2,
+          "role": "tokeniser states"
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "grade": 2,
+          "role": "parse driver"
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "grade": 1,
+          "role": "entry point"
+        }
+      ]
+    },
+    {
+      "id": "jsoup-css-selector",
+      "instance_id": "jsoup-7860d08",
+      "kind": "feature",
+      "query": "How does jsoup evaluate a CSS selector: parsing the query string into Evaluator objects and collecting the matching elements from the tree?",
+      "rationale": "QueryParser builds Evaluators, Evaluator implements matching, Selector is the entry point, Collector walks the tree, StructuralEvaluator covers combinators.",
+      "relevant_paths": [
+        {
+          "path": "src/main/java/org/jsoup/select/QueryParser.java",
+          "grade": 3,
+          "role": "query parser"
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Evaluator.java",
+          "grade": 3,
+          "role": "evaluators"
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Selector.java",
+          "grade": 2,
+          "role": "entry point"
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Collector.java",
+          "grade": 2,
+          "role": "tree traversal"
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/StructuralEvaluator.java",
+          "grade": 1,
+          "role": "combinators"
+        }
+      ]
+    },
+    {
+      "id": "jsoup-connect-get-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "query": "Trace Jsoup.connect(url).get() from the Connection builder through HttpConnection executing the request to parsing the response body into a Document.",
+      "rationale": "Jsoup.connect creates an HttpConnection; HttpConnection.get executes and parses via DataUtil.parseInputStream; Connection is the interface.",
+      "relevant_paths": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "grade": 3,
+          "role": "connect entry"
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "grade": 3,
+          "role": "request execution and response parsing"
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/DataUtil.java",
+          "grade": 2,
+          "role": "stream parsing"
+        },
+        {
+          "path": "src/main/java/org/jsoup/Connection.java",
+          "grade": 1,
+          "role": "interface"
+        }
+      ]
+    },
+    {
+      "id": "jsoup-pre-whitespace-issue",
+      "instance_id": "jsoup-7860d08",
+      "kind": "issue",
+      "query": "Element.text() collapses whitespace inside <pre> blocks\n\nCalling `text()` on an element that contains a `<pre>` child returns the preformatted content with runs of spaces and newlines collapsed to single spaces, so indentation in code samples is lost.\n\n```java\nDocument doc = Jsoup.parse(\"<div><pre>  line 1\\n    line 2</pre></div>\");\nSystem.out.println(doc.select(\"div\").first().text());\n```\n\nExpected: whitespace inside `<pre>` (and other whitespace-preserving tags) is kept as in the source, as `wholeText()` does.",
+      "rationale": "Element.text and appendNormalisedText decide when to preserve whitespace; StringUtil.appendNormalisedWhitespace does the collapsing; TextNode holds the text.",
+      "relevant_paths": [
+        {
+          "path": "src/main/java/org/jsoup/nodes/Element.java",
+          "grade": 3,
+          "role": "text normalisation"
+        },
+        {
+          "path": "src/main/java/org/jsoup/internal/StringUtil.java",
+          "grade": 2,
+          "role": "whitespace collapsing"
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/TextNode.java",
+          "grade": 1,
+          "role": "text node"
+        }
+      ]
+    }
+  ]
+}

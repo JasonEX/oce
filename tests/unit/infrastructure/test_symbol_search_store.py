@@ -301,12 +301,10 @@ async def test_relation_lookups_group_by_enclosing_and_prefer_source(sessions):
         identifiers=["build_invoice"], scope=scope, limit=8
     )
     # One edge per (file, enclosing function): the two calls inside ``create``
-    # collapse, source callers precede the test callers.
+    # collapse; test files have their own section and are not callers.
     assert [(c.hit.path, c.enclosing) for c in callers] == [
         ("src/billing/api.py", "create"),
         ("src/billing/api.py", "preview"),
-        ("tests/test_invoice.py", "test_totals"),
-        ("tests/test_invoice.py", "test_other"),
     ]
     assert callers[0].kind == "call" and callers[0].line == 5
 
@@ -357,6 +355,66 @@ async def test_test_relation_prefilter_keeps_benchmark_directories(sessions):
     assert tests
     assert all(item.hit.path == "benchmarks/worker_bench.py" for item in tests)
     assert any(item.enclosing == "benchmark_run" for item in tests)
+
+
+async def test_caller_filter_keeps_source_paths_containing_test_or_spec(sessions):
+    files = {
+        "src/worker.py": "def run_job():\n    return 1\n",
+        "src/contest/runner.py": (
+            "from src.worker import run_job\ndef run_contest():\n    return run_job()\n"
+        ),
+        "src/special/runner.py": (
+            "from src.worker import run_job\ndef run_special():\n    return run_job()\n"
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+
+    callers = await store.find_callers(identifiers=["run_job"], scope=scope, limit=4)
+
+    assert [(item.hit.path, item.enclosing) for item in callers] == [
+        ("src/contest/runner.py", "run_contest"),
+        ("src/special/runner.py", "run_special"),
+    ]
+
+
+async def test_hub_definitions_report_fan_in_packages_and_ambiguity(sessions):
+    files = {
+        "src/router.py": "class Router:\n    pass\n",
+        "src/api.py": (
+            "from src.router import Router\ndef build_api():\n    return Router()\n"
+        ),
+        "src/cli.py": (
+            "from src.router import Router\ndef build_cli():\n    return Router()\n"
+        ),
+        "routing/__init__.py": "def routing():\n    return 1\n",
+        "src/use_routing.py": (
+            "from routing import routing\ndef select_route():\n    return routing()\n"
+        ),
+        **{
+            f"src/common_{index}.py": "def common():\n    return 1\n"
+            for index in range(4)
+        },
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    store = SymbolSearchStore(sessions)
+    scope = SearchScope(frozenset(names.values()))
+
+    hubs = await store.find_hub_definitions(
+        spellings=["Router", "routing", "common", "Missing"],
+        scope=scope,
+        max_per_identifier=3,
+    )
+
+    assert [hub.identifier for hub in hubs] == ["Router", "routing"]
+    assert hubs[0].referencing_files == 2
+    assert [item.hit.path for item in hubs[0].definitions] == ["src/router.py"]
+    assert hubs[0].names_package is False
+    assert hubs[1].referencing_files == 1
+    assert hubs[1].names_package is True
 
 
 async def test_relation_queries_diversify_large_scopes_before_global_limit(sessions):

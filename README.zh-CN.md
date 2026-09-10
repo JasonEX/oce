@@ -141,9 +141,13 @@ ONNX 交叉编码器（`uv sync --extra local-rerank`，`RERANK_LOCAL_MODEL_DIR`
 与 `tokenizer.json` 的目录，例如 `jinaai/jina-reranker-v2-base-multilingual` 的 onnx 导出），不外发任何
 数据。该评测模型使用 [CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)，部署前必须单独核对模型的使用权，或改用兼容的其他导出。实测的 16 核 CPU 上 20 个候选约 1.2 秒。同时启用两种后端时，管线按专用 reranker
 → chat LLM 级联。默认关闭只是运行成本和数据边界，不代表质量高低。当前 development
-benchmark 中，本地 reranker 明显改善长 issue 排序，保持短结构查询 Top-1，但没有改善较小的
-语义集。因此先把它作为复杂查询的可选增强；在更广泛的重复评测完成前不修改默认开关。详见
-[benchmark 报告](benchmarks/results/nine-language-utility-2026-09-03.md)。无论窗口多大，
+benchmark 中，本地 reranker 曾明显改善长 issue 排序，保持短结构查询 Top-1，但没有改善较小的
+语义集；在后来加入的结构化头部车道（traceback 帧锚点、hub 车道）之上复测，它在所有套件上都是
+净负（semantic nDCG@10 74.9→72.9、issue nDCG@100 74.3→62.0，向量类请求各多约 1.2 秒），因此
+保持关闭；adaptive 策略下，SQL 使用点已经回答的 reference 请求记为
+`rerank_route = skip:deterministic`，symbol/path 请求仍分别记为 `skip:exact_definition` 与
+`skip:path_evidence`；`always` 仍会运行。详见
+[第三轮 benchmark 报告](benchmarks/results/utility-round3-2026-09-09.md)。无论窗口多大，
 窗口外候选都不会被 reranker 删除，仍可进入最终选择。
 
 然后启动服务：

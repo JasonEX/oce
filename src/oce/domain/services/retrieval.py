@@ -31,12 +31,14 @@ from loguru import logger
 from oce.domain.chunk.lang import detect_language
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.evidence_pack import SectionInput, assemble_sections
-from oce.domain.services.lexical import lexical_tokens
+from oce.domain.services.lexical import STOPWORDS, lexical_tokens
+from oce.domain.services.lexical import split_identifier as _split_words
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
 from oce.domain.services.query_classifier import (
     QueryIntent,
     asks_about_tests,
     asks_for_implementors,
+    asks_how,
     classify_query_intent,
     should_use_path_index,
 )
@@ -58,6 +60,7 @@ from oce.domain.services.search import (
     DefinitionHit,
     ExactSearchStore,
     HitRole,
+    HubDefinition,
     LexicalSearchStore,
     PathLookupStore,
     SearchHit,
@@ -124,9 +127,18 @@ def source_priority_factor(path: str) -> float:
         return 0.5
     if is_test_path(p):
         return 0.6
+    # Vendored third-party code is real source the project does not own; a
+    # request about the project is looking for the code that calls into it.
+    if any(f"/{part}/" in f"/{p}" for part in _VENDORED_DIRECTORIES):
+        return 0.6
     # 配置文件和类型桩：需要它们的查询会写出文件名（PATH 意图，中立先验），
     # 其余查询在找实现，这些文件只是碰巧提到同样的名字。
-    if name.endswith(_CONFIG_SUFFIXES) or _RC_FILE.match(name) or name.endswith(".pyi"):
+    if (
+        name.endswith(_CONFIG_SUFFIXES)
+        or _RC_FILE.match(name)
+        or name.endswith(".pyi")
+        or ".config." in name
+    ):
         return 0.7
     if name in {"index.ts", "index.tsx", "index.js", "index.jsx", "types.ts"}:
         return 0.85
@@ -152,6 +164,9 @@ _DOCUMENT_DIRECTORIES = frozenset(
         "changelogs",
         "news",
     }
+)
+_VENDORED_DIRECTORIES = frozenset(
+    {"vendor", "vendored", "_vendor", "third_party", "thirdparty", "node_modules"}
 )
 _DOCUMENT_STEMS = frozenset(
     {"changelog", "changes", "history", "news", "authors", "contributors", "todo"}
@@ -208,6 +223,69 @@ _CHAIN_MAX_EXPANSIONS = 40
 # level fits the chain budget.
 _CHAIN_CALLEE_DEPTH = 2
 _CHAIN_CALLEE_FANOUT = 6
+
+
+_QUERY_WORD = re.compile(r"[A-Za-z][A-Za-z0-9]*")
+_HUB_MAX_WORDS = 14
+
+
+def _word_stems(word: str) -> tuple[str, ...]:
+    """Spellings a declared name may use for an English word in the request.
+
+    Plural and inflected forms are the common gap ("registers a checker" ->
+    ``register_checker``); the candidates are generated, not looked up, so
+    a wrong stem costs nothing unless a declaration happens to spell it.
+    """
+    stems = [word]
+    if word.endswith("ies") and len(word) > 4:
+        stems.append(word[:-3] + "y")
+    if word.endswith(("ches", "shes", "sses", "xes")) and len(word) > 5:
+        stems.append(word[:-2])
+    elif word.endswith("s") and not word.endswith("ss") and len(word) > 3:
+        stems.append(word[:-1])
+    if word.endswith("ing") and len(word) > 5:
+        stems.append(word[:-3])
+        stems.append(word[:-3] + "e")
+    if word.endswith("ed") and len(word) > 4:
+        stems.append(word[:-2])
+        stems.append(word[:-1])
+    return tuple(dict.fromkeys(stem for stem in stems if len(stem) >= 3))
+
+
+def hub_spellings(
+    query: str, mentions: Sequence[str] = (), identifiers: Sequence[str] = ()
+) -> tuple[str, ...]:
+    """Identifier spellings the request's words could declare.
+
+    Every content word alone (``Router``, ``router``) and every pair of
+    content words joined as snake, camel or Pascal case in either order
+    (``register_checker``, ``createSlice``, ``JsonReader``), plus the exact
+    type names and code identifiers the request already carries. The
+    request is not a symbol query, so the words are ordinary English and
+    the pairs are bounded by the number of content words.
+    """
+    words: list[str] = []
+    for match in _QUERY_WORD.finditer(query):
+        word = match.group().lower()
+        if word in STOPWORDS or len(word) < 2 or word in words:
+            continue
+        words.append(word)
+    words = words[:_HUB_MAX_WORDS]
+    stems = [_word_stems(word) for word in words]
+    spellings: list[str] = list(dict.fromkeys((*identifiers, *mentions)))
+    for options in stems:
+        for stem in options:
+            if len(stem) >= 3:
+                spellings.extend((stem, stem.capitalize()))
+    for left_index, left in enumerate(stems):
+        for right in stems[left_index + 1 :]:
+            for first, second in ((left, right), (right, left)):
+                for a in first:
+                    for b in second:
+                        spellings.append(f"{a}_{b}")
+                        spellings.append(f"{a}{b.capitalize()}")
+                        spellings.append(f"{a.capitalize()}{b.capitalize()}")
+    return tuple(dict.fromkeys(spellings))
 
 
 def _mine_identifiers(hits: Sequence[SearchHit]) -> list[str]:
@@ -294,6 +372,9 @@ class RetrievalState:
     # Compound requests: definition chunks of the identifiers the text names
     # that are declared in few enough places to be unambiguous.
     anchors: list[SearchHit] = field(default_factory=list)
+    # Feature/overview requests: declared names the request's words spell,
+    # most widely referenced first (``Router`` for "router composition").
+    hubs: list[HubDefinition] = field(default_factory=list)
     path_scores: dict[str, float] = field(default_factory=dict)
     lookup_scores: dict[str, float] = field(default_factory=dict)
     # Candidate chunks whose only symbol evidence is imports: file headers.
@@ -342,6 +423,29 @@ async def _no_occurrences() -> list[RelatedOccurrence]:
     return []
 
 
+async def _no_definitions() -> list[DefinitionHit]:
+    return []
+
+
+def _frame_matches(frame_path: str, path: str) -> bool:
+    """Whether a traceback frame's file is the indexed file.
+
+    Frame paths are absolute or package-relative; the indexed path is
+    repository-relative. One must end with the other, component-aligned, so
+    ``requests/sessions.py`` matches ``/site-packages/requests/sessions.py``
+    while ``tests/sessions.py`` does not.
+    """
+    frame = frame_path.replace("\\", "/").strip("/")
+    indexed = path.replace("\\", "/").strip("/")
+    if not frame or not indexed:
+        return False
+    if frame == indexed:
+        return True
+    if frame.endswith("/" + indexed):
+        return True
+    return indexed.endswith("/" + frame)
+
+
 _QUALIFIER_SEPARATORS = ("::", ".")
 
 
@@ -385,6 +489,42 @@ def _names_identifier(path: str, identifiers: Sequence[str]) -> bool:
     return False
 
 
+# The name a test declaration introduces: ``func TestWalker(``,
+# ``def test_walk(``, ``it("walks the tree"``, ``public void walkTest(``.
+_TEST_DECLARATION = re.compile(
+    r"^\s*(?:@\w+\s+)?(?:pub\s+|async\s+|export\s+|public\s+|static\s+)*"
+    r"(?:(?:def|fn|func|function|void|it|test|describe)\s*\(?\s*[\"']?"
+    r"(?:\([^)]*\)\s*)?([A-Za-z_][\w ]*))"
+)
+
+
+def _test_name_distance(hit: SearchHit, identifiers: Sequence[str]) -> int | None:
+    """How far the closest test name declared in the chunk is from the symbol.
+
+    ``TestWalker`` has six extra normalized characters around ``Walk``;
+    ``TestWalkInlineMiddlewaresAcrossSubrouter`` has thirty. None when no
+    declared test names the symbol.
+    """
+    needles = [
+        _leaf(identifier).replace("_", "").lower()
+        for identifier in identifiers
+        if len(_leaf(identifier)) >= 3
+    ]
+    if not needles:
+        return None
+    best: int | None = None
+    for line in hit.content.splitlines():
+        match = _TEST_DECLARATION.match(line)
+        if match is None:
+            continue
+        name = match.group(1).replace("_", "").replace(" ", "").lower()
+        for needle in needles:
+            if needle in name:
+                distance = len(name) - len(needle)
+                best = distance if best is None else min(best, distance)
+    return best
+
+
 def _path_proximity(path: str, anchors: Sequence[str]) -> int:
     """Longest shared directory prefix (in components) with any anchor path."""
     parts = path.replace("\\", "/").split("/")[:-1]
@@ -415,33 +555,107 @@ def _word_in(word: str, text: str) -> bool:
     )
 
 
-def resolve_qualified_hits(
-    hits: list[SearchHit], qualifiers: dict[str, tuple[str, ...]]
-) -> list[SearchHit]:
-    """Keep the declarations that live in the requested scope.
+# A line that declares something: keyword-introduced declarations in the
+# supported languages, or a C++/Rust ``Scope::name`` definition.
+_DECLARATION_LINE = re.compile(
+    r"\b(?:def|fn|func|function|class|struct|impl|interface|trait|enum|type"
+    r"|val|var|let|const|public|private|protected|static|override|sub|proc)\b"
+    r"|::"
+)
 
-    The scope chain (``class Session > def get``) and the file path are the
-    structural evidence; the chunk text is consulted only when neither names
-    the qualifier (Go receivers, C++ ``Type::method`` definitions). When no
-    hit matches, the request may have named a scope the index does not know,
-    so every hit stays.
+
+def _path_components(path: str) -> tuple[str, ...]:
+    """Directory names plus the file stem: ``binding/default.go`` -> ``binding``, ``default``."""
+    parts = path.replace("\\", "/").split("/")
+    name = parts[-1]
+    stem = name.rsplit(".", 1)[0] if "." in name else name
+    return (*parts[:-1], stem)
+
+
+def resolve_qualified_hits(
+    hits: list[SearchHit],
+    qualifiers: dict[str, tuple[str, ...]],
+    *,
+    declarations: bool = True,
+    strict: bool = False,
+) -> list[SearchHit]:
+    """Keep the hits that belong to the requested scope.
+
+    For declarations the scope chain (``class Session > def get``) and a
+    path component (``binding/default.go``) are the structural evidence; a
+    declaration line naming both the scope and the leaf (``app.render =
+    function render``, ``func (c *Context) ShouldBindJSON``) comes next; the
+    chunk text is consulted last (Go receivers, C++ ``Type::method``
+    definitions in chunks without a scope chain). Use sites are pinned by
+    structure or text only: the line that calls ``app.render`` is not a
+    declaration. A path component must equal the qualifier whole, so a test
+    file named ``app.render.js`` does not pass for the scope ``app``. When
+    no hit matches, the request may have named a scope the index does not
+    know, so every hit stays unless ``strict`` asks for nothing instead.
     """
     if not qualifiers or not hits:
         return hits
+    unresolved: list[SearchHit] = [] if strict else hits
     wanted = tuple(dict.fromkeys(q for scopes in qualifiers.values() for q in scopes))
+    leaves = tuple(qualifiers)
 
     def structural(hit: SearchHit) -> bool:
-        text = f"{hit.context or ''}\n{hit.path.replace('/', ' ')}"
-        return any(_word_in(q, text) for q in wanted)
+        if any(_word_in(q, hit.context or "") for q in wanted):
+            return True
+        components = _path_components(hit.path)
+        return any(q in components for q in wanted)
+
+    def declared(hit: SearchHit) -> bool:
+        for line in hit.content.splitlines():
+            if (
+                _DECLARATION_LINE.search(line)
+                and any(_word_in(leaf, line) for leaf in leaves)
+                and any(_word_in(q, line) for q in wanted)
+            ):
+                return True
+        return False
 
     def textual(hit: SearchHit) -> bool:
         return any(_word_in(q, hit.content) for q in wanted)
 
-    for predicate in (structural, textual):
+    if not declarations:
+        # A call line ``app.render(...)`` in one file and a chunk whose scope
+        # chain names ``app`` in another are both use sites; neither kind of
+        # evidence suppresses the other.
+        matched = [hit for hit in hits if structural(hit) or textual(hit)]
+        return matched or unresolved
+    for predicate in (structural, declared, textual):
         matched = [hit for hit in hits if predicate(hit)]
         if matched:
             return matched
-    return hits
+    return unresolved
+
+
+def resolve_qualified_definitions(
+    definitions: list[DefinitionHit],
+    qualifiers: dict[str, tuple[str, ...]],
+    *,
+    strict: bool = False,
+) -> list[DefinitionHit]:
+    """Declarations of the leaf inside the requested scope.
+
+    The recorded enclosing definition is the index fact (``route`` declared
+    inside ``Router``); the chunk-level evidence is the fallback for stores
+    that did not record one. ``strict`` returns nothing when no evidence
+    places any declaration in the scope (``unittest.skip`` names the
+    standard library's ``skip``, not the project's).
+    """
+    wanted = {q for scopes in qualifiers.values() for q in scopes}
+    enclosed = [item for item in definitions if item.enclosing in wanted]
+    if enclosed:
+        return enclosed
+    kept = {
+        search_hit_key(hit)
+        for hit in resolve_qualified_hits(
+            [item.hit for item in definitions], qualifiers, strict=strict
+        )
+    }
+    return [item for item in definitions if search_hit_key(item.hit) in kept]
 
 
 def order_by_comentions(hits: list[SearchHit], names: Sequence[str]) -> list[SearchHit]:
@@ -459,6 +673,25 @@ def order_by_comentions(hits: list[SearchHit], names: Sequence[str]) -> list[Sea
         return sum(_word_in(name, text) for name in names)
 
     return sorted(hits, key=lambda hit: -mentions(hit))
+
+
+def _signature_text(lines: Sequence[str], max_lines: int = 4) -> str:
+    """The declaration up to the close of its parameter list.
+
+    The body's first statement may name the very type that distinguishes
+    another overload (``JsonReader jsonReader = ...`` under ``fromJson(Reader,
+    TypeToken)``), so the window ends where the parameters do.
+    """
+    taken: list[str] = []
+    depth = 0
+    opened = False
+    for line in lines[:max_lines]:
+        taken.append(line)
+        depth += line.count("(") - line.count(")")
+        opened = opened or "(" in line
+        if opened and depth <= 0:
+            break
+    return "\n".join(taken)
 
 
 def order_by_signature_comentions(
@@ -480,7 +713,7 @@ def order_by_signature_comentions(
         offset = definition.start_line - chunk.start_line
         if offset < 0 or offset >= len(lines):
             continue
-        signature = "\n".join(lines[offset : offset + 3])
+        signature = _signature_text(lines[offset:])
         count = sum(_word_in(name, signature) for name in names)
         key = search_hit_key(chunk)
         signatures[key] = max(signatures.get(key, 0), count)
@@ -731,6 +964,7 @@ class RetrievalPipeline:
             asyncio.create_task(self._recall_path_lookup(state)),
             asyncio.create_task(self._recall_lexical(state, routed=eager_lexical)),
             asyncio.create_task(self._recall_anchors(state)),
+            asyncio.create_task(self._recall_hubs(state)),
         )
 
     async def _recall(
@@ -748,7 +982,7 @@ class RetrievalPipeline:
         moment the SQL lanes prove the request decisive; otherwise they are
         awaited exactly as before.
         """
-        exact_task, lookup_task, lexical_task, anchor_task = sql_lanes
+        exact_task, lookup_task, lexical_task, anchor_task, hub_task = sql_lanes
         vector_lanes = asyncio.create_task(self._recall_vector_lanes(state))
         try:
             (
@@ -756,7 +990,10 @@ class RetrievalPipeline:
                 state.lookup_scores,
                 state.lexical,
                 state.anchors,
-            ) = await asyncio.gather(exact_task, lookup_task, lexical_task, anchor_task)
+                state.hubs,
+            ) = await asyncio.gather(
+                exact_task, lookup_task, lexical_task, anchor_task, hub_task
+            )
         except BaseException:
             vector_lanes.cancel()
             await asyncio.gather(vector_lanes, return_exceptions=True)
@@ -918,13 +1155,19 @@ class RetrievalPipeline:
             # A qualified request can share a query with unrelated bare names
             # (for example ``Session.get`` plus ``Cache``). Filter only the
             # qualified identifier's own batch; applying one scope predicate to
-            # the combined result would silently discard the bare name.
+            # the combined result would silently discard the bare name. A
+            # declaration batch may use the declaration-line evidence; a batch
+            # of use sites or mixed occurrences is pinned by structure or
+            # text only.
+            declarations = kinds is not None and set(kinds) <= set(DEFINITION_KINDS)
             for leaf, scopes in state.qualifiers.items():
                 if identifier == leaf or any(
                     identifier.endswith(f"{separator}{leaf}")
                     for separator in _QUALIFIER_SEPARATORS
                 ):
-                    return resolve_qualified_hits(hits, {leaf: scopes})
+                    return resolve_qualified_hits(
+                        hits, {leaf: scopes}, declarations=declarations
+                    )
             return hits
 
         async def lookup(kinds: Sequence[str] | None) -> list[SearchHit]:
@@ -1073,13 +1316,7 @@ class RetrievalPipeline:
             found = [item for item in definitions if item.identifier == leaf]
             scopes = state.qualifiers.get(leaf)
             if scopes and found:
-                kept = resolve_qualified_hits(
-                    [item.hit for item in found], {leaf: scopes}
-                )
-                kept_keys = {search_hit_key(hit) for hit in kept}
-                found = [
-                    item for item in found if search_hit_key(item.hit) in kept_keys
-                ]
+                found = resolve_qualified_definitions(found, {leaf: scopes})
             # Endpoints form a prefix of the names in the question. If the
             # start cannot be resolved, a later target must not become the
             # start of a reversed one-ended trace.
@@ -1089,13 +1326,17 @@ class RetrievalPipeline:
         return endpoints
 
     async def _recall_anchors(self, state: RetrievalState) -> list[SearchHit]:
-        """Definition chunks of the identifiers an issue-style request names.
+        """Definition chunks an issue-style request points at deterministically.
 
-        A compound request mixes prose, tracebacks and code names; the names
-        it spells out are its strongest deterministic signal, exactly as they
-        are for a symbol request. Only identifiers declared in at most three
-        places qualify, the same ambiguity bound the related-definition
-        expansion uses, so a traceback frame called ``send`` anchors nothing.
+        Two facts in a bug report tie a name to a place: a traceback frame
+        names the function together with the file that declares it, and the
+        title names the symbol the report is about. Frames come first,
+        outermost project frame first (the API the reporter called, then
+        the code it delegated to), one per file; then the declarations of
+        the title's identifiers, qualified names pinned to their scope and
+        only when the name is declared in at most three places. Names
+        mentioned only in the body (a minimal example's helpers, fixture
+        names, unrelated types) anchor nothing.
         """
         evidence = state.evidence
         if (
@@ -1106,27 +1347,198 @@ class RetrievalPipeline:
             or state.scope is None
             or not state.scope.blob_names
             or evidence is None
-            or not evidence.identifiers
+            or not (evidence.frames or evidence.identifiers)
         ):
             return []
+        store = self.exact_store
+        scope = state.scope
+        title = state.query.strip().splitlines()[0] if state.query.strip() else ""
+        title_identifiers = [
+            identifier
+            for identifier in state.lookup_identifiers
+            if _word_in(_leaf(identifier), title)
+            and _leaf(identifier).lower() not in _IDENTIFIER_NOISE
+        ]
+        frame_functions = tuple(
+            dict.fromkeys(frame.function for frame in evidence.frames)
+        )
         try:
             with state.stage("exact"):
-                definitions = await self.exact_store.find_definitions(
-                    identifiers=state.lookup_identifiers or evidence.identifiers,
-                    scope=state.scope,
-                    max_per_identifier=3,
+                frame_definitions, title_definitions = await asyncio.gather(
+                    store.find_definitions(
+                        identifiers=frame_functions, scope=scope, max_per_identifier=40
+                    )
+                    if frame_functions
+                    else _no_definitions(),
+                    store.find_definitions(
+                        identifiers=tuple(title_identifiers),
+                        scope=scope,
+                        max_per_identifier=3,
+                    )
+                    if title_identifiers
+                    else _no_definitions(),
                 )
         except Exception as exc:
             logger.warning("Anchor definition recall failed: {}", exc)
             return []
         anchors: list[SearchHit] = []
         seen: set[SearchHitKey] = set()
-        for definition in definitions:
+        anchored_files: set[str] = set()
+        for frame in evidence.frames:
+            matching = [
+                definition
+                for definition in frame_definitions
+                if definition.identifier == frame.function
+                and definition.hit.blob_name not in anchored_files
+                and _frame_matches(frame.path, definition.hit.path)
+            ]
+            if not matching:
+                continue
+            # The frame's line picks the declaration among same-named ones
+            # in the file (``BaseAdapter.send`` vs ``HTTPAdapter.send``).
+            containing = [
+                definition
+                for definition in matching
+                if frame.line is not None
+                and definition.start_line <= frame.line <= definition.end_line
+            ]
+            definition = (containing or matching)[0]
+            hit = definition.hit
+            anchored_files.add(hit.blob_name)
+            key = search_hit_key(hit)
+            if key not in seen:
+                seen.add(key)
+                anchors.append(hit)
+        for leaf, scopes in state.qualifiers.items():
+            pinned = [item for item in title_definitions if item.identifier == leaf]
+            if pinned:
+                kept = {
+                    search_hit_key(item.hit)
+                    for item in resolve_qualified_definitions(
+                        pinned, {leaf: scopes}, strict=True
+                    )
+                }
+                title_definitions = [
+                    item
+                    for item in title_definitions
+                    if item.identifier != leaf or search_hit_key(item.hit) in kept
+                ]
+        for definition in title_definitions:
             key = search_hit_key(definition.hit)
             if key not in seen:
                 seen.add(key)
                 anchors.append(definition.hit)
         return anchors
+
+    def _hub_intent(self, state: RetrievalState) -> bool:
+        """Requests answered by the code's entry points rather than a named symbol.
+
+        Overviews and flow questions that name no symbol are; a feature
+        question describes one behaviour, and its answer is the function
+        that implements it rather than the type at the centre of the
+        subsystem, so the lane stays off there unless a deployment opts in.
+        """
+        if state.intent == QueryIntent.OVERVIEW:
+            return True
+        if state.intent == QueryIntent.CALL_CHAIN:
+            return not state.lookup_identifiers
+        return (
+            state.intent == QueryIntent.FEATURE
+            and self.settings.hub_feature_enabled
+            and asks_how(state.query)
+        )
+
+    async def _recall_hubs(self, state: RetrievalState) -> list[HubDefinition]:
+        """Declared names the request's words spell, by reference fan-in.
+
+        "Explain the request context lifecycle" names no symbol, yet the
+        scope declares ``RequestContext`` and ``request_context``, and the
+        files that declare them are where the answer starts. The candidate
+        spellings are generated from the request's words; the store returns
+        those that are declared in a bounded number of places together with
+        how many scoped files reference each. Names that are also a package
+        directory (``routing``, ``_pytest``) are reported but never lead:
+        their references belong to the package, not to the declaration.
+        """
+        evidence = state.evidence
+        lookup = getattr(self.exact_store, "find_hub_definitions", None)
+        if (
+            not self._hub_intent(state)
+            or self.settings.hub_head_slots <= 0
+            or not self.settings.exact_enabled
+            or lookup is None
+            or state.scope is None
+            or not state.scope.blob_names
+            or evidence is None
+        ):
+            return []
+        spellings = hub_spellings(
+            state.query, evidence.mentions, state.lookup_identifiers
+        )
+        if not spellings:
+            return []
+        try:
+            with state.stage("exact"):
+                hubs = await lookup(
+                    spellings=spellings,
+                    scope=state.scope,
+                    max_per_identifier=self.settings.hub_max_definitions,
+                )
+        except Exception as exc:
+            logger.warning("Hub definition recall failed: {}", type(exc).__name__)
+            return []
+        mentioned = set(evidence.mentions) | set(state.lookup_identifiers)
+
+        def specificity(hub: HubDefinition) -> int:
+            """Words of the request a spelling accounts for."""
+            if hub.identifier in mentioned:
+                return 3
+            parts = [part for part in _split_words(hub.identifier) if len(part) >= 2]
+            return min(len(parts), 2)
+
+        kept = [
+            hub
+            for hub in hubs
+            if hub.identifier.lower() not in _IDENTIFIER_NOISE
+            and hub.identifier.lower() not in STOPWORDS
+        ]
+        # A spelling that accounts for more of the request's words is the
+        # more specific match (``register_checker`` over ``Checker``); among
+        # equally specific names the more widely referenced one leads.
+        kept.sort(key=lambda hub: (-specificity(hub), -hub.referencing_files))
+        return kept
+
+    def _hub_heads(self, state: RetrievalState) -> list[SearchHit]:
+        """The declaration chunk of each leading hub, source files only.
+
+        A hub must be referenced from more than one scoped file (a name
+        used by a single file is that file's helper) and must not be a
+        package name; among its declarations the largest one is the
+        implementation (a class over an enum member or a one-line alias).
+        Two hubs never share a file, so two slots show two entry points.
+        """
+        factor = self.priority_factor
+        heads: list[SearchHit] = []
+        seen_blobs: set[str] = set()
+        for hub in state.hubs:
+            if hub.names_package or hub.referencing_files < 2:
+                continue
+            candidates = sorted(
+                (
+                    definition
+                    for definition in hub.definitions
+                    if factor(definition.hit.path) >= 1.0
+                    and definition.hit.blob_name not in seen_blobs
+                ),
+                key=lambda item: -(item.end_line - item.start_line),
+            )
+            if not candidates:
+                continue
+            seen_blobs.add(candidates[0].hit.blob_name)
+            heads.append(candidates[0].hit)
+            if len(heads) >= self.settings.hub_head_slots:
+                break
+        return heads
 
     def _can_recall_lexical(self, state: RetrievalState) -> bool:
         evidence = state.evidence
@@ -1299,7 +1711,14 @@ class RetrievalPipeline:
                 # list, and lexical evidence joins it by rank so its raw BM25
                 # scores never order the candidates on their own.
                 hits = list(state.exact)
-            if state.lexical:
+            if state.intent == QueryIntent.COMPOUND and state.exact and hits:
+                # An issue names many identifiers (its example's helpers,
+                # every traceback frame, the types it mentions); their
+                # declarations are one more ranked list, not a score that
+                # outbids the fused order. The deterministic ones become
+                # anchors and take the head below.
+                hits = self._fuse_lists([hits], state.lexical, extra=[state.exact])
+            elif state.lexical:
                 hits = self._fuse_lists(
                     [hits] if hits else [],
                     state.lexical,
@@ -1312,17 +1731,15 @@ class RetrievalPipeline:
                     if search_hit_key(first) not in present:
                         hits.append(first)
                         present.add(search_hit_key(first))
-            if state.anchors:
-                # Anchored definitions must be in the window the head rules
-                # order; their own recall score is not comparable to RRF.
+            structural = [*state.anchors, *self._hub_heads(state)]
+            if structural:
+                # Anchored and hub definitions must be in the window the head
+                # rules order; their own recall score is not comparable to
+                # RRF, so they are appended and promoted by key.
                 present = {search_hit_key(hit) for hit in hits}
                 hits = [
                     *hits,
-                    *(
-                        hit
-                        for hit in state.anchors
-                        if search_hit_key(hit) not in present
-                    ),
+                    *(hit for hit in structural if search_hit_key(hit) not in present),
                 ]
             boosts = dict(state.lookup_scores)
             for blob_name, score in state.path_scores.items():
@@ -1377,6 +1794,8 @@ class RetrievalPipeline:
         self,
         dense_lists: list[list[SearchHit]],
         lexical: list[SearchHit] | None = None,
+        *,
+        extra: Sequence[list[SearchHit]] = (),
     ) -> list[SearchHit]:
         """Weighted reciprocal rank fusion over dense facet lists plus lexical.
 
@@ -1394,6 +1813,11 @@ class RetrievalPipeline:
         if lexical:
             lists.append(lexical)
             weights.append(self.settings.lexical_weight)
+        # Structural lists (declarations of the request's identifiers) go
+        # first so that, at equal fused score, deterministic evidence leads.
+        for ranked in reversed([ranked for ranked in extra if ranked]):
+            lists.insert(0, ranked)
+            weights.insert(0, 1.0)
         if not lists:
             return []
         if len(lists) == 1:
@@ -1461,6 +1885,15 @@ class RetrievalPipeline:
             merged = [*semantic_hits, *exact_only]
             merged.sort(key=lambda hit: hit.score, reverse=True)
             return merged[: self.settings.default_top_k]
+
+        if intent == QueryIntent.COMPOUND and semantic_hits:
+            # Already fused by rank in ``_fuse``; declarations the fusion
+            # window dropped follow the fused order instead of outbidding it.
+            present = {search_hit_key(hit) for hit in semantic_hits}
+            return [
+                *semantic_hits,
+                *(hit for hit in exact_hits if search_hit_key(hit) not in present),
+            ][: self.settings.default_top_k]
 
         merged: list[SearchHit] = []
         positions: dict[SearchHitKey, int] = {}
@@ -1581,6 +2014,9 @@ class RetrievalPipeline:
             state.intent,
             len(hits),
             has_exact_hits=bool(state.exact),
+            dense_skipped=bool(
+                state.dense_route and state.dense_route.startswith("skip:")
+            ),
             # Embedding path similarity is useful recall but not deterministic
             # evidence. Only an exact SQL path/basename match may skip reranking.
             has_path_hits=bool(state.lookup_scores),
@@ -1687,10 +2123,32 @@ class RetrievalPipeline:
                 for hit in hits
                 if search_hit_key(hit) in evidenced and is_test_path(hit.path)
             ]
+            # Structural evidence decides before the fused order: a chunk
+            # that declares a test named after the symbol (``TestWalker`` for
+            # ``Walk``) leads, then chunks that call it, then mentions, then
+            # the module header that only imports it. Fused order breaks ties
+            # between files in the same tier.
+            use_keys = {search_hit_key(hit) for hit in state.use_sites}
+            import_only = {search_hit_key(hit) for hit in state.exact} - use_keys
+            first_seen: dict[str, int] = {}
+            for hit in head:
+                first_seen.setdefault(hit.blob_name, len(first_seen))
+
+            def evidence_tier(hit: SearchHit) -> tuple[int, int]:
+                key = search_hit_key(hit)
+                distance = _test_name_distance(hit, identifiers)
+                if distance is not None:
+                    return (0, distance)
+                if key in use_keys:
+                    return (1, 0)
+                return (3 if key in import_only else 2, 0)
+
             head.sort(
                 key=lambda hit: (
                     not _names_identifier(hit.path, identifiers),
                     -_path_proximity(hit.path, declaring_paths),
+                    evidence_tier(hit),
+                    first_seen[hit.blob_name],
                 )
             )
             head = head[:slots]
@@ -1758,15 +2216,28 @@ class RetrievalPipeline:
             text = f"{hit.context or ''}\n{hit.content}"
             return sum(_word_in(name, text) for name in others)
 
-        def use_tier(hit: SearchHit) -> tuple[bool, int, int, bool, bool, int]:
+        qualifier_words = tuple(
+            dict.fromkeys(q for scopes in state.qualifiers.values() for q in scopes)
+        )
+
+        def names_qualifier(hit: SearchHit) -> bool:
+            """Whether a chunk names the scope of a qualified request (``app``)."""
+            if not qualifier_words:
+                return True
+            text = f"{hit.context or ''}\n{hit.content}"
+            return any(_word_in(q, text) for q in qualifier_words)
+
+        def use_tier(hit: SearchHit) -> tuple[bool, int, bool, int, bool, bool, int]:
             """Structural order of reference evidence, most informative first.
 
-            Calls/extensions before textual mentions before imports; among
-            them the chunk that also names the request's other symbol ("for
-            ``StatusCode``"); uses in other files before uses next to the
-            declaration (the asker knows that file); a file named after the
-            symbol before one that is not; files closer to the declaring
-            file's package before scripts, examples and far-away consumers.
+            Calls/extensions before textual mentions before imports; a chunk
+            that names the qualifier of ``app.render`` before one that only
+            says ``render``; among them the chunk that also names the
+            request's other symbol ("for ``StatusCode``"); uses in other
+            files before uses next to the declaration (the asker knows that
+            file); a file named after the symbol before one that is not;
+            files closer to the declaring file's package before scripts,
+            examples and far-away consumers.
             """
             key = search_hit_key(hit)
             if key in use_keys:
@@ -1778,6 +2249,7 @@ class RetrievalPipeline:
             return (
                 key not in implementor_keys,
                 kind,
+                not names_qualifier(hit),
                 -comentions(hit),
                 hit.path in declaring_paths,
                 not _names_identifier(hit.path, identifiers),
@@ -1861,13 +2333,22 @@ class RetrievalPipeline:
         unambiguous identifiers its text names, in source files only.
         """
         if state.intent == QueryIntent.COMPOUND and state.anchors:
+            # Anchors keep their own order: the outermost project frame,
+            # then the frames it delegated to, then the title's names.
             factor = priority_factor or self.priority_factor
-            anchor_keys = {search_hit_key(hit) for hit in state.anchors}
+            in_window = {search_hit_key(hit) for hit in hits}
             return tuple(
                 search_hit_key(hit)
-                for hit in hits
-                if search_hit_key(hit) in anchor_keys and factor(hit.path) >= 1.0
+                for hit in state.anchors
+                if search_hit_key(hit) in in_window and factor(hit.path) >= 1.0
             )[: self.settings.compound_anchor_slots]
+        if state.hubs and self._hub_intent(state):
+            in_window = {search_hit_key(hit) for hit in hits}
+            return tuple(
+                search_hit_key(hit)
+                for hit in self._hub_heads(state)
+                if search_hit_key(hit) in in_window
+            )
         if state.intent == QueryIntent.SYMBOL and state.exact:
             # The exact lane already orders declarations: the symbol asked for
             # first, its overloads by the parameter types the request names.
@@ -2274,13 +2755,16 @@ class RetrievalPipeline:
                 )
             )
         if strategy.expand_tests and settings.tests_enabled:
+            # "Where is X defined" wants the declaration; one test shows how
+            # it is exercised. Requests that ask for tests keep the full slot.
+            tests_max = 1 if state.intent == QueryIntent.SYMBOL else settings.tests_max
             lanes.append(
                 _RelationLane(
                     "test",
                     lambda names: store.find_test_uses(
-                        identifiers=names, scope=scope, limit=settings.tests_max * 2
+                        identifiers=names, scope=scope, limit=tests_max * 2
                     ),
-                    settings.tests_max,
+                    tests_max,
                     settings.tests_max_chars,
                 )
             )
@@ -2654,6 +3138,17 @@ class RetrievalPipeline:
                     ordered.append(values[index])
         return ordered
 
+    async def _declarations_of(
+        self, state: RetrievalState, identifiers: Sequence[str]
+    ) -> list[DefinitionHit]:
+        """The resolved declarations of a reference request's identifiers."""
+        assert self.exact_store is not None and state.scope is not None
+        rows = await self.exact_store.find_definitions(
+            identifiers=identifiers, scope=state.scope, max_per_identifier=40
+        )
+        declared = _declaration_keys(state.definitions)
+        return [item for item in rows if search_hit_key(item.hit) in declared]
+
     async def _related_definitions(
         self, state: RetrievalState, *, budget: int | None = None
     ) -> list[SearchHit]:
@@ -2720,11 +3215,18 @@ class RetrievalPipeline:
         if not candidates:
             return []
 
-        definitions = await self.exact_store.find_definitions(
-            identifiers=candidates,
-            scope=state.scope,
-            max_per_identifier=settings.related_max_definitions_per_symbol,
-        )
+        if state.intent == QueryIntent.REFERENCE and state.definitions:
+            # The exact lane already resolved the declaration, qualifier
+            # included; ``render`` declared in five files would otherwise
+            # exceed the ambiguity bound and the answer's own declaration
+            # would never be appended.
+            definitions = await self._declarations_of(state, candidates)
+        else:
+            definitions = await self.exact_store.find_definitions(
+                identifiers=candidates,
+                scope=state.scope,
+                max_per_identifier=settings.related_max_definitions_per_symbol,
+            )
         selected_keys = {(hit.blob_name, hit.content_hash) for hit in state.selected}
         selected_spans = [
             (hit.blob_name, hit.start_line, hit.end_line) for hit in state.selected
@@ -2758,6 +3260,10 @@ class RetrievalPipeline:
                 blob == hit.blob_name and start <= definition.start_line <= end
                 for blob, start, end in selected_spans
             ):
+                continue
+            # A fixture or helper declared in a test file is not the
+            # implementation of the name the selected code refers to.
+            if is_test_path(hit.path):
                 continue
             by_identifier.setdefault(definition.identifier, []).append(definition)
         # A name declared both in the selected code's own file and elsewhere
@@ -2796,6 +3302,10 @@ class RetrievalPipeline:
             if added:
                 symbols += 1
         return related
+
+
+def _declaration_keys(hits: Sequence[SearchHit]) -> set[SearchHitKey]:
+    return {search_hit_key(hit) for hit in hits}
 
 
 def _handover_window(

@@ -344,6 +344,20 @@ _HOW_QUERY = re.compile(r"(?i)\bhow\b|如何|怎样|怎么")
 _QUESTION_MAX_CHARS = 200
 
 
+# A request that asks (how, why, which, explain, trace) rather than states.
+# A docstring-shaped description ("Fetches the securities that match the
+# filters") names one function; a question about how something works names
+# the subsystem whose entry points answer it.
+_ASKS_HOW = re.compile(
+    r"(?i)\b(?:how|why|which|what|where|explain|describe|trace|walk\s+through)\b"
+    r"|如何|怎么|怎样|为什么|解释|说明|哪些|哪个|什么"
+)
+
+
+def asks_how(query: str) -> bool:
+    return _ASKS_HOW.search(query) is not None
+
+
 def asks_for_callers(query: str) -> bool:
     return (
         len(query) <= _QUESTION_MAX_CHARS and _CALLERS_QUERY.search(query) is not None

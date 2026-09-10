@@ -441,12 +441,30 @@ class RetrievalSettings(BaseSettings):
     reference_head_fallback: bool = Field(
         default=True, description="reference 头部槽位在源码层为空时是否按先验分级回退"
     )
-    # compound（issue 文本）查询：正文点名且在工作集内定义不超过 3 处的标识符，
-    # 其定义片段占据受保护的头部槽位；0 关闭。
-    # 在 13 条 issue 上未观察到收益（一条因锚定 MVCE 里的 setup 调用而回退），
-    # 默认关闭，保留为消融开关。
+    # compound（issue 文本）查询：traceback 帧（函数 + 声明它的文件）和标题点名的
+    # 标识符（定义不超过 3 处）的定义片段占据受保护的头部槽位；只在正文出现的
+    # 名字（最小复现里的 helper、fixture）不算。0 关闭。早先按「任何点名标识符」
+    # 锚定曾因锁定 MVCE 里的 setup 调用而回退，因此锚点只取这两类结构事实。
     compound_anchor_slots: int = Field(
-        default=0, ge=0, le=5, description="compound 查询保留给点名标识符定义的槽位数"
+        default=3, ge=0, le=5, description="compound 查询保留给帧/标题锚点定义的槽位数"
+    )
+
+    # 入口车道：overview / 无符号 call_chain 查询的词能拼出的已声明名字（``Router``、
+    # ``register_checker``、``createSlice``）按被引用文件数排序，最大的声明占据
+    # 受保护的头部槽位；包名（同时是目录）不领头。声明处超过 hub_max_definitions
+    # 的名字视为过于常见。2026-09-09 配对复测：精选 overview nDCG@10 67.8→74.3，
+    # 但封存的 held-out 语义集 overview 66.4→54.1、call-chain 85.6→78.2，收益没有
+    # 泛化，默认关闭（0），保留为可测量的开关。
+    hub_head_slots: int = Field(
+        default=0, ge=0, le=5, description="语义查询保留给入口定义的头部槽位数；0 关闭"
+    )
+    hub_max_definitions: int = Field(
+        default=3, ge=1, le=20, description="入口名字在 scope 内的声明数上限"
+    )
+    # feature 问句（「X 如何实现」）上配对复测：入口定义把实现函数从头部挤开，
+    # semantic feature nDCG@10 73.5→68.8、CSN Region Top-1 62.5→60.0，默认关闭。
+    hub_feature_enabled: bool = Field(
+        default=False, description="feature 问句是否也启用入口车道"
     )
 
     # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大

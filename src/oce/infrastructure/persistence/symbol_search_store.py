@@ -14,10 +14,16 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.services.relations import RelatedOccurrence
-from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
+from oce.domain.services.search import (
+    DefinitionHit,
+    HubDefinition,
+    SearchHit,
+    SearchScope,
+)
 from oce.domain.services.symbols import (
     CALL_KIND,
     DEFINITION_KINDS,
+    IMPORT_KIND,
     INHERIT_KIND,
     REEXPORT_KIND,
 )
@@ -243,10 +249,169 @@ class SymbolSearchStore:
                     hit=self._row_hit(row, self._score_by_kind(row.kind)),
                     start_line=row.def_start,
                     end_line=row.def_end,
+                    enclosing=row.enclosing or "",
                 )
             )
         definitions.sort(key=lambda item: (order[item.identifier], item.hit.path))
         return definitions
+
+    async def find_hub_definitions(
+        self,
+        *,
+        spellings: Sequence[str],
+        scope: SearchScope,
+        max_per_identifier: int = 6,
+    ) -> list[HubDefinition]:
+        """Declarations whose name the request spells, with reference fan-in.
+
+        Three scoped lookups: the definition rows of the spelled names (a
+        name declared in more than ``max_per_identifier`` places is too
+        common to be an entry point), the number of files that call, import
+        or extend each found name, and whether the name is a directory of
+        the scope, in which case those references belong to the package.
+        """
+        spellings = tuple(dict.fromkeys(item for item in spellings if item))
+        if not spellings or not scope.blob_names:
+            return []
+        try:
+            async with asyncio.timeout(self._timeout_seconds):
+                async with self._session_factory() as session:
+                    # Hundreds of generated spellings against a scope of
+                    # hundreds of blobs defeats the planner; the unscoped
+                    # identifier index first narrows the spellings to the
+                    # few the whole index declares at all.
+                    declared = await self._declared_identifiers(session, spellings)
+                    if not declared:
+                        return []
+                    counts = await self._definition_counts(session, declared, scope)
+                    wanted = tuple(
+                        identifier
+                        for identifier, total in counts.items()
+                        if 0 < total <= max_per_identifier
+                    )
+                    if not wanted:
+                        return []
+                    rows = await run_scoped(
+                        session,
+                        scope,
+                        SymbolOccurrenceModel.blob_name,
+                        lambda predicate: _occurrence_rows(
+                            wanted,
+                            predicate,
+                            len(wanted) * max_per_identifier * 2,
+                            DEFINITION_KINDS,
+                        ),
+                    )
+                    fan_in = await self._referencing_files(session, wanted, scope)
+                    packages = await self._package_names(session, wanted, scope)
+        except TimeoutError:
+            return []
+        by_identifier: dict[str, list[DefinitionHit]] = {}
+        seen: set[tuple[str, str, int]] = set()
+        for row in rows:
+            key = (row.identifier, row.blob_name, row.def_start)
+            if key in seen:
+                continue
+            seen.add(key)
+            by_identifier.setdefault(row.identifier, []).append(
+                DefinitionHit(
+                    identifier=row.identifier,
+                    kind=row.kind,
+                    hit=self._row_hit(row, self._score_by_kind(row.kind)),
+                    start_line=row.def_start,
+                    end_line=row.def_end,
+                    enclosing=row.enclosing or "",
+                )
+            )
+        hubs = [
+            HubDefinition(
+                identifier=identifier,
+                definitions=tuple(
+                    sorted(
+                        definitions, key=lambda item: (item.hit.path, item.start_line)
+                    )
+                ),
+                referencing_files=fan_in.get(identifier, 0),
+                names_package=identifier in packages,
+            )
+            for identifier, definitions in by_identifier.items()
+        ]
+        hubs.sort(key=lambda hub: (-hub.referencing_files, hub.identifier))
+        return hubs
+
+    @staticmethod
+    async def _declared_identifiers(
+        session: AsyncSession, identifiers: Sequence[str]
+    ) -> tuple[str, ...]:
+        stmt = (
+            select(SymbolOccurrenceModel.identifier)
+            .where(
+                SymbolOccurrenceModel.identifier.in_(identifiers),
+                SymbolOccurrenceModel.kind.in_(DEFINITION_KINDS),
+            )
+            .distinct()
+        )
+        return tuple(str(row[0]) for row in (await session.execute(stmt)).all())
+
+    @staticmethod
+    async def _referencing_files(
+        session: AsyncSession, identifiers: Sequence[str], scope: SearchScope
+    ) -> dict[str, int]:
+        def build(predicate: ColumnElement[bool]):
+            return (
+                select(
+                    SymbolOccurrenceModel.identifier,
+                    func.count(func.distinct(SymbolOccurrenceModel.blob_name)).label(
+                        "files"
+                    ),
+                )
+                .where(
+                    SymbolOccurrenceModel.identifier.in_(identifiers),
+                    SymbolOccurrenceModel.kind.in_(
+                        (CALL_KIND, IMPORT_KIND, INHERIT_KIND)
+                    ),
+                    predicate,
+                )
+                .group_by(SymbolOccurrenceModel.identifier)
+            )
+
+        counts: dict[str, int] = {}
+        for row in await run_scoped(
+            session, scope, SymbolOccurrenceModel.blob_name, build
+        ):
+            counts[row.identifier] = counts.get(row.identifier, 0) + int(row.files)
+        return counts
+
+    @staticmethod
+    async def _package_names(
+        session: AsyncSession, identifiers: Sequence[str], scope: SearchScope
+    ) -> frozenset[str]:
+        """Identifiers that are a directory component of a scoped path."""
+
+        def build(predicate: ColumnElement[bool]):
+            return (
+                select(BlobModel.path)
+                .where(
+                    or_(
+                        *(
+                            BlobModel.path.like(f"{name}/%")
+                            | BlobModel.path.like(f"%/{name}/%")
+                            for name in identifiers
+                        )
+                    ),
+                    predicate,
+                )
+                .distinct()
+            )
+
+        rows = await run_scoped(session, scope, BlobModel.blob_name, build)
+        wanted = set(identifiers)
+        found: set[str] = set()
+        for row in rows:
+            for part in str(row.path).replace("\\", "/").split("/")[:-1]:
+                if part in wanted:
+                    found.add(part)
+        return frozenset(found)
 
     # ── relation lookups ────────────────────────────────────────────────
 
@@ -257,7 +422,12 @@ class SymbolSearchStore:
         scope: SearchScope,
         limit: int = 8,
     ) -> list[RelatedOccurrence]:
-        """One call site per (file, enclosing definition), source files first."""
+        """One call site per (file, enclosing definition), outside tests.
+
+        Test files have their own section, so they are not callers here. A
+        call inside a same-named declaration stays: ``Command.invoke``
+        calling ``ctx.invoke`` is the hop a call-chain question asks for.
+        """
         rows = await self._occurrences(
             identifiers,
             scope,
@@ -268,6 +438,7 @@ class SymbolSearchStore:
                 SymbolOccurrenceModel.enclosing,
             ),
         )
+        rows = [row for row in rows if not is_test_path(row.path)]
         return _group(rows, key=lambda row: (row.blob_name, row.enclosing), limit=limit)
 
     async def find_test_uses(

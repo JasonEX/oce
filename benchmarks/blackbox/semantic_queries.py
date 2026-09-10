@@ -1,4 +1,4 @@
-"""Evaluate reviewed feature, overview, and call-chain queries as a black box."""
+"""Evaluate reviewed feature, overview, call-chain and issue-style queries as a black box."""
 
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ from benchmarks.blackbox.harness import (
 
 DEFAULT_CASES = Path(__file__).with_name("semantic_cases.json")
 DEFAULT_CORPUS = Path(__file__).with_name("curated_corpus.json")
-QueryKind = Literal["feature", "overview", "call_chain"]
-_KINDS: tuple[QueryKind, ...] = ("feature", "overview", "call_chain")
+QueryKind = Literal["feature", "overview", "call_chain", "issue"]
+_KINDS: tuple[QueryKind, ...] = ("feature", "overview", "call_chain", "issue")
 
 
 @dataclass(frozen=True)
@@ -382,6 +382,7 @@ def compare(paths: Iterable[Path]) -> str:
         "Feature nDCG",
         "Overview nDCG",
         "Call-chain nDCG",
+        "Issue nDCG",
         *(f"{LANGUAGE_LABELS[language]} nDCG" for language in languages),
         "Chars",
         "p50 ms",
@@ -406,6 +407,7 @@ def compare(paths: Iterable[Path]) -> str:
                 _percent(by_kind["feature"]["ndcg_at_10"]),
                 _percent(by_kind["overview"]["ndcg_at_10"]),
                 _percent(by_kind["call_chain"]["ndcg_at_10"]),
+                _percent(by_kind.get("issue", {}).get("ndcg_at_10")),
                 *(
                     _percent(by_language[language]["ndcg_at_10"])
                     for language in languages

@@ -133,6 +133,7 @@ def plan_rerank(
     *,
     has_exact_hits: bool = False,
     has_path_hits: bool = False,
+    dense_skipped: bool = False,
     definition_sites: int = 0,
     head_slots: int = 3,
     rerank_ambiguous_definitions: bool = False,
@@ -183,6 +184,12 @@ def plan_rerank(
         adaptive = (True, False, "reference_keep_coverage")
     else:
         adaptive = (True, True, "semantic")
+    if dense_skipped and (adaptive[0] or adaptive[1]):
+        # The SQL lanes answered and vector recall was never awaited: the
+        # candidates are the structural answer plus its lexical companions,
+        # which the head rules already order. A cross-encoder pass would
+        # spend a second on a list it may not reorder. ``always`` still runs.
+        adaptive = (False, False, "deterministic")
 
     dedicated = dedicated_enabled and (dedicated_policy == "always" or adaptive[0])
     llm = llm_enabled and (llm_policy == "always" or adaptive[1])
