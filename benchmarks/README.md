@@ -103,6 +103,11 @@ Use the layers at different cadences:
 The curated truth is deliberately small and reviewable. It is suitable for
 regression and ablation work, but it is not an independently reviewed benchmark.
 
+Work on utility first: locate the right implementation, return the requested use
+sites, and cover the required relation steps. Optimize latency after those gains
+are established. Keep characters and latency visible throughout; a faster answer
+does not compensate for missing evidence.
+
 Release judgement uses the metric vector, not one score. The target category of
 a change must improve; every other suite must stay inside its tolerance; the
 distractor-in-head rate of `project_cases` must not rise; characters and p50
@@ -112,6 +117,57 @@ the development profile, and the same run-to-run noise on `project_cases`
 (one case, about 3 points on any rate).
 There is not yet a downstream agent task-success suite or an ACE head-to-head
 evaluation, so retrieval scores must not be presented as either result.
+
+### Upstream question supplement
+
+[`upstream_project_cases.json`](blackbox/upstream_project_cases.json) adds four
+TypeScript-to-Rust/Tauri relation questions and two frontend usage questions.
+[`upstream_semantic_cases.json`](blackbox/upstream_semantic_cases.json) adds six
+backend feature/architecture questions. These adapt question ideas from
+[`oce-ai/oce-benchmark`](https://github.com/oce-ai/oce-benchmark/tree/d4f10554a18e31599d1e46d5d56da6588d4aa86c),
+with upstream commit, JSONL digest, question IDs, and adaptation notes recorded in
+the manifests. They use the existing released-client runners and scoring.
+
+The single snapshot in [`upstream_corpus.json`](blackbox/upstream_corpus.json)
+pins `farion1231/cc-switch` at `40cac1a68edf8c9e7b3a89125cf40bb93a348404`.
+It contains both TypeScript and Rust; the harness's snapshot-level `typescript`
+bucket must not be interpreted as a per-language result.
+
+Labels were source-reviewed before retrieval, with LLM assistance rather than
+independent human review. Corrections include `useSettingsQuery` instead of
+`useSettings`, the omitted profile mutation layer, the actual prompt hook calls,
+the HTTP response constructor, and the retry owner for failover. Relation scoring
+requires line overlap with call sites/handlers; semantic scoring remains graded
+file-owner ranking. `source_evidence` in the semantic manifest records the spans
+used to audit labels and is not scored. Neither metric establishes answer
+correctness or downstream task success. For IPC chains, hop coverage means the
+required pieces were returned, not that static analysis resolved the IPC edge;
+Tauri registration is supporting evidence and is not counted as a call hop.
+
+Keep this supplement separate from the original suites so their historical
+scores remain comparable. This is a development set once its failures are used
+to guide changes, not a sealed held-out test. Run it alongside the existing
+guards when changing IPC/callback relation retrieval or the semantic behavior
+these questions exercise. Validate and prewarm it with:
+
+```bash
+uv run python -m benchmarks.blackbox.project_cases \
+  --cases benchmarks/blackbox/upstream_project_cases.json \
+  --corpus benchmarks/blackbox/upstream_corpus.json check
+uv run python -m benchmarks.blackbox.semantic_queries \
+  --cases benchmarks/blackbox/upstream_semantic_cases.json \
+  --corpus benchmarks/blackbox/upstream_corpus.json check
+uv run python -m benchmarks.blackbox.prewarm \
+  --corpus benchmarks/blackbox/upstream_corpus.json
+```
+
+For each runner, keep the same `--cases` and `--corpus` arguments and replace
+`check` with `run --label <variant> --output <result.json>`. Use `OCE_API_KEY`
+and `--api-url` as in the ordinary suites. Review per-case region misses,
+relation/hop recall, distractors and semantic owner ranks before latency;
+do not fold these twelve questions into a combined product score.
+The [initial repeated baseline](results/upstream-supplement-2026-09-09.md)
+records the current gaps and all truth/result digests.
 
 ## Prepare and validate
 

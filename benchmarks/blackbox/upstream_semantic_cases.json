@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "llm-assisted-source-review",
+    "note": "Adapted and source-reviewed before any retrieval run; not independently human-reviewed. Graded file-owner labels use the existing semantic evaluator. source_evidence records the reviewed spans for label audit only; it is not scored."
+  },
+  "provenance": {
+    "repository": "https://github.com/oce-ai/oce-benchmark",
+    "revision": "d4f10554a18e31599d1e46d5d56da6588d4aa86c",
+    "path": "benchmarks/cc-switch-retrieval-benchmark.jsonl",
+    "sha256": "5ea1725b4f26c7795b70e3cbad5398fd1cc03cfe291cd77353d63180d451c29e"
+  },
+  "cases": [
+    {
+      "id": "cc-switch-auto-launch",
+      "kind": "feature",
+      "query": "应用开机自动启动的启用、关闭和状态检查由哪些后端代码实现？",
+      "rationale": "auto_launch.rs wraps the platform auto-launch library; settings commands expose enable/disable and status to the app.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/auto_launch.rs",
+          "grade": 3,
+          "role": "platform auto-launch implementation"
+        },
+        {
+          "path": "src-tauri/src/commands/settings.rs",
+          "grade": 2,
+          "role": "settings command callers"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/auto_launch.rs",
+          "start": 19,
+          "end": 69
+        },
+        {
+          "path": "src-tauri/src/commands/settings.rs",
+          "start": 308,
+          "end": 310
+        },
+        {
+          "path": "src-tauri/src/commands/settings.rs",
+          "start": 626,
+          "end": 626
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q10",
+        "adaptation": "Clarifies backend behavior and adds the settings command owner."
+      }
+    },
+    {
+      "id": "cc-switch-webdav-scheduling",
+      "kind": "overview",
+      "query": "数据库变化如何触发 WebDAV 自动同步？在哪里做变更合并、等待和上传调度？",
+      "rationale": "webdav_auto_sync owns change signals, debounce/max-wait, worker scheduling and upload dispatch; sync_protocol decides which tables count and webdav_sync executes the upload.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/services/webdav_auto_sync.rs",
+          "grade": 3,
+          "role": "change signal and debounce worker"
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "grade": 2,
+          "role": "shared table-trigger policy and synchronization lock"
+        },
+        {
+          "path": "src-tauri/src/services/webdav_sync.rs",
+          "grade": 1,
+          "role": "scheduled upload transport"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/services/webdav_auto_sync.rs",
+          "start": 44,
+          "end": 63
+        },
+        {
+          "path": "src-tauri/src/services/webdav_auto_sync.rs",
+          "start": 96,
+          "end": 184
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 41,
+          "end": 75
+        },
+        {
+          "path": "src-tauri/src/services/webdav_sync.rs",
+          "start": 53,
+          "end": 62
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q26",
+        "adaptation": "Expands the scheduling question into its observable stages and labels supporting owners."
+      }
+    },
+    {
+      "id": "cc-switch-endpoint-speedtest",
+      "kind": "feature",
+      "query": "Provider 端点的连通性和响应延迟测试在后端哪里实现，怎样发请求并处理超时？",
+      "rationale": "SpeedtestService validates URLs, warms connections, times the second request, handles errors and runs targets concurrently; test_api_endpoints is the command entry.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/services/speedtest.rs",
+          "grade": 3,
+          "role": "endpoint measurement and error handling"
+        },
+        {
+          "path": "src-tauri/src/commands/provider.rs",
+          "grade": 2,
+          "role": "test_api_endpoints entry"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/services/speedtest.rs",
+          "start": 26,
+          "end": 128
+        },
+        {
+          "path": "src-tauri/src/commands/provider.rs",
+          "start": 790,
+          "end": 797
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q76",
+        "adaptation": "Specifies the backend measurement behavior and adds the public command entry."
+      }
+    },
+    {
+      "id": "cc-switch-proxy-error-response",
+      "kind": "feature",
+      "query": "代理如何把上游错误转换为对外的 HTTP 状态码和 JSON 错误响应？",
+      "rationale": "ProxyError::into_response constructs the real HTTP response, preserving upstream JSON or wrapping text. error_mapper contains the companion status mapping used by logging/manual responses; it does not itself construct the response body.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/proxy/error.rs",
+          "grade": 3,
+          "role": "HTTP response status and JSON body construction"
+        },
+        {
+          "path": "src-tauri/src/proxy/error_mapper.rs",
+          "grade": 2,
+          "role": "companion status and message mapping"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/proxy/error.rs",
+          "start": 82,
+          "end": 115
+        },
+        {
+          "path": "src-tauri/src/proxy/error_mapper.rs",
+          "start": 19,
+          "end": 87
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q81",
+        "adaptation": "Corrects the upstream sole-owner label: error_mapper alone cannot answer response-body construction."
+      }
+    },
+    {
+      "id": "cc-switch-provider-failover",
+      "kind": "feature",
+      "query": "代理请求失败后，如何按队列尝试备用 Provider，并在成功后更新当前 Provider？",
+      "rationale": "forwarder retries providers and schedules try_switch after success; provider_router orders eligible providers; failover_switch deduplicates the update and emits UI events through the proxy service hot-switch operation.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/proxy/forwarder.rs",
+          "grade": 3,
+          "role": "request retry and successful failover dispatch"
+        },
+        {
+          "path": "src-tauri/src/proxy/failover_switch.rs",
+          "grade": 3,
+          "role": "deduplicated successful-provider switch and event"
+        },
+        {
+          "path": "src-tauri/src/proxy/provider_router.rs",
+          "grade": 2,
+          "role": "ordered eligible provider selection"
+        },
+        {
+          "path": "src-tauri/src/services/proxy.rs",
+          "grade": 2,
+          "role": "hot-switch implementation"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/proxy/forwarder.rs",
+          "start": 422,
+          "end": 453
+        },
+        {
+          "path": "src-tauri/src/proxy/forwarder.rs",
+          "start": 1028,
+          "end": 1045
+        },
+        {
+          "path": "src-tauri/src/proxy/provider_router.rs",
+          "start": 35,
+          "end": 108
+        },
+        {
+          "path": "src-tauri/src/proxy/failover_switch.rs",
+          "start": 41,
+          "end": 133
+        },
+        {
+          "path": "src-tauri/src/services/proxy.rs",
+          "start": 2448,
+          "end": 2459
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q83",
+        "adaptation": "Separates request retries from the post-success switch; adds owners omitted by the upstream single-file answer."
+      }
+    },
+    {
+      "id": "cc-switch-sync-protocol",
+      "kind": "overview",
+      "query": "WebDAV 与 S3 共用的配置快照同步协议在哪里实现？快照格式、校验和恢复由谁负责？",
+      "rationale": "sync_protocol defines shared format/compatibility, snapshot creation, validation and application; WebDAV and S3 import those operations and supply transport-specific upload/download.",
+      "relevant_paths": [
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "grade": 3,
+          "role": "transport-independent snapshot protocol"
+        },
+        {
+          "path": "src-tauri/src/services/webdav_sync.rs",
+          "grade": 2,
+          "role": "WebDAV protocol consumer"
+        },
+        {
+          "path": "src-tauri/src/services/s3_sync.rs",
+          "grade": 2,
+          "role": "S3 protocol consumer"
+        }
+      ],
+      "source_evidence": [
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 28,
+          "end": 57
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 149,
+          "end": 165
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 234,
+          "end": 245
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 314,
+          "end": 326
+        },
+        {
+          "path": "src-tauri/src/services/sync_protocol.rs",
+          "start": 357,
+          "end": 370
+        },
+        {
+          "path": "src-tauri/src/services/webdav_sync.rs",
+          "start": 18,
+          "end": 24
+        },
+        {
+          "path": "src-tauri/src/services/s3_sync.rs",
+          "start": 15,
+          "end": 21
+        }
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q91",
+        "adaptation": "Specifies shared protocol responsibilities and labels both transport consumers."
+      }
+    }
+  ]
+}

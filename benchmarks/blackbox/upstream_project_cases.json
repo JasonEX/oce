@@ -1,0 +1,226 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "llm-assisted-source-review",
+    "note": "Adapted from upstream question ideas and relabeled against the pinned source before any retrieval run. Not independently human-reviewed. Relation regions are narrow call sites or command bodies; overlap is evidence coverage, not proof that the system understands an IPC edge."
+  },
+  "provenance": {
+    "repository": "https://github.com/oce-ai/oce-benchmark",
+    "revision": "d4f10554a18e31599d1e46d5d56da6588d4aa86c",
+    "path": "benchmarks/cc-switch-retrieval-benchmark.jsonl",
+    "sha256": "5ea1725b4f26c7795b70e3cbad5398fd1cc03cfe291cd77353d63180d451c29e"
+  },
+  "cases": [
+    {
+      "id": "cc-switch-add-provider-ipc",
+      "kind": "call_chain",
+      "query": "新增 Provider 时，前端怎样通过 Tauri 调到 Rust 的 add_provider？请找出 API 调用与命令处理代码。",
+      "rationale": "providersApi.add invokes the add_provider string; the registered Rust command calls ProviderService::add. The IPC boundary is a relation even though it is not a direct language-level call.",
+      "primary_regions": [
+        {
+          "path": "src/lib/api/providers.ts",
+          "start": 63,
+          "end": 64,
+          "hop": 0
+        },
+        {
+          "path": "src-tauri/src/commands/provider.rs",
+          "start": 39,
+          "end": 48,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1345,
+          "end": 1345
+        }
+      ],
+      "must_not_paths": [
+        "src/lib/api/profiles.ts"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q41",
+        "adaptation": "Clarifies the API-to-command boundary; adds the handler registration as supporting evidence."
+      }
+    },
+    {
+      "id": "cc-switch-auth-login-ipc",
+      "kind": "call_chain",
+      "query": "auth_start_login 从前端登录 API 到 Tauri 注册、再到 Rust 命令分发的路径是什么？",
+      "rationale": "authStartLogin invokes the snake-case command, generate_handler registers it, and auth_start_login validates and dispatches the auth provider.",
+      "primary_regions": [
+        {
+          "path": "src/lib/api/auth.ts",
+          "start": 40,
+          "end": 43,
+          "hop": 0
+        },
+        {
+          "path": "src-tauri/src/commands/auth.rs",
+          "start": 104,
+          "end": 116,
+          "hop": 1
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1641,
+          "end": 1641
+        }
+      ],
+      "must_not_paths": [
+        "src/lib/api/providers.ts"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q42",
+        "adaptation": "Limits the requested chain to the IPC command dispatcher, not each OAuth provider's internal implementation. Registration is required supporting evidence, not a call hop."
+      }
+    },
+    {
+      "id": "cc-switch-delete-profile-ipc",
+      "kind": "call_chain",
+      "query": "在项目管理对话框确认删除后，请追踪前端 mutation、API 封装直到 Rust 的 delete_profile 命令。",
+      "rationale": "handleConfirm calls deleteMutation.mutate; useDeleteProfileMutation delegates to profilesApi.delete; the API invokes delete_profile, whose Rust handler calls ProfileService::delete. Upstream omitted the mutation layer.",
+      "primary_regions": [
+        {
+          "path": "src/components/profiles/ProfileManageDialog.tsx",
+          "start": 68,
+          "end": 72,
+          "hop": 0
+        },
+        {
+          "path": "src-tauri/src/commands/profile.rs",
+          "start": 148,
+          "end": 150,
+          "hop": 3
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/lib/query/profiles.ts",
+          "start": 74,
+          "end": 79,
+          "hop": 1
+        },
+        {
+          "path": "src/lib/api/profiles.ts",
+          "start": 91,
+          "end": 93,
+          "hop": 2
+        }
+      ],
+      "must_not_paths": [
+        "src/lib/api/providers.ts",
+        "src-tauri/src/commands/provider.rs"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q46",
+        "adaptation": "Specifies endpoints and adds the missing query mutation layer."
+      }
+    },
+    {
+      "id": "cc-switch-enable-prompt-ipc",
+      "kind": "call_chain",
+      "query": "启用提示词时，前端 toggleEnabled 如何经 API 封装和 Tauri 调到 Rust 的 enable_prompt 命令？",
+      "rationale": "toggleEnabled calls promptsApi.enablePrompt in both the pi and non-pi branches; the API invokes enable_prompt and the Rust handler delegates to PromptService. PromptToggle is only a presentation callback, not the API caller.",
+      "primary_regions": [
+        {
+          "path": "src/hooks/usePromptActions.ts",
+          "start": 165,
+          "end": 167,
+          "hop": 0
+        },
+        {
+          "path": "src/hooks/usePromptActions.ts",
+          "start": 227,
+          "end": 229,
+          "hop": 0
+        },
+        {
+          "path": "src-tauri/src/commands/prompt.rs",
+          "start": 46,
+          "end": 53,
+          "hop": 2
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/lib/api/prompts.ts",
+          "start": 41,
+          "end": 43,
+          "hop": 1
+        }
+      ],
+      "must_not_paths": [
+        "src/lib/api/providers.ts"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q47",
+        "adaptation": "Scopes the start to toggleEnabled and replaces the upstream presentation-only component with the actual hook call sites. Either frontend branch covers hop 0; primary region recall still records both."
+      }
+    },
+    {
+      "id": "cc-switch-first-run-settings-use",
+      "kind": "reference",
+      "query": "useSettingsQuery 在哪个首次运行提示组件中被调用，用于决定是否显示提示？",
+      "rationale": "FirstRunNoticeDialog calls useSettingsQuery and tests firstRunNoticeConfirmed. The pinned source does not call useSettings there, contrary to the upstream question.",
+      "primary_regions": [
+        {
+          "path": "src/components/FirstRunNoticeDialog.tsx",
+          "start": 20,
+          "end": 24
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/lib/query/queries.ts",
+          "start": 92,
+          "end": 97
+        }
+      ],
+      "must_not_paths": [
+        "src/hooks/useSettings.ts"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q70",
+        "adaptation": "Corrects useSettings to useSettingsQuery. The general settings hook is another consumer but is not the requested first-run component."
+      }
+    },
+    {
+      "id": "cc-switch-session-search-use",
+      "kind": "reference",
+      "query": "会话管理页面在哪里调用 useSessionSearch，并把搜索结果用于筛选会话？",
+      "rationale": "SessionManagerPage invokes useSessionSearch and consumes its search callback in filteredSessions. The hook declaration is supporting evidence, not the primary usage answer.",
+      "primary_regions": [
+        {
+          "path": "src/components/sessions/SessionManagerPage.tsx",
+          "start": 243,
+          "end": 250
+        }
+      ],
+      "supporting_regions": [
+        {
+          "path": "src/hooks/useSessionSearch.ts",
+          "start": 18,
+          "end": 25
+        }
+      ],
+      "must_not_paths": [
+        "src/components/sessions/SessionMessageItem.tsx"
+      ],
+      "instance_id": "cc-switch-40cac1a",
+      "source": {
+        "question_id": "Q73",
+        "adaptation": "Requires the usage and result consumption, not an import-only file match."
+      }
+    }
+  ]
+}

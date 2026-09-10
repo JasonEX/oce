@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "note": "Mixed TypeScript/Rust application. code_language is a snapshot-level bucket required by the existing harness; it is not a per-case or Rust-only language label.",
+  "snapshots": [
+    {
+      "id": "cc-switch-40cac1a",
+      "repo": "farion1231/cc-switch",
+      "revision": "40cac1a68edf8c9e7b3a89125cf40bb93a348404",
+      "code_language": "typescript"
+    }
+  ]
+}
