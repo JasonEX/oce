@@ -7,6 +7,7 @@ import math
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from loguru import logger
 from sqlalchemy import and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -191,12 +192,13 @@ class SymbolSearchStore:
                     rows = await run_scoped(
                         session,
                         scope,
-                        SymbolOccurrenceModel.blob_name,
+                        BlobModel.blob_name,
                         lambda predicate: _occurrence_rows(
                             identifiers, predicate, max(top_k * 20, top_k), kinds
                         ),
                     )
         except TimeoutError:
+            logger.warning("Exact symbol lookup timed out; returning no exact evidence")
             return []
         return self._rows_to_hits(rows, top_k)
 
@@ -231,7 +233,7 @@ class SymbolSearchStore:
                     rows = await run_scoped(
                         session,
                         scope,
-                        SymbolOccurrenceModel.blob_name,
+                        BlobModel.blob_name,
                         lambda predicate: _occurrence_rows(
                             wanted,
                             predicate,
@@ -241,6 +243,9 @@ class SymbolSearchStore:
                         ),
                     )
         except TimeoutError:
+            logger.warning(
+                "Symbol definition lookup timed out; returning no definitions"
+            )
             return []
 
         order = {identifier: index for index, identifier in enumerate(identifiers)}
@@ -401,7 +406,7 @@ class SymbolSearchStore:
                         await run_scoped(
                             session,
                             scope,
-                            SymbolOccurrenceModel.blob_name,
+                            BlobModel.blob_name,
                             lambda predicate: _occurrence_rows(
                                 identifiers,
                                 predicate,
@@ -414,6 +419,7 @@ class SymbolSearchStore:
                         )
                     )
         except TimeoutError:
+            logger.warning("Symbol occurrence lookup timed out; returning no relations")
             return []
 
     async def calls_within(
@@ -445,6 +451,7 @@ class SymbolSearchStore:
                 async with self._session_factory() as session:
                     rows = (await session.execute(stmt)).all()
         except TimeoutError:
+            logger.warning("Symbol call lookup timed out; returning no calls")
             return []
         calls: list[tuple[str, int, str]] = []
         seen: set[str] = set()
@@ -489,6 +496,7 @@ class SymbolSearchStore:
                 async with self._session_factory() as session:
                     row = (await session.execute(stmt)).first()
         except TimeoutError:
+            logger.warning("Symbol chunk lookup timed out; returning no chunk")
             return None
         if row is None:
             return None
@@ -577,10 +585,9 @@ class SymbolSearchStore:
         try:
             async with asyncio.timeout(self._timeout_seconds):
                 async with self._session_factory() as session:
-                    return await run_scoped(
-                        session, scope, SymbolOccurrenceModel.blob_name, build
-                    )
+                    return await run_scoped(session, scope, BlobModel.blob_name, build)
         except TimeoutError:
+            logger.warning("Symbol pair lookup timed out; returning no occurrences")
             return []
 
     @staticmethod
@@ -610,9 +617,10 @@ class SymbolSearchStore:
             return stmt
 
         counts: dict[str, int] = {}
-        for row in await run_scoped(
-            session, scope, SymbolOccurrenceModel.blob_name, build
-        ):
+        # Scope the joined file before probing requested names. Applying the
+        # same condition only to occurrences makes SQLite probe every name
+        # in every ready file before rejecting files outside the workspace.
+        for row in await run_scoped(session, scope, BlobModel.blob_name, build):
             counts[row.identifier] = counts.get(row.identifier, 0) + int(row.total)
         return counts
 

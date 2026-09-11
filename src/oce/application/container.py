@@ -421,10 +421,7 @@ class Container:
 
         query_bus = QueryBus()
         self.lexical_store: SqlLexicalSearchStore | None = (
-            SqlLexicalSearchStore(
-                async_session_factory,
-                timeout_seconds=settings.retrieval.lexical_timeout_seconds,
-            )
+            SqlLexicalSearchStore(async_session_factory)
             if settings.retrieval.lexical_enabled
             else None
         )

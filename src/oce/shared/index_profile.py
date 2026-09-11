@@ -20,7 +20,8 @@ EMBEDDING_PIPELINE_VERSION = 2
 # ``__init__.py``) are recorded as ``reexport`` rows.
 SYMBOL_EXTRACTION_VERSION = 5
 PATH_DOCUMENT_VERSION = 1
-SOURCE_ADMISSION_VERSION = 1
+# 2: ordinary source directories ending in -retrieval-eval are admitted.
+SOURCE_ADMISSION_VERSION = 2
 LEXICAL_INDEX_VERSION = 1
 
 

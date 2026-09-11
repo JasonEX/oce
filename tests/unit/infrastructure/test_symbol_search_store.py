@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import sqlite3
+from contextlib import asynccontextmanager
+
 import pytest
+from sqlalchemy import func, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from oce.application.call_chain import resolve_endpoints
@@ -10,8 +15,9 @@ from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk
 from oce.domain.services.search import SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
-from oce.infrastructure.persistence.models import SymbolOccurrenceModel
+from oce.infrastructure.persistence.models import BlobModel, SymbolOccurrenceModel
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
+from oce.infrastructure.persistence.sql_chain_repo import SqlChainRepository
 from oce.infrastructure.persistence.sql_chunk_repo import SqlChunkRepository
 from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjection
 from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
@@ -77,6 +83,123 @@ _FILES = {
     "src/svc.py": "from src.base import BaseService\n\n\nclass Service(BaseService):\n    def run(self):\n        return start_all()\n",
     "src/util.py": "def start_all():\n    return 1\n\n\ndef helper():\n    return 2\n\n\ndef helper():\n    return 3\n",
 }
+
+
+@pytest.mark.parametrize("operation", ["search_exact", "find_definitions"])
+async def test_small_scope_definition_lookup_has_bounded_sql_work(sessions, operation):
+    identifiers = [f"operation_{index}" for index in range(40)]
+    content = "\n\n".join(f"def {name}():\n    return 1" for name in identifiers)
+    async with sessions() as session:
+        names = await _index_files(session, {"src/operations.py": content})
+        chain = await SqlChainRepository(session).create(list(names.values()))
+        # Ready files in other projects must not cause every requested name
+        # to be probed in every unrelated file before scope is checked.
+        await session.execute(
+            insert(BlobModel),
+            [
+                {
+                    "blob_name": make_sha256(f"unrelated-{index}"),
+                    "path": f"other/{index}.py",
+                    "content_size": 0,
+                    "status": BlobStatus.READY.value,
+                }
+                for index in range(2000)
+            ],
+        )
+        await session.commit()
+        connection = await session.connection()
+        raw = await connection.get_raw_connection()
+        driver = raw.driver_connection
+
+    work = 0
+
+    def within_budget():
+        nonlocal work
+        work += 1000
+        return int(work > 200_000)
+
+    # SQLite instruction counts avoid a machine-speed-dependent latency test.
+    await driver.set_progress_handler(within_budget, 1000)
+    try:
+        result = await getattr(SymbolSearchStore(sessions), operation)(
+            identifiers=identifiers,
+            scope=SearchScope(
+                frozenset(names.values()),
+                chain_id=chain.chain_id,
+                chain_version=chain.version,
+            ),
+        )
+    finally:
+        await driver.set_progress_handler(None, 1000)
+    assert result
+    if operation == "find_definitions":
+        assert [item.identifier for item in result] == identifiers
+    else:
+        assert {hit.path for hit in result} == {"src/operations.py"}
+
+
+@pytest.mark.parametrize(
+    ("operation", "kwargs", "empty"),
+    [
+        ("search_exact", {"identifiers": ["work"]}, []),
+        ("find_definitions", {"identifiers": ["work"]}, []),
+        ("find_callers", {"identifiers": ["work"]}, []),
+        ("defined_identifiers", {"occurrences": [("blob", "chunk")]}, {}),
+        ("calls_within", {"blob_name": "blob", "start_line": 1, "end_line": 2}, []),
+        ("chunk_for_line", {"blob_name": "blob", "line": 1}, None),
+    ],
+)
+async def test_symbol_timeout_preserves_fallback_and_reports_missing_evidence(
+    monkeypatch, operation, kwargs, empty
+):
+    from loguru import logger
+
+    messages = []
+    monkeypatch.setattr(logger, "warning", messages.append)
+
+    @asynccontextmanager
+    async def blocked_session():
+        await asyncio.Event().wait()
+        yield
+
+    store = SymbolSearchStore(blocked_session, timeout_seconds=0.001)
+    result = await getattr(store, operation)(
+        scope=SearchScope(frozenset({"blob"})), **kwargs
+    )
+    assert result == empty
+    assert len(messages) == 1
+    assert "timed out" in messages[0]
+
+
+async def test_large_file_projection_obeys_sqlite_bind_limit_and_is_idempotent(
+    sessions,
+):
+    content = "\n\n".join(
+        f"def symbol_{index}():\n    return {index}" for index in range(400)
+    )
+    async with sessions() as session:
+        connection = await session.connection()
+        raw = await connection.get_raw_connection()
+        driver = raw.driver_connection
+        # The SQLite connection belongs to aiosqlite's worker thread. Exercise
+        # the historical 999-variable limit independently of this host's build.
+        await driver._execute(
+            driver._conn.setlimit, sqlite3.SQLITE_LIMIT_VARIABLE_NUMBER, 999
+        )
+        names = await _index_files(session, {"src/large.py": content})
+        await _index_files(session, {"src/large.py": content})
+        assert (
+            await session.scalar(
+                select(func.count()).select_from(SymbolOccurrenceModel)
+            )
+            == 400
+        )
+
+    definitions = await SymbolSearchStore(sessions).find_definitions(
+        identifiers=["symbol_0", "symbol_399"],
+        scope=SearchScope(frozenset(names.values())),
+    )
+    assert [item.identifier for item in definitions] == ["symbol_0", "symbol_399"]
 
 
 async def test_kinds_filter_and_chunk_span_alignment(sessions):

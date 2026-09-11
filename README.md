@@ -4,6 +4,9 @@
 
 # OpenContextEngine
 
+当前索引准入版本为 2：普通的 `-retrieval-eval` 结尾目录也会入库。
+版本 1 索引需要使用新数据目录并通过客户端完整重新同步；启动时仍拒绝不兼容的索引。
+
 **Self-hosted, ACE-compatible code retrieval for AI coding agents.**
 
 Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking · task-aware selection

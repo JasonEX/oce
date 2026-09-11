@@ -1,6 +1,6 @@
 """Apply one ``SearchScope`` to SQL statements the same way in every store.
 
-A checkpoint scope is applied as a relation (EXISTS over ``chain_members``)
+A checkpoint scope is applied as a relation (an ``IN`` subquery over ``chain_members``)
 so large workspaces never expand into one ``IN (...)`` clause. Added-only
 scopes, unusually large request deltas, and a checkpoint that moved between
 scope resolution and the query fall back to bounded ``IN`` batches over the
@@ -12,7 +12,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from sqlalchemy import and_, exists, or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import Select
@@ -39,14 +39,13 @@ def relational_predicate(
         or delta_size > RELATIONAL_DELTA_LIMIT
     ):
         return None
-    membership: ColumnElement[bool] = exists(
-        select(1)
+    membership: ColumnElement[bool] = blob_column.in_(
+        select(ChainMemberModel.blob_name)
         .select_from(ChainMemberModel)
         .join(ChainModel, ChainModel.chain_id == ChainMemberModel.chain_id)
         .where(
             ChainMemberModel.chain_id == scope.chain_id,
             ChainModel.version == scope.chain_version,
-            ChainMemberModel.blob_name == blob_column,
         )
     )
     if scope.added_blob_names:

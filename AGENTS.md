@@ -78,6 +78,7 @@ uv run pytest tests/unit/infrastructure/test_milvus3.py -q
 - 修改 chunking、embedding 输入/池化、symbol extraction、lexical 文档或 path-document 语义时，同步递增 `shared/index_profile.py` 中对应版本常量。
 - 测试文件的判定只在 `domain/services/test_paths.py` 一处；先验降权与测试关系车道共用。
 - 词法/精确/路径查找三类 SQL store 共用 `persistence/scope_filter.py` 应用 scope；新增 SQL 召回不得自行展开 `IN (...)` 全集。
+- symbol 查询在已连接的 `BlobModel.blob_name` 上应用同一 scope，使工作集过滤先于 occurrence 探测；超时保留空结果降级并记录 warning。词法查询的 deadline 由调用方持有，避免嵌套取消干扰连接归还。
 - 不保留未接入 production composition root 的占位实现或阶段性迁移注释。
 - 单文件职责单一；注释解释约束和原因，不复述代码。
 - 保持 ACE API 字段与错误语义兼容。

@@ -8,7 +8,6 @@ therefore never scans and widens candidates from unrelated indexed projects.
 
 from __future__ import annotations
 
-import asyncio
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from typing import Any
@@ -16,7 +15,6 @@ from typing import Any
 from sqlalchemy import (
     bindparam,
     column,
-    exists,
     func,
     literal_column,
     select,
@@ -138,14 +136,8 @@ class SqlLexicalProjection:
 
 
 class SqlLexicalSearchStore:
-    def __init__(
-        self,
-        session_factory: Callable[[], AsyncSession],
-        *,
-        timeout_seconds: float = 2.0,
-    ) -> None:
+    def __init__(self, session_factory: Callable[[], AsyncSession]) -> None:
         self._session_factory = session_factory
-        self._timeout_seconds = timeout_seconds
 
     async def search_lexical(
         self,
@@ -165,23 +157,21 @@ class SqlLexicalSearchStore:
         ]
         if (not term_list and not phrase_lists) or top_k <= 0 or not scope.blob_names:
             return []
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    dialect = session.get_bind().dialect.name
-                    query = _build_query(
-                        dialect, term_list, phrase_lists, required=required_list
-                    )
-                    # One lexical document may occur in several files. A small
-                    # scoped surplus preserves those occurrences without the
-                    # old global 300/3000-row widening loop.
-                    limit = top_k * 3
-                    ranked = await self._ranked_candidates(
-                        session, dialect, query, scope, limit
-                    )
-                    hits = await self._resolve(session, scope, ranked, top_k)
-        except TimeoutError:
-            return []
+        # Retrieval and startup warm-up own their deadlines. A second timer
+        # here can cancel SQLAlchemy again while it returns a connection.
+        async with self._session_factory() as session:
+            dialect = session.get_bind().dialect.name
+            query = _build_query(
+                dialect, term_list, phrase_lists, required=required_list
+            )
+            # One lexical document may occur in several files. A small
+            # scoped surplus preserves those occurrences without the
+            # old global 300/3000-row widening loop.
+            limit = top_k * 3
+            ranked = await self._ranked_candidates(
+                session, dialect, query, scope, limit
+            )
+            hits = await self._resolve(session, scope, ranked, top_k)
 
         lowered = [phrase.lower() for phrase in phrases]
         if not hits:
@@ -211,12 +201,13 @@ class SqlLexicalSearchStore:
         limit: int,
     ) -> dict[str, float]:
         def build(scope_predicate: ColumnElement[bool]):
-            member = exists(
-                select(1)
+            # Materialize scoped hashes once. Correlating both this lookup and
+            # checkpoint membership repeats B-tree probes for global FTS hits.
+            member = _LEXICAL.c.content_hash.in_(
+                select(BlobChunkModel.content_hash)
                 .select_from(BlobChunkModel)
                 .join(BlobModel, BlobModel.blob_name == BlobChunkModel.blob_name)
                 .where(
-                    BlobChunkModel.content_hash == _LEXICAL.c.content_hash,
                     BlobModel.status == BlobStatus.READY.value,
                     scope_predicate,
                 )

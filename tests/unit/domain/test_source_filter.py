@@ -27,6 +27,13 @@ def test_keeps_text_configuration_formats():
     assert not is_ignored_source_path("test/fixtures/prompt-snapshots/result.json")
 
 
+def test_project_directory_names_do_not_exclude_ordinary_source():
+    for directory in ("audit-tool", "audit-retrieval-eval", "retrieval-eval"):
+        assert not is_ignored_source_path(f"{directory}/src/runner.py")
+        assert not is_ignored_source_path(f"{directory}\\src\\runner.py")
+        assert is_ignored_source_path(f"{directory}/node_modules/pkg/index.js")
+
+
 def test_rejects_common_secret_files_without_hiding_templates_or_source():
     assert is_ignored_source_path(".env")
     assert is_ignored_source_path("deploy/.env.production")

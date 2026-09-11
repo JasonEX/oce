@@ -105,7 +105,7 @@ async def test_embedding_or_chunking_change_is_rejected_without_overwrite():
 async def test_source_admission_change_is_rejected_without_reusing_old_blobs():
     store = Store()
     profile = build_index_profile(Settings(), _embedding())
-    old_profile = replace(profile, source_admission_version=0)
+    old_profile = replace(profile, source_admission_version=1)
     store.stored = StoredIndexProfile(
         old_profile.fingerprint,
         old_profile.canonical_json(),

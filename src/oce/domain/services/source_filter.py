@@ -124,8 +124,7 @@ def is_ignored_source_path(path: str) -> bool:
     parts = tuple(part for part in normalized.split("/") if part)
     filename = parts[-1] if parts else ""
     if any(
-        part in IGNORED_DIRECTORY_NAMES
-        or part.endswith((".egg-info", "-retrieval-eval"))
+        part in IGNORED_DIRECTORY_NAMES or part.endswith(".egg-info")
         for part in parts[:-1]
     ):
         return True

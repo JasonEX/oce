@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
+import time
+
 import pytest
-from sqlalchemy import text
+from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from oce.domain.blob.blob import Blob, BlobStatus
@@ -174,6 +177,44 @@ async def test_scope_uses_chain_membership(sessions):
     assert [hit.path for hit in hits] == ["src/a.py"]
 
 
+@pytest.mark.parametrize("checkpoint_moved", [False, True])
+async def test_checkpoint_scope_preserves_request_deltas_and_version(
+    sessions, checkpoint_moved
+):
+    async with sessions() as session:
+        names = await _index(
+            session,
+            [
+                ("kept", "src/kept.py", "needle"),
+                ("deleted", "src/deleted.py", "needle needle"),
+                ("added", "src/added.py", "needle"),
+                ("foreign", "other/foreign.py", "needle needle needle"),
+            ],
+        )
+        repo = SqlChainRepository(session)
+        chain = await repo.create(names[:2])
+        if checkpoint_moved:
+            await repo.apply_checkpoint(
+                chain.chain_id, chain.version, [names[3]], names[:2]
+            )
+        await session.commit()
+
+    scope = SearchScope(
+        frozenset({names[0], names[2]}),
+        chain_id=chain.chain_id,
+        chain_version=chain.version,
+        added_blob_names=frozenset({names[2]}),
+        deleted_blob_names=frozenset({names[1]}),
+    )
+    hits = await SqlLexicalSearchStore(sessions).search_lexical(
+        terms=("needle",), phrases=(), scope=scope, top_k=2
+    )
+
+    # Equal content in different files remains two occurrences. The moved
+    # checkpoint must fall back to the originally resolved materialized scope.
+    assert {hit.path for hit in hits} == {"src/kept.py", "src/added.py"}
+
+
 async def test_scope_is_applied_before_the_lexical_limit(sessions):
     async with sessions() as session:
         specs = [
@@ -223,3 +264,50 @@ async def test_projection_deduplicates_equal_chunks_in_one_batch(sessions):
         await session.commit()
         count = await session.scalar(text("SELECT COUNT(*) FROM chunk_lexical"))
     assert count == 1
+
+
+async def test_caller_timeout_cleans_up_the_sql_connection(
+    tmp_path, monkeypatch, caplog
+):
+    engine = create_async_engine(
+        f"sqlite+aiosqlite:///{tmp_path / 'lexical.db'}",
+        pool_size=1,
+        max_overflow=0,
+        pool_timeout=0.25,
+    )
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def register_slow_query(connection, _):
+        def wait_for_timeout():
+            # The SQLite worker remains busy while the caller cancels its await.
+            time.sleep(2.1)
+            return 1
+
+        connection.create_function("wait_for_timeout", 0, wait_for_timeout)
+
+    sessions = async_sessionmaker(engine)
+    store = SqlLexicalSearchStore(sessions)
+
+    async def slow_query(session, *args):
+        await session.execute(text("SELECT wait_for_timeout()"))
+        return {}
+
+    monkeypatch.setattr(store, "_ranked_candidates", slow_query)
+    try:
+        with pytest.raises(TimeoutError):
+            async with asyncio.timeout(2.0):
+                # Work before entering the store separates nested deadlines;
+                # otherwise both can fire in the same event-loop iteration.
+                await asyncio.sleep(0.02)
+                await store.search_lexical(
+                    terms=("needle",),
+                    phrases=(),
+                    scope=SearchScope(frozenset({make_sha256("scope")})),
+                )
+
+        assert engine.pool.checkedout() == 0
+        async with sessions() as session:
+            assert await session.scalar(text("SELECT 17")) == 17
+        assert "Exception terminating connection" not in caplog.text
+    finally:
+        await engine.dispose()

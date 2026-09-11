@@ -81,7 +81,7 @@ class SqlSymbolProjection:
 
         if not values:
             return
-        stmt = upsert_insert(self._session)(SymbolOccurrenceModel).values(values)
+        stmt = upsert_insert(self._session)(SymbolOccurrenceModel)
         stmt = stmt.on_conflict_do_nothing(
             index_elements=[
                 "identifier",
@@ -91,7 +91,9 @@ class SqlSymbolProjection:
                 "enclosing",
             ]
         )
-        await self._session.execute(stmt)
+        # Parameter sets let the dialect batch inserts within its bind limit;
+        # a single file can contain more occurrences than one SQL statement fits.
+        await self._session.execute(stmt, values)
         logger.debug(
             "Indexed {} symbol occurrences for blob {}",
             len(values),
