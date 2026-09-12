@@ -1,0 +1,3790 @@
+{
+  "purpose": "Post-hoc annotation diagnosis on unchanged historical outputs; not new retrieval measurements or independent validation",
+  "manifest_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211",
+  "catalog_revision": 2,
+  "limits": "Region hits establish a reviewed source use. A missing catalog region is not proof of irrelevance: the catalog is bounded, not an exhaustive reference graph. Revision 2 expands missing real type uses and calls found during the initial audit; the initial manifest and correction are retained.",
+  "comparisons": {
+    "cycle2-baseline-sql2-main": {
+      "native_report_sha256": "41b4bab6628bc43269a99b6d06acbfa066a7cd62e93c477c28999c0260c1b5de",
+      "v1_subset_top1": 1.0,
+      "v2_catalog_summary": {
+        "cases": 18,
+        "successful_cases": 18,
+        "error_cases": 0,
+        "primary_top1": 0.6111111111111112,
+        "primary_hit_at_3": 0.8333333333333334,
+        "primary_hit_at_10": 0.8333333333333334,
+        "primary_mrr": 0.6851851851851852,
+        "primary_recall": 0.47651971272660926,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.47651971272660926,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.172719301395772,
+        "error_classes": {
+          "none": 6,
+          "exact_miss": 3,
+          "distractor": 0,
+          "test_missing": 0,
+          "relation_missing": 0,
+          "redundant": 9
+        },
+        "mean_elapsed_ms": 668.1111111111111,
+        "p50_elapsed_ms": 624,
+        "p95_elapsed_ms": 1278,
+        "mean_returned_chars": 22225.88888888889,
+        "mean_hit_count": 13.61111111111111
+      },
+      "cases": [
+        {
+          "id": "reference-v2-flask-flask-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 0.0,
+            "primary_hit_at_10": 0.0,
+            "primary_mrr": 0.0,
+            "primary_recall": 0.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0,
+            "error_class": "exact_miss"
+          },
+          "returned_chars": 21112,
+          "hit_count": 16,
+          "elapsed_ms": 1278,
+          "v1_case_id": "flask-flask-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.5,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "src/flask/cli.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "src/flask/app.py",
+              "start": 51,
+              "end": 106
+            },
+            {
+              "path": "src/flask/ctx.py",
+              "start": 1,
+              "end": 22
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 1,
+              "end": 38
+            },
+            {
+              "path": "src/flask/globals.py",
+              "start": 1,
+              "end": 59
+            },
+            {
+              "path": "src/flask/json/provider.py",
+              "start": 1,
+              "end": 104
+            },
+            {
+              "path": "src/flask/logging.py",
+              "start": 1,
+              "end": 50
+            },
+            {
+              "path": "src/flask/sessions.py",
+              "start": 1,
+              "end": 46
+            },
+            {
+              "path": "examples/javascript/js_example/__init__.py",
+              "start": 3,
+              "end": 5
+            },
+            {
+              "path": "examples/celery/src/task_app/__init__.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/__init__.py",
+              "start": 6,
+              "end": 14
+            },
+            {
+              "path": "tests/test_apps/cliapp/app.py",
+              "start": 1,
+              "end": 3
+            },
+            {
+              "path": "tests/test_apps/cliapp/inner1/__init__.py",
+              "start": 1,
+              "end": 3
+            },
+            {
+              "path": "tests/test_apps/cliapp/importerrorapp.py",
+              "start": 1,
+              "end": 5
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-flask-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 0.0,
+            "primary_hit_at_10": 0.0,
+            "primary_mrr": 0.0,
+            "primary_recall": 0.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0,
+            "error_class": "exact_miss"
+          },
+          "returned_chars": 21112,
+          "hit_count": 16,
+          "elapsed_ms": 624,
+          "v1_case_id": "flask-flask-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.5,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "src/flask/cli.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "src/flask/app.py",
+              "start": 51,
+              "end": 106
+            },
+            {
+              "path": "src/flask/ctx.py",
+              "start": 1,
+              "end": 22
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 1,
+              "end": 38
+            },
+            {
+              "path": "src/flask/globals.py",
+              "start": 1,
+              "end": 59
+            },
+            {
+              "path": "src/flask/json/provider.py",
+              "start": 1,
+              "end": 104
+            },
+            {
+              "path": "src/flask/logging.py",
+              "start": 1,
+              "end": 50
+            },
+            {
+              "path": "src/flask/sessions.py",
+              "start": 1,
+              "end": 46
+            },
+            {
+              "path": "examples/javascript/js_example/__init__.py",
+              "start": 3,
+              "end": 5
+            },
+            {
+              "path": "examples/celery/src/task_app/__init__.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/__init__.py",
+              "start": 6,
+              "end": 14
+            },
+            {
+              "path": "tests/test_apps/cliapp/app.py",
+              "start": 1,
+              "end": 3
+            },
+            {
+              "path": "tests/test_apps/cliapp/inner1/__init__.py",
+              "start": 1,
+              "end": 3
+            },
+            {
+              "path": "tests/test_apps/cliapp/importerrorapp.py",
+              "start": 1,
+              "end": 5
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-requests-prepared-request-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.23076923076923078,
+            "error_class": "redundant"
+          },
+          "returned_chars": 28977,
+          "hit_count": 13,
+          "elapsed_ms": 794,
+          "v1_case_id": "requests-prepared-request-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "requests/sessions.py",
+              "start": 411,
+              "end": 455
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 256,
+              "end": 291
+            },
+            {
+              "path": "requests/models.py",
+              "start": 200,
+              "end": 331
+            },
+            {
+              "path": "requests/__init__.py",
+              "start": 99,
+              "end": 152
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2270,
+              "end": 2335
+            },
+            {
+              "path": "docs/user/advanced.rst",
+              "start": 158,
+              "end": 306
+            },
+            {
+              "path": "requests/utils.py",
+              "start": 798,
+              "end": 861
+            },
+            {
+              "path": "HISTORY.md",
+              "start": 740,
+              "end": 776
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 330,
+              "end": 371
+            },
+            {
+              "path": "requests/models.py",
+              "start": 333,
+              "end": 342
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2400,
+              "end": 2406
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2344,
+              "end": 2353
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2365,
+              "end": 2374
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-requests-prepared-request-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.23076923076923078,
+            "error_class": "redundant"
+          },
+          "returned_chars": 28977,
+          "hit_count": 13,
+          "elapsed_ms": 719,
+          "v1_case_id": "requests-prepared-request-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "requests/sessions.py",
+              "start": 411,
+              "end": 455
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 256,
+              "end": 291
+            },
+            {
+              "path": "requests/models.py",
+              "start": 200,
+              "end": 331
+            },
+            {
+              "path": "requests/__init__.py",
+              "start": 99,
+              "end": 152
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2270,
+              "end": 2335
+            },
+            {
+              "path": "docs/user/advanced.rst",
+              "start": 158,
+              "end": 306
+            },
+            {
+              "path": "requests/utils.py",
+              "start": 798,
+              "end": 861
+            },
+            {
+              "path": "HISTORY.md",
+              "start": 740,
+              "end": 776
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 330,
+              "end": 371
+            },
+            {
+              "path": "requests/models.py",
+              "start": 333,
+              "end": 342
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2400,
+              "end": 2406
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2344,
+              "end": 2353
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2365,
+              "end": 2374
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-redux-create-reducer-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.07142857142857142,
+            "error_class": "redundant"
+          },
+          "returned_chars": 21269,
+          "hit_count": 14,
+          "elapsed_ms": 578,
+          "v1_case_id": "redux-create-reducer-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.8571428571428571,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "packages/toolkit/src/createSlice.ts",
+              "start": 664,
+              "end": 725
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/index.ts",
+              "start": 71,
+              "end": 96
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 32,
+              "end": 74
+            },
+            {
+              "path": "packages/toolkit/src/index.ts",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "packages/toolkit/src/mapBuilders.ts",
+              "start": 1,
+              "end": 19
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+              "start": 1,
+              "end": 60
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+              "start": 1,
+              "end": 53
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+              "start": 1,
+              "end": 40
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+              "start": 1,
+              "end": 48
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 713,
+              "end": 811
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 140,
+              "end": 150
+            },
+            {
+              "path": "docs/virtual/matchers/index.ts",
+              "start": 56,
+              "end": 64
+            },
+            {
+              "path": "packages/toolkit/src/tests/combineSlices.test.ts",
+              "start": 2,
+              "end": 11
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 6,
+              "end": 15
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-redux-create-reducer-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.07142857142857142,
+            "error_class": "redundant"
+          },
+          "returned_chars": 21269,
+          "hit_count": 14,
+          "elapsed_ms": 625,
+          "v1_case_id": "redux-create-reducer-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.8571428571428571,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "packages/toolkit/src/createSlice.ts",
+              "start": 664,
+              "end": 725
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/index.ts",
+              "start": 71,
+              "end": 96
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 32,
+              "end": 74
+            },
+            {
+              "path": "packages/toolkit/src/index.ts",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "packages/toolkit/src/mapBuilders.ts",
+              "start": 1,
+              "end": 19
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+              "start": 1,
+              "end": 60
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+              "start": 1,
+              "end": 53
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+              "start": 1,
+              "end": 40
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+              "start": 1,
+              "end": 48
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 713,
+              "end": 811
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 140,
+              "end": 150
+            },
+            {
+              "path": "docs/virtual/matchers/index.ts",
+              "start": 56,
+              "end": 64
+            },
+            {
+              "path": "packages/toolkit/src/tests/combineSlices.test.ts",
+              "start": 2,
+              "end": 11
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 6,
+              "end": 15
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-axum-router-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.3333333333333333,
+            "primary_recall": 0.2222222222222222,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.2222222222222222,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0625,
+            "error_class": "redundant"
+          },
+          "returned_chars": 28578,
+          "hit_count": 16,
+          "elapsed_ms": 688,
+          "v1_case_id": "axum-router-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.11864406779661017,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "axum/src/routing/method_routing.rs",
+              "start": 475,
+              "end": 535
+            },
+            {
+              "path": "axum/src/extract/state.rs",
+              "start": 60,
+              "end": 120
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 74,
+              "end": 129
+            },
+            {
+              "path": "axum/src/routing/tests/nest.rs",
+              "start": 350,
+              "end": 383
+            },
+            {
+              "path": "axum-extra/src/routing/mod.rs",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "axum/CHANGELOG.md",
+              "start": 932,
+              "end": 1101
+            },
+            {
+              "path": "axum/src/routing/path_router.rs",
+              "start": 412,
+              "end": 482
+            },
+            {
+              "path": "axum-extra/src/extract/cached.rs",
+              "start": 112,
+              "end": 166
+            },
+            {
+              "path": "axum-extra/src/extract/cookie/mod.rs",
+              "start": 234,
+              "end": 385
+            },
+            {
+              "path": "axum-extra/src/extract/form.rs",
+              "start": 117,
+              "end": 148
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 62,
+              "end": 64
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 131,
+              "end": 142
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 469,
+              "end": 480
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/pass/enum_via.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/pass/enum_via_parts.rs",
+              "start": 1,
+              "end": 10
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-axum-router-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.3333333333333333,
+            "primary_recall": 0.1111111111111111,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.1111111111111111,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0625,
+            "error_class": "redundant"
+          },
+          "returned_chars": 26389,
+          "hit_count": 16,
+          "elapsed_ms": 503,
+          "v1_case_id": "axum-router-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.13559322033898305,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "axum/src/routing/method_routing.rs",
+              "start": 475,
+              "end": 535
+            },
+            {
+              "path": "axum/src/extract/state.rs",
+              "start": 60,
+              "end": 120
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 230,
+              "end": 280
+            },
+            {
+              "path": "axum/src/docs/routing/merge.md",
+              "start": 38,
+              "end": 80
+            },
+            {
+              "path": "axum-extra/src/extract/cached.rs",
+              "start": 112,
+              "end": 166
+            },
+            {
+              "path": "axum-extra/src/extract/cookie/mod.rs",
+              "start": 234,
+              "end": 385
+            },
+            {
+              "path": "axum-extra/src/extract/form.rs",
+              "start": 117,
+              "end": 148
+            },
+            {
+              "path": "axum-extra/src/extract/json_deserializer.rs",
+              "start": 213,
+              "end": 286
+            },
+            {
+              "path": "axum-extra/src/extract/multipart.rs",
+              "start": 413,
+              "end": 478
+            },
+            {
+              "path": "axum-extra/src/extract/optional_path.rs",
+              "start": 63,
+              "end": 102
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 62,
+              "end": 64
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 131,
+              "end": 142
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 469,
+              "end": 480
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/pass/enum_via.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/pass/enum_via_parts.rs",
+              "start": 1,
+              "end": 10
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gin-handlers-chain-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.36363636363636365,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.36363636363636365,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19114,
+          "hit_count": 10,
+          "elapsed_ms": 609,
+          "v1_case_id": "gin-handlers-chain-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "routergroup.go",
+              "start": 216,
+              "end": 259
+            },
+            {
+              "path": "tree.go",
+              "start": 404,
+              "end": 428
+            },
+            {
+              "path": "context.go",
+              "start": 55,
+              "end": 115
+            },
+            {
+              "path": "gin.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug.go",
+              "start": 1,
+              "end": 67
+            },
+            {
+              "path": "gin_test.go",
+              "start": 307,
+              "end": 360
+            },
+            {
+              "path": "context_test.go",
+              "start": 149,
+              "end": 207
+            },
+            {
+              "path": "tree_test.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug_test.go",
+              "start": 1,
+              "end": 66
+            },
+            {
+              "path": "routes_test.go",
+              "start": 507,
+              "end": 542
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gin-handlers-chain-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.36363636363636365,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.36363636363636365,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19114,
+          "hit_count": 10,
+          "elapsed_ms": 501,
+          "v1_case_id": "gin-handlers-chain-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "routergroup.go",
+              "start": 216,
+              "end": 259
+            },
+            {
+              "path": "tree.go",
+              "start": 404,
+              "end": 428
+            },
+            {
+              "path": "context.go",
+              "start": 55,
+              "end": 115
+            },
+            {
+              "path": "gin.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug.go",
+              "start": 1,
+              "end": 67
+            },
+            {
+              "path": "gin_test.go",
+              "start": 307,
+              "end": 360
+            },
+            {
+              "path": "context_test.go",
+              "start": 149,
+              "end": 207
+            },
+            {
+              "path": "tree_test.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug_test.go",
+              "start": 1,
+              "end": 66
+            },
+            {
+              "path": "routes_test.go",
+              "start": 507,
+              "end": 542
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-jq-jv-array-append-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.4482758620689655,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.4482758620689655,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.42857142857142855,
+            "error_class": "none"
+          },
+          "returned_chars": 26647,
+          "hit_count": 14,
+          "elapsed_ms": 641,
+          "v1_case_id": "jq-jv-array-append-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.8181818181818182,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/builtin.c",
+              "start": 218,
+              "end": 276
+            },
+            {
+              "path": "src/compile.c",
+              "start": 484,
+              "end": 527
+            },
+            {
+              "path": "src/execute.c",
+              "start": 237,
+              "end": 271
+            },
+            {
+              "path": "src/jv.c",
+              "start": 972,
+              "end": 1050
+            },
+            {
+              "path": "src/jq_test.c",
+              "start": 344,
+              "end": 394
+            },
+            {
+              "path": "src/jv_aux.c",
+              "start": 274,
+              "end": 376
+            },
+            {
+              "path": "src/jv_file.c",
+              "start": 1,
+              "end": 81
+            },
+            {
+              "path": "src/jv_parse.c",
+              "start": 156,
+              "end": 239
+            },
+            {
+              "path": "src/linker.c",
+              "start": 51,
+              "end": 93
+            },
+            {
+              "path": "src/main.c",
+              "start": 310,
+              "end": 383
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 1477,
+              "end": 1480
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 345,
+              "end": 354
+            },
+            {
+              "path": "src/compile.c",
+              "start": 708,
+              "end": 717
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 955,
+              "end": 963
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-jq-jv-array-append-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.4827586206896552,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.4827586206896552,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.42857142857142855,
+            "error_class": "none"
+          },
+          "returned_chars": 25779,
+          "hit_count": 14,
+          "elapsed_ms": 506,
+          "v1_case_id": "jq-jv-array-append-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.8181818181818182,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/jq_test.c",
+              "start": 396,
+              "end": 437
+            },
+            {
+              "path": "src/execute.c",
+              "start": 237,
+              "end": 271
+            },
+            {
+              "path": "src/jv.c",
+              "start": 972,
+              "end": 1050
+            },
+            {
+              "path": "src/jv.h",
+              "start": 90,
+              "end": 124
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 218,
+              "end": 276
+            },
+            {
+              "path": "src/compile.c",
+              "start": 484,
+              "end": 527
+            },
+            {
+              "path": "src/jv_aux.c",
+              "start": 274,
+              "end": 376
+            },
+            {
+              "path": "src/jv_file.c",
+              "start": 1,
+              "end": 81
+            },
+            {
+              "path": "src/jv_parse.c",
+              "start": 156,
+              "end": 239
+            },
+            {
+              "path": "src/linker.c",
+              "start": 51,
+              "end": 93
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 1477,
+              "end": 1480
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 345,
+              "end": 354
+            },
+            {
+              "path": "src/compile.c",
+              "start": 708,
+              "end": 717
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 955,
+              "end": 963
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-express-route-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.3333333333333333,
+            "primary_recall": 0.8333333333333334,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.8333333333333334,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19084,
+          "hit_count": 10,
+          "elapsed_ms": 766,
+          "v1_case_id": "express-route-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "lib/router/index.js",
+              "start": 424,
+              "end": 500
+            },
+            {
+              "path": "lib/application.js",
+              "start": 194,
+              "end": 264
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 1,
+              "end": 99
+            },
+            {
+              "path": "test/Route.js",
+              "start": 1,
+              "end": 45
+            },
+            {
+              "path": "test/req.route.js",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "lib/express.js",
+              "start": 1,
+              "end": 87
+            },
+            {
+              "path": "test/acceptance/route-separation.js",
+              "start": 2,
+              "end": 97
+            },
+            {
+              "path": "examples/route-separation/site.js",
+              "start": 1,
+              "end": 5
+            },
+            {
+              "path": "lib/router/index.js",
+              "start": 502,
+              "end": 591
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 184,
+              "end": 230
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-express-route-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.3333333333333333,
+            "primary_recall": 0.8333333333333334,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.8333333333333334,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19084,
+          "hit_count": 10,
+          "elapsed_ms": 591,
+          "v1_case_id": "express-route-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "lib/router/index.js",
+              "start": 424,
+              "end": 500
+            },
+            {
+              "path": "lib/application.js",
+              "start": 194,
+              "end": 264
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 1,
+              "end": 99
+            },
+            {
+              "path": "test/Route.js",
+              "start": 1,
+              "end": 45
+            },
+            {
+              "path": "test/req.route.js",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "lib/express.js",
+              "start": 1,
+              "end": 87
+            },
+            {
+              "path": "test/acceptance/route-separation.js",
+              "start": 2,
+              "end": 97
+            },
+            {
+              "path": "examples/route-separation/site.js",
+              "start": 1,
+              "end": 5
+            },
+            {
+              "path": "lib/router/index.js",
+              "start": 502,
+              "end": 591
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 184,
+              "end": 230
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gson-type-token-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.08571428571428572,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.08571428571428572,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.13333333333333333,
+            "error_class": "redundant"
+          },
+          "returned_chars": 17642,
+          "hit_count": 15,
+          "elapsed_ms": 592,
+          "v1_case_id": "gson-type-token-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.3076923076923077,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "gson/src/main/java/com/google/gson/Gson.java",
+              "start": 1140,
+              "end": 1172
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 95,
+              "end": 119
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+              "start": 300,
+              "end": 342
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+              "start": 1,
+              "end": 42
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+              "start": 1,
+              "end": 27
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+              "start": 1,
+              "end": 32
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+              "start": 38,
+              "end": 54
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+              "start": 1,
+              "end": 19
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+              "start": 1,
+              "end": 51
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 54,
+              "end": 65
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 80,
+              "end": 85
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+              "start": 24,
+              "end": 29
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/CommentsTest.java",
+              "start": 21,
+              "end": 30
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+              "start": 22,
+              "end": 31
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gson-type-token-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 0.0,
+            "primary_hit_at_10": 0.0,
+            "primary_mrr": 0.0,
+            "primary_recall": 0.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0,
+            "error_class": "exact_miss"
+          },
+          "returned_chars": 15827,
+          "hit_count": 13,
+          "elapsed_ms": 624,
+          "v1_case_id": "gson-type-token-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.34615384615384615,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "gson/src/main/java/com/google/gson/Gson.java",
+              "start": 37,
+              "end": 63
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+              "start": 38,
+              "end": 54
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+              "start": 1,
+              "end": 19
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 54,
+              "end": 94
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+              "start": 1,
+              "end": 42
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+              "start": 1,
+              "end": 27
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+              "start": 1,
+              "end": 32
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+              "start": 1,
+              "end": 51
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/Excluder.java",
+              "start": 1,
+              "end": 36
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+              "start": 24,
+              "end": 29
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/CommentsTest.java",
+              "start": 21,
+              "end": 30
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+              "start": 22,
+              "end": 31
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-blueprint-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.5,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.5,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.11764705882352941,
+            "error_class": "redundant"
+          },
+          "returned_chars": 20960,
+          "hit_count": 17,
+          "elapsed_ms": 676,
+          "v1_case_id": "flask-blueprint-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/app.py",
+              "start": 967,
+              "end": 1019
+            },
+            {
+              "path": "src/flask/scaffold.py",
+              "start": 613,
+              "end": 653
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 114,
+              "end": 158
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 227,
+              "end": 266
+            },
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "tests/test_blueprints.py",
+              "start": 968,
+              "end": 1016
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 629,
+              "end": 678
+            },
+            {
+              "path": "tests/test_async.py",
+              "start": 1,
+              "end": 78
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+              "start": 1,
+              "end": 20
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+              "start": 1,
+              "end": 14
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 117,
+              "end": 118
+            },
+            {
+              "path": "examples/tutorial/flaskr/blog.py",
+              "start": 13,
+              "end": 22
+            },
+            {
+              "path": "examples/celery/src/task_app/views.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/auth.py",
+              "start": 16,
+              "end": 25
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1620,
+              "end": 1629
+            },
+            {
+              "path": "tests/test_blueprints.py",
+              "start": 8,
+              "end": 17
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 15,
+              "end": 24
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-blueprint-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.3333333333333333,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.3333333333333333,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.07142857142857142,
+            "error_class": "redundant"
+          },
+          "returned_chars": 19132,
+          "hit_count": 14,
+          "elapsed_ms": 711,
+          "v1_case_id": "flask-blueprint-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/app.py",
+              "start": 967,
+              "end": 1019
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 114,
+              "end": 158
+            },
+            {
+              "path": "src/flask/scaffold.py",
+              "start": 655,
+              "end": 667
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 118,
+              "end": 168
+            },
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+              "start": 1,
+              "end": 20
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+              "start": 1,
+              "end": 14
+            },
+            {
+              "path": "tests/test_async.py",
+              "start": 1,
+              "end": 78
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1591,
+              "end": 1650
+            },
+            {
+              "path": "tests/test_blueprints.py",
+              "start": 1,
+              "end": 43
+            },
+            {
+              "path": "examples/tutorial/flaskr/blog.py",
+              "start": 13,
+              "end": 22
+            },
+            {
+              "path": "examples/celery/src/task_app/views.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/auth.py",
+              "start": 16,
+              "end": 25
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 15,
+              "end": 24
+            }
+          ]
+        }
+      ]
+    },
+    "cycle2-c12-main": {
+      "native_report_sha256": "778e3e22acd5a0a38938f3f2478c1f49c7590d1b4e7252e6acce4e21b5d7bac2",
+      "v1_subset_top1": 0.7222222222222222,
+      "v2_catalog_summary": {
+        "cases": 18,
+        "successful_cases": 18,
+        "error_cases": 0,
+        "primary_top1": 0.8333333333333334,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.9166666666666666,
+        "primary_recall": 0.5703908267126657,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5703908267126657,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.1111111111111111,
+        "truth_region_share": 0.20003342245989306,
+        "error_classes": {
+          "none": 6,
+          "exact_miss": 0,
+          "distractor": 0,
+          "test_missing": 0,
+          "relation_missing": 0,
+          "redundant": 12
+        },
+        "mean_elapsed_ms": 2183.0555555555557,
+        "p50_elapsed_ms": 668,
+        "p95_elapsed_ms": 27118,
+        "mean_returned_chars": 24854.166666666668,
+        "mean_hit_count": 14.38888888888889
+      },
+      "cases": [
+        {
+          "id": "reference-v2-flask-flask-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.047619047619047616,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.047619047619047616,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 1.0,
+            "truth_region_share": 0.058823529411764705,
+            "error_class": "redundant"
+          },
+          "returned_chars": 31745,
+          "hit_count": 17,
+          "elapsed_ms": 27118,
+          "v1_case_id": "flask-flask-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.16666666666666666,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/templating.py",
+              "start": 1,
+              "end": 46
+            },
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "README.rst",
+              "start": 1,
+              "end": 82
+            },
+            {
+              "path": "tests/test_config.py",
+              "start": 49,
+              "end": 108
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 1,
+              "end": 43
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1713,
+              "end": 1772
+            },
+            {
+              "path": "docs/patterns/flashing.rst",
+              "start": 1,
+              "end": 148
+            },
+            {
+              "path": "docs/cli.rst",
+              "start": 159,
+              "end": 377
+            },
+            {
+              "path": "tests/test_helpers.py",
+              "start": 165,
+              "end": 226
+            },
+            {
+              "path": "src/flask/app.py",
+              "start": 105,
+              "end": 106
+            },
+            {
+              "path": "examples/celery/src/task_app/__init__.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/javascript/js_example/__init__.py",
+              "start": 3,
+              "end": 5
+            },
+            {
+              "path": "examples/tutorial/flaskr/__init__.py",
+              "start": 6,
+              "end": 14
+            },
+            {
+              "path": "tests/conftest.py",
+              "start": 9,
+              "end": 18
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/__init__.py",
+              "start": 1,
+              "end": 9
+            },
+            {
+              "path": "tests/test_apps/cliapp/app.py",
+              "start": 1,
+              "end": 3
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-flask-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.047619047619047616,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.047619047619047616,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 1.0,
+            "truth_region_share": 0.058823529411764705,
+            "error_class": "redundant"
+          },
+          "returned_chars": 30862,
+          "hit_count": 17,
+          "elapsed_ms": 861,
+          "v1_case_id": "flask-flask-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.16666666666666666,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/logging.py",
+              "start": 53,
+              "end": 74
+            },
+            {
+              "path": "src/flask/__init__.py",
+              "start": 1,
+              "end": 33
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "README.rst",
+              "start": 1,
+              "end": 82
+            },
+            {
+              "path": "tests/test_config.py",
+              "start": 49,
+              "end": 108
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 1,
+              "end": 43
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1713,
+              "end": 1772
+            },
+            {
+              "path": "docs/patterns/flashing.rst",
+              "start": 1,
+              "end": 148
+            },
+            {
+              "path": "docs/cli.rst",
+              "start": 159,
+              "end": 377
+            },
+            {
+              "path": "tests/test_helpers.py",
+              "start": 165,
+              "end": 226
+            },
+            {
+              "path": "src/flask/app.py",
+              "start": 105,
+              "end": 106
+            },
+            {
+              "path": "examples/celery/src/task_app/__init__.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/javascript/js_example/__init__.py",
+              "start": 3,
+              "end": 5
+            },
+            {
+              "path": "examples/tutorial/flaskr/__init__.py",
+              "start": 6,
+              "end": 14
+            },
+            {
+              "path": "tests/conftest.py",
+              "start": 9,
+              "end": 18
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/__init__.py",
+              "start": 1,
+              "end": 9
+            },
+            {
+              "path": "tests/test_apps/cliapp/app.py",
+              "start": 1,
+              "end": 3
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-requests-prepared-request-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.2,
+            "error_class": "redundant"
+          },
+          "returned_chars": 27252,
+          "hit_count": 15,
+          "elapsed_ms": 596,
+          "v1_case_id": "requests-prepared-request-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "requests/sessions.py",
+              "start": 411,
+              "end": 455
+            },
+            {
+              "path": "requests/models.py",
+              "start": 333,
+              "end": 358
+            },
+            {
+              "path": "requests/models.py",
+              "start": 275,
+              "end": 331
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 256,
+              "end": 291
+            },
+            {
+              "path": "docs/user/advanced.rst",
+              "start": 158,
+              "end": 306
+            },
+            {
+              "path": "requests/utils.py",
+              "start": 798,
+              "end": 861
+            },
+            {
+              "path": "requests/__init__.py",
+              "start": 99,
+              "end": 152
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 1321,
+              "end": 1377
+            },
+            {
+              "path": "HISTORY.md",
+              "start": 740,
+              "end": 776
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 330,
+              "end": 371
+            },
+            {
+              "path": "requests/models.py",
+              "start": 274,
+              "end": 274
+            },
+            {
+              "path": "requests/models.py",
+              "start": 256,
+              "end": 265
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 28,
+              "end": 37
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2305,
+              "end": 2314
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2344,
+              "end": 2353
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-requests-prepared-request-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.2,
+            "error_class": "redundant"
+          },
+          "returned_chars": 27252,
+          "hit_count": 15,
+          "elapsed_ms": 621,
+          "v1_case_id": "requests-prepared-request-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "requests/sessions.py",
+              "start": 411,
+              "end": 455
+            },
+            {
+              "path": "requests/models.py",
+              "start": 333,
+              "end": 358
+            },
+            {
+              "path": "requests/models.py",
+              "start": 275,
+              "end": 331
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 256,
+              "end": 291
+            },
+            {
+              "path": "docs/user/advanced.rst",
+              "start": 158,
+              "end": 306
+            },
+            {
+              "path": "requests/utils.py",
+              "start": 798,
+              "end": 861
+            },
+            {
+              "path": "requests/__init__.py",
+              "start": 99,
+              "end": 152
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 1321,
+              "end": 1377
+            },
+            {
+              "path": "HISTORY.md",
+              "start": 740,
+              "end": 776
+            },
+            {
+              "path": "requests/adapters.py",
+              "start": 330,
+              "end": 371
+            },
+            {
+              "path": "requests/models.py",
+              "start": 274,
+              "end": 274
+            },
+            {
+              "path": "requests/models.py",
+              "start": 256,
+              "end": 265
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 28,
+              "end": 37
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2305,
+              "end": 2314
+            },
+            {
+              "path": "tests/test_requests.py",
+              "start": 2344,
+              "end": 2353
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-redux-create-reducer-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.06666666666666667,
+            "error_class": "redundant"
+          },
+          "returned_chars": 22901,
+          "hit_count": 15,
+          "elapsed_ms": 1187,
+          "v1_case_id": "redux-create-reducer-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.42857142857142855,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "packages/toolkit/src/createSlice.ts",
+              "start": 664,
+              "end": 725
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 32,
+              "end": 74
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/index.ts",
+              "start": 71,
+              "end": 96
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+              "start": 1,
+              "end": 40
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+              "start": 1,
+              "end": 48
+            },
+            {
+              "path": "packages/toolkit/src/tests/createReducer.test.ts",
+              "start": 44,
+              "end": 110
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+              "start": 55,
+              "end": 67
+            },
+            {
+              "path": "packages/toolkit/src/tests/createReducer.test-d.ts",
+              "start": 1,
+              "end": 77
+            },
+            {
+              "path": "errors.json",
+              "start": 1,
+              "end": 42
+            },
+            {
+              "path": "packages/toolkit/src/tests/combineSlices.test.ts",
+              "start": 1,
+              "end": 50
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 140,
+              "end": 150
+            },
+            {
+              "path": "docs/virtual/matchers/index.ts",
+              "start": 56,
+              "end": 64
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+              "start": 2,
+              "end": 11
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 6,
+              "end": 15
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+              "start": 2,
+              "end": 11
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-redux-create-reducer-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 1.0,
+            "supporting_recall": 1.0,
+            "relation_recall": 1.0,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.06666666666666667,
+            "error_class": "redundant"
+          },
+          "returned_chars": 19406,
+          "hit_count": 15,
+          "elapsed_ms": 602,
+          "v1_case_id": "redux-create-reducer-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.2857142857142857,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "packages/toolkit/src/createSlice.ts",
+              "start": 664,
+              "end": 725
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/index.ts",
+              "start": 71,
+              "end": 96
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 32,
+              "end": 74
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+              "start": 1,
+              "end": 40
+            },
+            {
+              "path": "packages/toolkit/src/tests/createReducer.test.ts",
+              "start": 44,
+              "end": 110
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+              "start": 1,
+              "end": 48
+            },
+            {
+              "path": "docs/usage/usage-guide.md",
+              "start": 158,
+              "end": 190
+            },
+            {
+              "path": "docs/api/createReducer.mdx",
+              "start": 1,
+              "end": 35
+            },
+            {
+              "path": "docs/usage/immer-reducers.md",
+              "start": 181,
+              "end": 206
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/README.md",
+              "start": 52,
+              "end": 111
+            },
+            {
+              "path": "packages/toolkit/src/createReducer.ts",
+              "start": 140,
+              "end": 150
+            },
+            {
+              "path": "docs/virtual/matchers/index.ts",
+              "start": 56,
+              "end": 64
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+              "start": 2,
+              "end": 11
+            },
+            {
+              "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+              "start": 2,
+              "end": 11
+            },
+            {
+              "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+              "start": 6,
+              "end": 15
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-axum-router-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.2222222222222222,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.2222222222222222,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.0625,
+            "error_class": "redundant"
+          },
+          "returned_chars": 27154,
+          "hit_count": 16,
+          "elapsed_ms": 657,
+          "v1_case_id": "axum-router-reference",
+          "v1_metrics": {
+            "top1": 0.0,
+            "hit_at_10": 1.0,
+            "mrr": 0.5,
+            "path_recall_at_10": 0.0847457627118644,
+            "definition_top1": 1.0
+          },
+          "retrieved": [
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 74,
+              "end": 129
+            },
+            {
+              "path": "axum/src/extract/state.rs",
+              "start": 60,
+              "end": 120
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 745,
+              "end": 761
+            },
+            {
+              "path": "axum/src/routing/tests/nest.rs",
+              "start": 350,
+              "end": 383
+            },
+            {
+              "path": "axum-extra/src/routing/mod.rs",
+              "start": 1,
+              "end": 29
+            },
+            {
+              "path": "axum/src/routing/method_routing.rs",
+              "start": 475,
+              "end": 535
+            },
+            {
+              "path": "axum/CHANGELOG.md",
+              "start": 932,
+              "end": 1101
+            },
+            {
+              "path": "axum/src/routing/path_router.rs",
+              "start": 412,
+              "end": 482
+            },
+            {
+              "path": "axum/benches/benches.rs",
+              "start": 1,
+              "end": 90
+            },
+            {
+              "path": "axum/src/serve.rs",
+              "start": 550,
+              "end": 649
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 62,
+              "end": 64
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 131,
+              "end": 142
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 469,
+              "end": 480
+            },
+            {
+              "path": "axum-macros/tests/from_ref/pass/basic.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+              "start": 1,
+              "end": 10
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-axum-router-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.3333333333333333,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.3333333333333333,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.125,
+            "error_class": "redundant"
+          },
+          "returned_chars": 23872,
+          "hit_count": 16,
+          "elapsed_ms": 686,
+          "v1_case_id": "axum-router-reference-zh",
+          "v1_metrics": {
+            "top1": 0.0,
+            "hit_at_10": 1.0,
+            "mrr": 0.5,
+            "path_recall_at_10": 0.06779661016949153,
+            "definition_top1": 1.0
+          },
+          "retrieved": [
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 230,
+              "end": 280
+            },
+            {
+              "path": "axum/src/extract/state.rs",
+              "start": 60,
+              "end": 120
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 554,
+              "end": 623
+            },
+            {
+              "path": "axum/src/routing/method_routing.rs",
+              "start": 475,
+              "end": 535
+            },
+            {
+              "path": "axum/src/docs/routing/merge.md",
+              "start": 38,
+              "end": 80
+            },
+            {
+              "path": "examples/routes-and-handlers-close-together/src/main.rs",
+              "start": 1,
+              "end": 52
+            },
+            {
+              "path": "axum-extra/src/routing/resource.rs",
+              "start": 1,
+              "end": 39
+            },
+            {
+              "path": "axum/src/serve.rs",
+              "start": 550,
+              "end": 649
+            },
+            {
+              "path": "axum/src/routing/tests/merge.rs",
+              "start": 166,
+              "end": 226
+            },
+            {
+              "path": "axum/src/routing/tests/mod.rs",
+              "start": 303,
+              "end": 360
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 62,
+              "end": 64
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 131,
+              "end": 142
+            },
+            {
+              "path": "axum/src/routing/mod.rs",
+              "start": 469,
+              "end": 480
+            },
+            {
+              "path": "axum-macros/tests/from_ref/pass/basic.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via.rs",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+              "start": 1,
+              "end": 10
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gin-handlers-chain-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.6363636363636364,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.6363636363636364,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.2727272727272727,
+            "error_class": "none"
+          },
+          "returned_chars": 21282,
+          "hit_count": 11,
+          "elapsed_ms": 691,
+          "v1_case_id": "gin-handlers-chain-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "routergroup.go",
+              "start": 216,
+              "end": 259
+            },
+            {
+              "path": "gin.go",
+              "start": 89,
+              "end": 176
+            },
+            {
+              "path": "tree.go",
+              "start": 404,
+              "end": 428
+            },
+            {
+              "path": "context.go",
+              "start": 55,
+              "end": 115
+            },
+            {
+              "path": "debug.go",
+              "start": 1,
+              "end": 67
+            },
+            {
+              "path": "gin_test.go",
+              "start": 307,
+              "end": 360
+            },
+            {
+              "path": "context_test.go",
+              "start": 149,
+              "end": 207
+            },
+            {
+              "path": "tree_test.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug_test.go",
+              "start": 1,
+              "end": 66
+            },
+            {
+              "path": "routes_test.go",
+              "start": 507,
+              "end": 542
+            },
+            {
+              "path": "gin.go",
+              "start": 54,
+              "end": 54
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gin-handlers-chain-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.6363636363636364,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.6363636363636364,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.2727272727272727,
+            "error_class": "none"
+          },
+          "returned_chars": 21282,
+          "hit_count": 11,
+          "elapsed_ms": 605,
+          "v1_case_id": "gin-handlers-chain-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "routergroup.go",
+              "start": 216,
+              "end": 259
+            },
+            {
+              "path": "gin.go",
+              "start": 89,
+              "end": 176
+            },
+            {
+              "path": "tree.go",
+              "start": 404,
+              "end": 428
+            },
+            {
+              "path": "context.go",
+              "start": 55,
+              "end": 115
+            },
+            {
+              "path": "debug.go",
+              "start": 1,
+              "end": 67
+            },
+            {
+              "path": "gin_test.go",
+              "start": 307,
+              "end": 360
+            },
+            {
+              "path": "context_test.go",
+              "start": 149,
+              "end": 207
+            },
+            {
+              "path": "tree_test.go",
+              "start": 1,
+              "end": 70
+            },
+            {
+              "path": "debug_test.go",
+              "start": 1,
+              "end": 66
+            },
+            {
+              "path": "routes_test.go",
+              "start": 507,
+              "end": 542
+            },
+            {
+              "path": "gin.go",
+              "start": 54,
+              "end": 54
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-jq-jv-array-append-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.8275862068965517,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.8275862068965517,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.5333333333333333,
+            "error_class": "none"
+          },
+          "returned_chars": 24374,
+          "hit_count": 15,
+          "elapsed_ms": 603,
+          "v1_case_id": "jq-jv-array-append-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.7272727272727273,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/jq_test.c",
+              "start": 396,
+              "end": 437
+            },
+            {
+              "path": "src/jv_aux.c",
+              "start": 704,
+              "end": 730
+            },
+            {
+              "path": "src/jq_test.c",
+              "start": 344,
+              "end": 394
+            },
+            {
+              "path": "src/jv.h",
+              "start": 90,
+              "end": 124
+            },
+            {
+              "path": "src/jv.c",
+              "start": 1294,
+              "end": 1360
+            },
+            {
+              "path": "src/execute.c",
+              "start": 237,
+              "end": 271
+            },
+            {
+              "path": "src/jv_parse.c",
+              "start": 241,
+              "end": 283
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 927,
+              "end": 1029
+            },
+            {
+              "path": "src/compile.c",
+              "start": 1235,
+              "end": 1283
+            },
+            {
+              "path": "src/main.c",
+              "start": 383,
+              "end": 438
+            },
+            {
+              "path": "src/jv.c",
+              "start": 1002,
+              "end": 1005
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 231,
+              "end": 240
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 242,
+              "end": 251
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 345,
+              "end": 354
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 1477,
+              "end": 1480
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-jq-jv-array-append-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.6206896551724138,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.6206896551724138,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.5,
+            "error_class": "none"
+          },
+          "returned_chars": 21462,
+          "hit_count": 14,
+          "elapsed_ms": 668,
+          "v1_case_id": "jq-jv-array-append-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.7272727272727273,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/jq_test.c",
+              "start": 396,
+              "end": 437
+            },
+            {
+              "path": "src/jq_test.c",
+              "start": 344,
+              "end": 394
+            },
+            {
+              "path": "src/execute.c",
+              "start": 237,
+              "end": 271
+            },
+            {
+              "path": "src/jv.c",
+              "start": 972,
+              "end": 1050
+            },
+            {
+              "path": "src/jv.h",
+              "start": 90,
+              "end": 124
+            },
+            {
+              "path": "src/compile.c",
+              "start": 668,
+              "end": 743
+            },
+            {
+              "path": "src/main.c",
+              "start": 383,
+              "end": 438
+            },
+            {
+              "path": "src/linker.c",
+              "start": 51,
+              "end": 93
+            },
+            {
+              "path": "src/jv_aux.c",
+              "start": 704,
+              "end": 730
+            },
+            {
+              "path": "src/jv_parse.c",
+              "start": 241,
+              "end": 283
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 231,
+              "end": 240
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 242,
+              "end": 251
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 345,
+              "end": 354
+            },
+            {
+              "path": "src/builtin.c",
+              "start": 955,
+              "end": 963
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-express-route-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.5,
+            "primary_recall": 0.8333333333333334,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.8333333333333334,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19084,
+          "hit_count": 10,
+          "elapsed_ms": 569,
+          "v1_case_id": "express-route-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "lib/router/index.js",
+              "start": 424,
+              "end": 500
+            },
+            {
+              "path": "lib/router/index.js",
+              "start": 502,
+              "end": 591
+            },
+            {
+              "path": "lib/application.js",
+              "start": 194,
+              "end": 264
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 1,
+              "end": 99
+            },
+            {
+              "path": "test/Route.js",
+              "start": 1,
+              "end": 45
+            },
+            {
+              "path": "test/req.route.js",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "test/acceptance/route-separation.js",
+              "start": 2,
+              "end": 97
+            },
+            {
+              "path": "examples/route-separation/site.js",
+              "start": 1,
+              "end": 5
+            },
+            {
+              "path": "lib/express.js",
+              "start": 1,
+              "end": 87
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 184,
+              "end": 230
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-express-route-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.5,
+            "primary_recall": 0.8333333333333334,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.8333333333333334,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.3,
+            "error_class": "none"
+          },
+          "returned_chars": 19084,
+          "hit_count": 10,
+          "elapsed_ms": 818,
+          "v1_case_id": "express-route-reference-zh",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 1.0,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "lib/router/index.js",
+              "start": 424,
+              "end": 500
+            },
+            {
+              "path": "lib/router/index.js",
+              "start": 502,
+              "end": 591
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 184,
+              "end": 230
+            },
+            {
+              "path": "lib/application.js",
+              "start": 194,
+              "end": 264
+            },
+            {
+              "path": "test/Route.js",
+              "start": 1,
+              "end": 45
+            },
+            {
+              "path": "test/req.route.js",
+              "start": 1,
+              "end": 28
+            },
+            {
+              "path": "test/acceptance/route-separation.js",
+              "start": 2,
+              "end": 97
+            },
+            {
+              "path": "examples/route-separation/site.js",
+              "start": 1,
+              "end": 5
+            },
+            {
+              "path": "lib/express.js",
+              "start": 1,
+              "end": 87
+            },
+            {
+              "path": "lib/router/route.js",
+              "start": 1,
+              "end": 99
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gson-type-token-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.14285714285714285,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.14285714285714285,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.2,
+            "error_class": "redundant"
+          },
+          "returned_chars": 20667,
+          "hit_count": 15,
+          "elapsed_ms": 618,
+          "v1_case_id": "gson-type-token-reference",
+          "v1_metrics": {
+            "top1": 0.0,
+            "hit_at_10": 1.0,
+            "mrr": 0.5,
+            "path_recall_at_10": 0.23076923076923078,
+            "definition_top1": 1.0
+          },
+          "retrieved": [
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 95,
+              "end": 119
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 359,
+              "end": 384
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/Gson.java",
+              "start": 1140,
+              "end": 1172
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+              "start": 300,
+              "end": 342
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+              "start": 41,
+              "end": 96
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+              "start": 1025,
+              "end": 1069
+            },
+            {
+              "path": "Troubleshooting.md",
+              "start": 326,
+              "end": 347
+            },
+            {
+              "path": "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+              "start": 57,
+              "end": 132
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+              "start": 1,
+              "end": 19
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java",
+              "start": 115,
+              "end": 152
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 54,
+              "end": 65
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 80,
+              "end": 85
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+              "start": 24,
+              "end": 29
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java",
+              "start": 26,
+              "end": 35
+            },
+            {
+              "path": "graal-native-image-test/src/test/java/com/google/gson/native_test/ReflectionTest.java",
+              "start": 26,
+              "end": 32
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-gson-type-token-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.08571428571428572,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.08571428571428572,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.13333333333333333,
+            "error_class": "redundant"
+          },
+          "returned_chars": 24473,
+          "hit_count": 15,
+          "elapsed_ms": 712,
+          "v1_case_id": "gson-type-token-reference-zh",
+          "v1_metrics": {
+            "top1": 0.0,
+            "hit_at_10": 1.0,
+            "mrr": 0.5,
+            "path_recall_at_10": 0.2692307692307692,
+            "definition_top1": 1.0
+          },
+          "retrieved": [
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 95,
+              "end": 119
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+              "start": 41,
+              "end": 96
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+              "start": 1025,
+              "end": 1069
+            },
+            {
+              "path": "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+              "start": 57,
+              "end": 132
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java",
+              "start": 115,
+              "end": 152
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/Gson.java",
+              "start": 1140,
+              "end": 1172
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+              "start": 704,
+              "end": 736
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/internal/bind/CollectionTypeAdapterFactory.java",
+              "start": 34,
+              "end": 104
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+              "start": 133,
+              "end": 180
+            },
+            {
+              "path": "gson/src/test/java/com/google/gson/functional/ParameterizedTypesTest.java",
+              "start": 499,
+              "end": 551
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 54,
+              "end": 65
+            },
+            {
+              "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+              "start": 80,
+              "end": 85
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+              "start": 24,
+              "end": 29
+            },
+            {
+              "path": "extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java",
+              "start": 26,
+              "end": 35
+            },
+            {
+              "path": "graal-native-image-test/src/test/java/com/google/gson/native_test/ReflectionTest.java",
+              "start": 26,
+              "end": 32
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-blueprint-en",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 1.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 1.0,
+            "primary_recall": 0.5,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.5,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.125,
+            "error_class": "redundant"
+          },
+          "returned_chars": 34195,
+          "hit_count": 16,
+          "elapsed_ms": 830,
+          "v1_case_id": "flask-blueprint-reference",
+          "v1_metrics": {
+            "top1": 1.0,
+            "hit_at_10": 1.0,
+            "mrr": 1.0,
+            "path_recall_at_10": 0.75,
+            "definition_top1": 0.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/app.py",
+              "start": 967,
+              "end": 1019
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 227,
+              "end": 266
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 118,
+              "end": 168
+            },
+            {
+              "path": "src/flask/scaffold.py",
+              "start": 613,
+              "end": 653
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 114,
+              "end": 158
+            },
+            {
+              "path": "tests/test_blueprints.py",
+              "start": 968,
+              "end": 1016
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 629,
+              "end": 678
+            },
+            {
+              "path": "tests/test_async.py",
+              "start": 1,
+              "end": 78
+            },
+            {
+              "path": "docs/blueprints.rst",
+              "start": 1,
+              "end": 151
+            },
+            {
+              "path": "docs/tutorial/views.rst",
+              "start": 1,
+              "end": 153
+            },
+            {
+              "path": "examples/celery/src/task_app/views.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/auth.py",
+              "start": 16,
+              "end": 25
+            },
+            {
+              "path": "examples/tutorial/flaskr/blog.py",
+              "start": 13,
+              "end": 22
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+              "start": 1,
+              "end": 9
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1620,
+              "end": 1629
+            }
+          ]
+        },
+        {
+          "id": "reference-v2-flask-blueprint-zh",
+          "status": "ok",
+          "metrics": {
+            "primary_top1": 0.0,
+            "primary_hit_at_3": 1.0,
+            "primary_hit_at_10": 1.0,
+            "primary_mrr": 0.5,
+            "primary_recall": 0.5,
+            "supporting_recall": 1.0,
+            "relation_recall": 0.5,
+            "hop_recall": 1.0,
+            "chain_closed": 1.0,
+            "test_recall": 1.0,
+            "distractor_head": 0.0,
+            "distractor_any": 0.0,
+            "truth_region_share": 0.125,
+            "error_class": "redundant"
+          },
+          "returned_chars": 31028,
+          "hit_count": 16,
+          "elapsed_ms": 853,
+          "v1_case_id": "flask-blueprint-reference-zh",
+          "v1_metrics": {
+            "top1": 0.0,
+            "hit_at_10": 1.0,
+            "mrr": 0.5,
+            "path_recall_at_10": 0.75,
+            "definition_top1": 1.0
+          },
+          "retrieved": [
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 118,
+              "end": 168
+            },
+            {
+              "path": "src/flask/app.py",
+              "start": 967,
+              "end": 1019
+            },
+            {
+              "path": "src/flask/blueprints.py",
+              "start": 227,
+              "end": 266
+            },
+            {
+              "path": "src/flask/debughelpers.py",
+              "start": 114,
+              "end": 158
+            },
+            {
+              "path": "src/flask/scaffold.py",
+              "start": 655,
+              "end": 667
+            },
+            {
+              "path": "tests/test_blueprints.py",
+              "start": 968,
+              "end": 1016
+            },
+            {
+              "path": "docs/blueprints.rst",
+              "start": 1,
+              "end": 151
+            },
+            {
+              "path": "tests/test_cli.py",
+              "start": 629,
+              "end": 678
+            },
+            {
+              "path": "docs/tutorial/views.rst",
+              "start": 1,
+              "end": 153
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+              "start": 1,
+              "end": 14
+            },
+            {
+              "path": "examples/celery/src/task_app/views.py",
+              "start": 7,
+              "end": 16
+            },
+            {
+              "path": "examples/tutorial/flaskr/auth.py",
+              "start": 16,
+              "end": 25
+            },
+            {
+              "path": "examples/tutorial/flaskr/blog.py",
+              "start": 13,
+              "end": 22
+            },
+            {
+              "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+              "start": 1,
+              "end": 10
+            },
+            {
+              "path": "tests/test_async.py",
+              "start": 5,
+              "end": 14
+            },
+            {
+              "path": "tests/test_basic.py",
+              "start": 1620,
+              "end": 1629
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,77 @@
+"""Repeat promoted development requests with the released client and internal tracing."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import time
+
+import httpx
+from dotenv import dotenv_values
+from benchmarks.blackbox.harness import DEFAULT_WORKDIR, run_client, server_configuration
+from benchmarks.blackbox.corpus import snapshot_path
+from benchmarks.blackbox.swe_data import load_cases
+
+root = Path('/home/yuqian/workspace/oce')
+out = Path('/home/yuqian/.cache/oce/bench-runs/reference-heads-2026-09-11')
+old = Path('/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11')
+parser = argparse.ArgumentParser()
+parser.add_argument('label')
+parser.add_argument('source', type=Path)
+args = parser.parse_args()
+assert (out / 'protocol.json').exists()
+cases = [c for c in load_cases(DEFAULT_WORKDIR, 'development') if c.instance_id == 'pylint-dev__pylint-7080']
+assert len(cases) == 1
+client = Path('/home/yuqian/workspace/oce-client/target/release/oce-client')
+creds = dotenv_values('/home/yuqian/.oce/benchmark.env')
+env = {k: v for k, v in os.environ.items() if not k.startswith('RETRIEVAL_')}
+env.update({'PYTHONPATH': str(out) + ':' + str(args.source / 'src'), 'OCE_TIMEOUT_CAPTURE': str(out / (args.label + '-trace.jsonl')), 'RERANK_ENABLED': 'false', 'LLM_RERANK_ENABLED': 'false', 'EMBED_QUERY_CACHE_MAX_ENTRIES': '0', 'MONITORING_STORE_QUERY_TEXT': 'false'})
+api = 'http://127.0.0.1:18987'
+with socket.socket() as sock:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(('127.0.0.1', 18987))
+with (out / (args.label + '-server.log')).open('x') as log:
+    proc = subprocess.Popen([str(root / '.venv/bin/python'), '-c', 'import sql_timeout_capture; from oce.cli import main; main()', '-v', 'serve', '--data-dir', '/home/yuqian/.cache/oce/simplification-candidate-index', '--env-file', '/home/yuqian/.oce/benchmark.env', '--host', '127.0.0.1', '--port', '18987'], cwd='/tmp', env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        for _ in range(180):
+            if proc.poll() is not None:
+                raise RuntimeError('Trace server exited before readiness')
+            try:
+                if httpx.get(api + '/health', timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(.5)
+        else:
+            raise RuntimeError('Trace server readiness timeout')
+        for attempt in range(6):
+            config = server_configuration(api, creds['API_KEY'])
+            if config is not None:
+                break
+            print('Runtime preflight retry', attempt + 1, flush=True)
+            time.sleep(5)
+        assert config is not None and not config['query_cache']['enabled']
+        (out / (args.label + '-runtime.json')).write_text(json.dumps(config, indent=2) + '\n')
+        for case in cases:
+            run_client(client, snapshot_path(DEFAULT_WORKDIR, case.instance_id), DEFAULT_WORKDIR / 'client-state' / (case.instance_id + '.sqlite3'), api, creds['API_KEY'], ('sync', '--json'))
+        time.sleep(6)
+        for repeat in range(2):
+            for case in cases:
+                result = run_client(client, snapshot_path(DEFAULT_WORKDIR, case.instance_id), DEFAULT_WORKDIR / 'client-state' / (case.instance_id + '.sqlite3'), api, creds['API_KEY'], ('retrieve', case.query, '--json'))
+                record = {'case_id': case.instance_id, 'repeat': repeat + 1, 'query_sha256': hashlib.sha256(case.query.encode()).hexdigest(), 'response': result}
+                (out / f'{args.label}-{repeat+1}-{case.instance_id}.json').write_text(json.dumps(record, indent=2) + '\n')
+                print('Completed development diagnostic', repeat + 1, case.instance_id, flush=True)
+    finally:
+        if proc.poll() is None:
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=120)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGTERM)
+                proc.wait(timeout=10)
+        assert proc.returncode in (0, -signal.SIGTERM)
+        assert 'Application shutdown complete.' in (out / (args.label + '-server.log')).read_text()
+print('Diagnostic repetitions complete; no utility or latency qualification claimed.', flush=True)

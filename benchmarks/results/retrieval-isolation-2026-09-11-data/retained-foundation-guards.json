@@ -1,0 +1,472 @@
+{
+  "provenance_sha256": "f9515135ae210739209ba79f13d1b9aeeb608437dc7ff63aeb68c1b858c3c5a9",
+  "source_sha256": "6991af689d2b98ead75a05e527502c93ef30290094093c4ab2d65278fbfa795f",
+  "source_files_match_isolated_foundation": true,
+  "retained_canonical_reports": {
+    "short": {
+      "path": "/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11/cycle2-baseline-sql2-main-short.json",
+      "sha256": "41b4bab6628bc43269a99b6d06acbfa066a7cd62e93c477c28999c0260c1b5de",
+      "summary": {
+        "cases": 240,
+        "successful_cases": 240,
+        "error_cases": 0,
+        "top1": 1.0,
+        "hit_at_10": 1.0,
+        "mrr": 1.0,
+        "path_recall_at_10": 0.8936163941573128,
+        "definition_top1": 0.6666666666666666,
+        "mean_elapsed_ms": 281.59583333333336,
+        "mean_returned_chars": 10979.645833333334,
+        "mean_hit_count": 7.979166666666667,
+        "p50_elapsed_ms": 83,
+        "p95_elapsed_ms": 783,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 178,
+            "prompt_tokens": -1833,
+            "completion_tokens": 0,
+            "total_tokens": -1833
+          },
+          "llm_rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "query_rewrite": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "runtime": {
+        "retrieval": {
+          "embedding_enabled": true,
+          "embedding_query_char_limit": 3000,
+          "semantic_chunking_enabled": true,
+          "exact_enabled": true,
+          "path_index_enabled": true,
+          "source_priority_enabled": true,
+          "coverage_selection_enabled": true,
+          "query_decomposition_enabled": true,
+          "lexical_enabled": true,
+          "path_lookup_enabled": true,
+          "merge_adjacent_enabled": true,
+          "related_definitions_enabled": true,
+          "rerank_enabled": false,
+          "rerank_provider": "none",
+          "rerank_candidate_limit": 0,
+          "rerank_query_char_limit": 0,
+          "rerank_document_char_limit": 0,
+          "rerank_token_limit": 0,
+          "rerank_policy": "adaptive",
+          "llm_rerank_enabled": false,
+          "llm_rerank_policy": "adaptive",
+          "query_rewrite_enabled": false,
+          "decisive_skips_dense": true
+        },
+        "index_profile": {
+          "state": "compatible",
+          "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+          "schema_version": 3,
+          "embedding_enabled": true,
+          "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+          "embedding_model": "Qwen3-Embedding-4B",
+          "embedding_dimensions": 1024
+        },
+        "query_cache": {
+          "enabled": false,
+          "entries": 0,
+          "max_entries": 0,
+          "ttl_seconds": 600.0,
+          "hits": 0,
+          "misses": 0,
+          "evictions": 0,
+          "invalidations": 0
+        },
+        "dense": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_chunks",
+          "exists": true,
+          "entities": 346265,
+          "error_type": null
+        },
+        "path": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_paths_v1",
+          "exists": true,
+          "entities": 57751,
+          "error_type": null
+        }
+      }
+    },
+    "semantic": {
+      "path": "/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11/cycle2-baseline-sql2-main-semantic.json",
+      "sha256": "bddc26fb690ea107b65482d600001b29cc0faccdc597e176f58fce9c86f9064c",
+      "summary": {
+        "cases": 39,
+        "successful_cases": 39,
+        "error_cases": 0,
+        "top1_relevant": 0.7692307692307693,
+        "top1_primary": 0.6923076923076923,
+        "mrr": 0.861965811965812,
+        "hit_at_5": 0.9743589743589743,
+        "weighted_recall_at_5": 0.6199262276185353,
+        "weighted_recall_at_10": 0.7751885578808656,
+        "primary_recall_at_10": 0.9230769230769231,
+        "ndcg_at_10": 0.7311568917657013,
+        "mean_elapsed_ms": 661.8205128205128,
+        "p50_elapsed_ms": 627,
+        "p95_elapsed_ms": 874,
+        "mean_returned_chars": 30631.79487179487,
+        "mean_hit_count": 20.53846153846154,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 12,
+            "prompt_tokens": -998,
+            "completion_tokens": 0,
+            "total_tokens": -998
+          },
+          "llm_rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "query_rewrite": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "runtime": {
+        "retrieval": {
+          "embedding_enabled": true,
+          "embedding_query_char_limit": 3000,
+          "semantic_chunking_enabled": true,
+          "exact_enabled": true,
+          "path_index_enabled": true,
+          "source_priority_enabled": true,
+          "coverage_selection_enabled": true,
+          "query_decomposition_enabled": true,
+          "lexical_enabled": true,
+          "path_lookup_enabled": true,
+          "merge_adjacent_enabled": true,
+          "related_definitions_enabled": true,
+          "rerank_enabled": false,
+          "rerank_provider": "none",
+          "rerank_candidate_limit": 0,
+          "rerank_query_char_limit": 0,
+          "rerank_document_char_limit": 0,
+          "rerank_token_limit": 0,
+          "rerank_policy": "adaptive",
+          "llm_rerank_enabled": false,
+          "llm_rerank_policy": "adaptive",
+          "query_rewrite_enabled": false,
+          "decisive_skips_dense": true
+        },
+        "index_profile": {
+          "state": "compatible",
+          "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+          "schema_version": 3,
+          "embedding_enabled": true,
+          "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+          "embedding_model": "Qwen3-Embedding-4B",
+          "embedding_dimensions": 1024
+        },
+        "query_cache": {
+          "enabled": false,
+          "entries": 0,
+          "max_entries": 0,
+          "ttl_seconds": 600.0,
+          "hits": 0,
+          "misses": 0,
+          "evictions": 0,
+          "invalidations": 0
+        },
+        "dense": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_chunks",
+          "exists": true,
+          "entities": 346265,
+          "error_type": null
+        },
+        "path": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_paths_v1",
+          "exists": true,
+          "entities": 57751,
+          "error_type": null
+        }
+      }
+    },
+    "project": {
+      "path": "/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11/cycle2-baseline-sql2-main-project.json",
+      "sha256": "58b074fa412fd9a930614c9cb410a9130203ecc37013ae8bc5443eefe3eda21e",
+      "summary": {
+        "cases": 35,
+        "successful_cases": 35,
+        "error_cases": 0,
+        "primary_top1": 0.9428571428571428,
+        "primary_hit_at_3": 0.9714285714285714,
+        "primary_hit_at_10": 0.9714285714285714,
+        "primary_mrr": 0.9571428571428572,
+        "primary_recall": 0.9571428571428572,
+        "supporting_recall": 0.9380952380952382,
+        "relation_recall": 0.9433333333333334,
+        "hop_recall": 0.9928571428571429,
+        "chain_closed": 0.9714285714285714,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.2,
+        "truth_region_share": 0.33073164770327435,
+        "error_classes": {
+          "none": 12,
+          "exact_miss": 1,
+          "distractor": 0,
+          "test_missing": 0,
+          "relation_missing": 3,
+          "redundant": 19
+        },
+        "mean_elapsed_ms": 454.74285714285713,
+        "p50_elapsed_ms": 516,
+        "p95_elapsed_ms": 856,
+        "mean_returned_chars": 19101.22857142857,
+        "mean_hit_count": 13.685714285714285,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 13,
+            "prompt_tokens": -984,
+            "completion_tokens": 0,
+            "total_tokens": -984
+          },
+          "llm_rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "query_rewrite": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "runtime": {
+        "retrieval": {
+          "embedding_enabled": true,
+          "embedding_query_char_limit": 3000,
+          "semantic_chunking_enabled": true,
+          "exact_enabled": true,
+          "path_index_enabled": true,
+          "source_priority_enabled": true,
+          "coverage_selection_enabled": true,
+          "query_decomposition_enabled": true,
+          "lexical_enabled": true,
+          "path_lookup_enabled": true,
+          "merge_adjacent_enabled": true,
+          "related_definitions_enabled": true,
+          "rerank_enabled": false,
+          "rerank_provider": "none",
+          "rerank_candidate_limit": 0,
+          "rerank_query_char_limit": 0,
+          "rerank_document_char_limit": 0,
+          "rerank_token_limit": 0,
+          "rerank_policy": "adaptive",
+          "llm_rerank_enabled": false,
+          "llm_rerank_policy": "adaptive",
+          "query_rewrite_enabled": false,
+          "decisive_skips_dense": true
+        },
+        "index_profile": {
+          "state": "compatible",
+          "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+          "schema_version": 3,
+          "embedding_enabled": true,
+          "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+          "embedding_model": "Qwen3-Embedding-4B",
+          "embedding_dimensions": 1024
+        },
+        "query_cache": {
+          "enabled": false,
+          "entries": 0,
+          "max_entries": 0,
+          "ttl_seconds": 600.0,
+          "hits": 0,
+          "misses": 0,
+          "evictions": 0,
+          "invalidations": 0
+        },
+        "dense": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_chunks",
+          "exists": true,
+          "entities": 346265,
+          "error_type": null
+        },
+        "path": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_paths_v1",
+          "exists": true,
+          "entities": 57751,
+          "error_type": null
+        }
+      }
+    },
+    "swe": {
+      "path": "/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11/cycle2-baseline-sql2-main-swe.json",
+      "sha256": "2c3ea56a3586ccc3adaad349b90d1b1af08bec9edffe27fd126320232ab8bf0a",
+      "summary": {
+        "cases": 13,
+        "successful_cases": 13,
+        "error_cases": 0,
+        "edit_top1": 0.46153846153846156,
+        "edit_file_recall_at_10": 0.9230769230769231,
+        "edit_region_recall_at_10": 0.6153846153846154,
+        "edit_mrr": 0.6499999999999999,
+        "core_top1": 0.7692307692307693,
+        "core_file_recall_at_10": 0.7166666666666667,
+        "core_region_recall_at_10": 0.5756410256410256,
+        "core_mrr": 0.8846153846153846,
+        "swe_explore_precision": 0.15297878670474493,
+        "swe_explore_recall": 0.06964013544053597,
+        "swe_explore_f1_score": 0.08356886596245715,
+        "swe_explore_hit_file_rate": 0.7166666666666667,
+        "swe_explore_noise_file_rate": 0.7781184627338473,
+        "swe_explore_hit_region_rate": 0.5756410256410256,
+        "swe_explore_noise_region_rate": 0.7537641845334153,
+        "swe_explore_weighted_core_coverage": 0.14247841163910985,
+        "swe_explore_context_efficiency": 0.27707869512625954,
+        "swe_explore_ndcg_at_100": 0.653413206319439,
+        "swe_explore_ndcg_at_300": 0.7838719201589741,
+        "swe_explore_ndcg_at_500": 0.806682137739034,
+        "swe_explore_recall_at_100": 0.04819554104369984,
+        "swe_explore_recall_at_300": 0.060808886480844704,
+        "swe_explore_recall_at_500": 0.06641067789406523,
+        "swe_explore_first_useful_hit": 0.9822485207100592,
+        "mean_elapsed_ms": 2081.3846153846152,
+        "p50_elapsed_ms": 1827,
+        "p95_elapsed_ms": 4112,
+        "mean_returned_chars": 28883.846153846152,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 24,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "llm_rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "query_rewrite": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          },
+          "rerank": {
+            "calls": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "runtime": {
+        "retrieval": {
+          "embedding_enabled": true,
+          "embedding_query_char_limit": 3000,
+          "semantic_chunking_enabled": true,
+          "exact_enabled": true,
+          "path_index_enabled": true,
+          "source_priority_enabled": true,
+          "coverage_selection_enabled": true,
+          "query_decomposition_enabled": true,
+          "lexical_enabled": true,
+          "path_lookup_enabled": true,
+          "merge_adjacent_enabled": true,
+          "related_definitions_enabled": true,
+          "rerank_enabled": false,
+          "rerank_provider": "none",
+          "rerank_candidate_limit": 0,
+          "rerank_query_char_limit": 0,
+          "rerank_document_char_limit": 0,
+          "rerank_token_limit": 0,
+          "rerank_policy": "adaptive",
+          "llm_rerank_enabled": false,
+          "llm_rerank_policy": "adaptive",
+          "query_rewrite_enabled": false,
+          "decisive_skips_dense": true
+        },
+        "index_profile": {
+          "state": "compatible",
+          "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+          "schema_version": 3,
+          "embedding_enabled": true,
+          "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+          "embedding_model": "Qwen3-Embedding-4B",
+          "embedding_dimensions": 1024
+        },
+        "query_cache": {
+          "enabled": false,
+          "entries": 0,
+          "max_entries": 0,
+          "ttl_seconds": 600.0,
+          "hits": 0,
+          "misses": 0,
+          "evictions": 0,
+          "invalidations": 0
+        },
+        "dense": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_chunks",
+          "exists": true,
+          "entities": 346265,
+          "error_type": null
+        },
+        "path": {
+          "enabled": true,
+          "available": true,
+          "collection_name": "oce_paths_v1",
+          "exists": true,
+          "entities": 57751,
+          "error_type": null
+        }
+      }
+    }
+  }
+}

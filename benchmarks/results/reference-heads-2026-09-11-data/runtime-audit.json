@@ -1,0 +1,29 @@
+{
+  "foundation-diagnostic": {
+    "warnings": [],
+    "normal_shutdown": true,
+    "log_sha256": "ebe47a6ead6c78d91b1a40cd8f2ca2903423159835fc3389c362979e8dbaf3b8"
+  },
+  "candidate-development": {
+    "warnings": [],
+    "normal_shutdown": true,
+    "log_sha256": "346cc77695740e244846dcad9af49d846811bdf2f63ceff4981fda93b26bcff4"
+  },
+  "foundation-guards": {
+    "warnings": [
+      "2026-09-11 14:59:09.172 | WARNING  | oce.infrastructure.persistence.symbol_search_store:search_exact:201 - Exact symbol lookup timed out; returning no exact evidence"
+    ],
+    "normal_shutdown": true,
+    "log_sha256": "15691c077b211e5ca27602937ecb4a04a475631ac86bca3d892e1c885d243df7"
+  },
+  "candidate-guards": {
+    "warnings": [],
+    "normal_shutdown": true,
+    "log_sha256": "118636e7ceaeddd49a2699bbc38adbdf8a5dfb799334cf01a6916df5e9eed059"
+  },
+  "foundation-exact-repeat": {
+    "warnings": [],
+    "normal_shutdown": true,
+    "log_sha256": "3ff9c2e45c9381ef8cb69369a52082c233f4a4d6a28e057090875d21c3a9ce5d"
+  }
+}

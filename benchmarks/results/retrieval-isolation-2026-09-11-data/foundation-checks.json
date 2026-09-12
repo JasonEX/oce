@@ -1,0 +1,25 @@
+{
+  "source_sha256": "8e6e3bccbbc61d032721e6235041b2c9d123bef4d3442448e9592cfee7a10a38",
+  "checks": [
+    {
+      "check": "ruff-check",
+      "exit": 0
+    },
+    {
+      "check": "ruff-format",
+      "exit": 0
+    },
+    {
+      "check": "lock",
+      "exit": 0
+    },
+    {
+      "check": "whitespace",
+      "exit": 0
+    },
+    {
+      "check": "milvus-integration",
+      "exit": 0
+    }
+  ]
+}

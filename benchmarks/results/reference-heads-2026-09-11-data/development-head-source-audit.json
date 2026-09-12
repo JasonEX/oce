@@ -1,0 +1,399 @@
+{
+  "scope": "Post-hoc source inspection of this development run; not independent validation and not a replacement score",
+  "all_18_heads_have_reviewed_actual_use": true,
+  "unlisted_valid_heads": 3,
+  "frozen_manifest_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211",
+  "labels_and_scores_unchanged": true,
+  "cases": [
+    {
+      "case_id": "reference-v2-flask-flask-en",
+      "snapshot": "pallets__flask-5014",
+      "head": {
+        "path": "src/flask/globals.py",
+        "start": 1,
+        "end": 59
+      },
+      "source_file_sha256": "33342ac58f569f596c2c47eab863b37af7d3203134135a11aed845bdf28d3f3d",
+      "reviewed_uses": [
+        {
+          "line": 46,
+          "source": "current_app: \"Flask\" = LocalProxy(  # type: ignore[assignment]"
+        }
+      ],
+      "reason": "Quoted variable annotation, not the nearby import or deprecation message",
+      "frozen_catalog_primary_top1": 0.0,
+      "unlisted_valid_use": true
+    },
+    {
+      "case_id": "reference-v2-flask-flask-zh",
+      "snapshot": "pallets__flask-5014",
+      "head": {
+        "path": "src/flask/globals.py",
+        "start": 1,
+        "end": 59
+      },
+      "source_file_sha256": "33342ac58f569f596c2c47eab863b37af7d3203134135a11aed845bdf28d3f3d",
+      "reviewed_uses": [
+        {
+          "line": 46,
+          "source": "current_app: \"Flask\" = LocalProxy(  # type: ignore[assignment]"
+        }
+      ],
+      "reason": "Quoted variable annotation, not the nearby import or deprecation message",
+      "frozen_catalog_primary_top1": 0.0,
+      "unlisted_valid_use": true
+    },
+    {
+      "case_id": "reference-v2-requests-prepared-request-en",
+      "snapshot": "psf__requests-5414",
+      "head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "source_file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+      "reviewed_uses": [
+        {
+          "line": 258,
+          "source": "        p = PreparedRequest()"
+        }
+      ],
+      "reason": "PreparedRequest constructor call inside Request.prepare",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-requests-prepared-request-zh",
+      "snapshot": "psf__requests-5414",
+      "head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "source_file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+      "reviewed_uses": [
+        {
+          "line": 258,
+          "source": "        p = PreparedRequest()"
+        }
+      ],
+      "reason": "PreparedRequest constructor call inside Request.prepare",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-redux-create-reducer-en",
+      "snapshot": "redux-toolkit-v2.2.7",
+      "head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "source_file_sha256": "01e65376dd18f255df65cd94676aa1ede9f7a94fa304dfdfb1415400d45555ae",
+      "reviewed_uses": [
+        {
+          "line": 709,
+          "source": "      return createReducer(options.initialState, (builder) => {"
+        }
+      ],
+      "reason": "createReducer runtime call",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-redux-create-reducer-zh",
+      "snapshot": "redux-toolkit-v2.2.7",
+      "head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "source_file_sha256": "01e65376dd18f255df65cd94676aa1ede9f7a94fa304dfdfb1415400d45555ae",
+      "reviewed_uses": [
+        {
+          "line": 709,
+          "source": "      return createReducer(options.initialState, (builder) => {"
+        }
+      ],
+      "reason": "createReducer runtime call",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-axum-router-en",
+      "snapshot": "axum-v0.7.9",
+      "head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "source_file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+      "reviewed_uses": [
+        {
+          "line": 177,
+          "source": "        let service = match try_downcast::<Router<S>, _>(service) {"
+        }
+      ],
+      "reason": "Router type parameter used in try_downcast",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-axum-router-zh",
+      "snapshot": "axum-v0.7.9",
+      "head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "source_file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+      "reviewed_uses": [
+        {
+          "line": 177,
+          "source": "        let service = match try_downcast::<Router<S>, _>(service) {"
+        }
+      ],
+      "reason": "Router type parameter used in try_downcast",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-gin-handlers-chain-en",
+      "snapshot": "gin-v1.10.0",
+      "head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "source_file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+      "reviewed_uses": [
+        {
+          "line": 57,
+          "source": "func (c HandlersChain) Last() HandlerFunc {"
+        }
+      ],
+      "reason": "HandlersChain method receiver type",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-gin-handlers-chain-zh",
+      "snapshot": "gin-v1.10.0",
+      "head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "source_file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+      "reviewed_uses": [
+        {
+          "line": 57,
+          "source": "func (c HandlersChain) Last() HandlerFunc {"
+        }
+      ],
+      "reason": "HandlersChain method receiver type",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-jq-jv-array-append-en",
+      "snapshot": "jq-1.7.1",
+      "head": {
+        "path": "src/jv.c",
+        "start": 972,
+        "end": 1050
+      },
+      "source_file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+      "reviewed_uses": [
+        {
+          "line": 1013,
+          "source": "    a = jv_array_append(a, elem);"
+        },
+        {
+          "line": 1038,
+          "source": "      res = jv_array_append(res, jv_number(idx));"
+        }
+      ],
+      "reason": "Actual calls in the file that declares jv_array_append",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-jq-jv-array-append-zh",
+      "snapshot": "jq-1.7.1",
+      "head": {
+        "path": "src/jq_test.c",
+        "start": 396,
+        "end": 437
+      },
+      "source_file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+      "reviewed_uses": [
+        {
+          "line": 403,
+          "source": "    sub2 = jv_array_append(sub2, jv_number(200));"
+        },
+        {
+          "line": 408,
+          "source": "    jv a3 = jv_array_append(jv_copy(a), jv_number(19));"
+        },
+        {
+          "line": 417,
+          "source": "    a4 = jv_array_append(a4, jv_number(1));"
+        },
+        {
+          "line": 418,
+          "source": "    a4 = jv_array_append(a4, jv_number(2));"
+        },
+        {
+          "line": 420,
+          "source": "    a4 = jv_array_append(a4, jv_number(3));"
+        },
+        {
+          "line": 423,
+          "source": "    a4 = jv_array_append(a4, jv_number(4));"
+        }
+      ],
+      "reason": "Actual calls in jq_test.c",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-express-route-en",
+      "snapshot": "express-4.21.2",
+      "head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "source_file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+      "reviewed_uses": [
+        {
+          "line": 58,
+          "source": "Route.prototype._handles_method = function _handles_method(method) {"
+        },
+        {
+          "line": 80,
+          "source": "Route.prototype._options = function _options() {"
+        }
+      ],
+      "reason": "Route prototype property assignments",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-express-route-zh",
+      "snapshot": "express-4.21.2",
+      "head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "source_file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+      "reviewed_uses": [
+        {
+          "line": 58,
+          "source": "Route.prototype._handles_method = function _handles_method(method) {"
+        },
+        {
+          "line": 80,
+          "source": "Route.prototype._options = function _options() {"
+        }
+      ],
+      "reason": "Route prototype property assignments",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-gson-type-token-en",
+      "snapshot": "gson-2.11.0",
+      "head": {
+        "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+        "start": 95,
+        "end": 119
+      },
+      "source_file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+      "reviewed_uses": [
+        {
+          "line": 99,
+          "source": "      if (parameterized.getRawType() == TypeToken.class) {"
+        },
+        {
+          "line": 109,
+          "source": "    else if (superclass == TypeToken.class) {"
+        }
+      ],
+      "reason": "TypeToken.class runtime comparisons",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-gson-type-token-zh",
+      "snapshot": "gson-2.11.0",
+      "head": {
+        "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+        "start": 300,
+        "end": 342
+      },
+      "source_file_sha256": "30be2a9d19d6b49ac27e013faa965a8c7bf23b79d1a236ae1888bfbbe71b8ff8",
+      "reviewed_uses": [
+        {
+          "line": 300,
+          "source": "  private static class CustomTypeToken extends TypeToken<String> {}"
+        },
+        {
+          "line": 304,
+          "source": "    TypeToken<?> typeToken = new CustomTypeToken();"
+        },
+        {
+          "line": 315,
+          "source": "    class SubTypeToken<T> extends TypeToken<String> {}"
+        },
+        {
+          "line": 331,
+          "source": "    new TypeToken<M>() {};"
+        }
+      ],
+      "reason": "Subclass, typed variable, and constructor uses",
+      "frozen_catalog_primary_top1": 0.0,
+      "unlisted_valid_use": true
+    },
+    {
+      "case_id": "reference-v2-flask-blueprint-en",
+      "snapshot": "pallets__flask-5014",
+      "head": {
+        "path": "src/flask/blueprints.py",
+        "start": 227,
+        "end": 266
+      },
+      "source_file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+      "reviewed_uses": [
+        {
+          "line": 251,
+          "source": "    def register_blueprint(self, blueprint: \"Blueprint\", **options: t.Any) -> None:"
+        }
+      ],
+      "reason": "Quoted parameter type in register_blueprint",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    },
+    {
+      "case_id": "reference-v2-flask-blueprint-zh",
+      "snapshot": "pallets__flask-5014",
+      "head": {
+        "path": "src/flask/blueprints.py",
+        "start": 32,
+        "end": 118
+      },
+      "source_file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+      "reviewed_uses": [
+        {
+          "line": 41,
+          "source": "        blueprint: \"Blueprint\","
+        }
+      ],
+      "reason": "Quoted parameter type in BlueprintSetupState constructor",
+      "frozen_catalog_primary_top1": 1.0,
+      "unlisted_valid_use": false
+    }
+  ]
+}

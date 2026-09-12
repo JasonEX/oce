@@ -1,0 +1,80 @@
+{
+  "purpose": "Source-bound repeated real HTTP requests with internal tracing; no utility or performance qualification",
+  "queries": 12,
+  "timeouts": 0,
+  "errors": 0,
+  "calls": [
+    {
+      "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+      "elapsed_ms": 1230.9301730711013,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+      "elapsed_ms": 380.90660190209746,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+      "elapsed_ms": 619.0779688768089,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+      "elapsed_ms": 1541.2322247866541,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+      "elapsed_ms": 258.2153279799968,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+      "elapsed_ms": 162.23571309819818,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+      "elapsed_ms": 376.18019292131066,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+      "elapsed_ms": 559.4456379767507,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+      "elapsed_ms": 262.35570199787617,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+      "elapsed_ms": 159.76723097264767,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+      "elapsed_ms": 367.9474191740155,
+      "result_count": 30,
+      "error": null
+    },
+    {
+      "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+      "elapsed_ms": 557.8719368204474,
+      "result_count": 30,
+      "error": null
+    }
+  ]
+}

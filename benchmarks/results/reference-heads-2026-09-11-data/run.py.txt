@@ -1,0 +1,108 @@
+"""Sequential same-index, released-client runs with immutable source provenance."""
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import time
+
+import httpx
+from dotenv import dotenv_values
+from benchmarks.blackbox.harness import server_configuration
+
+ROOT = Path('/home/yuqian/workspace/oce')
+OUT = Path(__file__).resolve().parent
+CLIENT = Path('/home/yuqian/workspace/oce-client/target/release/oce-client')
+API = 'http://127.0.0.1:18987'
+parser = argparse.ArgumentParser()
+parser.add_argument('label')
+parser.add_argument('--source', type=Path, default=ROOT)
+parser.add_argument('--trace', action='store_true')
+parser.add_argument('--suites', nargs='+', default=['reference'])
+args = parser.parse_args()
+source = args.source.resolve()
+creds = dotenv_values('/home/yuqian/.oce/benchmark.env')
+env = {k: v for k, v in os.environ.items() if not k.startswith('RETRIEVAL_')}
+env.update(OCE_API_KEY=creds['API_KEY'], OCE_ADMIN_API_KEY=creds['API_KEY'],
+           OCE_CLIENT_BINARY=str(CLIENT), EMBED_QUERY_CACHE_MAX_ENTRIES='0',
+           RERANK_ENABLED='false', LLM_RERANK_ENABLED='false',
+           MONITORING_STORE_QUERY_TEXT='false',
+           OCE_HEAD_TRACE=str(OUT / (args.label + '-head-trace.jsonl')))
+source_hashes = lambda: {str(p.relative_to(source)): hashlib.sha256(p.read_bytes()).hexdigest()
+                         for p in sorted(source.glob('src/oce/**/*.py'))}
+proof = {'source_path': str(source), 'source_files': source_hashes(),
+         'foundation_commit': '1fc581f', 'client_sha256': hashlib.sha256(CLIENT.read_bytes()).hexdigest(),
+         'internal_head_trace': args.trace,
+         'runner_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
+proof['source_sha256'] = hashlib.sha256(json.dumps(proof['source_files'], sort_keys=True).encode()).hexdigest()
+proof_path = OUT / (args.label + '-proof.json')
+assert not proof_path.exists()
+proof_path.write_text(json.dumps(proof, indent=2) + '\n')
+with socket.socket() as sock:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(('127.0.0.1', 18987))
+log_path = OUT / (args.label + '-server.log')
+with log_path.open('x') as log:
+    code = ('import head_trace; ' if args.trace else '') + 'from oce.cli import main; main()'
+    proc = subprocess.Popen([str(ROOT / '.venv/bin/python'), '-c', code, '-v', 'serve',
+                             '--data-dir', '/home/yuqian/.cache/oce/simplification-candidate-index',
+                             '--env-file', '/home/yuqian/.oce/benchmark.env',
+                             '--host', '127.0.0.1', '--port', '18987'],
+                            cwd='/tmp', env=env | {'PYTHONPATH': str(OUT) + ':' + str(source / 'src')},
+                            stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        for _ in range(180):
+            if proc.poll() is not None:
+                raise RuntimeError('Server exited before readiness')
+            try:
+                if httpx.get(API + '/health', timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(.5)
+        else:
+            raise RuntimeError('Readiness timeout')
+        runtime = server_configuration(API, creds['API_KEY'])
+        assert runtime is not None and not runtime['query_cache']['enabled']
+        (OUT / (args.label + '-runtime.json')).write_text(json.dumps(runtime, indent=2) + '\n')
+        for suite in args.suites:
+            options = []
+            module = suite
+            if suite == 'reference':
+                module = 'project_cases'
+                options = ['--cases', str(ROOT / 'benchmarks/blackbox/reference_regions_v2_2026_09_11.json')]
+            if suite == 'validation':
+                module = 'project_cases'
+                options = ['--cases', str(OUT / 'validation-manifest.json')]
+            if suite == 'swe_explore':
+                options = ['--profile', 'development']
+            target = OUT / (args.label + '-' + suite + '.json')
+            assert not target.exists()
+            cmd = [str(ROOT / '.venv/bin/python'), '-m', 'benchmarks.blackbox.' + module,
+                   *options, 'run', '--api-url', API, '--label', args.label, '--output', str(target)]
+            print('START', args.label, suite, flush=True)
+            with (OUT / (args.label + '-' + suite + '.log')).open('x') as suite_log:
+                subprocess.run(cmd, cwd=ROOT, env=env | {'PYTHONPATH': str(ROOT)},
+                               stdout=suite_log, stderr=subprocess.STDOUT, check=True)
+            report = json.loads(target.read_text())
+            assert report['summary']['error_cases'] == 0
+            captured = report['runtime']['server_configuration']
+            for field in ('index_profile', 'retrieval', 'query_cache'):
+                assert captured[field] == runtime[field]
+            for store in ('dense', 'path'):
+                assert captured[store]['entities'] == runtime[store]['entities']
+            print('DONE', args.label, suite, json.dumps(report['summary']), flush=True)
+    finally:
+        if proc.poll() is None:
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=120)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGTERM)
+                proc.wait(timeout=10)
+        assert 'Application shutdown complete.' in log_path.read_text()
+assert source_hashes() == proof['source_files']
+print('SHUTDOWN', args.label, flush=True)

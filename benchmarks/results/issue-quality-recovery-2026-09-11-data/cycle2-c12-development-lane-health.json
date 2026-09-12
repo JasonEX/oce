@@ -1,0 +1,47 @@
+{
+  "purpose": "runtime fallback counts; HTTP success alone is not lane health",
+  "runs": {
+    "cycle2-baseline-sql2-main": {
+      "source_sha256": "6991af689d2b98ead75a05e527502c93ef30290094093c4ab2d65278fbfa795f",
+      "server_log_sha256": "34f7032fb90eb37cccb4de63333381b86fd5c672288b244c463b8b98c04606a8",
+      "provenance_sha256": "f9515135ae210739209ba79f13d1b9aeeb608437dc7ff63aeb68c1b858c3c5a9",
+      "counts": {
+        "dense_warmup_failure_warnings": 1,
+        "symbol_exact_timeout_warnings": 1,
+        "symbol_definition_timeout_warnings": 0,
+        "symbol_occurrence_timeout_warnings": 0,
+        "symbol_call_timeout_warnings": 0,
+        "symbol_chunk_timeout_warnings": 0,
+        "symbol_pair_timeout_warnings": 0,
+        "lexical_timeout_warnings": 0,
+        "lexical_failure_warnings": 0,
+        "connection_termination_errors": 0,
+        "pending_task_destruction_warnings": 0,
+        "non_returned_connection_messages": 0
+      },
+      "normal_shutdown": true,
+      "symbol_timeout_observability": true
+    },
+    "cycle2-c12-main": {
+      "source_sha256": "23a7617dcb0c7e21095fb6098b7a9613100c9ab465f84550d9c4c5b32fa89cc2",
+      "server_log_sha256": "f3f83df8d6680593dce1691b1af1b29815a80fd467aae19a41e2ce65e72eea2f",
+      "provenance_sha256": "fe5c58de03f95864efb53642610fadaed9958dbc2f5a990e250e94919180f705",
+      "counts": {
+        "dense_warmup_failure_warnings": 1,
+        "symbol_exact_timeout_warnings": 0,
+        "symbol_definition_timeout_warnings": 0,
+        "symbol_occurrence_timeout_warnings": 0,
+        "symbol_call_timeout_warnings": 0,
+        "symbol_chunk_timeout_warnings": 0,
+        "symbol_pair_timeout_warnings": 0,
+        "lexical_timeout_warnings": 0,
+        "lexical_failure_warnings": 0,
+        "connection_termination_errors": 0,
+        "pending_task_destruction_warnings": 0,
+        "non_returned_connection_messages": 0
+      },
+      "normal_shutdown": true,
+      "symbol_timeout_observability": true
+    }
+  }
+}

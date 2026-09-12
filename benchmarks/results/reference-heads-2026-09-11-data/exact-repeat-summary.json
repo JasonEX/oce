@@ -1,0 +1,43 @@
+{
+  "scope": "New baseline exact warning repeated with internal timing, not historical lexical root-cause proof",
+  "response_comparisons": [
+    {
+      "repeat": 1,
+      "regions_equal_original_foundation": false,
+      "regions_equal_candidate": true,
+      "returned_chars": 25877,
+      "original_foundation_chars": 26119,
+      "candidate_chars": 25877
+    },
+    {
+      "repeat": 2,
+      "regions_equal_original_foundation": false,
+      "regions_equal_candidate": true,
+      "returned_chars": 25877,
+      "original_foundation_chars": 26119,
+      "candidate_chars": 25877
+    }
+  ],
+  "operations": {
+    "exact": {
+      "calls": 308,
+      "exceptions": {
+        "none": 308
+      },
+      "max_elapsed_ms": 509.8509870003909,
+      "max_connection_acquisition_ms": 499.45193505845964,
+      "max_event_loop_delay_ms": 287.00000001117587,
+      "max_sql_ms": 187.14577704668045
+    },
+    "lexical": {
+      "calls": 2,
+      "exceptions": {
+        "none": 2
+      },
+      "max_elapsed_ms": 538.9554570429027,
+      "max_connection_acquisition_ms": 364.0128090046346,
+      "max_event_loop_delay_ms": 268.0000001564622,
+      "max_sql_ms": 124.37745905481279
+    }
+  }
+}

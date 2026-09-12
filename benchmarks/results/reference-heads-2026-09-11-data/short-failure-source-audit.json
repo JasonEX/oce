@@ -1,0 +1,815 @@
+{
+  "scope": "Post-hoc development source inspection, not relabeling or independent validation",
+  "native_failed_cases": 37,
+  "classifications": {
+    "valid_use_excluded_with_declaration_file": 30,
+    "actual_declaration_head_regression": 6,
+    "valid_test_use_excluded_by_v1_catalog": 1
+  },
+  "no_corrected_aggregate_score": true,
+  "cases": [
+    {
+      "case_id": "flask-blueprint-reference",
+      "target": "Blueprint",
+      "head": {
+        "path": "src/flask/blueprints.py",
+        "start": 227,
+        "end": 266
+      },
+      "definition_path": "src/flask/blueprints.py",
+      "source_file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+      "evidence": [
+        {
+          "line": 251,
+          "source": "    def register_blueprint(self, blueprint: \"Blueprint\", **options: t.Any) -> None:"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "flask-blueprint-reference-zh",
+      "target": "Blueprint",
+      "head": {
+        "path": "src/flask/blueprints.py",
+        "start": 32,
+        "end": 118
+      },
+      "definition_path": "src/flask/blueprints.py",
+      "source_file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+      "evidence": [
+        {
+          "line": 41,
+          "source": "        blueprint: \"Blueprint\","
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "requests-prepared-request-reference",
+      "target": "PreparedRequest",
+      "head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "definition_path": "requests/models.py",
+      "source_file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+      "evidence": [
+        {
+          "line": 258,
+          "source": "        p = PreparedRequest()"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "requests-prepared-request-reference-zh",
+      "target": "PreparedRequest",
+      "head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "definition_path": "requests/models.py",
+      "source_file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+      "evidence": [
+        {
+          "line": 258,
+          "source": "        p = PreparedRequest()"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "pytest-config-reference",
+      "target": "Config",
+      "head": {
+        "path": "src/_pytest/config/__init__.py",
+        "start": 236,
+        "end": 303
+      },
+      "definition_path": "src/_pytest/config/__init__.py",
+      "source_file_sha256": "a1f0bb082645e2b582a604693126f99199421a6f35e0b8e0f48488c10d7271ad",
+      "evidence": [
+        {
+          "line": 273,
+          "source": ") -> \"Config\":"
+        },
+        {
+          "line": 276,
+          "source": "    config = Config("
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "pytest-config-reference-zh",
+      "target": "Config",
+      "head": {
+        "path": "src/_pytest/config/__init__.py",
+        "start": 236,
+        "end": 303
+      },
+      "definition_path": "src/_pytest/config/__init__.py",
+      "source_file_sha256": "a1f0bb082645e2b582a604693126f99199421a6f35e0b8e0f48488c10d7271ad",
+      "evidence": [
+        {
+          "line": 273,
+          "source": ") -> \"Config\":"
+        },
+        {
+          "line": 276,
+          "source": "    config = Config("
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-dataset-reference",
+      "target": "Dataset",
+      "head": {
+        "path": "xarray/core/dataset.py",
+        "start": 256,
+        "end": 320
+      },
+      "definition_path": "xarray/core/dataset.py",
+      "source_file_sha256": "bcd149c529d70d3e0c0e93ff6ca455b955eaad03bb083965b3ac82c39ebd1456",
+      "evidence": [
+        {
+          "line": 285,
+          "source": "def as_dataset(obj: Any) -> Dataset:"
+        },
+        {
+          "line": 293,
+          "source": "    if not isinstance(obj, Dataset):"
+        },
+        {
+          "line": 294,
+          "source": "        obj = Dataset(obj)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-dataset-reference-zh",
+      "target": "Dataset",
+      "head": {
+        "path": "xarray/core/dataset.py",
+        "start": 256,
+        "end": 320
+      },
+      "definition_path": "xarray/core/dataset.py",
+      "source_file_sha256": "bcd149c529d70d3e0c0e93ff6ca455b955eaad03bb083965b3ac82c39ebd1456",
+      "evidence": [
+        {
+          "line": 285,
+          "source": "def as_dataset(obj: Any) -> Dataset:"
+        },
+        {
+          "line": 293,
+          "source": "    if not isinstance(obj, Dataset):"
+        },
+        {
+          "line": 294,
+          "source": "        obj = Dataset(obj)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-data-array-reference",
+      "target": "DataArray",
+      "head": {
+        "path": "xarray/core/dataarray.py",
+        "start": 1009,
+        "end": 1045
+      },
+      "definition_path": "xarray/core/dataarray.py",
+      "source_file_sha256": "808de75f3c58f488d1109fb9b52250ae31e27ad2d3ddbdc4222a5d6472005078",
+      "evidence": [
+        {
+          "line": 1040,
+          "source": "    def _dask_finalize(results, name, func, *args, **kwargs) -> DataArray:"
+        },
+        {
+          "line": 1045,
+          "source": "        return DataArray(variable, coords, name=name, indexes=indexes, fastpath=True)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-data-array-reference-zh",
+      "target": "DataArray",
+      "head": {
+        "path": "xarray/core/dataarray.py",
+        "start": 1009,
+        "end": 1045
+      },
+      "definition_path": "xarray/core/dataarray.py",
+      "source_file_sha256": "808de75f3c58f488d1109fb9b52250ae31e27ad2d3ddbdc4222a5d6472005078",
+      "evidence": [
+        {
+          "line": 1040,
+          "source": "    def _dask_finalize(results, name, func, *args, **kwargs) -> DataArray:"
+        },
+        {
+          "line": 1045,
+          "source": "        return DataArray(variable, coords, name=name, indexes=indexes, fastpath=True)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-is-dict-like-reference",
+      "target": "is_dict_like",
+      "head": {
+        "path": "xarray/core/utils.py",
+        "start": 204,
+        "end": 263
+      },
+      "definition_path": "xarray/core/utils.py",
+      "source_file_sha256": "c20be8b90dd86ca2ea61bdc34cd1fae5f022ac695f3754cb56e37e90472f4621",
+      "evidence": [
+        {
+          "line": 241,
+          "source": "    if not is_dict_like(pos_kwargs):"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "xarray-is-dict-like-reference-zh",
+      "target": "is_dict_like",
+      "head": {
+        "path": "xarray/core/utils.py",
+        "start": 204,
+        "end": 263
+      },
+      "definition_path": "xarray/core/utils.py",
+      "source_file_sha256": "c20be8b90dd86ca2ea61bdc34cd1fae5f022ac695f3754cb56e37e90472f4621",
+      "evidence": [
+        {
+          "line": 241,
+          "source": "    if not is_dict_like(pos_kwargs):"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-router-reference",
+      "target": "Router",
+      "head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "definition_path": "axum/src/routing/mod.rs",
+      "source_file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+      "evidence": [
+        {
+          "line": 177,
+          "source": "        let service = match try_downcast::<Router<S>, _>(service) {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-router-reference-zh",
+      "target": "Router",
+      "head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "definition_path": "axum/src/routing/mod.rs",
+      "source_file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+      "evidence": [
+        {
+          "line": 177,
+          "source": "        let service = match try_downcast::<Router<S>, _>(service) {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-from-request-reference",
+      "target": "FromRequest",
+      "head": {
+        "path": "axum-core/src/extract/mod.rs",
+        "start": 52,
+        "end": 102
+      },
+      "definition_path": "axum-core/src/extract/mod.rs",
+      "source_file_sha256": "33fddc1809050c4c5a268ac9c377f426b77b52dfbceb80eafd9a8469de914781",
+      "evidence": [
+        {
+          "line": 89,
+          "source": "impl<S, T> FromRequest<S, private::ViaParts> for T"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-from-request-reference-zh",
+      "target": "FromRequest",
+      "head": {
+        "path": "axum-core/src/extract/mod.rs",
+        "start": 52,
+        "end": 102
+      },
+      "definition_path": "axum-core/src/extract/mod.rs",
+      "source_file_sha256": "33fddc1809050c4c5a268ac9c377f426b77b52dfbceb80eafd9a8469de914781",
+      "evidence": [
+        {
+          "line": 89,
+          "source": "impl<S, T> FromRequest<S, private::ViaParts> for T"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-into-response-reference",
+      "target": "IntoResponse",
+      "head": {
+        "path": "axum-core/src/response/into_response.rs",
+        "start": 65,
+        "end": 149
+      },
+      "definition_path": "axum-core/src/response/into_response.rs",
+      "source_file_sha256": "31abd6b9c3a19167388be4d66dbe1f96ac7d4ff707292fc172f8fa33b1a4edcd",
+      "evidence": [
+        {
+          "line": 118,
+          "source": "impl IntoResponse for StatusCode {"
+        },
+        {
+          "line": 126,
+          "source": "impl IntoResponse for () {"
+        },
+        {
+          "line": 132,
+          "source": "impl IntoResponse for Infallible {"
+        },
+        {
+          "line": 138,
+          "source": "impl<T, E> IntoResponse for Result<T, E>"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "axum-into-response-reference-zh",
+      "target": "IntoResponse",
+      "head": {
+        "path": "axum-core/src/response/into_response.rs",
+        "start": 65,
+        "end": 149
+      },
+      "definition_path": "axum-core/src/response/into_response.rs",
+      "source_file_sha256": "31abd6b9c3a19167388be4d66dbe1f96ac7d4ff707292fc172f8fa33b1a4edcd",
+      "evidence": [
+        {
+          "line": 118,
+          "source": "impl IntoResponse for StatusCode {"
+        },
+        {
+          "line": 126,
+          "source": "impl IntoResponse for () {"
+        },
+        {
+          "line": 132,
+          "source": "impl IntoResponse for Infallible {"
+        },
+        {
+          "line": 138,
+          "source": "impl<T, E> IntoResponse for Result<T, E>"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-handlers-chain-reference",
+      "target": "HandlersChain",
+      "head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "definition_path": "gin.go",
+      "source_file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+      "evidence": [
+        {
+          "line": 57,
+          "source": "func (c HandlersChain) Last() HandlerFunc {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-handlers-chain-reference-zh",
+      "target": "HandlersChain",
+      "head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "definition_path": "gin.go",
+      "source_file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+      "evidence": [
+        {
+          "line": 57,
+          "source": "func (c HandlersChain) Last() HandlerFunc {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-response-writer-reference",
+      "target": "ResponseWriter",
+      "head": {
+        "path": "response_writer.go",
+        "start": 1,
+        "end": 86
+      },
+      "definition_path": "response_writer.go",
+      "source_file_sha256": "4054a578f5bf414cb64703bf409ae101610b04fd1db2cb99272b08814b85da9c",
+      "evidence": [
+        {
+          "line": 52,
+          "source": "var _ ResponseWriter = (*responseWriter)(nil)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-response-writer-reference-zh",
+      "target": "ResponseWriter",
+      "head": {
+        "path": "response_writer.go",
+        "start": 1,
+        "end": 86
+      },
+      "definition_path": "response_writer.go",
+      "source_file_sha256": "4054a578f5bf414cb64703bf409ae101610b04fd1db2cb99272b08814b85da9c",
+      "evidence": [
+        {
+          "line": 52,
+          "source": "var _ ResponseWriter = (*responseWriter)(nil)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-params-reference",
+      "target": "Params",
+      "head": {
+        "path": "tree.go",
+        "start": 429,
+        "end": 590
+      },
+      "definition_path": "tree.go",
+      "source_file_sha256": "14ee92d539020ff68007419e96b0bb0466f1fb8dd30b7655a86d2971d87b5641",
+      "evidence": [
+        {
+          "line": 506,
+          "source": "\t\t\t\t\t\t\tnewParams := make(Params, len(*params), globalParamsCount)"
+        },
+        {
+          "line": 559,
+          "source": "\t\t\t\t\t\t\tnewParams := make(Params, len(*params), globalParamsCount)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gin-params-reference-zh",
+      "target": "Params",
+      "head": {
+        "path": "tree.go",
+        "start": 1,
+        "end": 84
+      },
+      "definition_path": "tree.go",
+      "source_file_sha256": "14ee92d539020ff68007419e96b0bb0466f1fb8dd30b7655a86d2971d87b5641",
+      "evidence": [
+        {
+          "line": 36,
+          "source": "func (ps Params) Get(name string) (string, bool) {"
+        },
+        {
+          "line": 47,
+          "source": "func (ps Params) ByName(name string) (va string) {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "jq-jv-array-append-reference",
+      "target": "jv_array_append",
+      "head": {
+        "path": "src/jv.c",
+        "start": 972,
+        "end": 1050
+      },
+      "definition_path": "src/jv.c",
+      "source_file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+      "evidence": [
+        {
+          "line": 1013,
+          "source": "    a = jv_array_append(a, elem);"
+        },
+        {
+          "line": 1038,
+          "source": "      res = jv_array_append(res, jv_number(idx));"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "mediatr-notification-handler-reference",
+      "target": "INotificationHandler",
+      "head": {
+        "path": "src/MediatR/INotificationHandler.cs",
+        "start": 1,
+        "end": 40
+      },
+      "definition_path": "src/MediatR/INotificationHandler.cs",
+      "source_file_sha256": "a1e830db66f4537520b48f395e1d155c5280a87c9832c95b2e918185764c7703",
+      "evidence": [
+        {
+          "line": 25,
+          "source": "public abstract class NotificationHandler<TNotification> : INotificationHandler<TNotification>"
+        },
+        {
+          "line": 28,
+          "source": "    Task INotificationHandler<TNotification>.Handle(TNotification notification, CancellationToken cancellationToken)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "mediatr-notification-handler-reference-zh",
+      "target": "INotificationHandler",
+      "head": {
+        "path": "src/MediatR/INotificationHandler.cs",
+        "start": 1,
+        "end": 40
+      },
+      "definition_path": "src/MediatR/INotificationHandler.cs",
+      "source_file_sha256": "a1e830db66f4537520b48f395e1d155c5280a87c9832c95b2e918185764c7703",
+      "evidence": [
+        {
+          "line": 25,
+          "source": "public abstract class NotificationHandler<TNotification> : INotificationHandler<TNotification>"
+        },
+        {
+          "line": 28,
+          "source": "    Task INotificationHandler<TNotification>.Handle(TNotification notification, CancellationToken cancellationToken)"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "express-route-reference",
+      "target": "Route",
+      "head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "definition_path": "lib/router/route.js",
+      "source_file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+      "evidence": [
+        {
+          "line": 58,
+          "source": "Route.prototype._handles_method = function _handles_method(method) {"
+        },
+        {
+          "line": 80,
+          "source": "Route.prototype._options = function _options() {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "express-route-reference-zh",
+      "target": "Route",
+      "head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "definition_path": "lib/router/route.js",
+      "source_file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+      "evidence": [
+        {
+          "line": 58,
+          "source": "Route.prototype._handles_method = function _handles_method(method) {"
+        },
+        {
+          "line": 80,
+          "source": "Route.prototype._options = function _options() {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "bats-print-stack-trace-reference",
+      "target": "bats_print_stack_trace",
+      "head": {
+        "path": "lib/bats-core/tracing.bash",
+        "start": 44,
+        "end": 84
+      },
+      "definition_path": "lib/bats-core/tracing.bash",
+      "source_file_sha256": "9b67b8b566bb1648de422efe7cad2d92444f5b00a1ed5c9afe3dc5d592a922ab",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 44,
+          "source": "bats_print_stack_trace() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "bats-print-stack-trace-reference-zh",
+      "target": "bats_print_stack_trace",
+      "head": {
+        "path": "lib/bats-core/tracing.bash",
+        "start": 44,
+        "end": 84
+      },
+      "definition_path": "lib/bats-core/tracing.bash",
+      "source_file_sha256": "9b67b8b566bb1648de422efe7cad2d92444f5b00a1ed5c9afe3dc5d592a922ab",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 44,
+          "source": "bats_print_stack_trace() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "bats-preprocess-source-reference",
+      "target": "bats_preprocess_source",
+      "head": {
+        "path": "lib/bats-core/preprocessing.bash",
+        "start": 1,
+        "end": 23
+      },
+      "definition_path": "lib/bats-core/preprocessing.bash",
+      "source_file_sha256": "57e641ecf762addbb1fc8638937326ba143b9dbd3b036a4cceac193d6598e0dc",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 8,
+          "source": "bats_preprocess_source() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "bats-preprocess-source-reference-zh",
+      "target": "bats_preprocess_source",
+      "head": {
+        "path": "lib/bats-core/preprocessing.bash",
+        "start": 1,
+        "end": 23
+      },
+      "definition_path": "lib/bats-core/preprocessing.bash",
+      "source_file_sha256": "57e641ecf762addbb1fc8638937326ba143b9dbd3b036a4cceac193d6598e0dc",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 8,
+          "source": "bats_preprocess_source() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "bats-prefix-lines-reference",
+      "target": "bats_prefix_lines_for_tap_output",
+      "head": {
+        "path": "lib/bats-core/common.bash",
+        "start": 1,
+        "end": 54
+      },
+      "definition_path": "lib/bats-core/common.bash",
+      "source_file_sha256": "f7b6836fffdece831ebabfff7f540a7f3ee98e6ead6f612564a703a33716bf15",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 3,
+          "source": "bats_prefix_lines_for_tap_output() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "bats-prefix-lines-reference-zh",
+      "target": "bats_prefix_lines_for_tap_output",
+      "head": {
+        "path": "lib/bats-core/common.bash",
+        "start": 1,
+        "end": 54
+      },
+      "definition_path": "lib/bats-core/common.bash",
+      "source_file_sha256": "f7b6836fffdece831ebabfff7f540a7f3ee98e6ead6f612564a703a33716bf15",
+      "classification": "actual_declaration_head_regression",
+      "evidence": [
+        {
+          "line": 3,
+          "source": "bats_prefix_lines_for_tap_output() {"
+        }
+      ],
+      "reason": "The first region declares the target and contains no call to it; syntax verification failed to preserve Bash consumer heads."
+    },
+    {
+      "case_id": "gson-type-token-reference",
+      "target": "TypeToken",
+      "head": {
+        "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+        "start": 95,
+        "end": 119
+      },
+      "definition_path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+      "source_file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+      "evidence": [
+        {
+          "line": 99,
+          "source": "      if (parameterized.getRawType() == TypeToken.class) {"
+        },
+        {
+          "line": 109,
+          "source": "    else if (superclass == TypeToken.class) {"
+        }
+      ],
+      "classification": "valid_use_excluded_with_declaration_file",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    },
+    {
+      "case_id": "gson-type-token-reference-zh",
+      "target": "TypeToken",
+      "head": {
+        "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+        "start": 300,
+        "end": 342
+      },
+      "definition_path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+      "source_file_sha256": "30be2a9d19d6b49ac27e013faa965a8c7bf23b79d1a236ae1888bfbbe71b8ff8",
+      "evidence": [
+        {
+          "line": 300,
+          "source": "  private static class CustomTypeToken extends TypeToken<String> {}"
+        },
+        {
+          "line": 304,
+          "source": "    TypeToken<?> typeToken = new CustomTypeToken();"
+        },
+        {
+          "line": 315,
+          "source": "    class SubTypeToken<T> extends TypeToken<String> {}"
+        },
+        {
+          "line": 331,
+          "source": "    new TypeToken<M>() {};"
+        }
+      ],
+      "classification": "valid_test_use_excluded_by_v1_catalog",
+      "reason": "Reviewed actual call, type, inheritance, or prototype use; frozen file-level label remains unchanged."
+    }
+  ]
+}

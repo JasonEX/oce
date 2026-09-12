@@ -1,0 +1,154 @@
+{
+  "status": "DEVELOPMENT DIAGNOSIS; previous validation has been promoted before case inspection",
+  "source_log_sha256": "995418a5007b9864cd835013a60b42725cf42b1e4adafc5f0bfb9c4acbd85374",
+  "mapping": "Each warning is associated with the next of 38 sequential completed HTTP requests; no causality claim from timing alone",
+  "events": [
+    {
+      "suite": "promoted-18",
+      "case_id": "astropy__astropy-13398",
+      "request_index": 0,
+      "elapsed_ms": 19234,
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 0.6666666666666666,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.45454545454545453,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.8,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.8,
+        "swe_explore_precision": 0.12121212121212122,
+        "swe_explore_recall": 0.1258426966292135,
+        "swe_explore_f1_score": 0.12348401323042998,
+        "swe_explore_hit_file_rate": 0.8,
+        "swe_explore_noise_file_rate": 0.6153846153846154,
+        "swe_explore_hit_region_rate": 0.8,
+        "swe_explore_noise_region_rate": 0.6153846153846154,
+        "swe_explore_weighted_core_coverage": 0.5721733463668948,
+        "swe_explore_context_efficiency": 0.5021645021645021,
+        "swe_explore_ndcg_at_100": 0.11323835970901863,
+        "swe_explore_ndcg_at_300": 0.19015386687882593,
+        "swe_explore_ndcg_at_500": 0.4701624275675186,
+        "swe_explore_recall_at_100": 0.02247191011235955,
+        "swe_explore_recall_at_300": 0.09213483146067415,
+        "swe_explore_recall_at_500": 0.1258426966292135,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "first_hits": [
+        {
+          "path": "astropy/coordinates/builtin_frames/itrs.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "astropy/coordinates/builtin_frames/equatorial.py",
+          "start": 81,
+          "end": 107
+        },
+        {
+          "path": "astropy/coordinates/builtin_frames/altaz.py",
+          "start": 75,
+          "end": 126
+        }
+      ]
+    },
+    {
+      "suite": "promoted-18",
+      "case_id": "astropy__astropy-12907",
+      "request_index": 2,
+      "elapsed_ms": 2941,
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.5,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.25,
+        "swe_explore_precision": 0.05417276720351391,
+        "swe_explore_recall": 0.07756813417190776,
+        "swe_explore_f1_score": 0.06379310344827588,
+        "swe_explore_hit_file_rate": 0.5,
+        "swe_explore_noise_file_rate": 0.8461538461538461,
+        "swe_explore_hit_region_rate": 0.25,
+        "swe_explore_noise_region_rate": 0.8461538461538461,
+        "swe_explore_weighted_core_coverage": 0.03890641430073607,
+        "swe_explore_context_efficiency": 0.11859443631039532,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.07756813417190776,
+        "swe_explore_recall_at_300": 0.07756813417190776,
+        "swe_explore_recall_at_500": 0.07756813417190776,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "first_hits": [
+        {
+          "path": "astropy/modeling/separable.py",
+          "start": 66,
+          "end": 102
+        },
+        {
+          "path": "astropy/modeling/core.py",
+          "start": 1498,
+          "end": 1541
+        },
+        {
+          "path": "astropy/convolution/core.py",
+          "start": 32,
+          "end": 182
+        }
+      ]
+    },
+    {
+      "suite": "promoted-18",
+      "case_id": "django__django-16333",
+      "request_index": 3,
+      "elapsed_ms": 4526,
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 0.25,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 0.0,
+        "core_file_recall_at_10": 0.6666666666666666,
+        "core_mrr": 0.5,
+        "core_region_recall_at_10": 0.6666666666666666,
+        "swe_explore_precision": 0.10202117420596728,
+        "swe_explore_recall": 0.04925650557620818,
+        "swe_explore_f1_score": 0.06643685365089314,
+        "swe_explore_hit_file_rate": 0.6666666666666666,
+        "swe_explore_noise_file_rate": 0.8461538461538461,
+        "swe_explore_hit_region_rate": 0.6666666666666666,
+        "swe_explore_noise_region_rate": 0.8260869565217391,
+        "swe_explore_weighted_core_coverage": 0.06142669828625148,
+        "swe_explore_context_efficiency": 0.10202117420596728,
+        "swe_explore_ndcg_at_100": 0.17611227946564037,
+        "swe_explore_ndcg_at_300": 0.5000478263026396,
+        "swe_explore_ndcg_at_500": 0.5000478263026396,
+        "swe_explore_recall_at_100": 0.014405204460966542,
+        "swe_explore_recall_at_300": 0.04275092936802974,
+        "swe_explore_recall_at_500": 0.04275092936802974,
+        "swe_explore_first_useful_hit": 0.9565217391304348
+      },
+      "first_hits": [
+        {
+          "path": "tests/model_fields/models.py",
+          "start": 395,
+          "end": 447
+        },
+        {
+          "path": "django/forms/models.py",
+          "start": 759,
+          "end": 789
+        },
+        {
+          "path": "django/db/models/fields/related.py",
+          "start": 1303,
+          "end": 1380
+        }
+      ]
+    }
+  ]
+}

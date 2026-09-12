@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "purpose": "Cycle 2 native issue validation; disjoint cases, overlapping repositories",
+  "seed": "oce-issue-quality-cycle2-2026-09-11-v1",
+  "selection": "per repository hash order; first three development, next three validation",
+  "datasets": {
+    "swe_bench_revision": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+    "swe_bench_sha256": "030cfd7f2a704c4c0226e7f104c725a3b41230b1d3517f9c915ad7ea5be3fa25",
+    "swe_explore_revision": "bdb0ae45d7c337d9e1dc3ebfe2a0af6bc7c1fbd9",
+    "swe_explore_sha256": "dc4f114ececd0bfb987361c26ae5e2440456e2cccb36adfccb09ea5385aec202"
+  },
+  "cases": [
+    {
+      "instance_id": "astropy__astropy-13398",
+      "repo": "astropy/astropy",
+      "revision": "6500928dc0e57be8f06d1162eacc3ba5e2eff692",
+      "sha256": "6aac91e865b68706d4fae88afbed59d0a04e2feb50cf700089862d4c9b287fe5"
+    },
+    {
+      "instance_id": "astropy__astropy-7166",
+      "repo": "astropy/astropy",
+      "revision": "26d147868f8a891a6009a25cd6a8576d2e1bd747",
+      "sha256": "d5636c6bd6ce3f8b97ce135469d2334878b4624a89c71fe3bb0271f2fa71348a"
+    },
+    {
+      "instance_id": "astropy__astropy-12907",
+      "repo": "astropy/astropy",
+      "revision": "d16bfe05a744909de4b27f5875fe0d4ed41ce607",
+      "sha256": "80a3705cef967a459e3e4c36a14faac0ec672fff1ffeb36ba17fbb04640ee833"
+    },
+    {
+      "instance_id": "django__django-16333",
+      "repo": "django/django",
+      "revision": "60a7bd89860e504c0c33b02c78edcac87f6d1b5a",
+      "sha256": "361a277cd15387658dde881435410ab6956755e83d4a4a04b2b751780a3e397a"
+    },
+    {
+      "instance_id": "django__django-15278",
+      "repo": "django/django",
+      "revision": "0ab58c120939093fea90822f376e1866fc714d1f",
+      "sha256": "f1aa74f49c8eb267a1c9c9c29672c89bab350c0812e3cd6f4e121b6893855023"
+    },
+    {
+      "instance_id": "django__django-11292",
+      "repo": "django/django",
+      "revision": "eb16c7260e573ec513d84cb586d96bdf508f3173",
+      "sha256": "36b4137dc08aa2f7fe0417d78b9d3c43fa690c151e85786dd48968951e4e4642"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-25122",
+      "repo": "matplotlib/matplotlib",
+      "revision": "5ec2bd279729ff534719b8bf238dbbca907b93c5",
+      "sha256": "9c128e9928eb305b870348bc135181b905e0af2430ea813e6bd4961fdf22bfa0"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-24870",
+      "repo": "matplotlib/matplotlib",
+      "revision": "6091437be9776139d3672cde28a19cbe6c09dcd5",
+      "sha256": "20d8a7f136463bbdec991ba23ab0f5749f232901a072a2105fa90356d386f5d3"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-25960",
+      "repo": "matplotlib/matplotlib",
+      "revision": "1d0d255b79e84dfc9f2123c5eb85a842d342f72b",
+      "sha256": "f1b50b9b07c428a80862d3d2837a532292807fe60f0b9808282c307acb5bce0f"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14087",
+      "repo": "scikit-learn/scikit-learn",
+      "revision": "a5743ed36fbd3fbc8e351bdab16561fbfca7dfa1",
+      "sha256": "39bd116672228a44060a90cce6ad5b544dbcf1fca64c793b3d6e4ad3eaff3ed5"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-13142",
+      "repo": "scikit-learn/scikit-learn",
+      "revision": "1c8668b0a021832386470ddf740d834e02c66f69",
+      "sha256": "e12b88c9a29a0200a108fce99b77470bf6f30f4678af5da75880333874829d70"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-10908",
+      "repo": "scikit-learn/scikit-learn",
+      "revision": "67d06b18c68ee4452768f8a1e868565dd4354abf",
+      "sha256": "f364d5d525cc1bd6ce77654fdb62b61af1481c63a881df7f7ab5699a6c3bb516"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9591",
+      "repo": "sphinx-doc/sphinx",
+      "revision": "9ed054279aeffd5b1d0642e2d24a8800389de29f",
+      "sha256": "6b3995f91243142ed15ca6de63f0440b2bed2206eada81c0459a6eb05eb1162a"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-7985",
+      "repo": "sphinx-doc/sphinx",
+      "revision": "f30284ef926ebaf04b176f21b421e2dffc679792",
+      "sha256": "607b839a418d5fb9d60d9b7934b7f66566fd627f718da89d7338999f1fe22238"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-10614",
+      "repo": "sphinx-doc/sphinx",
+      "revision": "ac2b7599d212af7d04649959ce6926c63c3133fa",
+      "sha256": "b3408e4133fe6178d040037c0056c83dd617c3601cad6f749d8972ee99f47026"
+    },
+    {
+      "instance_id": "sympy__sympy-17139",
+      "repo": "sympy/sympy",
+      "revision": "1d3327b8e90a186df6972991963a5ae87053259d",
+      "sha256": "5a8fe131b09e672a70a3430c99fd9ed61e0bdea4bca7a91fc862fe8d07104de4"
+    },
+    {
+      "instance_id": "sympy__sympy-13757",
+      "repo": "sympy/sympy",
+      "revision": "a5e6a101869e027e7930e694f8b1cfb082603453",
+      "sha256": "754fa8a7a356b8132743fcd8d447fa674fefa0cbae1957c166fbf3e6505fda2c"
+    },
+    {
+      "instance_id": "sympy__sympy-23534",
+      "repo": "sympy/sympy",
+      "revision": "832c24fec1046eaa544a4cab4c69e3af3e651759",
+      "sha256": "9148d305d6f0a99ada59099ce44303455f485a70804effab802d6c4fc70e9626"
+    }
+  ]
+}

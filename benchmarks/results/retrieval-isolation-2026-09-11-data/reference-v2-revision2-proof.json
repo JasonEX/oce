@@ -1,0 +1,1270 @@
+{
+  "created_at": "2026-09-11T21:07:13.269756+00:00",
+  "manifest_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211",
+  "annotation_script_sha256": "aceea46498abc3ad6b94c91ad64286e818a572c6730b5e0f01891af5be578cc1",
+  "annotations": {
+    "flask-flask": {
+      "original_anchor": {
+        "id": "flask-flask",
+        "instance_id": "pallets__flask-5014",
+        "identifier": "Flask",
+        "definition_path": "src/flask/app.py"
+      },
+      "snapshot": {
+        "id": "pallets__flask-5014",
+        "repo": "pallets/flask",
+        "revision": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+        "code_language": "python"
+      },
+      "uses": [
+        {
+          "path": "src/flask/cli.py",
+          "line": 42,
+          "text": "        if isinstance(app, Flask):",
+          "kind": "runtime type check",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 46,
+          "text": "    matches = [v for v in module.__dict__.values() if isinstance(v, Flask)]",
+          "kind": "runtime type check",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 65,
+          "text": "                if isinstance(app, Flask):",
+          "kind": "runtime type check",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 178,
+          "text": "    if isinstance(app, Flask):",
+          "kind": "runtime type check",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 278,
+          "text": "        create_app: t.Callable[..., Flask] | None = None,",
+          "kind": "type annotation",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 290,
+          "text": "        self._loaded_app: Flask | None = None",
+          "kind": "type annotation",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 292,
+          "text": "    def load_app(self) -> Flask:",
+          "kind": "type annotation",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/cli.py",
+          "line": 513,
+          "text": "        create_app: t.Callable[..., Flask] | None = None,",
+          "kind": "type annotation",
+          "file_sha256": "a4b9a758e6defc6e3f640150761ee4830a8f3314579b8a1485a51206924c7aae",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "line": 236,
+          "text": "    def __init__(self, app: \"Flask\") -> None:",
+          "kind": "type annotation",
+          "file_sha256": "6c611042e176fdc1ea67764d31e31e106f0738b2640e52fcf2ed810710ab45aa",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "line": 302,
+          "text": "        app: \"Flask\",",
+          "kind": "type annotation",
+          "file_sha256": "6c611042e176fdc1ea67764d31e31e106f0738b2640e52fcf2ed810710ab45aa",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/testing.py",
+          "line": 47,
+          "text": "        app: \"Flask\",",
+          "kind": "type annotation",
+          "file_sha256": "af8e2e80145fdf669988c666bbdb1e617713cc1cb538899ca636835c76d36177",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/testing.py",
+          "line": 108,
+          "text": "    application: \"Flask\"",
+          "kind": "type annotation",
+          "file_sha256": "af8e2e80145fdf669988c666bbdb1e617713cc1cb538899ca636835c76d36177",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/testing.py",
+          "line": 259,
+          "text": "    def __init__(self, app: \"Flask\", **kwargs: t.Any) -> None:",
+          "kind": "type annotation",
+          "file_sha256": "af8e2e80145fdf669988c666bbdb1e617713cc1cb538899ca636835c76d36177",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/templating.py",
+          "line": 42,
+          "text": "    def __init__(self, app: \"Flask\", **options: t.Any) -> None:",
+          "kind": "type annotation",
+          "file_sha256": "3591a3224d577b651e48697ef9ae9a8fff57c8f2f52dfcdf31bbaf055e04bc75",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/templating.py",
+          "line": 54,
+          "text": "    def __init__(self, app: \"Flask\") -> None:",
+          "kind": "type annotation",
+          "file_sha256": "3591a3224d577b651e48697ef9ae9a8fff57c8f2f52dfcdf31bbaf055e04bc75",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/templating.py",
+          "line": 127,
+          "text": "def _render(app: \"Flask\", template: Template, context: t.Dict[str, t.Any]) -> str:",
+          "kind": "type annotation",
+          "file_sha256": "3591a3224d577b651e48697ef9ae9a8fff57c8f2f52dfcdf31bbaf055e04bc75",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/templating.py",
+          "line": 163,
+          "text": "    app: \"Flask\", template: Template, context: t.Dict[str, t.Any]",
+          "kind": "type annotation",
+          "file_sha256": "3591a3224d577b651e48697ef9ae9a8fff57c8f2f52dfcdf31bbaf055e04bc75",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/logging.py",
+          "line": 53,
+          "text": "def create_logger(app: \"Flask\") -> logging.Logger:",
+          "kind": "type annotation",
+          "file_sha256": "5989e0d1b2d3452fc226ba1c19c08b26989b1dfd65ca01c4fe983e2a8508438c",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 42,
+          "text": "        app: \"Flask\",",
+          "kind": "type annotation",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 242,
+          "text": "        self, app: \"Flask\", options: dict, first_registration: bool = False",
+          "kind": "type annotation",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 268,
+          "text": "    def register(self, app: \"Flask\", options: dict) -> None:",
+          "kind": "type annotation",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "requests-prepared-request": {
+      "original_anchor": {
+        "id": "requests-prepared-request",
+        "instance_id": "psf__requests-5414",
+        "identifier": "PreparedRequest",
+        "definition_path": "requests/models.py"
+      },
+      "snapshot": {
+        "id": "psf__requests-5414",
+        "repo": "psf/requests",
+        "revision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+        "code_language": "python"
+      },
+      "uses": [
+        {
+          "path": "requests/models.py",
+          "line": 258,
+          "text": "        p = PreparedRequest()",
+          "kind": "construction, same declaration file",
+          "file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "requests/models.py",
+          "line": 334,
+          "text": "        p = PreparedRequest()",
+          "kind": "construction, same declaration file",
+          "file_sha256": "c51202c76971a02910dd004688a4586ee1973ae3c354bf856a2c4575ebd1a888",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "requests/sessions.py",
+          "line": 442,
+          "text": "        p = PreparedRequest()",
+          "kind": "construction, other file",
+          "file_sha256": "66ef98f583e5c1322cc85c7586f22b737ce2c9e169b853ea70eb92bb3f01356b",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "redux-create-reducer": {
+      "original_anchor": {
+        "id": "redux-create-reducer",
+        "instance_id": "redux-toolkit-v2.2.7",
+        "identifier": "createReducer",
+        "definition_path": "packages/toolkit/src/createReducer.ts"
+      },
+      "snapshot": {
+        "id": "redux-toolkit-v2.2.7",
+        "repo": "reduxjs/redux-toolkit",
+        "revision": "75b4f698e1c58efa6b19096abe5850da0a431da0",
+        "code_language": "typescript"
+      },
+      "uses": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "line": 709,
+          "text": "      return createReducer(options.initialState, (builder) => {",
+          "kind": "runtime call",
+          "file_sha256": "01e65376dd18f255df65cd94676aa1ede9f7a94fa304dfdfb1415400d45555ae",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "axum-router": {
+      "original_anchor": {
+        "id": "axum-router",
+        "instance_id": "axum-v0.7.9",
+        "identifier": "Router",
+        "definition_path": "axum/src/routing/mod.rs"
+      },
+      "snapshot": {
+        "id": "axum-v0.7.9",
+        "repo": "tokio-rs/axum",
+        "revision": "9983bc1da460becd3a0f08c513d610411e84dd43",
+        "code_language": "rust"
+      },
+      "uses": [
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 66,
+          "text": "impl<S> Clone for Router<S> {",
+          "kind": "trait implementation",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 81,
+          "text": "impl<S> Default for Router<S>",
+          "kind": "trait implementation",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 90,
+          "text": "impl<S> fmt::Debug for Router<S> {",
+          "kind": "trait implementation",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 508,
+          "text": "    impl Service<IncomingStream<'_>> for Router<()> {",
+          "kind": "trait implementation",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 525,
+          "text": "impl<B> Service<Request<B>> for Router<()>",
+          "kind": "trait implementation",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 111,
+          "text": "            Router {",
+          "kind": "construction in macro expansion",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 124,
+          "text": "            Router {",
+          "kind": "construction in macro expansion",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 177,
+          "text": "        let service = match try_downcast::<Router<S>, _>(service) {",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 195,
+          "text": "    pub fn nest(self, path: &str, router: Router<S>) -> Self {",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 232,
+          "text": "        R: Into<Router<S>>,",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 237,
+          "text": "        let other: Router<S> = other.into();",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 281,
+          "text": "    pub fn layer<L>(self, layer: L) -> Router<S>",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 370,
+          "text": "    pub fn with_state<S2>(self, state: S) -> Router<S2> {",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 550,
+          "text": "    router: &'a mut Router<S>,",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 589,
+          "text": "    router: Router<S>,",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 595,
+          "text": "    Router<S>: Clone,",
+          "kind": "type use",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 565,
+          "text": "        <Router as Service<Request<B>>>::poll_ready(self.router, cx)",
+          "kind": "qualified trait call",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "line": 616,
+          "text": "        <Router as Service<Request<B>>>::poll_ready(&mut self.router, cx)",
+          "kind": "qualified trait call",
+          "file_sha256": "b79b10d6b5aa29bca2f4ea71d060a23d7ae48f16dd2424b5d63321009357f761",
+          "same_file_as_declaration": true
+        }
+      ]
+    },
+    "gin-handlers-chain": {
+      "original_anchor": {
+        "id": "gin-handlers-chain",
+        "instance_id": "gin-v1.10.0",
+        "identifier": "HandlersChain",
+        "definition_path": "gin.go"
+      },
+      "snapshot": {
+        "id": "gin-v1.10.0",
+        "repo": "gin-gonic/gin",
+        "revision": "75ccf94d605a05fe24817fc2f166f6f2959d5cea",
+        "code_language": "go"
+      },
+      "uses": [
+        {
+          "path": "gin.go",
+          "line": 57,
+          "text": "func (c HandlersChain) Last() HandlerFunc {",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gin.go",
+          "line": 166,
+          "text": "\tallNoRoute       HandlersChain",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gin.go",
+          "line": 167,
+          "text": "\tallNoMethod      HandlersChain",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gin.go",
+          "line": 168,
+          "text": "\tnoRoute          HandlersChain",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gin.go",
+          "line": 169,
+          "text": "\tnoMethod         HandlersChain",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gin.go",
+          "line": 336,
+          "text": "func (engine *Engine) addRoute(method, path string, handlers HandlersChain) {",
+          "kind": "type use, same declaration file",
+          "file_sha256": "b396db448f7ac685ae9384a0a6bc9712d1dc7b269928cef0ccec91c8c9e879cb",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "routergroup.go",
+          "line": 56,
+          "text": "\tHandlers HandlersChain",
+          "kind": "type use, other file",
+          "file_sha256": "3f3afe7b063f357c896a595744f88d5c4f75c59f87e0368c0066607721af7440",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "routergroup.go",
+          "line": 86,
+          "text": "func (group *RouterGroup) handle(httpMethod, relativePath string, handlers HandlersChain) IRoutes {",
+          "kind": "type use, other file",
+          "file_sha256": "3f3afe7b063f357c896a595744f88d5c4f75c59f87e0368c0066607721af7440",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "routergroup.go",
+          "line": 241,
+          "text": "func (group *RouterGroup) combineHandlers(handlers HandlersChain) HandlersChain {",
+          "kind": "type use, other file",
+          "file_sha256": "3f3afe7b063f357c896a595744f88d5c4f75c59f87e0368c0066607721af7440",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "routergroup.go",
+          "line": 244,
+          "text": "\tmergedHandlers := make(HandlersChain, finalSize)",
+          "kind": "construction",
+          "file_sha256": "3f3afe7b063f357c896a595744f88d5c4f75c59f87e0368c0066607721af7440",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "context.go",
+          "line": 61,
+          "text": "\thandlers HandlersChain",
+          "kind": "field type",
+          "file_sha256": "6b4d7e0478a20e6ab2757ea20026c3c2d0d111fa4febb3ad22e6d3fd9391e882",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "jq-jv-array-append": {
+      "original_anchor": {
+        "id": "jq-jv-array-append",
+        "instance_id": "jq-1.7.1",
+        "identifier": "jv_array_append",
+        "definition_path": "src/jv.c"
+      },
+      "snapshot": {
+        "id": "jq-1.7.1",
+        "repo": "jqlang/jq",
+        "revision": "71c2ab509a8628dbbad4bc7b3f98a64aa90d3297",
+        "code_language": "c"
+      },
+      "uses": [
+        {
+          "path": "src/jv.c",
+          "line": 943,
+          "text": "      r = jv_array_append(r, jv_array_get(jv_copy(a), i));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1013,
+          "text": "    a = jv_array_append(a, elem);",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1038,
+          "text": "      res = jv_array_append(res, jv_number(idx));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1285,
+          "text": "      a = jv_array_append(a, jv_number(p - jstr));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1309,
+          "text": "      a = jv_array_append(a, jv_string_append_codepoint(jv_string(\"\"), c));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1315,
+          "text": "      a = jv_array_append(a, jv_string_sized(p, s - p));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1318,
+          "text": "        a = jv_array_append(a, jv_string(\"\"));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/jv.c",
+          "line": 1334,
+          "text": "    a = jv_array_append(a, jv_number(c));",
+          "kind": "runtime call, same declaration file",
+          "file_sha256": "24e3c44185c11d1cdbac5df2fe5a562d759ddf0862afe00b15875e1fd95b8056",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 238,
+          "text": "  return jv_array_append(ret, jv_number(i));",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 249,
+          "text": "  return jv_array_append(ret, jv_number(sign));",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 345,
+          "text": "        out = jv_array_append(out, jv_copy(x));",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 955,
+          "text": "          captures = jv_array_append(captures, cap);",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 959,
+          "text": "        result = jv_array_append(result, match);",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 998,
+          "text": "          captures = jv_array_append(captures, cap);",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 1012,
+          "text": "        captures = jv_array_append(captures,cap);",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 1016,
+          "text": "      result = jv_array_append(result, match);",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 1477,
+          "text": "    r = jv_array_append(r, jv_string(end));",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/builtin.c",
+          "line": 1879,
+          "text": "  jv list = jv_array_append(block_list_funcs(builtins, 1), jv_string(\"builtins/0\"));",
+          "kind": "runtime call, other file",
+          "file_sha256": "73848bc19dd11ce1d4bebcd08e9096714246b40440956729db7057d9f6e1a45e",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 350,
+          "text": "    a = jv_array_append(a, jv_number(42));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 354,
+          "text": "    jv a2 = jv_array_append(jv_array(), jv_number(42));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 361,
+          "text": "    a2 = jv_array_append(jv_array(), jv_number(19));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 368,
+          "text": "    a = jv_array_append(a, jv_copy(a));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 389,
+          "text": "    sub2 = jv_array_append(sub2, jv_number(19));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 403,
+          "text": "    sub2 = jv_array_append(sub2, jv_number(200));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 408,
+          "text": "    jv a3 = jv_array_append(jv_copy(a), jv_number(19));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 417,
+          "text": "    a4 = jv_array_append(a4, jv_number(1));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 418,
+          "text": "    a4 = jv_array_append(a4, jv_number(2));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 420,
+          "text": "    a4 = jv_array_append(a4, jv_number(3));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/jq_test.c",
+          "line": 423,
+          "text": "    a4 = jv_array_append(a4, jv_number(4));",
+          "kind": "runtime call in a source test",
+          "file_sha256": "7912f1e71d27a942b66f550dfb8a8bd7d6857f610e70a121f224d5ac7b17fad2",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "express-route": {
+      "original_anchor": {
+        "id": "express-route",
+        "instance_id": "express-4.21.2",
+        "identifier": "Route",
+        "definition_path": "lib/router/route.js"
+      },
+      "snapshot": {
+        "id": "express-4.21.2",
+        "repo": "expressjs/express",
+        "revision": "1faf228935aa0a13111f92c28ee795be64ce3f0f",
+        "code_language": "javascript"
+      },
+      "uses": [
+        {
+          "path": "lib/router/route.js",
+          "line": 58,
+          "text": "Route.prototype._handles_method = function _handles_method(method) {",
+          "kind": "runtime prototype mutation",
+          "file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "lib/router/route.js",
+          "line": 80,
+          "text": "Route.prototype._options = function _options() {",
+          "kind": "runtime prototype mutation",
+          "file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "lib/router/route.js",
+          "line": 101,
+          "text": "Route.prototype.dispatch = function dispatch(req, res, done) {",
+          "kind": "runtime prototype mutation",
+          "file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "lib/router/route.js",
+          "line": 184,
+          "text": "Route.prototype.all = function all() {",
+          "kind": "runtime prototype mutation",
+          "file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "lib/router/route.js",
+          "line": 207,
+          "text": "  Route.prototype[method] = function(){",
+          "kind": "runtime prototype mutation",
+          "file_sha256": "86db123570815a63dc23aa88d73e1b3dce908692ac2e3cf20fa350d69de63337",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "lib/router/index.js",
+          "line": 503,
+          "text": "  var route = new Route(path);",
+          "kind": "construction, other file",
+          "file_sha256": "19c5ca9b025396612dbe464d07fbe7104ff9170c4d6a1c7e5507df4dbbf4d5cb",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "gson-type-token": {
+      "original_anchor": {
+        "id": "gson-type-token",
+        "instance_id": "gson-2.11.0",
+        "identifier": "TypeToken",
+        "definition_path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java"
+      },
+      "snapshot": {
+        "id": "gson-2.11.0",
+        "repo": "google/gson",
+        "revision": "828a97be0f8d58108b140b77df8dc76b657f4a87",
+        "code_language": "java"
+      },
+      "uses": [
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 99,
+          "text": "      if (parameterized.getRawType() == TypeToken.class) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 109,
+          "text": "    else if (superclass == TypeToken.class) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 214,
+          "text": "  public boolean isAssignableFrom(TypeToken<?> token) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 346,
+          "text": "    return o instanceof TypeToken<?> && $Gson$Types.equals(type, ((TypeToken<?>) o).type);",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 355,
+          "text": "  public static TypeToken<?> get(Type type) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 360,
+          "text": "  public static <T> TypeToken<T> get(Class<T> type) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 385,
+          "text": "  public static TypeToken<?> getParameterized(Type rawType, Type... typeArguments) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 449,
+          "text": "  public static TypeToken<?> getArray(Type componentType) {",
+          "kind": "class literal or type use",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 356,
+          "text": "    return new TypeToken<>(type);",
+          "kind": "construction, same declaration file",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 361,
+          "text": "    return new TypeToken<>(type);",
+          "kind": "construction, same declaration file",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 443,
+          "text": "    return new TypeToken<>($Gson$Types.newParameterizedTypeWithOwner(null, rawType, typeArguments));",
+          "kind": "construction, same declaration file",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "line": 450,
+          "text": "    return new TypeToken<>($Gson$Types.arrayOf(componentType));",
+          "kind": "construction, same declaration file",
+          "file_sha256": "7cad9a466bf5c2236cd2696a5d8d19f7f6859e06d58bd626b7fe82f5709b83db",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "line": 106,
+          "text": "  public <T> TypeAdapter<T> create(Gson gson, final TypeToken<T> type) {",
+          "kind": "type use, other file",
+          "file_sha256": "e6c7751690c7718a1b418401f94f89a6d7ab3ee71df9ae257f80109fc2586b98",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "line": 182,
+          "text": "      final TypeToken<?> fieldType,",
+          "kind": "type use, other file",
+          "file_sha256": "e6c7751690c7718a1b418401f94f89a6d7ab3ee71df9ae257f80109fc2586b98",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "line": 317,
+          "text": "      Gson context, TypeToken<?> type, Class<?> raw, boolean blockInaccessible, boolean isRecord) {",
+          "kind": "type use, other file",
+          "file_sha256": "e6c7751690c7718a1b418401f94f89a6d7ab3ee71df9ae257f80109fc2586b98",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "line": 400,
+          "text": "                TypeToken.get(fieldType),",
+          "kind": "static method call",
+          "file_sha256": "e6c7751690c7718a1b418401f94f89a6d7ab3ee71df9ae257f80109fc2586b98",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "line": 421,
+          "text": "      type = TypeToken.get($Gson$Types.resolve(type.getType(), raw, raw.getGenericSuperclass()));",
+          "kind": "static method call",
+          "file_sha256": "e6c7751690c7718a1b418401f94f89a6d7ab3ee71df9ae257f80109fc2586b98",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 182,
+          "text": "  private final ThreadLocal<Map<TypeToken<?>, TypeAdapter<?>>> threadLocalAdapterResults =",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 185,
+          "text": "  private final ConcurrentMap<TypeToken<?>, TypeAdapter<?>> typeTokenCache =",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 598,
+          "text": "  public <T> TypeAdapter<T> getAdapter(TypeToken<T> type) {",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 607,
+          "text": "    Map<TypeToken<?>, TypeAdapter<?>> threadCalls = threadLocalAdapterResults.get();",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 730,
+          "text": "  public <T> TypeAdapter<T> getDelegateAdapter(TypeAdapterFactory skipPast, TypeToken<T> type) {",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1166,
+          "text": "  public <T> T fromJson(String json, TypeToken<T> typeOfT) throws JsonSyntaxException {",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1259,
+          "text": "  public <T> T fromJson(Reader json, TypeToken<T> typeOfT)",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1345,
+          "text": "  public <T> T fromJson(JsonReader reader, TypeToken<T> typeOfT)",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1459,
+          "text": "  public <T> T fromJson(JsonElement json, TypeToken<T> typeOfT) throws JsonSyntaxException {",
+          "kind": "field or parameter type",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 666,
+          "text": "    return getAdapter(TypeToken.get(type));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 928,
+          "text": "    TypeAdapter<Object> adapter = (TypeAdapter<Object>) getAdapter(TypeToken.get(typeOfSrc));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1107,
+          "text": "    T object = fromJson(json, TypeToken.get(classOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1137,
+          "text": "    return (T) fromJson(json, TypeToken.get(typeOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1199,
+          "text": "    T object = fromJson(json, TypeToken.get(classOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1230,
+          "text": "    return (T) fromJson(json, TypeToken.get(typeOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1306,
+          "text": "    return (T) fromJson(reader, TypeToken.get(typeOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1406,
+          "text": "    T object = fromJson(json, TypeToken.get(classOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "line": 1434,
+          "text": "    return (T) fromJson(json, TypeToken.get(typeOfT));",
+          "kind": "static method call",
+          "file_sha256": "85926a85e76809458c47cfd998fbcd1cbb73ce06024ca5e7de5cbee5b81392b1",
+          "same_file_as_declaration": false
+        }
+      ]
+    },
+    "flask-blueprint": {
+      "original_anchor": {
+        "id": "flask-blueprint",
+        "instance_id": "pallets__flask-5014",
+        "identifier": "Blueprint",
+        "definition_path": "src/flask/blueprints.py"
+      },
+      "snapshot": {
+        "id": "pallets__flask-5014",
+        "repo": "pallets/flask",
+        "revision": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+        "code_language": "python"
+      },
+      "uses": [
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 41,
+          "text": "        blueprint: \"Blueprint\",",
+          "kind": "type annotation, same declaration file",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 206,
+          "text": "        self._blueprints: t.List[t.Tuple[\"Blueprint\", dict]] = []",
+          "kind": "type annotation, same declaration file",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "line": 251,
+          "text": "    def register_blueprint(self, blueprint: \"Blueprint\", **options: t.Any) -> None:",
+          "kind": "type annotation, same declaration file",
+          "file_sha256": "9d296c3a0dffffbafd59ef15290a6d4c2061a470f3ad2b00709388d35d1dddc0",
+          "same_file_as_declaration": true
+        },
+        {
+          "path": "src/flask/app.py",
+          "line": 462,
+          "text": "        self.blueprints: t.Dict[str, \"Blueprint\"] = {}",
+          "kind": "type annotation, other file",
+          "file_sha256": "d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/app.py",
+          "line": 985,
+          "text": "    def register_blueprint(self, blueprint: \"Blueprint\", **options: t.Any) -> None:",
+          "kind": "type annotation, other file",
+          "file_sha256": "d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710",
+          "same_file_as_declaration": false
+        },
+        {
+          "path": "src/flask/app.py",
+          "line": 1012,
+          "text": "    def iter_blueprints(self) -> t.ValuesView[\"Blueprint\"]:",
+          "kind": "type annotation, other file",
+          "file_sha256": "d439102c7658f90f896556c557df89501f2c98ad498d6317453f10ef58508710",
+          "same_file_as_declaration": false
+        }
+      ]
+    }
+  },
+  "scorer_checks": [
+    {
+      "case_id": "reference-v2-flask-flask-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-flask-flask-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-requests-prepared-request-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-requests-prepared-request-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-redux-create-reducer-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-redux-create-reducer-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-axum-router-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-axum-router-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-gin-handlers-chain-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-gin-handlers-chain-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-jq-jv-array-append-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-jq-jv-array-append-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-express-route-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-express-route-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-gson-type-token-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-gson-type-token-zh",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-flask-blueprint-en",
+      "actual_use_hit": 1.0
+    },
+    {
+      "case_id": "reference-v2-flask-blueprint-zh",
+      "actual_use_hit": 1.0
+    }
+  ],
+  "negative_probes": [
+    "Flask declaration plus docstring construction example rejected",
+    "PreparedRequest own declaration and docstring rejected"
+  ],
+  "positive_probe": "PreparedRequest.copy same-file constructor call accepted"
+}

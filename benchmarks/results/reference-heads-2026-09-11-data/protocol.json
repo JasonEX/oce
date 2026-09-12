@@ -1,0 +1,17 @@
+{
+  "foundation_commit": "1fc581fe268fcbf1b71479c6c86bacf062b73777",
+  "source_sha256": "8e6e3bccbbc61d032721e6235041b2c9d123bef4d3442448e9592cfee7a10a38",
+  "hypothesis": "Only reference head admission and ordering: verified body uses before import/prose; no whole-file penalty for calls or types beside their declarations.",
+  "scope": [
+    "prior/head stage only",
+    "unchanged route, recall, fusion, selection, relation assembly, index, model configuration"
+  ],
+  "development_manifest_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211",
+  "acceptance": {
+    "development": "v2 catalog primary Top-1 improves; audit unlisted valid head uses separately without changing frozen labels",
+    "guards": "same-index paired short 240, semantic 39, project 35, SWE development 13; existing tolerances: one short case, .01 semantic nDCG, one SWE issue, one project case; project distractor_head must not increase; report every changed case and stratified metrics",
+    "fresh_validation": "if development and guards pass, freeze source then prepare new target families not used for tuning; same-index paired validation with no tuning on results; assistant source labels are not an independent human audit",
+    "cost": "characters and p50 separate; moving-window token differences invalid when negative; no speed/cost claims"
+  },
+  "timeouts": "old 3 remain unresolved; retain operational logs for any new failures; no deadline increase or speculative SQL edits"
+}

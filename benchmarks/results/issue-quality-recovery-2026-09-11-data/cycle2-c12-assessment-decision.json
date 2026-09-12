@@ -1,0 +1,29 @@
+{
+  "decided_at_utc": "2026-09-11T20:19:05.505532+00:00",
+  "decision": "Freeze C12 for independent assessment; not full utility acceptance or release approval",
+  "source_sha256": "23a7617dcb0c7e21095fb6098b7a9613100c9ab465f84550d9c4c5b32fa89cc2",
+  "baseline_source_sha256": "6991af689d2b98ead75a05e527502c93ef30290094093c4ab2d65278fbfa795f",
+  "rationale": [
+    "Equivalent scoped SQL repair has deterministic regression checks and repeated HTTP evidence, without a new ranking rule.",
+    "Full implementation checks and paired development provenance complete. Native issue Top-1 and nDCG, main/heldout relation coverage, and CSN improve; primary Hit@3 and test recall are retained.",
+    "Proceed to the preselected case-disjoint validation to assess generalisation without further development tuning."
+  ],
+  "unwaived_failures": [
+    "Short Top-1 loses 15/240 and MRR decreases; this exceeds the pre-existing tolerance. Fourteen heads have independently audited same-file uses that the frozen truth excludes; one is Flask prose. Frozen scores and labels remain unchanged.",
+    "Main-project Top-1 loses 2/35, beyond its existing one-case tolerance: a valid same-file consumer leads for one case, while a type test leads the preferred runtime test for the other. Six correlated variants repeat the latter loss.",
+    "Upstream relation recall, short path recall, native diagnostic core-region recall, and several semantic strata decrease."
+  ],
+  "runtime_limits": [
+    "Both sources emit one dense warm-up failure warning.",
+    "The baseline emits one exact-symbol timeout, associated by sequential request order with development case pylint-dev__pylint-7080. Primary and nDCG values match C12; its counterfactual full-response effect is unknown.",
+    "C12 has zero observed symbol/lexical timeout and connection-cleanup warnings. HTTP success alone does not imply complete evidence.",
+    "Moving 24-hour usage-counter deltas are INVALID for token, cost and call comparisons, including positive deltas."
+  ],
+  "validation_policy": "Keep source fixed; run both 18-case case-disjoint batches on overlapping repositories and the previously aggregate-exposed 20-case regression; inspect only aggregates after both sources complete; no tuning on validation outcomes.",
+  "artifact_sha256": {
+    "cycle2-c12-development-comparison.json": "3989373114225d335484ac31c6f8d5bb28f47921c721ddd54ee2bce69dac452a",
+    "cycle2-c12-development-lane-health.json": "9aa26ae4bb4702f52404f66ed6ef749e68a25767810183e29653852af25558e5",
+    "c12-baseline-timeout-development-audit.json": "049c1090a5b27c9ad10db6b5940400a28b7975725c6b78e14ce720576833724e",
+    "c12-implementation-proof.json": "263672dd608bad68aefc2c30ec4704de5b074043ba10937c8e95a92e4930e853"
+  }
+}

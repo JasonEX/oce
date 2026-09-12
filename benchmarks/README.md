@@ -149,6 +149,36 @@ The [follow-up evaluation](results/state-machine-followup-2026-09-10.md) records
 the subsequent test-to-implementation and explicit-implementor repairs. It keeps
 the earlier semantic losses visible without restoring filename-specific priors
 to recover scores on those cases.
+The [global simplification evaluation](results/state-machine-simplification-2026-09-10.md)
+records the subsequent unified fusion/budget candidate, six optional-capability
+ablations, and a frozen 20-issue external comparison. It retains lower observed
+latency alongside head-order and ranking regressions; the candidate is not
+qualified as a quality-preserving default release.
+These reports preserve their original run-time status and source hashes.
+Statements about uncommitted work or publication describe the recorded run;
+archiving a report does not adopt its candidate or change its original scores.
+The [retrieval quality recovery](results/retrieval-quality-recovery-2026-09-11.md)
+records the completed C6–C12 experiments, including the failed final validation.
+Those archived candidates do not describe the current working tree.
+The [repair isolation](results/retrieval-isolation-2026-09-11.md) retains the
+original ranking with shared SQL, cancellation, insertion and admission repairs.
+Three separate stage hypotheses were screened on 18 development issues and 35
+project cases; none established enough benefit to adopt. Historical lexical
+timeouts remain unreproduced, so the report makes no root-cause or speedup claim.
+The [reference head experiment](results/reference-heads-2026-09-11.md) follows the
+separate foundation commit `1fc581f`. The v2 development catalog improves, but
+six Bash reference regressions and a wrong qualified caller prevent adoption.
+Its four paired guards, source audit of legacy-label conflicts, and opt-in SQL
+timeout observer are retained; no fresh validation batch was consumed.
+
+The [reference region contract v2](results/reference-region-contract-v2-2026-09-11.md)
+uses actual source-use lines, including uses in a declaration's file. Its separate
+[manifest](blackbox/reference_regions_v2_2026_09_11.json) is a reviewed development
+catalog; old short-query labels and scores remain unchanged. Run it with:
+
+```bash
+uv run python -m benchmarks.blackbox.project_cases --cases benchmarks/blackbox/reference_regions_v2_2026_09_11.json run --api-url http://127.0.0.1:8986 --label reference-v2 --output /tmp/reference-v2.json
+```
 
 ### Upstream question supplement
 
@@ -383,6 +413,20 @@ The harness joins pinned, SHA256-verified copies of:
 | `development` | 13 issues / 5 repositories | paired strategy iteration |
 | `standard` | 53 issues / 12 repositories | broader repository mix |
 | `verified` | 451 joined issues | milestone evaluation |
+
+An external case manifest can freeze a selection before implementation:
+
+```bash
+uv run python -m benchmarks.blackbox.swe_explore --case-manifest benchmarks/blackbox/swe_validation_2026_09_10.json run --api-url http://127.0.0.1:8986 --output /tmp/swe-validation.json
+```
+
+Each entry binds the native issue, repository revision, query and truth digest. The
+runner rejects drift instead of silently substituting another case. The
+[September 10 validation protocol](results/simplification-validation-protocol-2026-09-10.md)
+defines this selection's exposure boundary and aggregate-only review. Once results
+have informed a change, treat the set as development evidence in later iterations.
+This specific batch has now been evaluated and its aggregate results inspected;
+it must not be presented as untouched validation for further tuning.
 
 `edit_*` measures gold-patch files and changed base-tree lines. `core_*` and
 official `swe_explore_*` measure useful trajectory context. Neither truth source

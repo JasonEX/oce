@@ -1,0 +1,99 @@
+{
+  "method": "Map the sole timeout to the next sequential completed retrieve response; all 631 responses match the ordered report case inventory. This associates the warning with a development request but does not establish its counterfactual quality effect.",
+  "server_log_sha256": "34f7032fb90eb37cccb4de63333381b86fd5c672288b244c463b8b98c04606a8",
+  "events": [
+    {
+      "completed_queries_before_warning": 403,
+      "suite": "swe",
+      "case_id": "pylint-dev__pylint-7080",
+      "baseline_metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.3333333333333333,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.3333333333333333,
+        "swe_explore_precision": 0.02,
+        "swe_explore_recall": 0.008456659619450317,
+        "swe_explore_f1_score": 0.01188707280832095,
+        "swe_explore_hit_file_rate": 0.3333333333333333,
+        "swe_explore_noise_file_rate": 0.9230769230769231,
+        "swe_explore_hit_region_rate": 0.3333333333333333,
+        "swe_explore_noise_region_rate": 0.9230769230769231,
+        "swe_explore_weighted_core_coverage": 0.02484472049689441,
+        "swe_explore_context_efficiency": 0.02,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.008456659619450317,
+        "swe_explore_recall_at_300": 0.008456659619450317,
+        "swe_explore_recall_at_500": 0.008456659619450317,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "candidate_metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.3333333333333333,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.3333333333333333,
+        "swe_explore_precision": 0.01951219512195122,
+        "swe_explore_recall": 0.008456659619450317,
+        "swe_explore_f1_score": 0.011799410029498525,
+        "swe_explore_hit_file_rate": 0.3333333333333333,
+        "swe_explore_noise_file_rate": 0.8461538461538461,
+        "swe_explore_hit_region_rate": 0.3333333333333333,
+        "swe_explore_noise_region_rate": 0.8461538461538461,
+        "swe_explore_weighted_core_coverage": 0.02484472049689441,
+        "swe_explore_context_efficiency": 0.08617886178861789,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.008456659619450317,
+        "swe_explore_recall_at_300": 0.008456659619450317,
+        "swe_explore_recall_at_500": 0.008456659619450317,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "baseline_elapsed_ms": 4112,
+      "candidate_elapsed_ms": 4014,
+      "baseline_retrieved": [
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 49,
+          "end": 60
+        },
+        {
+          "path": "pylint/config/environment_variable.py",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "pylint/checkers/base/name_checker/checker.py",
+          "start": 147,
+          "end": 187
+        }
+      ],
+      "candidate_retrieved": [
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 49,
+          "end": 60
+        },
+        {
+          "path": "pylint/config/environment_variable.py",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "examples/pyproject.toml",
+          "start": 324,
+          "end": 456
+        }
+      ]
+    }
+  ]
+}

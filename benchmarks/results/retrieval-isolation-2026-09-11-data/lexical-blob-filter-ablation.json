@@ -1,0 +1,633 @@
+{
+  "purpose": "Internal read-only query-plan ablation; no production edit and no utility claim",
+  "queries": [
+    {
+      "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+      "variants": {
+        "original": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blob_chunks.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            139.07477096654475,
+            127.56549590267241,
+            123.1881461571902
+          ],
+          "vm_steps": [
+            1340000,
+            1343000,
+            1343000
+          ]
+        },
+        "blob-filter": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blobs.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            123.76924697309732,
+            122.56845692172647,
+            125.8250898681581
+          ],
+          "vm_steps": [
+            1343000,
+            1343000,
+            1344000
+          ]
+        }
+      },
+      "rows": 90,
+      "all_rows_scores_order_identical": true
+    },
+    {
+      "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+      "variants": {
+        "original": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blob_chunks.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            94.5115638896823,
+            72.4734989926219,
+            70.45861589722335
+          ],
+          "vm_steps": [
+            849000,
+            848000,
+            848000
+          ]
+        },
+        "blob-filter": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blobs.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            70.7357560750097,
+            71.55342306941748,
+            72.14330392889678
+          ],
+          "vm_steps": [
+            848000,
+            848000,
+            848000
+          ]
+        }
+      },
+      "rows": 90,
+      "all_rows_scores_order_identical": true
+    },
+    {
+      "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+      "variants": {
+        "original": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blob_chunks.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            284.3933869153261,
+            264.1443710308522,
+            269.6578719187528
+          ],
+          "vm_steps": [
+            2522000,
+            2520000,
+            2520000
+          ]
+        },
+        "blob-filter": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blobs.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            264.2456709872931,
+            269.5005650166422,
+            266.92212792113423
+          ],
+          "vm_steps": [
+            2520000,
+            2521000,
+            2520000
+          ]
+        }
+      },
+      "rows": 90,
+      "all_rows_scores_order_identical": true
+    },
+    {
+      "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+      "variants": {
+        "original": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blob_chunks.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            357.57088102400303,
+            315.24603092111647,
+            320.36726688966155
+          ],
+          "vm_steps": [
+            2673000,
+            2674000,
+            2673000
+          ]
+        },
+        "blob-filter": {
+          "sql": "SELECT chunk_lexical.content_hash, -bm25(chunk_lexical) AS score \nFROM chunk_lexical \nWHERE chunk_lexical.terms MATCH ? AND chunk_lexical.content_hash IN (SELECT blob_chunks.content_hash \nFROM blob_chunks JOIN blobs ON blobs.blob_name = blob_chunks.blob_name \nWHERE blobs.status = ? AND blobs.blob_name IN (SELECT chain_members.blob_name \nFROM chain_members JOIN chains ON chains.chain_id = chain_members.chain_id \nWHERE chain_members.chain_id = ? AND chains.version = ?)) ORDER BY score DESC, chunk_lexical.content_hash\n LIMIT ? OFFSET ?",
+          "plan": [
+            [
+              7,
+              0,
+              132,
+              "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+            ],
+            [
+              15,
+              0,
+              0,
+              "LIST SUBQUERY 2"
+            ],
+            [
+              20,
+              15,
+              61,
+              "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+            ],
+            [
+              30,
+              15,
+              0,
+              "LIST SUBQUERY 1"
+            ],
+            [
+              35,
+              30,
+              46,
+              "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+            ],
+            [
+              43,
+              30,
+              56,
+              "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+            ],
+            [
+              53,
+              30,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              61,
+              15,
+              56,
+              "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+            ],
+            [
+              69,
+              15,
+              0,
+              "CREATE BLOOM FILTER"
+            ],
+            [
+              91,
+              0,
+              0,
+              "USE TEMP B-TREE FOR ORDER BY"
+            ]
+          ],
+          "times_ms": [
+            318.791352910921,
+            316.38197880238295,
+            320.4900741111487
+          ],
+          "vm_steps": [
+            2674000,
+            2674000,
+            2674000
+          ]
+        }
+      },
+      "rows": 90,
+      "all_rows_scores_order_identical": true
+    }
+  ]
+}

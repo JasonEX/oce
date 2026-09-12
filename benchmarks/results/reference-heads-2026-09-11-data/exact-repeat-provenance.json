@@ -1,0 +1,14 @@
+{
+  "case_id": "pylint-dev__pylint-7080",
+  "case_sha256": "d987b71ed4d5809cb2b6320ff58cb4773a36dc5b1a3241531a3d18199beaf109",
+  "query_sha256": "82319497af035b3cdcd4ee71b5fccd578074989dfa157dc54ecc5bf8ea76ceab",
+  "source_sha256": "8e6e3bccbbc61d032721e6235041b2c9d123bef4d3442448e9592cfee7a10a38",
+  "observer_at_repeat_sha256": "93587854faf90ed82abf1015175f07fbd7694f7728df1843e7287f9356c8f0d7",
+  "retained_observer_sha256": "14487d93d10e8371b7775407adf52e8b3dde998ffed9fed91c326b39ccde26dd",
+  "observer_functions_ast_unchanged_after_formatting": true,
+  "runner_sha256": "3ce1a0d961cc8a9035fdaedae23c1f952dd7de15289adcd94bf458c5da169254",
+  "responses": {
+    "/home/yuqian/.cache/oce/bench-runs/reference-heads-2026-09-11/foundation-exact-repeat-1-pylint-dev__pylint-7080.json": "b7d95d7dbfe53f09dbc0ccd92dab874d53348e1998a57ce57d0233f2d5019230",
+    "/home/yuqian/.cache/oce/bench-runs/reference-heads-2026-09-11/foundation-exact-repeat-2-pylint-dev__pylint-7080.json": "0a0e270df7079d0b0339fb5b67319afa320e471186c446092ea1816cb63c8154"
+  }
+}

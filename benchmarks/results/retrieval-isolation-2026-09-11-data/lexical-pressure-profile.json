@@ -1,0 +1,553 @@
+{
+  "purpose": "INTERNAL CONTROLLED PRESSURE; four concurrent lexical searches exceed the historical one-request-at-a-time workload and do not establish its cause",
+  "trace_sha256": "ffcbcbfd6b83239a9580e68581074105f423ff1598c7f383c447d6fcfb158abd",
+  "query_plans": {
+    "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba": [
+      [
+        7,
+        0,
+        132,
+        "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+      ],
+      [
+        15,
+        0,
+        0,
+        "LIST SUBQUERY 2"
+      ],
+      [
+        20,
+        15,
+        61,
+        "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+      ],
+      [
+        30,
+        15,
+        0,
+        "LIST SUBQUERY 1"
+      ],
+      [
+        35,
+        30,
+        46,
+        "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+      ],
+      [
+        43,
+        30,
+        56,
+        "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+      ],
+      [
+        53,
+        30,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        61,
+        15,
+        56,
+        "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+      ],
+      [
+        69,
+        15,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        91,
+        0,
+        0,
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    ],
+    "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43": [
+      [
+        7,
+        0,
+        132,
+        "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+      ],
+      [
+        15,
+        0,
+        0,
+        "LIST SUBQUERY 2"
+      ],
+      [
+        20,
+        15,
+        61,
+        "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+      ],
+      [
+        30,
+        15,
+        0,
+        "LIST SUBQUERY 1"
+      ],
+      [
+        35,
+        30,
+        46,
+        "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+      ],
+      [
+        43,
+        30,
+        56,
+        "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+      ],
+      [
+        53,
+        30,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        61,
+        15,
+        56,
+        "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+      ],
+      [
+        69,
+        15,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        91,
+        0,
+        0,
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    ],
+    "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f": [
+      [
+        7,
+        0,
+        132,
+        "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+      ],
+      [
+        15,
+        0,
+        0,
+        "LIST SUBQUERY 2"
+      ],
+      [
+        20,
+        15,
+        61,
+        "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+      ],
+      [
+        30,
+        15,
+        0,
+        "LIST SUBQUERY 1"
+      ],
+      [
+        35,
+        30,
+        46,
+        "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+      ],
+      [
+        43,
+        30,
+        56,
+        "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+      ],
+      [
+        53,
+        30,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        61,
+        15,
+        56,
+        "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+      ],
+      [
+        69,
+        15,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        91,
+        0,
+        0,
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    ],
+    "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3": [
+      [
+        7,
+        0,
+        132,
+        "SCAN chunk_lexical VIRTUAL TABLE INDEX 0:M1"
+      ],
+      [
+        15,
+        0,
+        0,
+        "LIST SUBQUERY 2"
+      ],
+      [
+        20,
+        15,
+        61,
+        "SEARCH blobs USING INDEX ix_blobs_status (status=?)"
+      ],
+      [
+        30,
+        15,
+        0,
+        "LIST SUBQUERY 1"
+      ],
+      [
+        35,
+        30,
+        46,
+        "SEARCH chains USING INDEX sqlite_autoindex_chains_1 (chain_id=?)"
+      ],
+      [
+        43,
+        30,
+        56,
+        "SEARCH chain_members USING COVERING INDEX sqlite_autoindex_chain_members_1 (chain_id=?)"
+      ],
+      [
+        53,
+        30,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        61,
+        15,
+        56,
+        "SEARCH blob_chunks USING COVERING INDEX sqlite_autoindex_blob_chunks_1 (blob_name=?)"
+      ],
+      [
+        69,
+        15,
+        0,
+        "CREATE BLOOM FILTER"
+      ],
+      [
+        91,
+        0,
+        0,
+        "USE TEMP B-TREE FOR ORDER BY"
+      ]
+    ]
+  },
+  "phases": [
+    {
+      "concurrent": false,
+      "batches": [
+        [
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 275.949,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 162.672,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 457.011,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 581.333,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ],
+        [
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 216.235,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 146.662,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 367.712,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 0,
+            "concurrent": false,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 531.756,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ]
+      ],
+      "recovery": {
+        "phase": 0,
+        "concurrent": false,
+        "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+        "deadline_seconds": 2,
+        "elapsed_ms": 214.235,
+        "count": 30,
+        "error": null,
+        "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+      }
+    },
+    {
+      "concurrent": true,
+      "batches": [
+        [
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 273.263,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 198.246,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 440.144,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 586.855,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ],
+        [
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 307.276,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 194.297,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 511.493,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 1,
+            "concurrent": true,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 663.448,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ]
+      ],
+      "recovery": {
+        "phase": 1,
+        "concurrent": true,
+        "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+        "deadline_seconds": 2,
+        "elapsed_ms": 219.553,
+        "count": 30,
+        "error": null,
+        "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+      }
+    },
+    {
+      "concurrent": false,
+      "batches": [
+        [
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 217.401,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 157.923,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 370.374,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 528.547,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ],
+        [
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+            "deadline_seconds": 2,
+            "elapsed_ms": 210.962,
+            "count": 30,
+            "error": null,
+            "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "70c79d6da0284ce81f9e951dbab5c77d94bf8a27cd156f54169b424d75d11e43",
+            "deadline_seconds": 2,
+            "elapsed_ms": 148.457,
+            "count": 30,
+            "error": null,
+            "signature": "17b260df8105036a0d680cc5c6c460dc3fbca89eade6bea8b58da06b2ad54030"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "c01334ec1b21a089c650cf2e7b96ab974469076bf1260d23885799e1f0a7551f",
+            "deadline_seconds": 2,
+            "elapsed_ms": 366.518,
+            "count": 30,
+            "error": null,
+            "signature": "0b3d12028273c1eb75878d044c3e164a5ce2b02b1667d2ee7c6f1cdecb591421"
+          },
+          {
+            "phase": 2,
+            "concurrent": false,
+            "query": "603fcbce6271954ca24171d4ae19dcaba962abf158fc04f53d3fd18dbcd20cb3",
+            "deadline_seconds": 2,
+            "elapsed_ms": 534.25,
+            "count": 30,
+            "error": null,
+            "signature": "5111bdba640edda21e2aedc070cc959f5c13109e718967d95b2752eed2567404"
+          }
+        ]
+      ],
+      "recovery": {
+        "phase": 2,
+        "concurrent": false,
+        "query": "c26c8dc258dc5cb9dd34f30bdbaaed3f19a8ada137e0f19d81d7f57dc5f11bba",
+        "deadline_seconds": 2,
+        "elapsed_ms": 227.382,
+        "count": 30,
+        "error": null,
+        "signature": "63c0e029606a7ae20cf576a4f067b5cf7fc2b75fcbdc6a5b33d9b988605d8915"
+      }
+    }
+  ]
+}

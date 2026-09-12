@@ -1,0 +1,52 @@
+{
+  "created_at_utc": "2026-09-11T20:29:15.216891+00:00",
+  "assessment": "C12 implementation verified; NOT accepted as a quality-preserving default replacement. Development guards fail and new validation declines.",
+  "candidate_source_sha256": "23a7617dcb0c7e21095fb6098b7a9613100c9ab465f84550d9c4c5b32fa89cc2",
+  "baseline_source_sha256": "6991af689d2b98ead75a05e527502c93ef30290094093c4ab2d65278fbfa795f",
+  "candidate_label": "cycle2-c12-main",
+  "baseline_label": "cycle2-baseline-sql2-main",
+  "freeze_sha256": "f3f83e31aee4d0a33fb45a0a0807821f950b542639d9edc574ba26ecdbbe7f7a",
+  "frozen_at_utc": "2026-09-11T20:19:05.817170+00:00",
+  "production_and_unit_sources_still_frozen": true,
+  "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+  "index_fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+  "units": {
+    "313": {
+      "counts": {
+        "passed": 941,
+        "skipped": 1
+      },
+      "test_file_count": 100,
+      "proof_sha256": "526057919223f2b1a6e515deea7143469d14e583afea1f8874c2a0d4771a6409"
+    },
+    "311": {
+      "counts": {
+        "passed": 941,
+        "skipped": 1
+      },
+      "test_file_count": 100,
+      "proof_sha256": "5f7ecf5fd64e2125da00e9b071c104c26dd88966c9e2c7fa73ad14ad357068b9"
+    }
+  },
+  "wheel_sha256": "63a073db91ac63d2dbe4d7de4428a2a8d6d949b75c69bdfb1ed00ab89a4e17ac",
+  "sdist_sha256": "2b77332791702c3c3671b0ac245a9699a43ba276d3adfbaab65b76292701e517",
+  "openapi_matches_baseline": true,
+  "validation_inspection": "Aggregate only, after both sources completed. No production or test edits after freeze. The 18-case new batch shares repositories with development; the 20-case batch is historical regression evidence.",
+  "measurement_limits": [
+    "Moving 24-hour external_model_tokens deltas are INVALID for cost, tokens or call-count comparison, including positive values. Raw deltas remain unchanged.",
+    "Development baseline has one exact-symbol timeout; new validation/regression candidate has three lexical timeout fallbacks across the combined run. HTTP success does not prove complete recall.",
+    "Each of the four formal runs has one dense warm-up failure warning. Latency is observed under these conditions; no universal or isolated ranking speedup is claimed.",
+    "Live PostgreSQL is not qualified: one related test is skipped in each Python version.",
+    "No direct ACE or downstream agent task-success comparison."
+  ],
+  "durable_artifact_sha256": {
+    "cycle2-c12-development-comparison.json": "3989373114225d335484ac31c6f8d5bb28f47921c721ddd54ee2bce69dac452a",
+    "cycle2-c12-validation-aggregate.json": "fd12b2c7038b02c891aeab04e90f32d78f340e9485f9219d8cbec0b2858a6ade",
+    "cycle2-c12-regression-aggregate.json": "b9e938b0cc85bd5abc54d68ec91e93d2e0faeca92c4bbf361f8a5f8a735792e3",
+    "cycle2-c12-development-lane-health.json": "9aa26ae4bb4702f52404f66ed6ef749e68a25767810183e29653852af25558e5",
+    "cycle2-c12-validation-lane-health.json": "e6dbdf96b29dd03d8515c41b4954529d3424f5c1784ead37403ce484be4368c8",
+    "cycle2-c12-assessment-decision.json": "66c517fdc7ae3cfefa631f9c97ffa24998612cf3ad3152d57c17b27391afe71f",
+    "c12-baseline-timeout-development-audit.json": "049c1090a5b27c9ad10db6b5940400a28b7975725c6b78e14ce720576833724e"
+  },
+  "raw_artifact_directory": "/home/yuqian/.cache/oce/bench-runs/issue-quality-recovery-2026-09-11"
+}

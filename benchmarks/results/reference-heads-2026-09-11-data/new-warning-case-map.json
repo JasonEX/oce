@@ -1,0 +1,10 @@
+{
+  "association_only": true,
+  "warnings": [
+    {
+      "warning": "2026-09-11 14:59:09.172 | WARNING  | oce.infrastructure.persistence.symbol_search_store:search_exact:201 - Exact symbol lookup timed out; returning no exact evidence",
+      "next_completed_case": "pylint-dev__pylint-7080",
+      "completed_search_count": 323
+    }
+  ]
+}

@@ -1,0 +1,848 @@
+{
+  "purpose": "Development only; frozen v2 catalog is bounded and unchanged",
+  "source_sha256": "bce4d190e402852a2111348986a86f24a7f21487ca008973d438d12138074a32",
+  "summary": {
+    "primary_top1": {
+      "foundation": 0.6111111111111112,
+      "candidate": 0.8333333333333334,
+      "delta": 0.2222222222222222
+    },
+    "primary_hit_at_3": {
+      "foundation": 0.8333333333333334,
+      "candidate": 0.9444444444444444,
+      "delta": 0.11111111111111105
+    },
+    "primary_mrr": {
+      "foundation": 0.6851851851851852,
+      "candidate": 0.8703703703703703,
+      "delta": 0.18518518518518512
+    },
+    "relation_recall": {
+      "foundation": 0.47651971272660926,
+      "candidate": 0.4694650390052689,
+      "delta": -0.007054673721340332
+    },
+    "mean_returned_chars": {
+      "foundation": 22225.88888888889,
+      "candidate": 22176.88888888889,
+      "delta": -49.0
+    },
+    "p50_elapsed_ms": {
+      "foundation": 526,
+      "candidate": 522,
+      "delta": -4
+    }
+  },
+  "cases": [
+    {
+      "id": "reference-v2-flask-flask-en",
+      "foundation_head": {
+        "path": "src/flask/__init__.py",
+        "start": 1,
+        "end": 33
+      },
+      "candidate_head": {
+        "path": "src/flask/globals.py",
+        "start": 1,
+        "end": 59
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "candidate_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.047619047619047616,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.047619047619047616,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-flask-flask-zh",
+      "foundation_head": {
+        "path": "src/flask/__init__.py",
+        "start": 1,
+        "end": 33
+      },
+      "candidate_head": {
+        "path": "src/flask/globals.py",
+        "start": 1,
+        "end": 59
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "candidate_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.047619047619047616,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.047619047619047616,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-en",
+      "foundation_head": {
+        "path": "requests/sessions.py",
+        "start": 411,
+        "end": 455
+      },
+      "candidate_head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-zh",
+      "foundation_head": {
+        "path": "requests/sessions.py",
+        "start": 411,
+        "end": 455
+      },
+      "candidate_head": {
+        "path": "requests/models.py",
+        "start": 200,
+        "end": 274
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-en",
+      "foundation_head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "candidate_head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-zh",
+      "foundation_head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "candidate_head": {
+        "path": "packages/toolkit/src/createSlice.ts",
+        "start": 664,
+        "end": 725
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-axum-router-en",
+      "foundation_head": {
+        "path": "axum/src/routing/method_routing.rs",
+        "start": 475,
+        "end": 535
+      },
+      "candidate_head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.2222222222222222,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.2222222222222222,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.05555555555555555,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.05555555555555555,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.06666666666666667,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-axum-router-zh",
+      "foundation_head": {
+        "path": "axum/src/routing/method_routing.rs",
+        "start": 475,
+        "end": 535
+      },
+      "candidate_head": {
+        "path": "axum/src/routing/mod.rs",
+        "start": 131,
+        "end": 194
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.1111111111111111,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.1111111111111111,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.05555555555555555,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.05555555555555555,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.06666666666666667,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-en",
+      "foundation_head": {
+        "path": "routergroup.go",
+        "start": 216,
+        "end": 259
+      },
+      "candidate_head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      }
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-zh",
+      "foundation_head": {
+        "path": "routergroup.go",
+        "start": 216,
+        "end": 259
+      },
+      "candidate_head": {
+        "path": "gin.go",
+        "start": 1,
+        "end": 70
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      }
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-en",
+      "foundation_head": {
+        "path": "src/builtin.c",
+        "start": 218,
+        "end": 276
+      },
+      "candidate_head": {
+        "path": "src/jv.c",
+        "start": 972,
+        "end": 1050
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4482758620689655,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4482758620689655,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4482758620689655,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4482758620689655,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      }
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-zh",
+      "foundation_head": {
+        "path": "src/jq_test.c",
+        "start": 396,
+        "end": 437
+      },
+      "candidate_head": {
+        "path": "src/jq_test.c",
+        "start": 396,
+        "end": 437
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4827586206896552,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4827586206896552,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4827586206896552,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4827586206896552,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      }
+    },
+    {
+      "id": "reference-v2-express-route-en",
+      "foundation_head": {
+        "path": "lib/router/index.js",
+        "start": 424,
+        "end": 500
+      },
+      "candidate_head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.8333333333333334,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.8333333333333334,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.6666666666666666,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.6666666666666666,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.2,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-express-route-zh",
+      "foundation_head": {
+        "path": "lib/router/index.js",
+        "start": 424,
+        "end": 500
+      },
+      "candidate_head": {
+        "path": "lib/router/route.js",
+        "start": 1,
+        "end": 99
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.8333333333333334,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.8333333333333334,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.8333333333333334,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.8333333333333334,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      }
+    },
+    {
+      "id": "reference-v2-gson-type-token-en",
+      "foundation_head": {
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "start": 1140,
+        "end": 1172
+      },
+      "candidate_head": {
+        "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+        "start": 95,
+        "end": 119
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.08571428571428572,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.08571428571428572,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.13333333333333333,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.08571428571428572,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.08571428571428572,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.13333333333333333,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-gson-type-token-zh",
+      "foundation_head": {
+        "path": "gson/src/main/java/com/google/gson/Gson.java",
+        "start": 37,
+        "end": 63
+      },
+      "candidate_head": {
+        "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+        "start": 300,
+        "end": 342
+      },
+      "foundation_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "candidate_metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      }
+    },
+    {
+      "id": "reference-v2-flask-blueprint-en",
+      "foundation_head": {
+        "path": "src/flask/app.py",
+        "start": 967,
+        "end": 1019
+      },
+      "candidate_head": {
+        "path": "src/flask/blueprints.py",
+        "start": 227,
+        "end": 266
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.11764705882352941,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.11764705882352941,
+        "error_class": "redundant"
+      }
+    },
+    {
+      "id": "reference-v2-flask-blueprint-zh",
+      "foundation_head": {
+        "path": "src/flask/app.py",
+        "start": 967,
+        "end": 1019
+      },
+      "candidate_head": {
+        "path": "src/flask/blueprints.py",
+        "start": 32,
+        "end": 118
+      },
+      "foundation_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.3333333333333333,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.3333333333333333,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      },
+      "candidate_metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.14285714285714285,
+        "error_class": "redundant"
+      }
+    }
+  ]
+}

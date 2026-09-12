@@ -1,0 +1,13 @@
+{
+  "initial_manifest_sha256": "232ee0cbc9164f14fb7e8f0a14781563b544f815034c1362227787a3efec71e5",
+  "compared_existing_reports": [
+    "cycle2-baseline-sql2-main-short.json",
+    "cycle2-c12-main-short.json"
+  ],
+  "findings": [
+    "Initial bounded catalog omitted valid Flask type annotations in templating.py and logging.py",
+    "Initial catalog omitted real jv_array_append calls in src/jq_test.c and a Gson.fromJson TypeToken parameter",
+    "The known Flask prose regression asks for Blueprint; add that separate control explicitly"
+  ],
+  "interpretation": "Initial catalog misses cannot all be called relevance errors. Revising development annotations does not demonstrate a retrieval gain."
+}

@@ -1,0 +1,23 @@
+{
+  "opened_at_utc": "2026-09-11T20:38:45.925641+00:00",
+  "user_authorization": "Execute the agreed four-step isolation, timeout diagnosis, stage ablation, and evaluation-contract plan.",
+  "production_start": "Original ranking with shared generic SQL, insertion, and admission repairs; C12 retained as rejected experimental source.",
+  "development_inputs": {
+    "previous_18_validation": {
+      "sha256": "9231f5812f38086c5d26e828943fd7fa7c450a583728afd0ce560043edcc3843",
+      "status": "Promoted to development diagnostics before any per-case inspection in cycle 3"
+    },
+    "previous_20_regression": {
+      "sha256": "1c6f75592e3a2a62f1a14c3724cf45582d81dd6f1f0dda936e89ee787c74e130",
+      "status": "Historical development regression; not independent validation"
+    }
+  },
+  "rules": [
+    "Keep original artifacts, sources and labels unchanged.",
+    "Diagnose timeouts with source-bound internal profiles separately from released-client HTTP utility.",
+    "Compare one stage at a time and reject regressing directions before further tuning.",
+    "Do not call old exposed batches blind. A changed ranking candidate needs a newly frozen validation batch.",
+    "Version corrected reference labels separately from the old benchmark, based on source evidence rather than candidate rank.",
+    "No commit, tag, push, deployment, extra model provider or agent delegation is authorized."
+  ]
+}

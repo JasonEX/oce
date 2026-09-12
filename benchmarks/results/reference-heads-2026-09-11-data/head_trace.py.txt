@@ -1,0 +1,29 @@
+"""Internal candidate diagnosis; native blackbox reports remain the utility evidence."""
+import json
+import os
+from dataclasses import asdict
+from pathlib import Path
+
+import oce.application.retrieval as retrieval
+from oce.domain.services.search import search_hit_key
+
+output = Path(os.environ['OCE_HEAD_TRACE'])
+original = retrieval.source_heads
+
+
+def traced(evidence, hits, priority_factor, **kwargs):
+    result = original(evidence, hits, priority_factor, **kwargs)
+    if evidence.route.intent.value == 'reference':
+        lanes = {name: {search_hit_key(h) for h in getattr(evidence, name)}
+                 for name in ('definitions', 'exact', 'use_sites', 'lexical')}
+        record = {'targets': evidence.route.targets, 'route': asdict(evidence.route),
+                  'identifiers': evidence.identifiers, 'heads': result,
+                  'hits': [asdict(h) | {'lanes': [name for name, keys in lanes.items()
+                                                if search_hit_key(h) in keys]}
+                           for h in hits]}
+        with output.open('a') as handle:
+            handle.write(json.dumps(record, ensure_ascii=False, default=str) + '\n')
+    return result
+
+
+retrieval.source_heads = traced

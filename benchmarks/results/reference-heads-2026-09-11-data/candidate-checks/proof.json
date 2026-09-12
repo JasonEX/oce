@@ -1,0 +1,56 @@
+{
+  "source_sha256": "bce4d190e402852a2111348986a86f24a7f21487ca008973d438d12138074a32",
+  "files": [
+    {
+      "file": "tests/unit/infrastructure/test_reference_body_evidence.py",
+      "test_sha256": "87c7930236a7752e1067cfe77d39a3e958b205c8020b0e301de11e7e11fef747",
+      "passed": 28,
+      "exit_code": 0,
+      "log_sha256": "ce141df2803b1d3048563d2d257f5ece2dc55718d8d74e776cc87b114232d861"
+    },
+    {
+      "file": "tests/unit/domain/test_reference_heads.py",
+      "test_sha256": "4b7e34986e6d26de98b176e0c7856d1754dfe37390b45a027c556fe8da1c1efe",
+      "passed": 2,
+      "exit_code": 0,
+      "log_sha256": "bfb94aa3bce5e5c9a8e413d4c0b8cbbecf5444cc553dd49310e15bc548c86a10"
+    },
+    {
+      "file": "tests/unit/application/test_retrieval_stages.py",
+      "test_sha256": "5840badeaa447f4d9d3aaaa578cad897a50fc2a3359a4c48db99605a22adac55",
+      "passed": 67,
+      "exit_code": 0,
+      "log_sha256": "38867934dbf105da25cd50d6c89fa09bce04928d04d5ec82b468e0ab24e9f39a"
+    },
+    {
+      "file": "tests/unit/domain/test_structural_evidence.py",
+      "test_sha256": "4d98ba5fa10ee6609a11c6581fed8519f216a912c02abfe9d37fabb070e5728d",
+      "passed": 18,
+      "exit_code": 0,
+      "log_sha256": "b8ca048f0946101b9accfffdabe21a0018aba495fc55f437a1d4cb99053365c0"
+    },
+    {
+      "file": "tests/unit/domain/test_query_classifier.py",
+      "test_sha256": "711d022074ee0fe03b5dd697dcab70587ae4e6e303060a0f919f1b882033057d",
+      "passed": 54,
+      "exit_code": 0,
+      "log_sha256": "aa68f0ee5faf8ae27ee893082ece61fb3f94e2323868fc15238ac71dcacf1afd"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py",
+      "test_sha256": "b3103c8e17d8ca6ef1aba524b4160b884ab905259bc30eed60d40706d5448d88",
+      "passed": 12,
+      "exit_code": 0,
+      "log_sha256": "9ecd3687c13c7ea0c91c7aedbd77d729daaef2e196e6b47103b080c8b0557eca"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_retrieval_regression.py",
+      "test_sha256": "185edc1b38bb8342f62850228771cc1c5a61b2b5c38801a585b756891491978c",
+      "passed": 25,
+      "exit_code": 0,
+      "log_sha256": "77f08dc3b8ec93ec477a9c01f155e7aa911f45cfffee09832fef2a25fe7b77f9"
+    }
+  ],
+  "passed": 206,
+  "scope": "Focused candidate checks only; blackbox guard failure prevents adoption despite these passes"
+}

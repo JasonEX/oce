@@ -1,0 +1,471 @@
+--- a/src/oce/application/container.py
++++ b/src/oce/application/container.py
+@@ -450,6 +450,7 @@
+                     exact_store=symbol_store,
+                     relation_store=symbol_store,
+                     lexical_store=self.lexical_store,
++                    reference_use_verifier=self.symbol_provider,
+                     path_lookup_store=(
+                         SqlPathLookupStore(async_session_factory)
+                         if settings.retrieval.path_lookup_enabled
+--- a/src/oce/application/retrieval.py
++++ b/src/oce/application/retrieval.py
+@@ -33,6 +33,7 @@
+     trace_callers,
+     trace_path,
+ )
++from oce.domain.chunk.lang import detect_language
+ from oce.domain.services.embedder import Embedder
+ from oce.domain.services.evidence_pack import (
+     SectionInput,
+@@ -44,6 +45,7 @@
+ from oce.domain.services.query_classifier import (
+     QueryIntent,
+     QueryRoute,
++    asks_for_callers,
+     route_query,
+ )
+ from oce.domain.services.query_evidence import QueryEvidence, extract_query_evidence
+@@ -106,6 +108,7 @@
+     DEFINITION_KINDS,
+     HEADER_KINDS,
+     USE_SITE_KINDS,
++    ReferenceUseVerifier,
+ )
+ from oce.shared.config.settings import RetrievalSettings
+ from oce.shared.metrics import RetrievalAudit
+@@ -267,6 +270,7 @@
+         query_planner: QueryPlanner | None = None,
+         priority_factor: Callable[[str], float] | None = None,
+         rerank_window: int | None = None,
++        reference_use_verifier: ReferenceUseVerifier | None = None,
+     ) -> None:
+         self.embedder = embedder
+         self.store = store
+@@ -284,6 +288,7 @@
+         self.exact_store = exact_store
+         self.relation_store = relation_store
+         self.lexical_store = lexical_store
++        self.reference_use_verifier = reference_use_verifier
+         self.priority_factor = priority_factor or (
+             source_priority_factor
+             if self.settings.source_priority_enabled
+@@ -1401,6 +1406,33 @@
+         implementors = frozenset(
+             search_hit_key(item.hit) for item in state.implementations
+         )
++        body_uses: frozenset[SearchHitKey] = frozenset()
++        if (
++            state.route.intent == QueryIntent.REFERENCE
++            and state.route.targets
++            and not state.route.tests_requested
++            and not state.route.overrides_requested
++            and not state.route.implementations_requested
++            and not asks_for_callers(state.query)
++            and self.reference_use_verifier is not None
++        ):
++            names = tuple(dict.fromkeys(_leaf(name) for name in state.route.targets))
++            recalled = {
++                search_hit_key(hit) for hit in (*state.exact, *state.lexical)
++            } - {search_hit_key(hit) for hit in state.use_sites}
++            # Check only this bounded candidate pool. This adds head evidence,
++            # not recall, and does not reinterpret the persisted symbol rows.
++            body_uses = frozenset(
++                search_hit_key(hit)
++                for hit in hits
++                if search_hit_key(hit) in recalled
++                and any(_word_in(name, hit.content) for name in names)
++                and self.reference_use_verifier.has_reference_use(
++                    content=hit.content,
++                    language=detect_language(hit.path),
++                    identifiers=names,
++                )
++            )
+         head_evidence = HeadEvidence(
+             route=state.route,
+             identifiers=state.identifiers,
+@@ -1411,6 +1443,7 @@
+             lexical=state.lexical,
+             header_keys=headers,
+             implementor_keys=implementors,
++            body_use_keys=body_uses,
+         )
+         source_slots = source_heads(
+             head_evidence,
+--- a/src/oce/domain/services/query_classifier.py
++++ b/src/oce/domain/services/query_classifier.py
+@@ -186,6 +186,10 @@
+ 
+ def asks_about_tests(query: str) -> bool:
+     return _TEST_QUERY.search(query) is not None
++
++
++def asks_for_callers(query: str) -> bool:
++    return _CALLERS_QUERY.search(query) is not None
+ 
+ 
+ def asks_for_implementors(query: str) -> bool:
+--- a/src/oce/domain/services/ranking.py
++++ b/src/oce/domain/services/ranking.py
+@@ -32,6 +32,7 @@
+     lexical: Sequence[SearchHit] = ()
+     header_keys: frozenset[tuple[str, str]] = frozenset()
+     implementor_keys: frozenset[SearchHitKey] = frozenset()
++    body_use_keys: frozenset[SearchHitKey] = frozenset()
+ 
+ 
+ def source_priority_factor(path: str) -> float:
+@@ -286,26 +287,21 @@
+     ):
+         return ()
+     # "Where is X used" wants the places that use it: the declaration
+-    # chunk yields the head (a call elsewhere in the declaring file is a
+-    # use like any other). Only exact/lexical occurrence evidence may
+-    # claim a reference head slot; a dense source hit that never names
+-    # the identifier is not a deterministic use site. Within the evidence
+-    # the tiers are structural: chunks that call or extend the symbol,
+-    # then chunks that only mention it textually (uses the extractor
+-    # could not attribute), then chunks that merely import it.
++    # name alone does not grant a head. SQL calls/extensions and syntax-checked
++    # body uses may lead; imports and prose remain in the ordinary candidates.
++    # A real use beside its declaration has the same evidence as another file.
+     declaring_keys: set[SearchHitKey] = set()
+     reference_keys: set[SearchHitKey] | None = None
+     use_keys: set[SearchHitKey] = set()
+-    import_keys: set[SearchHitKey] = set()
+     if evidence.route.intent == QueryIntent.REFERENCE:
+         declaring_keys = {search_hit_key(hit) for hit in evidence.definitions}
+-        reference_keys = {
+-            search_hit_key(hit) for hit in (*evidence.exact, *evidence.lexical)
+-        } | set(evidence.implementor_keys)
++        reference_keys = (
++            {search_hit_key(hit) for hit in (*evidence.exact, *evidence.lexical)}
++            | set(evidence.implementor_keys)
++            | {search_hit_key(hit) for hit in evidence.use_sites}
++        )
+         use_keys = {search_hit_key(hit) for hit in evidence.use_sites}
+-        import_keys = (
+-            {search_hit_key(hit) for hit in evidence.exact} - use_keys - declaring_keys
+-        )
++        reference_keys &= use_keys | evidence.body_use_keys | evidence.implementor_keys
+ 
+     others = list(evidence.identifiers[1:])
+     implementor_keys = evidence.implementor_keys
+@@ -322,6 +318,8 @@
+             and (
+                 search_hit_key(hit) not in declaring_keys
+                 or search_hit_key(hit) in implementor_keys
++                or search_hit_key(hit) in use_keys
++                or search_hit_key(hit) in evidence.body_use_keys
+             )
+             and (reference_keys is None or search_hit_key(hit) in reference_keys)
+         )
+@@ -343,26 +341,20 @@
+         text = f"{hit.context or ''}\n{hit.content}"
+         return any(_word_in(q, text) for q in qualifier_words)
+ 
+-    def use_tier(hit: SearchHit) -> tuple[bool, int, bool, int, bool, bool, int]:
++    def use_tier(hit: SearchHit) -> tuple[bool, int, bool, int, bool, int]:
+         """Structural order of reference evidence, most informative first.
+ 
+-        Calls/extensions before textual mentions before imports; a chunk
++        Calls/extensions before other verified body uses; a chunk
+         that names the qualifier of ``app.render`` before one that only
+         says ``render``; among them the chunk that also names the
+-        request's other symbol ("for ``StatusCode``"); uses in other
+-        files before uses next to the declaration (the asker knows that
+-        file); a file named after the symbol before one that is not;
++        request's other symbol ("for ``StatusCode``"); a file named after
++        the symbol before one that is not;
+         files closer to the declaring file's package before scripts,
+         examples and far-away consumers.
+         """
+         key = search_hit_key(hit)
+         if key in use_keys:
+-            # A call in another file is the clearest additional use. Local
+-            # calls share the next tier with textual uses, where file
+-            # diversity can expose consumers of a type's static methods.
+-            kind = int(hit.path in declaring_paths)
+-        elif key in import_keys:
+-            kind = 2
++            kind = 0
+         else:
+             kind = 1
+         return (
+@@ -370,7 +362,6 @@
+             kind,
+             not names_qualifier(hit),
+             -comentions(hit),
+-            hit.path in declaring_paths,
+             not _names_identifier(hit.path, identifiers),
+             -_path_proximity(hit.path, declaring_paths),
+         )
+--- a/src/oce/domain/services/symbols.py
++++ b/src/oce/domain/services/symbols.py
+@@ -64,6 +64,14 @@
+         ...
+ 
+ 
++class ReferenceUseVerifier(Protocol):
++    """Check body use in an already recalled chunk, without changing the index."""
++
++    def has_reference_use(
++        self, *, content: str, language: str | None, identifiers: Sequence[str]
++    ) -> bool: ...
++
++
+ class SymbolProjection(Protocol):
+     """Persist structural evidence when a blob's immutable chunks are created."""
+ 
+--- a/src/oce/infrastructure/astchunk/symbol_provider.py
++++ b/src/oce/infrastructure/astchunk/symbol_provider.py
+@@ -13,6 +13,7 @@
+ from loguru import logger
+ from tree_sitter_language_pack import get_parser
+ 
++from oce.domain.services.symbol_resolution import _word_in
+ from oce.domain.services.symbols import SymbolKind, SymbolOccurrence, SymbolProvider
+ from oce.infrastructure.astchunk.astchunk_builder import LANGUAGE_MAP
+ from oce.infrastructure.astchunk.compat import CompatNode, compat_parse
+@@ -97,6 +98,69 @@
+         self._fallback = fallback
+         self._parsers: dict[str, object | None] = {}
+         self._failures: dict[str, int] = {}
++
++    def has_reference_use(
++        self, *, content: str, language: str | None, identifiers: Sequence[str]
++    ) -> bool:
++        """Conservative body evidence for a recalled fragment, never index data.
++
++        Import bindings, declaration names and opaque prose cannot establish a
++        use. Quoted Python annotations are types, so they remain eligible.
++        Invalid fragments and unavailable grammars do not invent head evidence;
++        independently recorded SQL calls and inheritance remain usable.
++        """
++        if not identifiers or len(content.encode("utf-8")) > 64 * 1024:
++            return False
++        parser = self._parser(language) if language else None
++        if parser is None:
++            return False
++        try:
++            root = compat_parse(parser, content).root_node
++        except Exception as exc:
++            logger.debug("Reference fragment parse failed: {}", type(exc).__name__)
++            return False
++        wanted = frozenset(identifiers)
++        pending = [(root, False)]
++        while pending:
++            node, annotation = pending.pop()
++            kind = node.type
++            if kind == "ERROR" or "comment" in kind or "import" in kind:
++                continue
++            if kind in _IMPORT_TYPES or require_alias_names(node) is not None:
++                continue
++            if kind == "export_statement" and node.child_by_field_name("source"):
++                continue
++            if kind in _OPAQUE_TYPES or kind in _STRING_TYPES:
++                if language == "python" and annotation:
++                    text = node.text.decode("utf-8", errors="replace")
++                    if any(_word_in(name, text) for name in wanted):
++                        return True
++                continue
++            if kind.endswith("identifier") and not node.named_children:
++                if node.text.decode("utf-8", errors="replace") in wanted:
++                    return True
++            bindings = []
++            if (
++                is_definition_type(kind)
++                or "parameter" in kind
++                or kind in _ASSIGNMENT_TYPES
++                or kind.endswith("_declarator")
++            ):
++                for field in ("name", "declarator", "pattern", "left"):
++                    binding = node.child_by_field_name(field)
++                    if binding is not None and binding.type.endswith("identifier"):
++                        bindings.append((binding.start_byte, binding.end_byte))
++            type_nodes = [
++                node.child_by_field_name("type"),
++                node.child_by_field_name("return_type"),
++            ]
++            for child in reversed(node.named_children):
++                if (child.start_byte, child.end_byte) in bindings:
++                    continue
++                pending.append(
++                    (child, annotation or any(child is t for t in type_nodes))
++                )
++        return False
+ 
+     def extract(
+         self,
+--- a/tests/unit/application/test_retrieval_stages.py
++++ b/tests/unit/application/test_retrieval_stages.py
+@@ -630,6 +630,8 @@
+         class ExactStore(FakeExactSearchStore):
+             async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                 self.kinds_seen.append(kinds)
++                if kinds == ("call", "inherit"):
++                    return [use_a, use_b]
+                 if kinds is None:
+                     return [definition, use_a, use_b]
+                 return [definition]
+@@ -659,7 +661,11 @@
+         class ExactStore(FakeExactSearchStore):
+             async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                 self.kinds_seen.append(kinds)
+-                return [definition]
++                return [] if kinds == ("call", "inherit") else [definition]
++
++        class BodyVerifier:
++            def has_reference_use(self, *, content, language, identifiers):
++                return content == use.content
+ 
+         class DenseFirstReranker:
+             async def rerank(self, query, hits):
+@@ -670,6 +676,7 @@
+             store=FakeSearchStore([unrelated, definition, use]),
+             lexical_store=FakeLexicalStore([use]),
+             exact_store=ExactStore(),
++            reference_use_verifier=BodyVerifier(),
+             reranker=DenseFirstReranker(),
+             settings=_settings(related_definitions_enabled=False),
+         )
+@@ -1304,6 +1311,8 @@
+         class ExactStore(FakeExactSearchStore):
+             async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+                 self.kinds_seen.append(kinds)
++                if kinds == ("call", "inherit"):
++                    return [test_use]
+                 if kinds is None:
+                     return [definition, test_use]
+                 return [definition]
+--- /dev/null
++++ b/tests/unit/domain/test_reference_heads.py
+@@ -0,0 +1,56 @@
++"""Head admission follows recorded uses rather than the file declaring a name."""
++
++from oce.domain.services.query_classifier import QueryIntent, QueryRoute
++from oce.domain.services.ranking import (
++    HeadEvidence,
++    source_heads,
++    source_priority_factor,
++)
++from oce.domain.services.search import SearchHit, search_hit_key
++
++
++def hit(path, content, line=1):
++    return SearchHit(path, path, content, 1.0, start_line=line, end_line=line + 2)
++
++
++def test_same_file_call_and_type_use_lead_import_and_prose():
++    declaration = hit("src/target.py", "class Target: pass")
++    call = hit("src/target.py", "def construct(): return Target()", 20)
++    annotation = hit("src/target.py", "def consume(x: Target): return x", 40)
++    imported = hit("src/consumer.py", "from target import Target")
++    prose = hit("src/help.py", "# Example: Target()")
++    hits = [imported, prose, declaration, annotation, call]
++    evidence = HeadEvidence(
++        route=QueryRoute(QueryIntent.REFERENCE, targets=("Target",)),
++        identifiers=("Target",),
++        definitions=[declaration],
++        exact=[imported, declaration, call],
++        lexical=[prose, annotation],
++        use_sites=[call],
++        body_use_keys=frozenset({search_hit_key(annotation)}),
++    )
++    assert source_heads(
++        evidence, hits, source_priority_factor, slots=3, reference_fallback=True
++    ) == (
++        search_hit_key(call),
++        search_hit_key(annotation),
++    )
++
++
++def test_declaration_chunk_needs_a_separate_use_to_lead():
++    own_name = hit("src/item.py", "class Target: pass")
++    mixed = hit("src/target.py", "class Target: pass\nitem = Target()")
++    evidence = HeadEvidence(
++        route=QueryRoute(QueryIntent.REFERENCE, targets=("Target",)),
++        identifiers=("Target",),
++        definitions=[own_name, mixed],
++        exact=[own_name, mixed],
++        use_sites=[mixed],
++    )
++    assert source_heads(
++        evidence,
++        [own_name, mixed],
++        source_priority_factor,
++        slots=3,
++        reference_fallback=True,
++    ) == (search_hit_key(mixed),)
+--- /dev/null
++++ b/tests/unit/infrastructure/test_reference_body_evidence.py
+@@ -0,0 +1,69 @@
++"""Syntax evidence distinguishes actual uses from names quoted in source prose."""
++
++import pytest
++
++from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
++from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
++
++
++@pytest.fixture
++def verifier():
++    return TreeSitterSymbolProvider(RegexSymbolProvider())
++
++
++@pytest.mark.parametrize(
++    ("language", "content"),
++    [
++        ("python", 'def consume(value: "Target"):\n    return value'),
++        ("python", 'def produce() -> "Target":\n    return value'),
++        ("python", "from pkg import Target\nvalue = Target()"),
++        ("rust", "fn consume(value: Target) {}"),
++        ("go", "func consume(value Target) {}"),
++        ("java", "public Target consume(Target value) { return value; }"),
++        ("csharp", "public Target Consume(Target value) { return value; }"),
++        ("c", "Target *consume(Target *value) { return value; }"),
++        ("typescript", 'import { Target } from "pkg";\nfunction consume(x: Target) {}'),
++        ("javascript", "Target.prototype.consume = function() {};"),
++    ],
++)
++def test_code_uses_survive_without_a_same_file_penalty(verifier, language, content):
++    assert verifier.has_reference_use(
++        content=content, language=language, identifiers=("Target",)
++    )
++
++
++@pytest.mark.parametrize(
++    ("language", "content"),
++    [
++        ("python", "from pkg import Target"),
++        ("python", 'class Target:\n    """Example: Target()"""'),
++        ("python", 'def unrelated():\n    """Target()"""\n    return 1'),
++        ("python", 'value = "Target"'),
++        ("python", "Target = 7"),
++        ("python", "def Target():\n    return 1"),
++        ("python", 'def unrelated(x: str = "Target"):\n    return x'),
++        ("rust", "/// let x = Target::new();\npub fn unrelated() {}"),
++        ("rust", "use pkg::Target;"),
++        ("java", "import pkg.Target;"),
++        ("java", "/** Target value = new Target(); */\npublic void unrelated() {}"),
++        ("typescript", 'import { Target } from "pkg";'),
++        ("typescript", 'export { Target } from "pkg";'),
++        ("javascript", 'const Target = require("pkg");'),
++        ("javascript", "/** new Target() */\nfunction unrelated() {}"),
++        ("c", "/* Target *x; */\nvoid unrelated(void) {}"),
++        ("python", "value = AnotherTarget()"),
++    ],
++)
++def test_imports_declaration_names_and_prose_are_not_uses(verifier, language, content):
++    assert not verifier.has_reference_use(
++        content=content, language=language, identifiers=("Target",)
++    )
++
++
++def test_unavailable_grammar_and_oversized_fragment_add_no_evidence(verifier):
++    assert not verifier.has_reference_use(
++        content="Target()", language=None, identifiers=("Target",)
++    )
++    assert not verifier.has_reference_use(
++        content="Target()\n" * 10000, language="python", identifiers=("Target",)
++    )
