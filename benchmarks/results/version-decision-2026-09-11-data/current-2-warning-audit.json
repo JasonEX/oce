@@ -1,0 +1,81 @@
+{
+  "association": "Sequential response order; not independent proof of root cause. Startup warnings are not request failures.",
+  "completed_requests": 491,
+  "request_model_failures": 6,
+  "affected_suites": [
+    "csn",
+    "short"
+  ],
+  "warnings": [
+    {
+      "line": 6,
+      "completed_requests_before": 0,
+      "next_case": [
+        "short",
+        "flask-flask-symbol"
+      ],
+      "request_model_failure": false,
+      "message": "Warm-up of the dense store failed: TimeoutError"
+    },
+    {
+      "line": 271,
+      "completed_requests_before": 182,
+      "next_case": [
+        "short",
+        "mediatr-pre-processor-behavior-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 276,
+      "completed_requests_before": 185,
+      "next_case": [
+        "short",
+        "mediatr-pre-processor-behavior-reference-zh"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 281,
+      "completed_requests_before": 188,
+      "next_case": [
+        "short",
+        "express-route-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 286,
+      "completed_requests_before": 191,
+      "next_case": [
+        "short",
+        "express-route-reference-zh"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 411,
+      "completed_requests_before": 277,
+      "next_case": [
+        "csn",
+        "csn-segmentio__objconv-08"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 417,
+      "completed_requests_before": 282,
+      "next_case": [
+        "csn",
+        "csn-phax__ph-math-03"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    }
+  ]
+}

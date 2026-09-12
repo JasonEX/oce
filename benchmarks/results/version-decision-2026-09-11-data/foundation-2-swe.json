@@ -1,0 +1,1474 @@
+{
+  "schema_version": 3,
+  "suite": "swe_explore",
+  "label": "foundation-2",
+  "created_at": "2026-09-12T01:10:19.736631+00:00",
+  "profile": "development",
+  "case_manifest_sha256": null,
+  "controls": {
+    "metrics_settle_seconds": 6.0,
+    "sync_attempts": 4,
+    "sync_retry_seconds": 10.0
+  },
+  "source_revisions": {
+    "swe_bench_verified": "78f471bf655a3137b2e8a75af1501690ec009ec3",
+    "swe_explore": "bdb0ae45d7c337d9e1dc3ebfe2a0af6bc7c1fbd9",
+    "swe_explore_metrics": "5602f031f2d9562d0a805f83402b536e831a5a11"
+  },
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "foundation-2-proof.json"
+    }
+  },
+  "case_ids": [
+    "pallets__flask-5014",
+    "psf__requests-1724",
+    "psf__requests-2931",
+    "psf__requests-5414",
+    "pydata__xarray-6721",
+    "pydata__xarray-6992",
+    "pydata__xarray-7233",
+    "pylint-dev__pylint-4604",
+    "pylint-dev__pylint-6528",
+    "pylint-dev__pylint-7080",
+    "pytest-dev__pytest-10081",
+    "pytest-dev__pytest-10356",
+    "pytest-dev__pytest-5787"
+  ],
+  "sync": {
+    "pallets__flask-5014": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 44
+    },
+    "psf__requests-1724": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 39
+    },
+    "psf__requests-2931": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 46
+    },
+    "psf__requests-5414": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 39
+    },
+    "pydata__xarray-6721": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 50
+    },
+    "pydata__xarray-6992": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 48
+    },
+    "pydata__xarray-7233": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 43
+    },
+    "pylint-dev__pylint-4604": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 61
+    },
+    "pylint-dev__pylint-6528": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 70
+    },
+    "pylint-dev__pylint-7080": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 83
+    },
+    "pytest-dev__pytest-10081": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 51
+    },
+    "pytest-dev__pytest-10356": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 47
+    },
+    "pytest-dev__pytest-5787": {
+      "status": "ok",
+      "uploaded_blobs": 0,
+      "attempts": 1,
+      "elapsed_ms": 42
+    }
+  },
+  "summary": {
+    "cases": 13,
+    "successful_cases": 13,
+    "error_cases": 0,
+    "edit_top1": 0.46153846153846156,
+    "edit_file_recall_at_10": 0.8076923076923077,
+    "edit_region_recall_at_10": 0.38461538461538464,
+    "edit_mrr": 0.6230769230769231,
+    "core_top1": 0.7692307692307693,
+    "core_file_recall_at_10": 0.6653846153846155,
+    "core_region_recall_at_10": 0.5756410256410256,
+    "core_mrr": 0.8186813186813187,
+    "swe_explore_precision": 0.16400835728357982,
+    "swe_explore_recall": 0.06194720058993496,
+    "swe_explore_f1_score": 0.0798421851476338,
+    "swe_explore_hit_file_rate": 0.6653846153846155,
+    "swe_explore_noise_file_rate": 0.771014882553344,
+    "swe_explore_hit_region_rate": 0.5756410256410256,
+    "swe_explore_noise_region_rate": 0.7581943697328313,
+    "swe_explore_weighted_core_coverage": 0.175098950826196,
+    "swe_explore_context_efficiency": 0.29172293226577084,
+    "swe_explore_ndcg_at_100": 0.6237438080231376,
+    "swe_explore_ndcg_at_300": 0.7559123428665819,
+    "swe_explore_ndcg_at_500": 0.7559123428665819,
+    "swe_explore_recall_at_100": 0.046726910245357786,
+    "swe_explore_recall_at_300": 0.05907654658359708,
+    "swe_explore_recall_at_500": 0.059906077898404214,
+    "swe_explore_first_useful_hit": 0.8811637080867849,
+    "mean_elapsed_ms": 2052.6923076923076,
+    "p50_elapsed_ms": 1980,
+    "p95_elapsed_ms": 3369,
+    "mean_returned_chars": 24952.615384615383,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 32,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "cases": [
+    {
+      "instance_id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "base_commit": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 268,
+          "end": 402
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 85,
+          "end": 108
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 432,
+          "end": 478
+        },
+        {
+          "path": "src/flask/wrappers.py",
+          "start": 15,
+          "end": 133
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 114,
+          "end": 158
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 49,
+          "end": 124
+        },
+        {
+          "path": "tests/typing/typing_error_handler.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "tests/test_templating.py",
+          "start": 407,
+          "end": 451
+        },
+        {
+          "path": "tests/test_cli.py",
+          "start": 629,
+          "end": 678
+        },
+        {
+          "path": "docs/blueprints.rst",
+          "start": 1,
+          "end": 151
+        },
+        {
+          "path": "tests/test_appctx.py",
+          "start": 122,
+          "end": 131
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.5,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.5,
+        "swe_explore_precision": 0.1836734693877551,
+        "swe_explore_recall": 0.21565495207667731,
+        "swe_explore_f1_score": 0.19838354151359297,
+        "swe_explore_hit_file_rate": 0.5,
+        "swe_explore_noise_file_rate": 0.9090909090909091,
+        "swe_explore_hit_region_rate": 0.5,
+        "swe_explore_noise_region_rate": 0.9090909090909091,
+        "swe_explore_weighted_core_coverage": 0.13043478260869565,
+        "swe_explore_context_efficiency": 0.1836734693877551,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.1597444089456869,
+        "swe_explore_recall_at_300": 0.21565495207667731,
+        "swe_explore_recall_at_500": 0.21565495207667731,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1546,
+      "wall_elapsed_ms": 1572,
+      "returned_chars": 32694
+    },
+    {
+      "instance_id": "psf__requests-1724",
+      "repo": "psf/requests",
+      "base_commit": "1ba83c47ce7b177efe90d5f51f7760680f72eda0",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "requests/api.py",
+          "start": 1,
+          "end": 44
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 269,
+          "end": 363
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 285,
+          "end": 374
+        },
+        {
+          "path": "requests/packages/urllib3/request.py",
+          "start": 18,
+          "end": 142
+        },
+        {
+          "path": "requests/packages/urllib3/connectionpool.py",
+          "start": 260,
+          "end": 345
+        },
+        {
+          "path": "test_requests.py",
+          "start": 405,
+          "end": 451
+        },
+        {
+          "path": "requests/packages/urllib3/poolmanager.py",
+          "start": 35,
+          "end": 171
+        },
+        {
+          "path": "requests/packages/urllib3/contrib/ntlmpool.py",
+          "start": 26,
+          "end": 120
+        },
+        {
+          "path": "requests/packages/urllib3/filepost.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "test_requests.py",
+          "start": 564,
+          "end": 572
+        },
+        {
+          "path": "test_requests.py",
+          "start": 105,
+          "end": 114
+        },
+        {
+          "path": "test_requests.py",
+          "start": 463,
+          "end": 471
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 0.5,
+        "edit_region_recall_at_10": 0.5,
+        "core_top1": 0.0,
+        "core_file_recall_at_10": 0.5,
+        "core_mrr": 0.5,
+        "core_region_recall_at_10": 0.25,
+        "swe_explore_precision": 0.11728395061728394,
+        "swe_explore_recall": 0.06859205776173286,
+        "swe_explore_f1_score": 0.08656036446469248,
+        "swe_explore_hit_file_rate": 0.5,
+        "swe_explore_noise_file_rate": 0.6666666666666666,
+        "swe_explore_hit_region_rate": 0.25,
+        "swe_explore_noise_region_rate": 0.5,
+        "swe_explore_weighted_core_coverage": 0.03975727139568948,
+        "swe_explore_context_efficiency": 0.36419753086419754,
+        "swe_explore_ndcg_at_100": 0.0,
+        "swe_explore_ndcg_at_300": 0.6309297535714574,
+        "swe_explore_ndcg_at_500": 0.6309297535714574,
+        "swe_explore_recall_at_100": 0.04043321299638989,
+        "swe_explore_recall_at_300": 0.06859205776173286,
+        "swe_explore_recall_at_500": 0.06859205776173286,
+        "swe_explore_first_useful_hit": 0.9166666666666666
+      },
+      "elapsed_ms": 1797,
+      "wall_elapsed_ms": 1822,
+      "returned_chars": 38109
+    },
+    {
+      "instance_id": "psf__requests-2931",
+      "repo": "psf/requests",
+      "base_commit": "5f7a3a74aab1625c2bb65f643197ee885e3da576",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "requests/utils.py",
+          "start": 673,
+          "end": 717
+        },
+        {
+          "path": "requests/models.py",
+          "start": 398,
+          "end": 459
+        },
+        {
+          "path": "requests/packages/urllib3/request.py",
+          "start": 92,
+          "end": 151
+        },
+        {
+          "path": "requests/__init__.py",
+          "start": 1,
+          "end": 83
+        },
+        {
+          "path": "requests/api.py",
+          "start": 110,
+          "end": 145
+        },
+        {
+          "path": "test_requests.py",
+          "start": 540,
+          "end": 587
+        },
+        {
+          "path": "requests/auth.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "docs/user/quickstart.rst",
+          "start": 1,
+          "end": 169
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "requests/packages/urllib3/filepost.py",
+          "start": 1,
+          "end": 56
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 0.5,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.75,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.5,
+        "swe_explore_precision": 0.1628614916286149,
+        "swe_explore_recall": 0.06793650793650793,
+        "swe_explore_f1_score": 0.09587813620071683,
+        "swe_explore_hit_file_rate": 0.75,
+        "swe_explore_noise_file_rate": 0.7,
+        "swe_explore_hit_region_rate": 0.5,
+        "swe_explore_noise_region_rate": 0.7,
+        "swe_explore_weighted_core_coverage": 0.03831807057709007,
+        "swe_explore_context_efficiency": 0.2359208523592085,
+        "swe_explore_ndcg_at_100": 0.4838709677419355,
+        "swe_explore_ndcg_at_300": 0.8540645566659566,
+        "swe_explore_ndcg_at_500": 0.8540645566659566,
+        "swe_explore_recall_at_100": 0.06349206349206349,
+        "swe_explore_recall_at_300": 0.06793650793650793,
+        "swe_explore_recall_at_500": 0.06793650793650793,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1486,
+      "wall_elapsed_ms": 1509,
+      "returned_chars": 26361
+    },
+    {
+      "instance_id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "base_commit": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "requests/models.py",
+          "start": 360,
+          "end": 444
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 567,
+          "end": 629
+        },
+        {
+          "path": "requests/help.py",
+          "start": 1,
+          "end": 32
+        },
+        {
+          "path": "requests/exceptions.py",
+          "start": 74,
+          "end": 133
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2430,
+          "end": 2587
+        },
+        {
+          "path": "docs/api.rst",
+          "start": 216,
+          "end": 260
+        },
+        {
+          "path": "HISTORY.md",
+          "start": 219,
+          "end": 254
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "requests/__init__.py",
+          "start": 99,
+          "end": 152
+        },
+        {
+          "path": "tests/test_utils.py",
+          "start": 365,
+          "end": 436
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 1.0,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.6666666666666666,
+        "swe_explore_precision": 0.13601236476043277,
+        "swe_explore_recall": 0.08952187182095625,
+        "swe_explore_f1_score": 0.10797546012269937,
+        "swe_explore_hit_file_rate": 1.0,
+        "swe_explore_noise_file_rate": 0.5,
+        "swe_explore_hit_region_rate": 0.6666666666666666,
+        "swe_explore_noise_region_rate": 0.5,
+        "swe_explore_weighted_core_coverage": 0.20886800763470856,
+        "swe_explore_context_efficiency": 0.6306027820710973,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 0.9953570860484062,
+        "swe_explore_ndcg_at_500": 0.9953570860484062,
+        "swe_explore_recall_at_100": 0.08646998982706001,
+        "swe_explore_recall_at_300": 0.08952187182095625,
+        "swe_explore_recall_at_500": 0.08952187182095625,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1755,
+      "wall_elapsed_ms": 1779,
+      "returned_chars": 25533
+    },
+    {
+      "instance_id": "pydata__xarray-6721",
+      "repo": "pydata/xarray",
+      "base_commit": "cc183652bf6e1273e985e1c4b3cba79c896c1193",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 2080,
+          "end": 2138
+        },
+        {
+          "path": "xarray/core/common.py",
+          "start": 1970,
+          "end": 2039
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 287,
+          "end": 342
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 384,
+          "end": 439
+        },
+        {
+          "path": "xarray/backends/zarr.py",
+          "start": 57,
+          "end": 85
+        },
+        {
+          "path": "xarray/backends/common.py",
+          "start": 1,
+          "end": 52
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 1100,
+          "end": 1143
+        },
+        {
+          "path": "asv_bench/benchmarks/indexing.py",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "xarray/core/dask_array_compat.py",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "xarray/core/dask_array_ops.py",
+          "start": 1,
+          "end": 55
+        },
+        {
+          "path": "xarray/tests/__init__.py",
+          "start": 137,
+          "end": 146
+        },
+        {
+          "path": "asv_bench/benchmarks/dataset_io.py",
+          "start": 117,
+          "end": 126
+        },
+        {
+          "path": "xarray/tests/test_accessor_dt.py",
+          "start": 383,
+          "end": 392
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 0.5,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 1.0,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 1.0,
+        "swe_explore_precision": 0.2878228782287823,
+        "swe_explore_recall": 0.025987006496751622,
+        "swe_explore_f1_score": 0.04766997708174178,
+        "swe_explore_hit_file_rate": 1.0,
+        "swe_explore_noise_file_rate": 0.6153846153846154,
+        "swe_explore_hit_region_rate": 1.0,
+        "swe_explore_noise_region_rate": 0.6153846153846154,
+        "swe_explore_weighted_core_coverage": 0.2449888786230398,
+        "swe_explore_context_efficiency": 0.4981549815498155,
+        "swe_explore_ndcg_at_100": 0.009523809523809525,
+        "swe_explore_ndcg_at_300": 0.6857173436688342,
+        "swe_explore_ndcg_at_500": 0.6857173436688342,
+        "swe_explore_recall_at_100": 0.0069965017491254375,
+        "swe_explore_recall_at_300": 0.025987006496751622,
+        "swe_explore_recall_at_500": 0.025987006496751622,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1934,
+      "wall_elapsed_ms": 1969,
+      "returned_chars": 22042
+    },
+    {
+      "instance_id": "pydata__xarray-6992",
+      "repo": "pydata/xarray",
+      "base_commit": "45c0a114e2b7b27b83c9618bc05b36afac82183c",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 3968,
+          "end": 4106
+        },
+        {
+          "path": "xarray/core/coordinates.py",
+          "start": 25,
+          "end": 80
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 2193,
+          "end": 2253
+        },
+        {
+          "path": "xarray/core/indexes.py",
+          "start": 1009,
+          "end": 1073
+        },
+        {
+          "path": "xarray/coding/variables.py",
+          "start": 1,
+          "end": 47
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 1,
+          "end": 81
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "xarray/conventions.py",
+          "start": 1,
+          "end": 62
+        },
+        {
+          "path": "xarray/core/missing.py",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "xarray/core/dtypes.py",
+          "start": 1,
+          "end": 44
+        },
+        {
+          "path": "xarray/tests/test_interp.py",
+          "start": 60,
+          "end": 69
+        },
+        {
+          "path": "xarray/tests/test_dataset.py",
+          "start": 183,
+          "end": 190
+        },
+        {
+          "path": "xarray/tests/test_backends.py",
+          "start": 1190,
+          "end": 1196
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.5833333333333334,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 1.0,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 1.0,
+        "swe_explore_precision": 0.2158920539730135,
+        "swe_explore_recall": 0.016107382550335572,
+        "swe_explore_f1_score": 0.02997814093889872,
+        "swe_explore_hit_file_rate": 1.0,
+        "swe_explore_noise_file_rate": 0.8461538461538461,
+        "swe_explore_hit_region_rate": 1.0,
+        "swe_explore_noise_region_rate": 0.8461538461538461,
+        "swe_explore_weighted_core_coverage": 0.40933407946278677,
+        "swe_explore_context_efficiency": 0.29235382308845576,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.011185682326621925,
+        "swe_explore_recall_at_300": 0.016107382550335572,
+        "swe_explore_recall_at_500": 0.016107382550335572,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1996,
+      "wall_elapsed_ms": 2032,
+      "returned_chars": 26032
+    },
+    {
+      "instance_id": "pydata__xarray-7233",
+      "repo": "pydata/xarray",
+      "base_commit": "51d37d1be95547059251076b3fadaa317750aab3",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "xarray/core/rolling.py",
+          "start": 880,
+          "end": 981
+        },
+        {
+          "path": "xarray/core/common.py",
+          "start": 471,
+          "end": 610
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 923,
+          "end": 1007
+        },
+        {
+          "path": "xarray/tests/test_coarsen.py",
+          "start": 41,
+          "end": 81
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 9067,
+          "end": 9109
+        },
+        {
+          "path": "xarray/core/coordinates.py",
+          "start": 25,
+          "end": 80
+        },
+        {
+          "path": "doc/howdoi.rst",
+          "start": 1,
+          "end": 77
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 2427,
+          "end": 2453
+        },
+        {
+          "path": "xarray/core/computation.py",
+          "start": 1420,
+          "end": 1553
+        },
+        {
+          "path": "xarray/tests/test_groupby.py",
+          "start": 929,
+          "end": 975
+        },
+        {
+          "path": "asv_bench/benchmarks/dataarray_missing.py",
+          "start": 8,
+          "end": 16
+        },
+        {
+          "path": "asv_bench/benchmarks/combine.py",
+          "start": 9,
+          "end": 18
+        },
+        {
+          "path": "asv_bench/benchmarks/dataset_io.py",
+          "start": 50,
+          "end": 59
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 1.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.6666666666666666,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.3333333333333333,
+        "swe_explore_precision": 0.13060179257362356,
+        "swe_explore_recall": 0.08785529715762273,
+        "swe_explore_f1_score": 0.10504634397528322,
+        "swe_explore_hit_file_rate": 0.6666666666666666,
+        "swe_explore_noise_file_rate": 0.8461538461538461,
+        "swe_explore_hit_region_rate": 0.3333333333333333,
+        "swe_explore_noise_region_rate": 0.8461538461538461,
+        "swe_explore_weighted_core_coverage": 0.037979396797815555,
+        "swe_explore_context_efficiency": 0.18309859154929578,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 1.0,
+        "swe_explore_ndcg_at_500": 1.0,
+        "swe_explore_recall_at_100": 0.08613264427217916,
+        "swe_explore_recall_at_300": 0.08785529715762273,
+        "swe_explore_recall_at_500": 0.08785529715762273,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 1584,
+      "wall_elapsed_ms": 1611,
+      "returned_chars": 36041
+    },
+    {
+      "instance_id": "pylint-dev__pylint-4604",
+      "repo": "pylint-dev/pylint",
+      "base_commit": "1e55ae64624d28c5fe8b63ad7979880ee2e6ef3f",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "pylint/checkers/variables.py",
+          "start": 2018,
+          "end": 2084
+        },
+        {
+          "path": "pylint/constants.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "tests/functional/u/unused/unused_import.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "tests/functional/u/unused/unused_name_from_wilcard_import.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/functional/u/unused/unused_typing_imports.rc",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/functional/u/unused/unused_typing_imports.py",
+          "start": 1,
+          "end": 85
+        },
+        {
+          "path": "tests/functional/u/unused/unused_import_py30.py",
+          "start": 1,
+          "end": 19
+        },
+        {
+          "path": "tests/functional/u/unused/unused_import_assigned_to.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "tests/functional/u/unused/unused_import_everything_disabled.py",
+          "start": 1,
+          "end": 8
+        },
+        {
+          "path": "tests/functional/u/unused/unused_import_py30.txt",
+          "start": 1,
+          "end": 1
+        },
+        {
+          "path": "tests/message/unittest_message_definition.py",
+          "start": 10,
+          "end": 19
+        },
+        {
+          "path": "tests/test_self.py",
+          "start": 59,
+          "end": 68
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.6666666666666666,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 1.0,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 1.0,
+        "swe_explore_precision": 0.2238372093023256,
+        "swe_explore_recall": 0.035615171137835334,
+        "swe_explore_f1_score": 0.061452513966480445,
+        "swe_explore_hit_file_rate": 1.0,
+        "swe_explore_noise_file_rate": 0.6666666666666666,
+        "swe_explore_hit_region_rate": 1.0,
+        "swe_explore_noise_region_rate": 0.6666666666666666,
+        "swe_explore_weighted_core_coverage": 0.6770446096654275,
+        "swe_explore_context_efficiency": 0.6337209302325582,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 0.9870602668063927,
+        "swe_explore_ndcg_at_500": 0.9870602668063927,
+        "swe_explore_recall_at_100": 0.030989824236817762,
+        "swe_explore_recall_at_300": 0.035615171137835334,
+        "swe_explore_recall_at_500": 0.035615171137835334,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 2317,
+      "wall_elapsed_ms": 2342,
+      "returned_chars": 13239
+    },
+    {
+      "instance_id": "pylint-dev__pylint-6528",
+      "repo": "pylint-dev/pylint",
+      "base_commit": "273a8b25620467c1e5686aa8d2a1dbb8c02c78d0",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "pylint/lint/base_options.py",
+          "start": 37,
+          "end": 110
+        },
+        {
+          "path": "pylint/config/find_default_config_files.py",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "pylint/config/exceptions.py",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "pylintrc",
+          "start": 1,
+          "end": 175
+        },
+        {
+          "path": "pylint/exceptions.py",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "pylint/config/config_file_parser.py",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "pylint/checkers/misc.py",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "pylint/config/utils.py",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "pylint/config/deprecation_actions.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "pylint/lint/expand_modules.py",
+          "start": 1,
+          "end": 46
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 0.5,
+        "edit_mrr": 0.1,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.5,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.5,
+        "swe_explore_precision": 0.21897810218978103,
+        "swe_explore_recall": 0.06272869837950862,
+        "swe_explore_f1_score": 0.09752133279154815,
+        "swe_explore_hit_file_rate": 0.5,
+        "swe_explore_noise_file_rate": 0.8,
+        "swe_explore_hit_region_rate": 0.5,
+        "swe_explore_noise_region_rate": 0.8,
+        "swe_explore_weighted_core_coverage": 0.10958050752829723,
+        "swe_explore_context_efficiency": 0.21897810218978103,
+        "swe_explore_ndcg_at_100": 1.0,
+        "swe_explore_ndcg_at_300": 0.7182878208324853,
+        "swe_explore_ndcg_at_500": 0.7182878208324853,
+        "swe_explore_recall_at_100": 0.03868269733403032,
+        "swe_explore_recall_at_300": 0.03868269733403032,
+        "swe_explore_recall_at_500": 0.03868269733403032,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 2659,
+      "wall_elapsed_ms": 2697,
+      "returned_chars": 22281
+    },
+    {
+      "instance_id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "base_commit": "3c5eca2ded3dd2b59ebaf23eb289453b5d2930f0",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "pylint/config/_pylint_config/main.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "pylint/config/find_default_config_files.py",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "pylint/config/exceptions.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "pylint/config/config_file_parser.py",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "pylint/config/_pylint_config/setup.py",
+          "start": 1,
+          "end": 49
+        },
+        {
+          "path": "pylint/exceptions.py",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 1,
+          "end": 52
+        },
+        {
+          "path": "pylint/config/deprecation_actions.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "pylint/lint/run.py",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "pylint/config/_pylint_config/__init__.py",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "tests/data/property_pattern.py",
+          "start": 14,
+          "end": 16
+        },
+        {
+          "path": "tests/checkers/unittest_unicode/__init__.py",
+          "start": 82,
+          "end": 86
+        },
+        {
+          "path": "tests/data/clientmodule_test.py",
+          "start": 4,
+          "end": 12
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 0.0,
+        "edit_mrr": 0.0,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 0.0,
+        "core_file_recall_at_10": 0.3333333333333333,
+        "core_mrr": 0.14285714285714285,
+        "core_region_recall_at_10": 0.3333333333333333,
+        "swe_explore_precision": 0.13506493506493505,
+        "swe_explore_recall": 0.036645525017618044,
+        "swe_explore_f1_score": 0.05764966740576497,
+        "swe_explore_hit_file_rate": 0.3333333333333333,
+        "swe_explore_noise_file_rate": 0.9230769230769231,
+        "swe_explore_hit_region_rate": 0.3333333333333333,
+        "swe_explore_noise_region_rate": 0.9230769230769231,
+        "swe_explore_weighted_core_coverage": 0.013833466347432828,
+        "swe_explore_context_efficiency": 0.13506493506493505,
+        "swe_explore_ndcg_at_100": 0.0,
+        "swe_explore_ndcg_at_300": 0.3333333333333333,
+        "swe_explore_ndcg_at_500": 0.3333333333333333,
+        "swe_explore_recall_at_100": 0.0,
+        "swe_explore_recall_at_300": 0.036645525017618044,
+        "swe_explore_recall_at_500": 0.036645525017618044,
+        "swe_explore_first_useful_hit": 0.5384615384615384
+      },
+      "elapsed_ms": 3369,
+      "wall_elapsed_ms": 3400,
+      "returned_chars": 15582
+    },
+    {
+      "instance_id": "pytest-dev__pytest-10081",
+      "repo": "pytest-dev/pytest",
+      "base_commit": "da9a2b584eb7a6c7e924b2621ed0ddaeca0a7bea",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/_pytest/debugging.py",
+          "start": 336,
+          "end": 388
+        },
+        {
+          "path": "src/_pytest/outcomes.py",
+          "start": 146,
+          "end": 194
+        },
+        {
+          "path": "src/_pytest/skipping.py",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "src/_pytest/unraisableexception.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "src/_pytest/assertion/truncate.py",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "src/_pytest/deprecated.py",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "src/_pytest/pytester_assertions.py",
+          "start": 1,
+          "end": 35
+        },
+        {
+          "path": "src/_pytest/scope.py",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "bench/skip.py",
+          "start": 7,
+          "end": 9
+        },
+        {
+          "path": "testing/example_scripts/unittest/test_parametrized_fixture_error_message.py",
+          "start": 12,
+          "end": 14
+        },
+        {
+          "path": "testing/example_scripts/issue_519.py",
+          "start": 48,
+          "end": 53
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 0.0,
+        "edit_mrr": 0.0,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 0.0,
+        "core_file_recall_at_10": 0.0,
+        "core_mrr": 0.0,
+        "core_region_recall_at_10": 0.0,
+        "swe_explore_precision": 0.0,
+        "swe_explore_recall": 0.0,
+        "swe_explore_f1_score": 0.0,
+        "swe_explore_hit_file_rate": 0.0,
+        "swe_explore_noise_file_rate": 1.0,
+        "swe_explore_hit_region_rate": 0.0,
+        "swe_explore_noise_region_rate": 1.0,
+        "swe_explore_weighted_core_coverage": 0.0,
+        "swe_explore_context_efficiency": 0.0,
+        "swe_explore_ndcg_at_100": 0.0,
+        "swe_explore_ndcg_at_300": 0.0,
+        "swe_explore_ndcg_at_500": 0.0,
+        "swe_explore_recall_at_100": 0.0,
+        "swe_explore_recall_at_300": 0.0,
+        "swe_explore_recall_at_500": 0.0,
+        "swe_explore_first_useful_hit": 0.0
+      },
+      "elapsed_ms": 1980,
+      "wall_elapsed_ms": 2009,
+      "returned_chars": 18717
+    },
+    {
+      "instance_id": "pytest-dev__pytest-10356",
+      "repo": "pytest-dev/pytest",
+      "base_commit": "3c1534944cbd34e8a41bc9e76818018fadefc9a1",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/_pytest/mark/structures.py",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "src/_pytest/mark/expression.py",
+          "start": 1,
+          "end": 66
+        },
+        {
+          "path": "src/_pytest/nodes.py",
+          "start": 309,
+          "end": 369
+        },
+        {
+          "path": "README.rst",
+          "start": 1,
+          "end": 167
+        },
+        {
+          "path": "testing/test_mark.py",
+          "start": 541,
+          "end": 602
+        },
+        {
+          "path": "src/_pytest/reports.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "src/_pytest/scope.py",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "start": 58,
+          "end": 89
+        },
+        {
+          "path": "src/_pytest/monkeypatch.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "changelog/README.rst",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "testing/example_scripts/dataclasses/test_compare_initvar.py",
+          "start": 11,
+          "end": 12
+        },
+        {
+          "path": "testing/test_assertrewrite.py",
+          "start": 696,
+          "end": 705
+        }
+      ],
+      "metrics": {
+        "edit_top1": 1.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 1.0,
+        "edit_region_recall_at_10": 0.0,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 1.0,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 1.0,
+        "swe_explore_precision": 0.13793103448275862,
+        "swe_explore_recall": 0.03318125259228536,
+        "swe_explore_f1_score": 0.05349381477766634,
+        "swe_explore_hit_file_rate": 1.0,
+        "swe_explore_noise_file_rate": 0.75,
+        "swe_explore_hit_region_rate": 1.0,
+        "swe_explore_noise_region_rate": 0.75,
+        "swe_explore_weighted_core_coverage": 0.32198376550650126,
+        "swe_explore_context_efficiency": 0.23448275862068965,
+        "swe_explore_ndcg_at_100": 0.7616033627416798,
+        "swe_explore_ndcg_at_300": 0.7684389320453359,
+        "swe_explore_ndcg_at_500": 0.7684389320453359,
+        "swe_explore_recall_at_100": 0.01783492326835338,
+        "swe_explore_recall_at_300": 0.019908751555371217,
+        "swe_explore_recall_at_500": 0.030692658647863958,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 2202,
+      "wall_elapsed_ms": 2228,
+      "returned_chars": 23197
+    },
+    {
+      "instance_id": "pytest-dev__pytest-5787",
+      "repo": "pytest-dev/pytest",
+      "base_commit": "955e54221008aba577ecbaefa15679f6777d3bf8",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/_pytest/_code/code.py",
+          "start": 813,
+          "end": 854
+        },
+        {
+          "path": "src/_pytest/reports.py",
+          "start": 205,
+          "end": 262
+        },
+        {
+          "path": "testing/test_assertion.py",
+          "start": 1051,
+          "end": 1136
+        },
+        {
+          "path": "testing/code/test_excinfo.py",
+          "start": 1248,
+          "end": 1305
+        },
+        {
+          "path": "testing/example_scripts/collect/package_infinite_recursion/tests/test_basic.py",
+          "start": 1,
+          "end": 2
+        },
+        {
+          "path": "testing/python/raises.py",
+          "start": 211,
+          "end": 256
+        },
+        {
+          "path": "src/_pytest/config/exceptions.py",
+          "start": 1,
+          "end": 9
+        },
+        {
+          "path": "CHANGELOG.rst",
+          "start": 5371,
+          "end": 5518
+        },
+        {
+          "path": "src/_pytest/assertion/util.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "src/_pytest/terminal.py",
+          "start": 798,
+          "end": 847
+        }
+      ],
+      "metrics": {
+        "edit_top1": 0.0,
+        "edit_file_recall_at_10": 1.0,
+        "edit_mrr": 0.5,
+        "edit_region_recall_at_10": 0.25,
+        "core_top1": 1.0,
+        "core_file_recall_at_10": 0.4,
+        "core_mrr": 1.0,
+        "core_region_recall_at_10": 0.4,
+        "swe_explore_precision": 0.18214936247723132,
+        "swe_explore_recall": 0.06548788474132286,
+        "swe_explore_f1_score": 0.09633911368015415,
+        "swe_explore_hit_file_rate": 0.4,
+        "swe_explore_noise_file_rate": 0.8,
+        "swe_explore_hit_region_rate": 0.4,
+        "swe_explore_noise_region_rate": 0.8,
+        "swe_explore_weighted_core_coverage": 0.04416352459306316,
+        "swe_explore_context_efficiency": 0.18214936247723132,
+        "swe_explore_ndcg_at_100": 0.8536713642933641,
+        "swe_explore_ndcg_at_300": 0.8536713642933641,
+        "swe_explore_ndcg_at_500": 0.8536713642933641,
+        "swe_explore_recall_at_100": 0.06548788474132286,
+        "swe_explore_recall_at_300": 0.06548788474132286,
+        "swe_explore_recall_at_500": 0.06548788474132286,
+        "swe_explore_first_useful_hit": 1.0
+      },
+      "elapsed_ms": 2060,
+      "wall_elapsed_ms": 2091,
+      "returned_chars": 24556
+    }
+  ]
+}

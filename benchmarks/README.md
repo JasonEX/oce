@@ -141,6 +141,14 @@ the development profile, and the same run-to-run noise on `project_cases`
 There is not yet a downstream agent task-success suite or an ACE head-to-head
 evaluation, so retrieval scores must not be presented as either result.
 
+The [September 11 version decision](results/version-decision-2026-09-11.md)
+compares `ac5c9e1` plus the shared repairs from `1fc581f` with the archived current
+version. The current version fails two semantic guards, so the default source
+restores that foundation. Its wording and layout gains remain available on the
+archive branch for further research. This decision supersedes the older reports'
+working-tree status; their historical use of "foundation" can refer to a different
+source revision. No fresh validation set was consumed by this decision.
+
 The [September 10 state-machine evaluation](results/state-machine-2026-09-10.md)
 records the repeated baseline/candidate comparison, wording and layout controls,
 and separate source-prior ablations. It retains the semantic regressions that

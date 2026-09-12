@@ -1,0 +1,815 @@
+$ uv run ruff format .
+272 files left unchanged
+$ uv run ruff check .
+All checks passed!
+$ uv run ruff format --check .
+272 files already formatted
+$ uv lock --check
+Resolved 93 packages in 1ms
+$ git diff --check HEAD
+$ uv build --out-dir /home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist
+Building source distribution...
+running egg_info
+writing src/opencontextengine.egg-info/PKG-INFO
+writing dependency_links to src/opencontextengine.egg-info/dependency_links.txt
+writing entry points to src/opencontextengine.egg-info/entry_points.txt
+writing requirements to src/opencontextengine.egg-info/requires.txt
+writing top-level names to src/opencontextengine.egg-info/top_level.txt
+reading manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+running sdist
+running egg_info
+writing src/opencontextengine.egg-info/PKG-INFO
+writing dependency_links to src/opencontextengine.egg-info/dependency_links.txt
+writing entry points to src/opencontextengine.egg-info/entry_points.txt
+writing requirements to src/opencontextengine.egg-info/requires.txt
+writing top-level names to src/opencontextengine.egg-info/top_level.txt
+reading manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+running check
+creating opencontextengine-0.3.0
+creating opencontextengine-0.3.0/src/oce
+creating opencontextengine-0.3.0/src/oce/alembic
+creating opencontextengine-0.3.0/src/oce/alembic/versions
+creating opencontextengine-0.3.0/src/oce/api
+creating opencontextengine-0.3.0/src/oce/application
+creating opencontextengine-0.3.0/src/oce/application/commands
+creating opencontextengine-0.3.0/src/oce/application/queries
+creating opencontextengine-0.3.0/src/oce/domain
+creating opencontextengine-0.3.0/src/oce/domain/blob
+creating opencontextengine-0.3.0/src/oce/domain/chain
+creating opencontextengine-0.3.0/src/oce/domain/chunk
+creating opencontextengine-0.3.0/src/oce/domain/services
+creating opencontextengine-0.3.0/src/oce/domain/services/llm
+creating opencontextengine-0.3.0/src/oce/domain/services/selector
+creating opencontextengine-0.3.0/src/oce/infrastructure
+creating opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+creating opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+creating opencontextengine-0.3.0/src/oce/infrastructure/embed
+creating opencontextengine-0.3.0/src/oce/infrastructure/llm
+creating opencontextengine-0.3.0/src/oce/infrastructure/metrics
+creating opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+creating opencontextengine-0.3.0/src/oce/infrastructure/persistence
+creating opencontextengine-0.3.0/src/oce/infrastructure/queue
+creating opencontextengine-0.3.0/src/oce/shared
+creating opencontextengine-0.3.0/src/oce/shared/config
+creating opencontextengine-0.3.0/src/oce/shared/database
+creating opencontextengine-0.3.0/src/oce/shared/errors
+creating opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying files to opencontextengine-0.3.0...
+copying LICENSE -> opencontextengine-0.3.0
+copying README.md -> opencontextengine-0.3.0
+copying pyproject.toml -> opencontextengine-0.3.0
+copying src/oce/__init__.py -> opencontextengine-0.3.0/src/oce
+copying src/oce/auth.py -> opencontextengine-0.3.0/src/oce
+copying src/oce/cli.py -> opencontextengine-0.3.0/src/oce
+copying src/oce/main.py -> opencontextengine-0.3.0/src/oce
+copying src/oce/alembic/__init__.py -> opencontextengine-0.3.0/src/oce/alembic
+copying src/oce/alembic/env.py -> opencontextengine-0.3.0/src/oce/alembic
+copying src/oce/alembic/script.py.mako -> opencontextengine-0.3.0/src/oce/alembic
+copying src/oce/alembic/versions/2eebb4028c7f_add_symbol_occurrences_table.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/__init__.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/a1b2c3d4e5f6_drop_unused_credential_columns.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/a2d4f6b8c1e3_add_retrieval_metrics_table.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/b2c3d4e5f6a7_add_retrieval_rerank_route.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/b7c9e1f2a3d4_redesign_model_credentials.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/c3d4e5f6a7b8_add_retrieval_embed_path_ms.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/c4d5e6f7a8b9_add_retrieval_dense_route.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/c7f1a2b3d4e5_add_monitoring_tables.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/d48cee59fb24_initial_schema.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/d4e5f6a7b8c9_add_chunk_context_and_lexical_index.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/e2f4a6c8d0b1_relax_model_credentials_unique.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/e5f6a7b8c9d0_add_symbol_occurrence_enclosing.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/f3a5c7d9e1b2_add_index_profiles.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/alembic/versions/f6a7b8c9d0e1_add_retrieval_evidence_columns.py -> opencontextengine-0.3.0/src/oce/alembic/versions
+copying src/oce/api/__init__.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/api/admin_router.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/api/errors.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/api/middleware.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/api/router.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/api/schemas.py -> opencontextengine-0.3.0/src/oce/api
+copying src/oce/application/__init__.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/bus.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/container.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/credential_admin.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/index_lifecycle.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/messages.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/queue.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/service.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/uow.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/warmup.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/worker.py -> opencontextengine-0.3.0/src/oce/application
+copying src/oce/application/commands/__init__.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/checkpoint.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/credentials.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/gc.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/ingest.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/queue_admin.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/commands/requeue.py -> opencontextengine-0.3.0/src/oce/application/commands
+copying src/oce/application/queries/__init__.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/application/queries/index_stats.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/application/queries/queue.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/application/queries/search.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/application/queries/stats.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/application/queries/status.py -> opencontextengine-0.3.0/src/oce/application/queries
+copying src/oce/domain/repositories.py -> opencontextengine-0.3.0/src/oce/domain
+copying src/oce/domain/blob/blob.py -> opencontextengine-0.3.0/src/oce/domain/blob
+copying src/oce/domain/chain/chain.py -> opencontextengine-0.3.0/src/oce/domain/chain
+copying src/oce/domain/chunk/__init__.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/lang.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/protocols.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/recursive_chunker.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/router.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/spans.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/chunk/types.py -> opencontextengine-0.3.0/src/oce/domain/chunk
+copying src/oce/domain/services/__init__.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/embedder.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/evidence_pack.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/formatter.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/indexing.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/lexical.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/path_document_builder.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/path_search.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/query_classifier.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/query_evidence.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/query_planner.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/relations.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/reranker.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/retrieval.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/retrieval_strategy.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/search.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/source_filter.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/symbols.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/test_paths.py -> opencontextengine-0.3.0/src/oce/domain/services
+copying src/oce/domain/services/llm/__init__.py -> opencontextengine-0.3.0/src/oce/domain/services/llm
+copying src/oce/domain/services/llm/client.py -> opencontextengine-0.3.0/src/oce/domain/services/llm
+copying src/oce/domain/services/llm/prompts.py -> opencontextengine-0.3.0/src/oce/domain/services/llm
+copying src/oce/domain/services/llm/reranker.py -> opencontextengine-0.3.0/src/oce/domain/services/llm
+copying src/oce/domain/services/llm/rewriter.py -> opencontextengine-0.3.0/src/oce/domain/services/llm
+copying src/oce/domain/services/selector/__init__.py -> opencontextengine-0.3.0/src/oce/domain/services/selector
+copying src/oce/domain/services/selector/coverage_selector.py -> opencontextengine-0.3.0/src/oce/domain/services/selector
+copying src/oce/domain/services/selector/protocols.py -> opencontextengine-0.3.0/src/oce/domain/services/selector
+copying src/oce/domain/services/selector/topk_selector.py -> opencontextengine-0.3.0/src/oce/domain/services/selector
+copying src/oce/infrastructure/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure
+copying src/oce/infrastructure/delegate_runtime.py -> opencontextengine-0.3.0/src/oce/infrastructure
+copying src/oce/infrastructure/regex_symbol_provider.py -> opencontextengine-0.3.0/src/oce/infrastructure
+copying src/oce/infrastructure/astchunk/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/astchunk_builder.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/astnode.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/cast_chunker.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/compat.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/declarations.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/preprocessing.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/symbol_provider.py -> opencontextengine-0.3.0/src/oce/infrastructure/astchunk
+copying src/oce/infrastructure/chunkers/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/factory.py -> opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/jsp_chunker.py -> opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/markdown_chunker.py -> opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/vue_chunker.py -> opencontextengine-0.3.0/src/oce/infrastructure/chunkers
+copying src/oce/infrastructure/embed/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/credential_embedder.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/credential_reranker.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/local_onnx_reranker.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/openai_embedder.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/openai_reranker.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/query_cache.py -> opencontextengine-0.3.0/src/oce/infrastructure/embed
+copying src/oce/infrastructure/llm/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/credential_llm_client.py -> opencontextengine-0.3.0/src/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/openai_compatible_client.py -> opencontextengine-0.3.0/src/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/rate_limiter.py -> opencontextengine-0.3.0/src/oce/infrastructure/llm
+copying src/oce/infrastructure/metrics/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/cleanup.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/periodic.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/resource_sampler.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/sql_metrics_sink.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/stats_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/metrics
+copying src/oce/infrastructure/milvus3/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/base.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/client.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/path_index.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/schema.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/search_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/milvus3
+copying src/oce/infrastructure/persistence/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/active_credential.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/credential_admin_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/dialect.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/index_profile_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/index_stats_reader.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/lexical_index.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/migrations.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/models.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/path_content_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/path_lookup_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/scope_filter.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_blob_repo.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_chain_repo.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_chunk_repo.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_symbol_projection.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/symbol_search_store.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/uow.py -> opencontextengine-0.3.0/src/oce/infrastructure/persistence
+copying src/oce/infrastructure/queue/__init__.py -> opencontextengine-0.3.0/src/oce/infrastructure/queue
+copying src/oce/infrastructure/queue/redis_queue.py -> opencontextengine-0.3.0/src/oce/infrastructure/queue
+copying src/oce/shared/__init__.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/hashes.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/index_profile.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/index_stats.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/logging.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/metrics.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/metrics_read.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/model_credentials.py -> opencontextengine-0.3.0/src/oce/shared
+copying src/oce/shared/config/__init__.py -> opencontextengine-0.3.0/src/oce/shared/config
+copying src/oce/shared/config/settings.py -> opencontextengine-0.3.0/src/oce/shared/config
+copying src/oce/shared/database/__init__.py -> opencontextengine-0.3.0/src/oce/shared/database
+copying src/oce/shared/database/session.py -> opencontextengine-0.3.0/src/oce/shared/database
+copying src/oce/shared/errors/__init__.py -> opencontextengine-0.3.0/src/oce/shared/errors
+copying src/opencontextengine.egg-info/PKG-INFO -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying src/opencontextengine.egg-info/SOURCES.txt -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying src/opencontextengine.egg-info/dependency_links.txt -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying src/opencontextengine.egg-info/entry_points.txt -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying src/opencontextengine.egg-info/requires.txt -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+copying src/opencontextengine.egg-info/top_level.txt -> opencontextengine-0.3.0/src/opencontextengine.egg-info
+Writing opencontextengine-0.3.0/setup.cfg
+Creating tar archive
+removing 'opencontextengine-0.3.0' (and everything under it)
+Building wheel from source distribution...
+running egg_info
+writing src/opencontextengine.egg-info/PKG-INFO
+writing dependency_links to src/opencontextengine.egg-info/dependency_links.txt
+writing entry points to src/opencontextengine.egg-info/entry_points.txt
+writing requirements to src/opencontextengine.egg-info/requires.txt
+writing top-level names to src/opencontextengine.egg-info/top_level.txt
+reading manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+running bdist_wheel
+running build
+running build_py
+creating build/lib/oce
+copying src/oce/main.py -> build/lib/oce
+copying src/oce/__init__.py -> build/lib/oce
+copying src/oce/auth.py -> build/lib/oce
+copying src/oce/cli.py -> build/lib/oce
+creating build/lib/oce/domain
+copying src/oce/domain/repositories.py -> build/lib/oce/domain
+creating build/lib/oce/infrastructure
+copying src/oce/infrastructure/delegate_runtime.py -> build/lib/oce/infrastructure
+copying src/oce/infrastructure/__init__.py -> build/lib/oce/infrastructure
+copying src/oce/infrastructure/regex_symbol_provider.py -> build/lib/oce/infrastructure
+creating build/lib/oce/alembic
+copying src/oce/alembic/__init__.py -> build/lib/oce/alembic
+copying src/oce/alembic/env.py -> build/lib/oce/alembic
+creating build/lib/oce/api
+copying src/oce/api/errors.py -> build/lib/oce/api
+copying src/oce/api/admin_router.py -> build/lib/oce/api
+copying src/oce/api/__init__.py -> build/lib/oce/api
+copying src/oce/api/router.py -> build/lib/oce/api
+copying src/oce/api/middleware.py -> build/lib/oce/api
+copying src/oce/api/schemas.py -> build/lib/oce/api
+creating build/lib/oce/application
+copying src/oce/application/messages.py -> build/lib/oce/application
+copying src/oce/application/credential_admin.py -> build/lib/oce/application
+copying src/oce/application/index_lifecycle.py -> build/lib/oce/application
+copying src/oce/application/container.py -> build/lib/oce/application
+copying src/oce/application/uow.py -> build/lib/oce/application
+copying src/oce/application/bus.py -> build/lib/oce/application
+copying src/oce/application/__init__.py -> build/lib/oce/application
+copying src/oce/application/service.py -> build/lib/oce/application
+copying src/oce/application/warmup.py -> build/lib/oce/application
+copying src/oce/application/worker.py -> build/lib/oce/application
+copying src/oce/application/queue.py -> build/lib/oce/application
+creating build/lib/oce/shared
+copying src/oce/shared/logging.py -> build/lib/oce/shared
+copying src/oce/shared/index_profile.py -> build/lib/oce/shared
+copying src/oce/shared/metrics_read.py -> build/lib/oce/shared
+copying src/oce/shared/__init__.py -> build/lib/oce/shared
+copying src/oce/shared/model_credentials.py -> build/lib/oce/shared
+copying src/oce/shared/metrics.py -> build/lib/oce/shared
+copying src/oce/shared/hashes.py -> build/lib/oce/shared
+copying src/oce/shared/index_stats.py -> build/lib/oce/shared
+creating build/lib/oce/domain/services
+copying src/oce/domain/services/path_document_builder.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/retrieval.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/evidence_pack.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/formatter.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/source_filter.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/embedder.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/query_classifier.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/retrieval_strategy.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/indexing.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/query_planner.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/test_paths.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/__init__.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/path_search.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/reranker.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/symbols.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/relations.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/search.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/lexical.py -> build/lib/oce/domain/services
+copying src/oce/domain/services/query_evidence.py -> build/lib/oce/domain/services
+creating build/lib/oce/domain/blob
+copying src/oce/domain/blob/blob.py -> build/lib/oce/domain/blob
+creating build/lib/oce/domain/chain
+copying src/oce/domain/chain/chain.py -> build/lib/oce/domain/chain
+creating build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/lang.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/__init__.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/router.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/recursive_chunker.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/types.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/spans.py -> build/lib/oce/domain/chunk
+copying src/oce/domain/chunk/protocols.py -> build/lib/oce/domain/chunk
+creating build/lib/oce/domain/services/llm
+copying src/oce/domain/services/llm/client.py -> build/lib/oce/domain/services/llm
+copying src/oce/domain/services/llm/__init__.py -> build/lib/oce/domain/services/llm
+copying src/oce/domain/services/llm/reranker.py -> build/lib/oce/domain/services/llm
+copying src/oce/domain/services/llm/prompts.py -> build/lib/oce/domain/services/llm
+copying src/oce/domain/services/llm/rewriter.py -> build/lib/oce/domain/services/llm
+creating build/lib/oce/domain/services/selector
+copying src/oce/domain/services/selector/__init__.py -> build/lib/oce/domain/services/selector
+copying src/oce/domain/services/selector/coverage_selector.py -> build/lib/oce/domain/services/selector
+copying src/oce/domain/services/selector/protocols.py -> build/lib/oce/domain/services/selector
+copying src/oce/domain/services/selector/topk_selector.py -> build/lib/oce/domain/services/selector
+creating build/lib/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/openai_compatible_client.py -> build/lib/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/credential_llm_client.py -> build/lib/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/__init__.py -> build/lib/oce/infrastructure/llm
+copying src/oce/infrastructure/llm/rate_limiter.py -> build/lib/oce/infrastructure/llm
+creating build/lib/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/jsp_chunker.py -> build/lib/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/markdown_chunker.py -> build/lib/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/__init__.py -> build/lib/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/vue_chunker.py -> build/lib/oce/infrastructure/chunkers
+copying src/oce/infrastructure/chunkers/factory.py -> build/lib/oce/infrastructure/chunkers
+creating build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/cast_chunker.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/astnode.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/astchunk_builder.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/compat.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/__init__.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/declarations.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/preprocessing.py -> build/lib/oce/infrastructure/astchunk
+copying src/oce/infrastructure/astchunk/symbol_provider.py -> build/lib/oce/infrastructure/astchunk
+creating build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/local_onnx_reranker.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/query_cache.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/openai_embedder.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/__init__.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/openai_reranker.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/credential_embedder.py -> build/lib/oce/infrastructure/embed
+copying src/oce/infrastructure/embed/credential_reranker.py -> build/lib/oce/infrastructure/embed
+creating build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/schema.py -> build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/client.py -> build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/__init__.py -> build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/search_store.py -> build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/path_index.py -> build/lib/oce/infrastructure/milvus3
+copying src/oce/infrastructure/milvus3/base.py -> build/lib/oce/infrastructure/milvus3
+creating build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/cleanup.py -> build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/periodic.py -> build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/__init__.py -> build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/stats_store.py -> build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/resource_sampler.py -> build/lib/oce/infrastructure/metrics
+copying src/oce/infrastructure/metrics/sql_metrics_sink.py -> build/lib/oce/infrastructure/metrics
+creating build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/symbol_search_store.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/index_stats_reader.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/migrations.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/models.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/uow.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_blob_repo.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/__init__.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/path_content_store.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/path_lookup_store.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/scope_filter.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/index_profile_store.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/dialect.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/active_credential.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_chunk_repo.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_chain_repo.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/sql_symbol_projection.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/credential_admin_store.py -> build/lib/oce/infrastructure/persistence
+copying src/oce/infrastructure/persistence/lexical_index.py -> build/lib/oce/infrastructure/persistence
+creating build/lib/oce/infrastructure/queue
+copying src/oce/infrastructure/queue/redis_queue.py -> build/lib/oce/infrastructure/queue
+copying src/oce/infrastructure/queue/__init__.py -> build/lib/oce/infrastructure/queue
+creating build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/d4e5f6a7b8c9_add_chunk_context_and_lexical_index.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/e5f6a7b8c9d0_add_symbol_occurrence_enclosing.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/a1b2c3d4e5f6_drop_unused_credential_columns.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/f6a7b8c9d0e1_add_retrieval_evidence_columns.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/__init__.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/f3a5c7d9e1b2_add_index_profiles.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/d48cee59fb24_initial_schema.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/e2f4a6c8d0b1_relax_model_credentials_unique.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/2eebb4028c7f_add_symbol_occurrences_table.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/a2d4f6b8c1e3_add_retrieval_metrics_table.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/b2c3d4e5f6a7_add_retrieval_rerank_route.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/b7c9e1f2a3d4_redesign_model_credentials.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/c4d5e6f7a8b9_add_retrieval_dense_route.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/c7f1a2b3d4e5_add_monitoring_tables.py -> build/lib/oce/alembic/versions
+copying src/oce/alembic/versions/c3d4e5f6a7b8_add_retrieval_embed_path_ms.py -> build/lib/oce/alembic/versions
+creating build/lib/oce/application/commands
+copying src/oce/application/commands/requeue.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/gc.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/checkpoint.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/ingest.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/__init__.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/queue_admin.py -> build/lib/oce/application/commands
+copying src/oce/application/commands/credentials.py -> build/lib/oce/application/commands
+creating build/lib/oce/application/queries
+copying src/oce/application/queries/stats.py -> build/lib/oce/application/queries
+copying src/oce/application/queries/status.py -> build/lib/oce/application/queries
+copying src/oce/application/queries/__init__.py -> build/lib/oce/application/queries
+copying src/oce/application/queries/search.py -> build/lib/oce/application/queries
+copying src/oce/application/queries/index_stats.py -> build/lib/oce/application/queries
+copying src/oce/application/queries/queue.py -> build/lib/oce/application/queries
+creating build/lib/oce/shared/database
+copying src/oce/shared/database/__init__.py -> build/lib/oce/shared/database
+copying src/oce/shared/database/session.py -> build/lib/oce/shared/database
+creating build/lib/oce/shared/errors
+copying src/oce/shared/errors/__init__.py -> build/lib/oce/shared/errors
+creating build/lib/oce/shared/config
+copying src/oce/shared/config/__init__.py -> build/lib/oce/shared/config
+copying src/oce/shared/config/settings.py -> build/lib/oce/shared/config
+running egg_info
+writing src/opencontextengine.egg-info/PKG-INFO
+writing dependency_links to src/opencontextengine.egg-info/dependency_links.txt
+writing entry points to src/opencontextengine.egg-info/entry_points.txt
+writing requirements to src/opencontextengine.egg-info/requires.txt
+writing top-level names to src/opencontextengine.egg-info/top_level.txt
+reading manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+adding license file 'LICENSE'
+writing manifest file 'src/opencontextengine.egg-info/SOURCES.txt'
+copying src/oce/alembic/script.py.mako -> build/lib/oce/alembic
+installing to build/bdist.linux-x86_64/wheel
+running install
+running install_lib
+creating build/bdist.linux-x86_64/wheel
+creating build/bdist.linux-x86_64/wheel/oce
+copying build/lib/oce/main.py -> build/bdist.linux-x86_64/wheel/./oce
+creating build/bdist.linux-x86_64/wheel/oce/domain
+creating build/bdist.linux-x86_64/wheel/oce/domain/services
+copying build/lib/oce/domain/services/path_document_builder.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/retrieval.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+creating build/bdist.linux-x86_64/wheel/oce/domain/services/llm
+copying build/lib/oce/domain/services/llm/client.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/llm
+copying build/lib/oce/domain/services/llm/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/llm
+copying build/lib/oce/domain/services/llm/reranker.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/llm
+copying build/lib/oce/domain/services/llm/prompts.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/llm
+copying build/lib/oce/domain/services/llm/rewriter.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/llm
+copying build/lib/oce/domain/services/evidence_pack.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/formatter.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/source_filter.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/embedder.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/query_classifier.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/retrieval_strategy.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/indexing.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/query_planner.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/test_paths.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/path_search.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/reranker.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/symbols.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+creating build/bdist.linux-x86_64/wheel/oce/domain/services/selector
+copying build/lib/oce/domain/services/selector/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/selector
+copying build/lib/oce/domain/services/selector/coverage_selector.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/selector
+copying build/lib/oce/domain/services/selector/protocols.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/selector
+copying build/lib/oce/domain/services/selector/topk_selector.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services/selector
+copying build/lib/oce/domain/services/relations.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/search.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/lexical.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/services/query_evidence.py -> build/bdist.linux-x86_64/wheel/./oce/domain/services
+copying build/lib/oce/domain/repositories.py -> build/bdist.linux-x86_64/wheel/./oce/domain
+creating build/bdist.linux-x86_64/wheel/oce/domain/blob
+copying build/lib/oce/domain/blob/blob.py -> build/bdist.linux-x86_64/wheel/./oce/domain/blob
+creating build/bdist.linux-x86_64/wheel/oce/domain/chain
+copying build/lib/oce/domain/chain/chain.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chain
+creating build/bdist.linux-x86_64/wheel/oce/domain/chunk
+copying build/lib/oce/domain/chunk/lang.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/router.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/recursive_chunker.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/types.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/spans.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/domain/chunk/protocols.py -> build/bdist.linux-x86_64/wheel/./oce/domain/chunk
+copying build/lib/oce/__init__.py -> build/bdist.linux-x86_64/wheel/./oce
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/llm
+copying build/lib/oce/infrastructure/llm/openai_compatible_client.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/llm
+copying build/lib/oce/infrastructure/llm/credential_llm_client.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/llm
+copying build/lib/oce/infrastructure/llm/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/llm
+copying build/lib/oce/infrastructure/llm/rate_limiter.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/llm
+copying build/lib/oce/infrastructure/delegate_runtime.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/chunkers
+copying build/lib/oce/infrastructure/chunkers/jsp_chunker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/chunkers
+copying build/lib/oce/infrastructure/chunkers/markdown_chunker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/chunkers
+copying build/lib/oce/infrastructure/chunkers/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/chunkers
+copying build/lib/oce/infrastructure/chunkers/vue_chunker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/chunkers
+copying build/lib/oce/infrastructure/chunkers/factory.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/chunkers
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/cast_chunker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/astnode.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/astchunk_builder.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/compat.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/declarations.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/preprocessing.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/astchunk/symbol_provider.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/astchunk
+copying build/lib/oce/infrastructure/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/local_onnx_reranker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/query_cache.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/openai_embedder.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/openai_reranker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/credential_embedder.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+copying build/lib/oce/infrastructure/embed/credential_reranker.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/embed
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/schema.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/client.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/search_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/path_index.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/milvus3/base.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/milvus3
+copying build/lib/oce/infrastructure/regex_symbol_provider.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/cleanup.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/periodic.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/stats_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/resource_sampler.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+copying build/lib/oce/infrastructure/metrics/sql_metrics_sink.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/metrics
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/symbol_search_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/index_stats_reader.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/migrations.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/models.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/uow.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/sql_blob_repo.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/path_content_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/path_lookup_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/scope_filter.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/index_profile_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/dialect.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/active_credential.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/sql_chunk_repo.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/sql_chain_repo.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/sql_symbol_projection.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/credential_admin_store.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+copying build/lib/oce/infrastructure/persistence/lexical_index.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/persistence
+creating build/bdist.linux-x86_64/wheel/oce/infrastructure/queue
+copying build/lib/oce/infrastructure/queue/redis_queue.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/queue
+copying build/lib/oce/infrastructure/queue/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/infrastructure/queue
+creating build/bdist.linux-x86_64/wheel/oce/alembic
+copying build/lib/oce/alembic/script.py.mako -> build/bdist.linux-x86_64/wheel/./oce/alembic
+creating build/bdist.linux-x86_64/wheel/oce/alembic/versions
+copying build/lib/oce/alembic/versions/d4e5f6a7b8c9_add_chunk_context_and_lexical_index.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/e5f6a7b8c9d0_add_symbol_occurrence_enclosing.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/a1b2c3d4e5f6_drop_unused_credential_columns.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/f6a7b8c9d0e1_add_retrieval_evidence_columns.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/f3a5c7d9e1b2_add_index_profiles.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/d48cee59fb24_initial_schema.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/e2f4a6c8d0b1_relax_model_credentials_unique.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/2eebb4028c7f_add_symbol_occurrences_table.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/a2d4f6b8c1e3_add_retrieval_metrics_table.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/b2c3d4e5f6a7_add_retrieval_rerank_route.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/b7c9e1f2a3d4_redesign_model_credentials.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/c4d5e6f7a8b9_add_retrieval_dense_route.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/c7f1a2b3d4e5_add_monitoring_tables.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/versions/c3d4e5f6a7b8_add_retrieval_embed_path_ms.py -> build/bdist.linux-x86_64/wheel/./oce/alembic/versions
+copying build/lib/oce/alembic/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/alembic
+copying build/lib/oce/alembic/env.py -> build/bdist.linux-x86_64/wheel/./oce/alembic
+creating build/bdist.linux-x86_64/wheel/oce/api
+copying build/lib/oce/api/errors.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/api/admin_router.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/api/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/api/router.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/api/middleware.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/api/schemas.py -> build/bdist.linux-x86_64/wheel/./oce/api
+copying build/lib/oce/auth.py -> build/bdist.linux-x86_64/wheel/./oce
+creating build/bdist.linux-x86_64/wheel/oce/application
+copying build/lib/oce/application/messages.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/credential_admin.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/index_lifecycle.py -> build/bdist.linux-x86_64/wheel/./oce/application
+creating build/bdist.linux-x86_64/wheel/oce/application/commands
+copying build/lib/oce/application/commands/requeue.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/gc.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/checkpoint.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/ingest.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/queue_admin.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/commands/credentials.py -> build/bdist.linux-x86_64/wheel/./oce/application/commands
+copying build/lib/oce/application/container.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/uow.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/bus.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/service.py -> build/bdist.linux-x86_64/wheel/./oce/application
+creating build/bdist.linux-x86_64/wheel/oce/application/queries
+copying build/lib/oce/application/queries/stats.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/queries/status.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/queries/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/queries/search.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/queries/index_stats.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/queries/queue.py -> build/bdist.linux-x86_64/wheel/./oce/application/queries
+copying build/lib/oce/application/warmup.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/worker.py -> build/bdist.linux-x86_64/wheel/./oce/application
+copying build/lib/oce/application/queue.py -> build/bdist.linux-x86_64/wheel/./oce/application
+creating build/bdist.linux-x86_64/wheel/oce/shared
+copying build/lib/oce/shared/logging.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+creating build/bdist.linux-x86_64/wheel/oce/shared/database
+copying build/lib/oce/shared/database/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/shared/database
+copying build/lib/oce/shared/database/session.py -> build/bdist.linux-x86_64/wheel/./oce/shared/database
+creating build/bdist.linux-x86_64/wheel/oce/shared/errors
+copying build/lib/oce/shared/errors/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/shared/errors
+copying build/lib/oce/shared/index_profile.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/shared/metrics_read.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/shared/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/shared/model_credentials.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+creating build/bdist.linux-x86_64/wheel/oce/shared/config
+copying build/lib/oce/shared/config/__init__.py -> build/bdist.linux-x86_64/wheel/./oce/shared/config
+copying build/lib/oce/shared/config/settings.py -> build/bdist.linux-x86_64/wheel/./oce/shared/config
+copying build/lib/oce/shared/metrics.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/shared/hashes.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/shared/index_stats.py -> build/bdist.linux-x86_64/wheel/./oce/shared
+copying build/lib/oce/cli.py -> build/bdist.linux-x86_64/wheel/./oce
+running install_egg_info
+Copying src/opencontextengine.egg-info to build/bdist.linux-x86_64/wheel/./opencontextengine-0.3.0-py3.13.egg-info
+running install_scripts
+creating build/bdist.linux-x86_64/wheel/opencontextengine-0.3.0.dist-info/WHEEL
+creating '/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist/.tmp-nb_rbdth/opencontextengine-0.3.0-py3-none-any.whl' and adding 'build/bdist.linux-x86_64/wheel' to it
+adding 'oce/__init__.py'
+adding 'oce/auth.py'
+adding 'oce/cli.py'
+adding 'oce/main.py'
+adding 'oce/alembic/__init__.py'
+adding 'oce/alembic/env.py'
+adding 'oce/alembic/script.py.mako'
+adding 'oce/alembic/versions/2eebb4028c7f_add_symbol_occurrences_table.py'
+adding 'oce/alembic/versions/__init__.py'
+adding 'oce/alembic/versions/a1b2c3d4e5f6_drop_unused_credential_columns.py'
+adding 'oce/alembic/versions/a2d4f6b8c1e3_add_retrieval_metrics_table.py'
+adding 'oce/alembic/versions/b2c3d4e5f6a7_add_retrieval_rerank_route.py'
+adding 'oce/alembic/versions/b7c9e1f2a3d4_redesign_model_credentials.py'
+adding 'oce/alembic/versions/c3d4e5f6a7b8_add_retrieval_embed_path_ms.py'
+adding 'oce/alembic/versions/c4d5e6f7a8b9_add_retrieval_dense_route.py'
+adding 'oce/alembic/versions/c7f1a2b3d4e5_add_monitoring_tables.py'
+adding 'oce/alembic/versions/d48cee59fb24_initial_schema.py'
+adding 'oce/alembic/versions/d4e5f6a7b8c9_add_chunk_context_and_lexical_index.py'
+adding 'oce/alembic/versions/e2f4a6c8d0b1_relax_model_credentials_unique.py'
+adding 'oce/alembic/versions/e5f6a7b8c9d0_add_symbol_occurrence_enclosing.py'
+adding 'oce/alembic/versions/f3a5c7d9e1b2_add_index_profiles.py'
+adding 'oce/alembic/versions/f6a7b8c9d0e1_add_retrieval_evidence_columns.py'
+adding 'oce/api/__init__.py'
+adding 'oce/api/admin_router.py'
+adding 'oce/api/errors.py'
+adding 'oce/api/middleware.py'
+adding 'oce/api/router.py'
+adding 'oce/api/schemas.py'
+adding 'oce/application/__init__.py'
+adding 'oce/application/bus.py'
+adding 'oce/application/container.py'
+adding 'oce/application/credential_admin.py'
+adding 'oce/application/index_lifecycle.py'
+adding 'oce/application/messages.py'
+adding 'oce/application/queue.py'
+adding 'oce/application/service.py'
+adding 'oce/application/uow.py'
+adding 'oce/application/warmup.py'
+adding 'oce/application/worker.py'
+adding 'oce/application/commands/__init__.py'
+adding 'oce/application/commands/checkpoint.py'
+adding 'oce/application/commands/credentials.py'
+adding 'oce/application/commands/gc.py'
+adding 'oce/application/commands/ingest.py'
+adding 'oce/application/commands/queue_admin.py'
+adding 'oce/application/commands/requeue.py'
+adding 'oce/application/queries/__init__.py'
+adding 'oce/application/queries/index_stats.py'
+adding 'oce/application/queries/queue.py'
+adding 'oce/application/queries/search.py'
+adding 'oce/application/queries/stats.py'
+adding 'oce/application/queries/status.py'
+adding 'oce/domain/repositories.py'
+adding 'oce/domain/blob/blob.py'
+adding 'oce/domain/chain/chain.py'
+adding 'oce/domain/chunk/__init__.py'
+adding 'oce/domain/chunk/lang.py'
+adding 'oce/domain/chunk/protocols.py'
+adding 'oce/domain/chunk/recursive_chunker.py'
+adding 'oce/domain/chunk/router.py'
+adding 'oce/domain/chunk/spans.py'
+adding 'oce/domain/chunk/types.py'
+adding 'oce/domain/services/__init__.py'
+adding 'oce/domain/services/embedder.py'
+adding 'oce/domain/services/evidence_pack.py'
+adding 'oce/domain/services/formatter.py'
+adding 'oce/domain/services/indexing.py'
+adding 'oce/domain/services/lexical.py'
+adding 'oce/domain/services/path_document_builder.py'
+adding 'oce/domain/services/path_search.py'
+adding 'oce/domain/services/query_classifier.py'
+adding 'oce/domain/services/query_evidence.py'
+adding 'oce/domain/services/query_planner.py'
+adding 'oce/domain/services/relations.py'
+adding 'oce/domain/services/reranker.py'
+adding 'oce/domain/services/retrieval.py'
+adding 'oce/domain/services/retrieval_strategy.py'
+adding 'oce/domain/services/search.py'
+adding 'oce/domain/services/source_filter.py'
+adding 'oce/domain/services/symbols.py'
+adding 'oce/domain/services/test_paths.py'
+adding 'oce/domain/services/llm/__init__.py'
+adding 'oce/domain/services/llm/client.py'
+adding 'oce/domain/services/llm/prompts.py'
+adding 'oce/domain/services/llm/reranker.py'
+adding 'oce/domain/services/llm/rewriter.py'
+adding 'oce/domain/services/selector/__init__.py'
+adding 'oce/domain/services/selector/coverage_selector.py'
+adding 'oce/domain/services/selector/protocols.py'
+adding 'oce/domain/services/selector/topk_selector.py'
+adding 'oce/infrastructure/__init__.py'
+adding 'oce/infrastructure/delegate_runtime.py'
+adding 'oce/infrastructure/regex_symbol_provider.py'
+adding 'oce/infrastructure/astchunk/__init__.py'
+adding 'oce/infrastructure/astchunk/astchunk_builder.py'
+adding 'oce/infrastructure/astchunk/astnode.py'
+adding 'oce/infrastructure/astchunk/cast_chunker.py'
+adding 'oce/infrastructure/astchunk/compat.py'
+adding 'oce/infrastructure/astchunk/declarations.py'
+adding 'oce/infrastructure/astchunk/preprocessing.py'
+adding 'oce/infrastructure/astchunk/symbol_provider.py'
+adding 'oce/infrastructure/chunkers/__init__.py'
+adding 'oce/infrastructure/chunkers/factory.py'
+adding 'oce/infrastructure/chunkers/jsp_chunker.py'
+adding 'oce/infrastructure/chunkers/markdown_chunker.py'
+adding 'oce/infrastructure/chunkers/vue_chunker.py'
+adding 'oce/infrastructure/embed/__init__.py'
+adding 'oce/infrastructure/embed/credential_embedder.py'
+adding 'oce/infrastructure/embed/credential_reranker.py'
+adding 'oce/infrastructure/embed/local_onnx_reranker.py'
+adding 'oce/infrastructure/embed/openai_embedder.py'
+adding 'oce/infrastructure/embed/openai_reranker.py'
+adding 'oce/infrastructure/embed/query_cache.py'
+adding 'oce/infrastructure/llm/__init__.py'
+adding 'oce/infrastructure/llm/credential_llm_client.py'
+adding 'oce/infrastructure/llm/openai_compatible_client.py'
+adding 'oce/infrastructure/llm/rate_limiter.py'
+adding 'oce/infrastructure/metrics/__init__.py'
+adding 'oce/infrastructure/metrics/cleanup.py'
+adding 'oce/infrastructure/metrics/periodic.py'
+adding 'oce/infrastructure/metrics/resource_sampler.py'
+adding 'oce/infrastructure/metrics/sql_metrics_sink.py'
+adding 'oce/infrastructure/metrics/stats_store.py'
+adding 'oce/infrastructure/milvus3/__init__.py'
+adding 'oce/infrastructure/milvus3/base.py'
+adding 'oce/infrastructure/milvus3/client.py'
+adding 'oce/infrastructure/milvus3/path_index.py'
+adding 'oce/infrastructure/milvus3/schema.py'
+adding 'oce/infrastructure/milvus3/search_store.py'
+adding 'oce/infrastructure/persistence/__init__.py'
+adding 'oce/infrastructure/persistence/active_credential.py'
+adding 'oce/infrastructure/persistence/credential_admin_store.py'
+adding 'oce/infrastructure/persistence/dialect.py'
+adding 'oce/infrastructure/persistence/index_profile_store.py'
+adding 'oce/infrastructure/persistence/index_stats_reader.py'
+adding 'oce/infrastructure/persistence/lexical_index.py'
+adding 'oce/infrastructure/persistence/migrations.py'
+adding 'oce/infrastructure/persistence/models.py'
+adding 'oce/infrastructure/persistence/path_content_store.py'
+adding 'oce/infrastructure/persistence/path_lookup_store.py'
+adding 'oce/infrastructure/persistence/scope_filter.py'
+adding 'oce/infrastructure/persistence/sql_blob_repo.py'
+adding 'oce/infrastructure/persistence/sql_chain_repo.py'
+adding 'oce/infrastructure/persistence/sql_chunk_repo.py'
+adding 'oce/infrastructure/persistence/sql_symbol_projection.py'
+adding 'oce/infrastructure/persistence/symbol_search_store.py'
+adding 'oce/infrastructure/persistence/uow.py'
+adding 'oce/infrastructure/queue/__init__.py'
+adding 'oce/infrastructure/queue/redis_queue.py'
+adding 'oce/shared/__init__.py'
+adding 'oce/shared/hashes.py'
+adding 'oce/shared/index_profile.py'
+adding 'oce/shared/index_stats.py'
+adding 'oce/shared/logging.py'
+adding 'oce/shared/metrics.py'
+adding 'oce/shared/metrics_read.py'
+adding 'oce/shared/model_credentials.py'
+adding 'oce/shared/config/__init__.py'
+adding 'oce/shared/config/settings.py'
+adding 'oce/shared/database/__init__.py'
+adding 'oce/shared/database/session.py'
+adding 'oce/shared/errors/__init__.py'
+adding 'opencontextengine-0.3.0.dist-info/licenses/LICENSE'
+adding 'opencontextengine-0.3.0.dist-info/METADATA'
+adding 'opencontextengine-0.3.0.dist-info/WHEEL'
+adding 'opencontextengine-0.3.0.dist-info/entry_points.txt'
+adding 'opencontextengine-0.3.0.dist-info/top_level.txt'
+adding 'opencontextengine-0.3.0.dist-info/RECORD'
+removing build/bdist.linux-x86_64/wheel
+Successfully built /home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist/opencontextengine-0.3.0.tar.gz
+Successfully built /home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist/opencontextengine-0.3.0-py3-none-any.whl

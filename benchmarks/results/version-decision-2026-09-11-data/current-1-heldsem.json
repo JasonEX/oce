@@ -1,0 +1,2657 @@
+{
+  "schema_version": 1,
+  "suite": "semantic_queries",
+  "label": "current-1",
+  "created_at": "2026-09-12T01:04:16.353586+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "7aca5fcb4d008c1d34b817b86ebcb24f7a546d23579677cf180ae527919dedfd",
+    "semantic_cases_sha256": "32e931663512badf91e5d5bbeab58f95f2e5d7d1624681863ccbc747430caddd"
+  },
+  "snapshots": [
+    {
+      "id": "chi-ae6be74",
+      "repo": "go-chi/chi",
+      "revision": "ae6be7469132cf471ca099d8c7bda4010c4ff7b2",
+      "code_language": "go"
+    },
+    {
+      "id": "click-6aabf09",
+      "repo": "pallets/click",
+      "revision": "6aabf099bfdd4c1e75fe8d0e0d4241372b988ab1",
+      "code_language": "python"
+    },
+    {
+      "id": "fastify-ac28821",
+      "repo": "fastify/fastify",
+      "revision": "ac28821df11d7862694900326a6cc8c831dc8bf6",
+      "code_language": "javascript"
+    },
+    {
+      "id": "jsoup-7860d08",
+      "repo": "jhy/jsoup",
+      "revision": "7860d088e044236e288c1f88a743b68b2a0edece",
+      "code_language": "java"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "current-1-proof.json"
+    }
+  },
+  "case_ids": [
+    "click-arg-parsing-overview",
+    "click-shell-completion",
+    "click-help-formatting",
+    "click-echo-chain",
+    "click-choice-case-insensitive-issue",
+    "fastify-request-lifecycle-overview",
+    "fastify-schema-validation",
+    "fastify-body-parsing",
+    "fastify-reply-send-chain",
+    "fastify-head-route-issue",
+    "chi-routing-overview",
+    "chi-pattern-matching",
+    "chi-mount-chain",
+    "chi-compress-content-length-issue",
+    "jsoup-parsing-overview",
+    "jsoup-css-selector",
+    "jsoup-connect-get-chain",
+    "jsoup-pre-whitespace-issue"
+  ],
+  "sync": {
+    "chi-ae6be74": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "click-6aabf09": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "fastify-ac28821": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "jsoup-7860d08": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 18,
+    "successful_cases": 18,
+    "error_cases": 0,
+    "top1_relevant": 0.7222222222222222,
+    "top1_primary": 0.6111111111111112,
+    "mrr": 0.8388888888888889,
+    "hit_at_5": 0.9444444444444444,
+    "weighted_recall_at_5": 0.6540453373786708,
+    "weighted_recall_at_10": 0.799318582651916,
+    "primary_recall_at_10": 0.9722222222222222,
+    "ndcg_at_10": 0.7215850286152324,
+    "mean_elapsed_ms": 1113.388888888889,
+    "p50_elapsed_ms": 611,
+    "p95_elapsed_ms": 6383,
+    "mean_returned_chars": 24747.055555555555,
+    "mean_hit_count": 21.055555555555557,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 2,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "feature": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "top1_relevant": 0.5,
+      "top1_primary": 0.16666666666666666,
+      "mrr": 0.75,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.7093073593073593,
+      "weighted_recall_at_10": 0.8411255411255412,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.6227180195602062,
+      "mean_elapsed_ms": 593.3333333333334,
+      "p50_elapsed_ms": 582,
+      "p95_elapsed_ms": 691,
+      "mean_returned_chars": 24092.0,
+      "mean_hit_count": 21.166666666666668
+    },
+    "overview": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 0.75,
+      "top1_primary": 0.75,
+      "mrr": 0.775,
+      "hit_at_5": 0.75,
+      "weighted_recall_at_5": 0.42467948717948717,
+      "weighted_recall_at_10": 0.6723484848484849,
+      "primary_recall_at_10": 0.875,
+      "ndcg_at_10": 0.6697893658158957,
+      "mean_elapsed_ms": 609.5,
+      "p50_elapsed_ms": 558,
+      "p95_elapsed_ms": 718,
+      "mean_returned_chars": 24327.25,
+      "mean_hit_count": 21.5
+    },
+    "call_chain": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 1.0,
+      "top1_primary": 1.0,
+      "mrr": 1.0,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.7420634920634921,
+      "weighted_recall_at_10": 0.8670634920634921,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8374229469424226,
+      "mean_elapsed_ms": 664.75,
+      "p50_elapsed_ms": 604,
+      "p95_elapsed_ms": 843,
+      "mean_returned_chars": 28491.25,
+      "mean_hit_count": 28.5
+    },
+    "issue": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 0.75,
+      "top1_primary": 0.75,
+      "mrr": 0.875,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.7125,
+      "weighted_recall_at_10": 0.7958333333333334,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8058432866699181,
+      "mean_elapsed_ms": 2846.0,
+      "p50_elapsed_ms": 1618,
+      "p95_elapsed_ms": 6383,
+      "mean_returned_chars": 22405.25,
+      "mean_hit_count": 13.0
+    }
+  },
+  "by_code_language": {
+    "python": {
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "top1_relevant": 1.0,
+      "top1_primary": 0.8,
+      "mrr": 1.0,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.8214285714285714,
+      "weighted_recall_at_10": 0.9214285714285714,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8603066238153815,
+      "mean_elapsed_ms": 852.8,
+      "p50_elapsed_ms": 604,
+      "p95_elapsed_ms": 1822,
+      "mean_returned_chars": 25105.4,
+      "mean_hit_count": 20.8
+    },
+    "javascript": {
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "top1_relevant": 0.2,
+      "top1_primary": 0.2,
+      "mrr": 0.52,
+      "hit_at_5": 0.8,
+      "weighted_recall_at_5": 0.5323809523809524,
+      "weighted_recall_at_10": 0.586926406926407,
+      "primary_recall_at_10": 0.9,
+      "ndcg_at_10": 0.48320828806385424,
+      "mean_elapsed_ms": 825.6,
+      "p50_elapsed_ms": 650,
+      "p95_elapsed_ms": 1618,
+      "mean_returned_chars": 24989.0,
+      "mean_hit_count": 21.4
+    },
+    "go": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 0.75,
+      "top1_primary": 0.75,
+      "mrr": 0.875,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5958333333333333,
+      "weighted_recall_at_10": 0.8541666666666666,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.7652655061767094,
+      "mean_elapsed_ms": 870.25,
+      "p50_elapsed_ms": 544,
+      "p95_elapsed_ms": 1561,
+      "mean_returned_chars": 21723.0,
+      "mean_hit_count": 21.5
+    },
+    "java": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 1.0,
+      "top1_primary": 0.75,
+      "mrr": 1.0,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.6551087801087802,
+      "weighted_recall_at_10": 0.8573232323232324,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8024734827427916,
+      "mean_elapsed_ms": 2042.0,
+      "p50_elapsed_ms": 594,
+      "p95_elapsed_ms": 6383,
+      "mean_returned_chars": 27020.75,
+      "mean_hit_count": 20.5
+    }
+  },
+  "cases": [
+    {
+      "id": "click-arg-parsing-overview",
+      "instance_id": "click-6aabf09",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/click/parser.py",
+          "start": 224,
+          "end": 263
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1197,
+          "end": 1245
+        },
+        {
+          "path": "src/click/__init__.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 730,
+          "end": 782
+        },
+        {
+          "path": "docs/commands-and-groups.md",
+          "start": 363,
+          "end": 396
+        },
+        {
+          "path": "docs/click-concepts.md",
+          "start": 1,
+          "end": 68
+        },
+        {
+          "path": "docs/api.md",
+          "start": 147,
+          "end": 206
+        },
+        {
+          "path": "docs/faqs.md",
+          "start": 190,
+          "end": 201
+        },
+        {
+          "path": "CHANGES.md",
+          "start": 795,
+          "end": 944
+        },
+        {
+          "path": "docs/parameter-types.md",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1182,
+          "end": 1193
+        },
+        {
+          "path": "src/click/decorators.py",
+          "start": 603,
+          "end": 614
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1107,
+          "end": 1118
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2507,
+          "end": 2507
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 3324,
+          "end": 3335
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 3813,
+          "end": 3814
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 639,
+          "end": 650
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1263,
+          "end": 1274
+        },
+        {
+          "path": "src/click/formatting.py",
+          "start": 297,
+          "end": 299
+        },
+        {
+          "path": "src/click/exceptions.py",
+          "start": 132,
+          "end": 132
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.75,
+        "weighted_recall_at_10": 0.75,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8838695436828513
+      },
+      "returned_chars": 29065,
+      "hit_count": 20,
+      "elapsed_ms": 718,
+      "wall_elapsed_ms": 739
+    },
+    {
+      "id": "click-shell-completion",
+      "instance_id": "click-6aabf09",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/click/core.py",
+          "start": 1422,
+          "end": 1487
+        },
+        {
+          "path": "src/click/types.py",
+          "start": 484,
+          "end": 508
+        },
+        {
+          "path": "tests/test_shell_completion.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "docs/shell-completion.md",
+          "start": 1,
+          "end": 75
+        },
+        {
+          "path": "examples/completion/README",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "docs/faqs.md",
+          "start": 225,
+          "end": 251
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 757,
+          "end": 801
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "examples/completion/completion.py",
+          "start": 1,
+          "end": 56
+        },
+        {
+          "path": "docs/api.md",
+          "start": 306,
+          "end": 365
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1107,
+          "end": 1118
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 945,
+          "end": 955
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 67,
+          "end": 78
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1247,
+          "end": 1258
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 63,
+          "end": 74
+        },
+        {
+          "path": "src/click/types.py",
+          "start": 395,
+          "end": 405
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 278,
+          "end": 289
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 354,
+          "end": 365
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 714,
+          "end": 723
+        },
+        {
+          "path": "tests/test_options.py",
+          "start": 1708,
+          "end": 1717
+        },
+        {
+          "path": "tests/test_abort_interrupt.py",
+          "start": 76,
+          "end": 85
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.6349831686153656
+      },
+      "returned_chars": 24257,
+      "hit_count": 21,
+      "elapsed_ms": 582,
+      "wall_elapsed_ms": 602
+    },
+    {
+      "id": "click-help-formatting",
+      "instance_id": "click-6aabf09",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "src/click/formatting.py",
+          "start": 158,
+          "end": 211
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1247,
+          "end": 1298
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "tests/test_formatting.py",
+          "start": 593,
+          "end": 632
+        },
+        {
+          "path": "docs/documentation.md",
+          "start": 232,
+          "end": 264
+        },
+        {
+          "path": "docs/index.md",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "docs/why.md",
+          "start": 47,
+          "end": 82
+        },
+        {
+          "path": "src/click/__init__.py",
+          "start": 39,
+          "end": 73
+        },
+        {
+          "path": "src/click/parser.py",
+          "start": 224,
+          "end": 263
+        },
+        {
+          "path": "docs/quickstart.md",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 536,
+          "end": 537
+        },
+        {
+          "path": "src/click/formatting.py",
+          "start": 31,
+          "end": 41
+        },
+        {
+          "path": "src/click/utils.py",
+          "start": 62,
+          "end": 73
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1163,
+          "end": 1169
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1312,
+          "end": 1322
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1300,
+          "end": 1310
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1980,
+          "end": 1982
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1324,
+          "end": 1331
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 107,
+          "end": 112
+        },
+        {
+          "path": "tests/test_custom_classes.py",
+          "start": 55,
+          "end": 63
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 168,
+          "end": 177
+        },
+        {
+          "path": "tests/test_formatting.py",
+          "start": 578,
+          "end": 587
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 1.0
+      },
+      "returned_chars": 24928,
+      "hit_count": 22,
+      "elapsed_ms": 538,
+      "wall_elapsed_ms": 559
+    },
+    {
+      "id": "click-echo-chain",
+      "instance_id": "click-6aabf09",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/click/utils.py",
+          "start": 252,
+          "end": 346
+        },
+        {
+          "path": "src/click/_termui_impl.py",
+          "start": 383,
+          "end": 420
+        },
+        {
+          "path": "src/click/termui.py",
+          "start": 768,
+          "end": 831
+        },
+        {
+          "path": "src/click/testing.py",
+          "start": 466,
+          "end": 523
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 455,
+          "end": 516
+        },
+        {
+          "path": "tests/test_termui.py",
+          "start": 1040,
+          "end": 1088
+        },
+        {
+          "path": "tests/test_compat.py",
+          "start": 85,
+          "end": 139
+        },
+        {
+          "path": "docs/utils.md",
+          "start": 55,
+          "end": 76
+        },
+        {
+          "path": "docs/quickstart.md",
+          "start": 73,
+          "end": 85
+        },
+        {
+          "path": "tests/test_testing.py",
+          "start": 213,
+          "end": 268
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 577,
+          "end": 577
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 576,
+          "end": 576
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 194,
+          "end": 199
+        },
+        {
+          "path": "src/click/globals.py",
+          "start": 54,
+          "end": 59
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 547,
+          "end": 551
+        },
+        {
+          "path": "src/click/_compat.py",
+          "start": 163,
+          "end": 168
+        },
+        {
+          "path": "src/click/globals.py",
+          "start": 20,
+          "end": 25
+        },
+        {
+          "path": "src/click/termui.py",
+          "start": 641,
+          "end": 652
+        },
+        {
+          "path": "src/click/testing.py",
+          "start": 156,
+          "end": 166
+        },
+        {
+          "path": "src/click/testing.py",
+          "start": 71,
+          "end": 77
+        },
+        {
+          "path": "src/click/testing.py",
+          "start": 51,
+          "end": 52
+        },
+        {
+          "path": "examples/colors/colors.py",
+          "start": 39,
+          "end": 39
+        },
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 102,
+          "end": 110
+        },
+        {
+          "path": "examples/completion/completion.py",
+          "start": 14,
+          "end": 21
+        },
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 114,
+          "end": 122
+        },
+        {
+          "path": "tests/test_abort_interrupt.py",
+          "start": 62,
+          "end": 71
+        },
+        {
+          "path": "tests/test_chain.py",
+          "start": 8,
+          "end": 17
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 16,
+          "end": 25
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8571428571428571,
+        "weighted_recall_at_10": 0.8571428571428571,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8146656240744838
+      },
+      "returned_chars": 26667,
+      "hit_count": 28,
+      "elapsed_ms": 604,
+      "wall_elapsed_ms": 623
+    },
+    {
+      "id": "click-choice-case-insensitive-issue",
+      "instance_id": "click-6aabf09",
+      "kind": "issue",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "src/click/types.py",
+          "start": 293,
+          "end": 328
+        },
+        {
+          "path": "tests/test_basic.py",
+          "start": 565,
+          "end": 620
+        },
+        {
+          "path": "tests/test_options.py",
+          "start": 1054,
+          "end": 1105
+        },
+        {
+          "path": "tests/test_normalization.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 310,
+          "end": 364
+        },
+        {
+          "path": "src/click/decorators.py",
+          "start": 100,
+          "end": 165
+        },
+        {
+          "path": "docs/parameter-types.md",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 89,
+          "end": 143
+        },
+        {
+          "path": "docs/advanced.md",
+          "start": 181,
+          "end": 210
+        },
+        {
+          "path": "tests/test_arguments.py",
+          "start": 611,
+          "end": 683
+        },
+        {
+          "path": "tests/test_abort_interrupt.py",
+          "start": 59,
+          "end": 68
+        },
+        {
+          "path": "tests/test_chain.py",
+          "start": 15,
+          "end": 24
+        },
+        {
+          "path": "tests/test_command_decorators.py",
+          "start": 6,
+          "end": 13
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9680147827042069
+      },
+      "returned_chars": 20610,
+      "hit_count": 13,
+      "elapsed_ms": 1822,
+      "wall_elapsed_ms": 1846
+    },
+    {
+      "id": "fastify-request-lifecycle-overview",
+      "instance_id": "fastify-ac28821",
+      "kind": "overview",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "types/hooks.d.ts",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "types/instance.d.ts",
+          "start": 214,
+          "end": 233
+        },
+        {
+          "path": "test/route-hooks.test.js",
+          "start": 392,
+          "end": 455
+        },
+        {
+          "path": "docs/Reference/Lifecycle.md",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "docs/Reference/Hooks.md",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "fastify.js",
+          "start": 89,
+          "end": 120
+        },
+        {
+          "path": "docs/Reference/TypeScript.md",
+          "start": 1504,
+          "end": 1603
+        },
+        {
+          "path": "docs/Reference/Index.md",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "docs/Reference/Routes.md",
+          "start": 24,
+          "end": 122
+        },
+        {
+          "path": "lib/handle-request.js",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "fastify.d.ts",
+          "start": 43,
+          "end": 43
+        },
+        {
+          "path": "fastify.js",
+          "start": 576,
+          "end": 587
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 167
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 901,
+          "end": 911
+        },
+        {
+          "path": "fastify.js",
+          "start": 474,
+          "end": 485
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 40,
+          "end": 51
+        },
+        {
+          "path": "types/schema.d.ts",
+          "start": 10,
+          "end": 16
+        },
+        {
+          "path": "types/route.d.ts",
+          "start": 33,
+          "end": 33
+        },
+        {
+          "path": "types/utils.d.ts",
+          "start": 55,
+          "end": 55
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.1,
+        "hit_at_5": 0.0,
+        "weighted_recall_at_5": 0.0,
+        "weighted_recall_at_10": 0.2727272727272727,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.13863649271125728
+      },
+      "returned_chars": 29066,
+      "hit_count": 19,
+      "elapsed_ms": 558,
+      "wall_elapsed_ms": 582
+    },
+    {
+      "id": "fastify-schema-validation",
+      "instance_id": "fastify-ac28821",
+      "kind": "feature",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "types/schema.d.ts",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "lib/validation.js",
+          "start": 220,
+          "end": 284
+        },
+        {
+          "path": "lib/symbols.js",
+          "start": 1,
+          "end": 36
+        },
+        {
+          "path": "test/internals/request-validate.test.js",
+          "start": 1,
+          "end": 47
+        },
+        {
+          "path": "docs/Guides/Getting-Started.md",
+          "start": 448,
+          "end": 483
+        },
+        {
+          "path": "docs/Reference/TypeScript.md",
+          "start": 190,
+          "end": 325
+        },
+        {
+          "path": "test/fluent-schema.test.js",
+          "start": 154,
+          "end": 209
+        },
+        {
+          "path": "types/request.d.ts",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "docs/Reference/Validation-and-Serialization.md",
+          "start": 152,
+          "end": 233
+        },
+        {
+          "path": "fastify.d.ts",
+          "start": 31,
+          "end": 43
+        },
+        {
+          "path": "lib/validation.js",
+          "start": 73,
+          "end": 84
+        },
+        {
+          "path": "lib/validation.js",
+          "start": 199,
+          "end": 210
+        },
+        {
+          "path": "lib/warnings.js",
+          "start": 37,
+          "end": 42
+        },
+        {
+          "path": "lib/warnings.js",
+          "start": 16,
+          "end": 21
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 294,
+          "end": 302
+        },
+        {
+          "path": ".github/workflows/citgm-package.yml",
+          "start": 83,
+          "end": 83
+        },
+        {
+          "path": "test/types/reply.tst.ts",
+          "start": 3,
+          "end": 12
+        },
+        {
+          "path": "test/types/request.tst.ts",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "test/types/hooks.tst.ts",
+          "start": 4,
+          "end": 13
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.42857142857142855,
+        "weighted_recall_at_10": 0.42857142857142855,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.4495875851222953
+      },
+      "returned_chars": 25423,
+      "hit_count": 19,
+      "elapsed_ms": 691,
+      "wall_elapsed_ms": 711
+    },
+    {
+      "id": "fastify-body-parsing",
+      "instance_id": "fastify-ac28821",
+      "kind": "feature",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "types/content-type-parser.d.ts",
+          "start": 32,
+          "end": 50
+        },
+        {
+          "path": "fastify.js",
+          "start": 232,
+          "end": 280
+        },
+        {
+          "path": "types/instance.d.ts",
+          "start": 632,
+          "end": 688
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "test/custom-parser.1.test.js",
+          "start": 127,
+          "end": 206
+        },
+        {
+          "path": "docs/Reference/Server.md",
+          "start": 2278,
+          "end": 2307
+        },
+        {
+          "path": "test/custom-parser.5.test.js",
+          "start": 65,
+          "end": 130
+        },
+        {
+          "path": "examples/parser.js",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "test/types/content-type-parser.tst.ts",
+          "start": 42,
+          "end": 70
+        },
+        {
+          "path": "test/custom-parser.0.test.js",
+          "start": 596,
+          "end": 653
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 312,
+          "end": 323
+        },
+        {
+          "path": "types/content-type-parser.d.ts",
+          "start": 88,
+          "end": 91
+        },
+        {
+          "path": "fastify.d.ts",
+          "start": 43,
+          "end": 43
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 167
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 901,
+          "end": 911
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 350,
+          "end": 361
+        },
+        {
+          "path": "lib/server.js",
+          "start": 30,
+          "end": 41
+        },
+        {
+          "path": "lib/route.js",
+          "start": 203,
+          "end": 213
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 372,
+          "end": 374
+        },
+        {
+          "path": "types/content-type-parser.d.ts",
+          "start": 82,
+          "end": 82
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 390,
+          "end": 396
+        },
+        {
+          "path": "types/content-type-parser.d.ts",
+          "start": 95,
+          "end": 95
+        },
+        {
+          "path": "test/custom-http-server.test.js",
+          "start": 21,
+          "end": 30
+        },
+        {
+          "path": "test/context-config.test.js",
+          "start": 16,
+          "end": 25
+        },
+        {
+          "path": "test/diagnostics-channel/async-error-handler.test.js",
+          "start": 18,
+          "end": 27
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8,
+        "weighted_recall_at_10": 0.8,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.4483700844277832
+      },
+      "returned_chars": 24676,
+      "hit_count": 25,
+      "elapsed_ms": 611,
+      "wall_elapsed_ms": 632
+    },
+    {
+      "id": "fastify-reply-send-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 241
+        },
+        {
+          "path": "types/hooks.d.ts",
+          "start": 352,
+          "end": 374
+        },
+        {
+          "path": "test/internals/reply.test.js",
+          "start": 145,
+          "end": 189
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 1,
+          "end": 71
+        },
+        {
+          "path": "types/instance.d.ts",
+          "start": 312,
+          "end": 334
+        },
+        {
+          "path": "integration/server.js",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 169,
+          "end": 237
+        },
+        {
+          "path": "test/hooks-async.test.js",
+          "start": 980,
+          "end": 1050
+        },
+        {
+          "path": "test/route-hooks.test.js",
+          "start": 392,
+          "end": 455
+        },
+        {
+          "path": "docs/Reference/Hooks.md",
+          "start": 705,
+          "end": 827
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 952,
+          "end": 957
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 561,
+          "end": 566
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 243,
+          "end": 247
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 520,
+          "end": 525
+        },
+        {
+          "path": "lib/noop-set.js",
+          "start": 8,
+          "end": 8
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 278,
+          "end": 283
+        },
+        {
+          "path": "test/diagnostics-channel/error-before-handler.test.js",
+          "start": 5,
+          "end": 5
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 30,
+          "end": 35
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 595,
+          "end": 600
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 327,
+          "end": 327
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 534,
+          "end": 538
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 901,
+          "end": 911
+        },
+        {
+          "path": "fastify.d.ts",
+          "start": 43,
+          "end": 43
+        },
+        {
+          "path": "fastify.js",
+          "start": 576,
+          "end": 587
+        },
+        {
+          "path": "examples/parser.js",
+          "start": 46,
+          "end": 53
+        },
+        {
+          "path": "examples/http2.js",
+          "start": 32,
+          "end": 39
+        },
+        {
+          "path": "examples/https.js",
+          "start": 31,
+          "end": 38
+        },
+        {
+          "path": "examples/shared-schema.js",
+          "start": 31,
+          "end": 38
+        },
+        {
+          "path": "examples/benchmark/parser.js",
+          "start": 42,
+          "end": 47
+        },
+        {
+          "path": "examples/benchmark/hooks-benchmark-async-await.js",
+          "start": 37,
+          "end": 44
+        },
+        {
+          "path": "examples/benchmark/hooks-benchmark.js",
+          "start": 45,
+          "end": 52
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8333333333333334,
+        "weighted_recall_at_10": 0.8333333333333334,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.882808018370203
+      },
+      "returned_chars": 28510,
+      "hit_count": 31,
+      "elapsed_ms": 650,
+      "wall_elapsed_ms": 671
+    },
+    {
+      "id": "fastify-head-route-issue",
+      "instance_id": "fastify-ac28821",
+      "kind": "issue",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "fastify.js",
+          "start": 291,
+          "end": 367
+        },
+        {
+          "path": "lib/route.js",
+          "start": 447,
+          "end": 459
+        },
+        {
+          "path": "test/route.8.test.js",
+          "start": 124,
+          "end": 194
+        },
+        {
+          "path": "test/route.5.test.js",
+          "start": 175,
+          "end": 211
+        },
+        {
+          "path": "test/constrained-routes.test.js",
+          "start": 646,
+          "end": 713
+        },
+        {
+          "path": "test/route.7.test.js",
+          "start": 179,
+          "end": 218
+        },
+        {
+          "path": "test/route.6.test.js",
+          "start": 240,
+          "end": 299
+        },
+        {
+          "path": "test/context-config.test.js",
+          "start": 69,
+          "end": 116
+        },
+        {
+          "path": "lib/config-validator.js",
+          "start": 1158,
+          "end": 1159
+        },
+        {
+          "path": "docs/Reference/Server.md",
+          "start": 642,
+          "end": 675
+        },
+        {
+          "path": "test/body-limit.test.js",
+          "start": 56,
+          "end": 65
+        },
+        {
+          "path": "test/http-methods/head.test.js",
+          "start": 48,
+          "end": 57
+        },
+        {
+          "path": "test/hooks.test.js",
+          "start": 142,
+          "end": 151
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.6,
+        "weighted_recall_at_10": 0.6,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.4966392596877323
+      },
+      "returned_chars": 17270,
+      "hit_count": 13,
+      "elapsed_ms": 1618,
+      "wall_elapsed_ms": 1640
+    },
+    {
+      "id": "chi-routing-overview",
+      "instance_id": "chi-ae6be74",
+      "kind": "overview",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "mux.go",
+          "start": 63,
+          "end": 108
+        },
+        {
+          "path": "README.md",
+          "start": 252,
+          "end": 286
+        },
+        {
+          "path": "middleware/page_route.go",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "middleware/supress_notfound.go",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1296,
+          "end": 1338
+        },
+        {
+          "path": "middleware/get_head.go",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "tree.go",
+          "start": 383,
+          "end": 409
+        },
+        {
+          "path": "middleware/strip.go",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "chi.go",
+          "start": 119,
+          "end": 140
+        },
+        {
+          "path": "middleware/url_format.go",
+          "start": 1,
+          "end": 77
+        },
+        {
+          "path": "mux.go",
+          "start": 412,
+          "end": 417
+        },
+        {
+          "path": "context.go",
+          "start": 45,
+          "end": 50
+        },
+        {
+          "path": "context.go",
+          "start": 82,
+          "end": 87
+        },
+        {
+          "path": "middleware/value.go",
+          "start": 9,
+          "end": 14
+        },
+        {
+          "path": "mux.go",
+          "start": 185,
+          "end": 187
+        },
+        {
+          "path": "chain.go",
+          "start": 18,
+          "end": 20
+        },
+        {
+          "path": "mux.go",
+          "start": 430,
+          "end": 435
+        },
+        {
+          "path": "context.go",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "path": "context.go",
+          "start": 11,
+          "end": 13
+        },
+        {
+          "path": "context.go",
+          "start": 124,
+          "end": 131
+        },
+        {
+          "path": "_examples/versions/main.go",
+          "start": 152,
+          "end": 154
+        },
+        {
+          "path": "_examples/fileserver/main.go",
+          "start": 62,
+          "end": 65
+        },
+        {
+          "path": "middleware/basic_auth.go",
+          "start": 25,
+          "end": 33
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 143,
+          "end": 151
+        },
+        {
+          "path": "middleware/basic_auth_test.go",
+          "start": 52,
+          "end": 59
+        },
+        {
+          "path": "middleware/content_encoding_test.go",
+          "start": 75,
+          "end": 82
+        },
+        {
+          "path": "middleware/content_charset_test.go",
+          "start": 116,
+          "end": 124
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.3333333333333333,
+        "weighted_recall_at_10": 0.6666666666666666,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.6992735509443042
+      },
+      "returned_chars": 18995,
+      "hit_count": 27,
+      "elapsed_ms": 533,
+      "wall_elapsed_ms": 553
+    },
+    {
+      "id": "chi-pattern-matching",
+      "instance_id": "chi-ae6be74",
+      "kind": "feature",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "chi.go",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "context.go",
+          "start": 147,
+          "end": 190
+        },
+        {
+          "path": "tree.go",
+          "start": 803,
+          "end": 878
+        },
+        {
+          "path": "README.md",
+          "start": 252,
+          "end": 286
+        },
+        {
+          "path": "CHANGELOG.md",
+          "start": 155,
+          "end": 167
+        },
+        {
+          "path": "mux.go",
+          "start": 421,
+          "end": 454
+        },
+        {
+          "path": "middleware/strip.go",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "middleware/get_head.go",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "middleware/supress_notfound.go",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "_examples/fileserver/main.go",
+          "start": 1,
+          "end": 65
+        },
+        {
+          "path": "tree.go",
+          "start": 735,
+          "end": 746
+        },
+        {
+          "path": "context.go",
+          "start": 45,
+          "end": 56
+        },
+        {
+          "path": "context.go",
+          "start": 11,
+          "end": 13
+        },
+        {
+          "path": "context.go",
+          "start": 124,
+          "end": 131
+        },
+        {
+          "path": "middleware/value.go",
+          "start": 9,
+          "end": 17
+        },
+        {
+          "path": "middleware/client_ip_test.go",
+          "start": 85,
+          "end": 93
+        },
+        {
+          "path": "middleware/throttle_test.go",
+          "start": 41,
+          "end": 50
+        },
+        {
+          "path": "middleware/request_id_test.go",
+          "start": 30,
+          "end": 39
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5518602517391734
+      },
+      "returned_chars": 19090,
+      "hit_count": 18,
+      "elapsed_ms": 544,
+      "wall_elapsed_ms": 568
+    },
+    {
+      "id": "chi-mount-chain",
+      "instance_id": "chi-ae6be74",
+      "kind": "call_chain",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "mux.go",
+          "start": 295,
+          "end": 354
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1181,
+          "end": 1294
+        },
+        {
+          "path": "tree_test.go",
+          "start": 614,
+          "end": 662
+        },
+        {
+          "path": "README.md",
+          "start": 175,
+          "end": 250
+        },
+        {
+          "path": "chi.go",
+          "start": 68,
+          "end": 117
+        },
+        {
+          "path": "context.go",
+          "start": 45,
+          "end": 100
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 55,
+          "end": 112
+        },
+        {
+          "path": "tree.go",
+          "start": 633,
+          "end": 714
+        },
+        {
+          "path": "_examples/versions/main.go",
+          "start": 1,
+          "end": 69
+        },
+        {
+          "path": "_examples/todos-resource/main.go",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "tree.go",
+          "start": 591,
+          "end": 596
+        },
+        {
+          "path": "mux.go",
+          "start": 203,
+          "end": 208
+        },
+        {
+          "path": "mux.go",
+          "start": 223,
+          "end": 228
+        },
+        {
+          "path": "chain.go",
+          "start": 18,
+          "end": 20
+        },
+        {
+          "path": "context.go",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "path": "tree.go",
+          "start": 559,
+          "end": 564
+        },
+        {
+          "path": "tree.go",
+          "start": 850,
+          "end": 855
+        },
+        {
+          "path": "tree.go",
+          "start": 822,
+          "end": 827
+        },
+        {
+          "path": "chain.go",
+          "start": 6,
+          "end": 8
+        },
+        {
+          "path": "mux.go",
+          "start": 511,
+          "end": 516
+        },
+        {
+          "path": "chain.go",
+          "start": 36,
+          "end": 40
+        },
+        {
+          "path": "mux.go",
+          "start": 501,
+          "end": 508
+        },
+        {
+          "path": "mux.go",
+          "start": 430,
+          "end": 441
+        },
+        {
+          "path": "chi.go",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "mux.go",
+          "start": 280,
+          "end": 289
+        },
+        {
+          "path": "mux_test.go",
+          "start": 468,
+          "end": 477
+        },
+        {
+          "path": "mux_test.go",
+          "start": 229,
+          "end": 238
+        },
+        {
+          "path": "mux_test.go",
+          "start": 366,
+          "end": 375
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8926088093104029
+      },
+      "returned_chars": 29215,
+      "hit_count": 28,
+      "elapsed_ms": 843,
+      "wall_elapsed_ms": 864
+    },
+    {
+      "id": "chi-compress-content-length-issue",
+      "instance_id": "chi-ae6be74",
+      "kind": "issue",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "middleware/compress.go",
+          "start": 1,
+          "end": 65
+        },
+        {
+          "path": "middleware/content_type.go",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "middleware/content_encoding.go",
+          "start": 1,
+          "end": 34
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 55,
+          "end": 112
+        },
+        {
+          "path": "middleware/compress_test.go",
+          "start": 1,
+          "end": 110
+        },
+        {
+          "path": "_examples/todos-resource/todos.go",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "_examples/todos-resource/users.go",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "middleware/throttle.go",
+          "start": 133,
+          "end": 151
+        },
+        {
+          "path": "middleware/request_size.go",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "_examples/limits/main.go",
+          "start": 21,
+          "end": 92
+        },
+        {
+          "path": "middleware/content_charset_test.go",
+          "start": 103,
+          "end": 112
+        },
+        {
+          "path": "middleware/client_ip_test.go",
+          "start": 334,
+          "end": 342
+        },
+        {
+          "path": "middleware/basic_auth_test.go",
+          "start": 15,
+          "end": 24
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.75,
+        "weighted_recall_at_10": 0.75,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9173194127129571
+      },
+      "returned_chars": 19592,
+      "hit_count": 13,
+      "elapsed_ms": 1561,
+      "wall_elapsed_ms": 1584
+    },
+    {
+      "id": "jsoup-parsing-overview",
+      "instance_id": "jsoup-7860d08",
+      "kind": "overview",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 6,
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/parser/Tokeniser.java",
+          "start": 47,
+          "end": 78
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilder.java",
+          "start": 31,
+          "end": 66
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilderState.java",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/XmlTreeBuilderTest.java",
+          "start": 217,
+          "end": 254
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/XmlTreeBuilder.java",
+          "start": 98,
+          "end": 133
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 23,
+          "end": 41
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TokeniserState.java",
+          "start": 1,
+          "end": 81
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 343,
+          "end": 380
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 159,
+          "end": 161
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TokenData.java",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 149,
+          "end": 152
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 88,
+          "end": 95
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 132,
+          "end": 134
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 26,
+          "end": 37
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 56,
+          "end": 58
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Token.java",
+          "start": 17,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 21,
+          "end": 32
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 60,
+          "end": 67
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.6153846153846154,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9573778759251698
+      },
+      "returned_chars": 20183,
+      "hit_count": 20,
+      "elapsed_ms": 629,
+      "wall_elapsed_ms": 655
+    },
+    {
+      "id": "jsoup-css-selector",
+      "instance_id": "jsoup-7860d08",
+      "kind": "feature",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/select/Selector.java",
+          "start": 114,
+          "end": 170
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Element.java",
+          "start": 519,
+          "end": 551
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Evaluator.java",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Elements.java",
+          "start": 522,
+          "end": 575
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/QueryParser.java",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/ElementTest.java",
+          "start": 2915,
+          "end": 2947
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 274,
+          "end": 311
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/CombiningEvaluator.java",
+          "start": 18,
+          "end": 160
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/StructuralEvaluator.java",
+          "start": 18,
+          "end": 73
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/package-info.java",
+          "start": 1,
+          "end": 8
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 197,
+          "end": 200
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Selector.java",
+          "start": 284,
+          "end": 286
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 40,
+          "end": 43
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Collector.java",
+          "start": 30,
+          "end": 37
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Element.java",
+          "start": 561,
+          "end": 563
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 85,
+          "end": 89
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 101,
+          "end": 105
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Selector.java",
+          "start": 197,
+          "end": 208
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Elements.java",
+          "start": 637,
+          "end": 648
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ParseTest.java",
+          "start": 62,
+          "end": 69
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ConnectTest.java",
+          "start": 121,
+          "end": 130
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ProxyTest.java",
+          "start": 37,
+          "end": 46
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.7272727272727273,
+        "weighted_recall_at_10": 0.8181818181818182,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.6515070274566198
+      },
+      "returned_chars": 26178,
+      "hit_count": 22,
+      "elapsed_ms": 594,
+      "wall_elapsed_ms": 616
+    },
+    {
+      "id": "jsoup-connect-get-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 77,
+          "end": 123
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/UrlConnectionExecutor.java",
+          "start": 22,
+          "end": 130
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/RequestExecutor.java",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/Connection.java",
+          "start": 111,
+          "end": 146
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "start": 60,
+          "end": 107
+        },
+        {
+          "path": "src/main/java11/org/jsoup/helper/HttpClientExecutor.java",
+          "start": 103,
+          "end": 149
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ConnectTest.java",
+          "start": 1062,
+          "end": 1095
+        },
+        {
+          "path": "src/test/java/org/jsoup/helper/HttpConnectionTest.java",
+          "start": 59,
+          "end": 105
+        },
+        {
+          "path": "README.md",
+          "start": 19,
+          "end": 30
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/RequestDispatch.java",
+          "start": 1,
+          "end": 16
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "start": 137,
+          "end": 140
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "start": 1318,
+          "end": 1323
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "start": 1199,
+          "end": 1209
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/AuthenticationHandler.java",
+          "start": 62,
+          "end": 62
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/AuthenticationHandler.java",
+          "start": 78,
+          "end": 80
+        },
+        {
+          "path": "src/main/java11/org/jsoup/helper/RequestAuthHandler.java",
+          "start": 12,
+          "end": 23
+        },
+        {
+          "path": "src/main/java/org/jsoup/Connection.java",
+          "start": 76,
+          "end": 78
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/CookieUtil.java",
+          "start": 38,
+          "end": 49
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Attributes.java",
+          "start": 720,
+          "end": 723
+        },
+        {
+          "path": "src/main/java/org/jsoup/Connection.java",
+          "start": 652,
+          "end": 652
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/HttpConnection.java",
+          "start": 557,
+          "end": 560
+        },
+        {
+          "path": "src/main/java/org/jsoup/examples/Wikipedia.java",
+          "start": 17,
+          "end": 25
+        },
+        {
+          "path": "src/main/java/org/jsoup/examples/ListLinks.java",
+          "start": 19,
+          "end": 27
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 329,
+          "end": 333
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/netty/NettyProxyServer.java",
+          "start": 252,
+          "end": 259
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ProxyTest.java",
+          "start": 37,
+          "end": 46
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/BuildEntities.java",
+          "start": 22,
+          "end": 31
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.7777777777777778,
+        "weighted_recall_at_10": 0.7777777777777778,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7596093360146008
+      },
+      "returned_chars": 29573,
+      "hit_count": 27,
+      "elapsed_ms": 562,
+      "wall_elapsed_ms": 583
+    },
+    {
+      "id": "jsoup-pre-whitespace-issue",
+      "instance_id": "jsoup-7860d08",
+      "kind": "issue",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/nodes/Element.java",
+          "start": 1665,
+          "end": 1723
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/ElementTest.java",
+          "start": 171,
+          "end": 208
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/PrinterTest.java",
+          "start": 16,
+          "end": 93
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 198,
+          "end": 250
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 1820,
+          "end": 1852
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Elements.java",
+          "start": 219,
+          "end": 289
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 25,
+          "end": 76
+        },
+        {
+          "path": "change-archive.txt",
+          "start": 298,
+          "end": 395
+        },
+        {
+          "path": "src/main/java/org/jsoup/internal/StringUtil.java",
+          "start": 71,
+          "end": 132
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Nodes.java",
+          "start": 106,
+          "end": 181
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ConnectTest.java",
+          "start": 80,
+          "end": 89
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/ConnectIT.java",
+          "start": 74,
+          "end": 83
+        },
+        {
+          "path": "src/test/java/org/jsoup/helper/RegexTest.java",
+          "start": 7,
+          "end": 14
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 0.8333333333333334,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8413996915747762
+      },
+      "returned_chars": 32149,
+      "hit_count": 13,
+      "elapsed_ms": 6383,
+      "wall_elapsed_ms": 6405
+    }
+  ]
+}

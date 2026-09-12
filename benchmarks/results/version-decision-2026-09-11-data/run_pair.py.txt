@@ -1,0 +1,147 @@
+"""Frozen released-client comparison; one server owns the physical index at a time."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import time
+
+import httpx
+from dotenv import dotenv_values
+
+from benchmarks.blackbox.harness import server_configuration
+
+ROOT = Path("/home/yuqian/workspace/oce")
+OUT = Path(__file__).resolve().parent
+EVALUATOR = OUT / "current"
+CLIENT = Path("/home/yuqian/workspace/oce-client/target/release/oce-client")
+DATA = Path("/home/yuqian/.cache/oce/simplification-candidate-index")
+API = "http://127.0.0.1:18987"
+PYTHON = ROOT / ".venv/bin/python"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("variant", choices=("foundation", "current"))
+parser.add_argument("label")
+parser.add_argument("--suites", nargs="+")
+args = parser.parse_args()
+protocol = json.loads((OUT / "protocol.json").read_text())
+source = OUT / args.variant
+selected = args.suites or list(protocol["suites"])
+credentials = dotenv_values("/home/yuqian/.oce/benchmark.env")
+environment = {key: value for key, value in os.environ.items() if not key.startswith("RETRIEVAL_")}
+environment.update(
+    OCE_API_KEY=credentials["API_KEY"],
+    OCE_ADMIN_API_KEY=credentials["API_KEY"],
+    OCE_CLIENT_BINARY=str(CLIENT),
+    EMBED_QUERY_CACHE_MAX_ENTRIES="0",
+    RERANK_ENABLED="false",
+    LLM_RERANK_ENABLED="false",
+    MONITORING_STORE_QUERY_TEXT="false",
+)
+
+
+def inventory(root, pattern):
+    return {
+        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in sorted(root.glob(pattern))
+        if path.is_file()
+    }
+
+
+source_files = inventory(source, "src/oce/**/*.py")
+assert source_files == protocol["variants"][args.variant]["source_files"]
+evaluator_files = {
+    **inventory(EVALUATOR, "benchmarks/blackbox/*.py"),
+    **inventory(EVALUATOR, "benchmarks/blackbox/*.json"),
+}
+assert evaluator_files == protocol["evaluator_files"]
+assert hashlib.sha256(CLIENT.read_bytes()).hexdigest() == protocol["client_sha256"]
+proof = {
+    "variant": args.variant,
+    "source_path": str(source),
+    "source_files": source_files,
+    "evaluator_files": evaluator_files,
+    "client_sha256": protocol["client_sha256"],
+    "protocol_sha256": hashlib.sha256((OUT / "protocol.json").read_bytes()).hexdigest(),
+    "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    "suites": selected,
+    "source_commit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=source, text=True).strip(),
+}
+with (OUT / f"{args.label}-proof.json").open("x") as stream:
+    json.dump(proof, stream, indent=2)
+    stream.write("\n")
+with socket.socket() as sock:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("127.0.0.1", 18987))
+
+log_path = OUT / f"{args.label}-server.log"
+with log_path.open("x") as server_log:
+    process = subprocess.Popen(
+        [str(PYTHON), "-c", "from oce.cli import main; main()", "-v", "serve",
+         "--data-dir", str(DATA), "--env-file", "/home/yuqian/.oce/benchmark.env",
+         "--host", "127.0.0.1", "--port", "18987"],
+        cwd="/tmp",
+        env=environment | {"PYTHONPATH": str(source / "src")},
+        stdout=server_log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    (OUT / f"{args.label}-pid.json").write_text(json.dumps({"pid": process.pid}) + "\n")
+    try:
+        for _ in range(240):
+            if process.poll() is not None:
+                raise RuntimeError("Server exited before readiness")
+            try:
+                if httpx.get(API + "/health", timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(0.5)
+        else:
+            raise RuntimeError("Server readiness timeout")
+        runtime = server_configuration(API, credentials["API_KEY"])
+        assert runtime is not None and not runtime["query_cache"]["enabled"]
+        for key, value in protocol["runtime_control"].items():
+            assert runtime[key] == value, f"Unexpected {key} before measurement"
+        (OUT / f"{args.label}-runtime.json").write_text(json.dumps(runtime, indent=2) + "\n")
+        print("READY", args.label, flush=True)
+        for suite in selected:
+            spec = protocol["suites"][suite]
+            target = OUT / f"{args.label}-{suite}.json"
+            assert not target.exists()
+            command = [str(PYTHON), "-m", "benchmarks.blackbox." + spec["module"],
+                       *spec["options"], "run", "--api-url", API, "--label", args.label,
+                       "--metadata", f"provenance={args.label}-proof.json", "--output", str(target)]
+            print("START", args.label, suite, flush=True)
+            with (OUT / f"{args.label}-{suite}.log").open("x") as stream:
+                subprocess.run(command, cwd=EVALUATOR,
+                               env=environment | {"PYTHONPATH": str(EVALUATOR)},
+                               stdout=stream, stderr=subprocess.STDOUT, check=True)
+            report = json.loads(target.read_text())
+            assert report["summary"]["cases"] == spec["cases"]
+            assert report["summary"]["error_cases"] == 0
+            captured = report["runtime"]["server_configuration"]
+            for key in ("index_profile", "retrieval", "query_cache"):
+                assert captured[key] == runtime[key], f"{suite}: runtime {key} drift"
+            for key in ("dense", "path"):
+                assert captured[key]["entities"] == runtime[key]["entities"], f"{suite}: index grew"
+            summary = {key: value for key, value in report["summary"].items()
+                       if key in ("cases", "top1", "primary_top1", "primary_hit_at_3", "relation_recall",
+                                  "ndcg_at_10", "region_top1", "edit_top1", "core_top1", "swe_explore_ndcg_at_100")}
+            print("DONE", args.label, suite, json.dumps(summary), flush=True)
+    finally:
+        if process.poll() is None:
+            process.send_signal(signal.SIGTERM)
+            try:
+                process.wait(timeout=120)
+            except subprocess.TimeoutExpired:
+                os.killpg(process.pid, signal.SIGTERM)
+                process.wait(timeout=10)
+        assert "Application shutdown complete." in log_path.read_text(), "Shutdown incomplete"
+assert inventory(source, "src/oce/**/*.py") == source_files
+assert {**inventory(EVALUATOR, "benchmarks/blackbox/*.py"), **inventory(EVALUATOR, "benchmarks/blackbox/*.json")} == evaluator_files
+print("SHUTDOWN", args.label, flush=True)

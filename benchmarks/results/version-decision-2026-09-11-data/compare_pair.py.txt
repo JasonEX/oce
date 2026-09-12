@@ -1,0 +1,85 @@
+"""Compare immutable native reports without relabeling or aggregate rescoring."""
+
+import hashlib
+import json
+from pathlib import Path
+
+from benchmarks.blackbox.harness import ensure_comparable
+
+OUT = Path(__file__).resolve().parent
+protocol = json.loads((OUT / "protocol.json").read_text())
+comparison = {"protocol_sha256": hashlib.sha256((OUT / "protocol.json").read_bytes()).hexdigest(),
+              "labels": ["foundation-1", "current-1"], "suites": {}, "guard_failures": []}
+
+
+def delta(left, right):
+    return {key: right[key] - value for key, value in left.items()
+            if type(value) in (int, float) and type(right.get(key)) in (int, float)}
+
+
+def metrics(case, suite):
+    if suite == "layout":
+        return {key: case[key] for key in ("top1", "hit_at_3", "mrr")}
+    return case["metrics"]
+
+
+def lower_guard(suite, metric, values, tolerance):
+    value = values[metric]
+    if value < -tolerance - 1e-12:
+        comparison["guard_failures"].append({"suite": suite, "metric": metric,
+                                             "delta": value, "max_loss": tolerance})
+
+
+for suite, spec in protocol["suites"].items():
+    paths = [OUT / f"{label}-{suite}.json" for label in comparison["labels"]]
+    before, after = [json.loads(path.read_text()) for path in paths]
+    ensure_comparable([before, after], suite=before["suite"])
+    for report in (before, after):
+        assert report["summary"]["error_cases"] == 0
+        assert report["summary"]["cases"] == spec["cases"]
+    assert before.get("controls") == after.get("controls")
+    for field in ("client_sha256", "client_version", "server_configuration", "harness_source_commit"):
+        assert before["runtime"][field] == after["runtime"][field], (suite, field)
+    assert before.get("case_manifest_sha256") == after.get("case_manifest_sha256")
+    values = delta(before["summary"], after["summary"])
+    changed = []
+    for old, new in zip(before["cases"], after["cases"], strict=True):
+        identifier = old.get("id", old.get("instance_id"))
+        assert identifier == new.get("id", new.get("instance_id"))
+        old_metrics, new_metrics = metrics(old, suite), metrics(new, suite)
+        if old_metrics != new_metrics or old["retrieved"] != new["retrieved"]:
+            changed.append({"id": identifier,
+                            "metric_delta": delta(old_metrics, new_metrics),
+                            "foundation_metrics": old_metrics, "current_metrics": new_metrics,
+                            "foundation_retrieved": old["retrieved"], "current_retrieved": new["retrieved"],
+                            "foundation_chars": old.get("returned_chars"), "current_chars": new.get("returned_chars")})
+    strata = {key: {"foundation": before[key], "current": after[key]}
+              for key in before if key.startswith("by_") or key == "family_summary"}
+    comparison["suites"][suite] = {
+        "foundation_summary": before["summary"], "current_summary": after["summary"],
+        "summary_delta": values, "strata": strata, "changed_cases": changed,
+        "native_report_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
+        "comparable": True,
+    }
+    if suite == "short":
+        for metric in ("top1", "mrr"):
+            lower_guard(suite, metric, values, protocol["acceptance"]["short_top1_max_loss"])
+    if suite in protocol["acceptance"]["semantic_suites"]:
+        lower_guard(suite, "ndcg_at_10", values, protocol["acceptance"]["semantic_ndcg10_max_loss"])
+    if suite == "swe":
+        for metric in ("edit_top1", "core_top1"):
+            lower_guard(suite, metric, values, protocol["acceptance"]["swe_top1_max_loss"])
+    if suite in ("project", "upproject", "heldout"):
+        for metric in ("primary_top1", "primary_hit_at_3", "primary_recall", "supporting_recall",
+                       "relation_recall", "hop_recall", "chain_closed", "test_recall"):
+            lower_guard(suite, metric, values, protocol["acceptance"]["project_rate_max_loss"])
+        if values["distractor_head"] > 1e-12:
+            comparison["guard_failures"].append({"suite": suite, "metric": "distractor_head",
+                                                 "delta": values["distractor_head"], "max_increase": 0})
+
+comparison["numeric_guards_pass"] = not comparison["guard_failures"]
+comparison["interpretation"] = "Numeric guards support a decision but do not replace review of coverage, source evidence, runtime warnings, and the development nature of the cases."
+(OUT / "comparison.json").write_text(json.dumps(comparison, indent=2, ensure_ascii=False) + "\n")
+print("Failures:", json.dumps(comparison["guard_failures"], indent=2))
+for suite, value in comparison["suites"].items():
+    print(suite, "changed cases", len(value["changed_cases"]))

@@ -1,0 +1,2807 @@
+{
+  "schema_version": 1,
+  "suite": "project_cases",
+  "label": "foundation-1",
+  "created_at": "2026-09-12T00:54:45.735650+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "7aca5fcb4d008c1d34b817b86ebcb24f7a546d23579677cf180ae527919dedfd",
+    "project_cases_sha256": "94b373d457e867b020c4ef425607fa81e94cded2a214b5350399beab783b0324"
+  },
+  "snapshots": [
+    {
+      "id": "chi-ae6be74",
+      "repo": "go-chi/chi",
+      "revision": "ae6be7469132cf471ca099d8c7bda4010c4ff7b2",
+      "code_language": "go"
+    },
+    {
+      "id": "click-6aabf09",
+      "repo": "pallets/click",
+      "revision": "6aabf099bfdd4c1e75fe8d0e0d4241372b988ab1",
+      "code_language": "python"
+    },
+    {
+      "id": "fastify-ac28821",
+      "repo": "fastify/fastify",
+      "revision": "ac28821df11d7862694900326a6cc8c831dc8bf6",
+      "code_language": "javascript"
+    },
+    {
+      "id": "jsoup-7860d08",
+      "repo": "jhy/jsoup",
+      "revision": "7860d088e044236e288c1f88a743b68b2a0edece",
+      "code_language": "java"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "foundation-1-proof.json"
+    }
+  },
+  "case_ids": [
+    "click-make-context-callers",
+    "click-main-to-invoke-chain",
+    "click-make-pass-decorator-tests",
+    "click-pass-context-reexport",
+    "click-resolve-command-overrides",
+    "click-parse-args-definitions",
+    "fastify-wrap-thenable-callers",
+    "fastify-build-error-handler-callers",
+    "fastify-send-to-onsend-chain",
+    "fastify-onsend-runner-tests",
+    "fastify-handle-request-definition",
+    "fastify-set-error-handler-chain",
+    "chi-chain-callers",
+    "chi-new-route-context-callers",
+    "chi-mount-tests",
+    "chi-route-to-mount-chain",
+    "chi-walk-tests",
+    "chi-urlparam-definitions",
+    "jsoup-run-parser-callers",
+    "jsoup-parse-input-callers",
+    "jsoup-parse-to-run-parser-chain",
+    "jsoup-is-valid-tests",
+    "jsoup-clean-definitions",
+    "jsoup-clean-to-cleaner-chain"
+  ],
+  "sync": {
+    "chi-ae6be74": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "click-6aabf09": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "fastify-ac28821": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "jsoup-7860d08": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 24,
+    "successful_cases": 24,
+    "error_cases": 0,
+    "primary_top1": 0.875,
+    "primary_hit_at_3": 0.9583333333333334,
+    "primary_hit_at_10": 0.9583333333333334,
+    "primary_mrr": 0.9135101010101011,
+    "primary_recall": 1.0,
+    "supporting_recall": 0.9375,
+    "relation_recall": 0.9756944444444445,
+    "hop_recall": 0.9756944444444445,
+    "chain_closed": 0.9166666666666666,
+    "test_recall": 1.0,
+    "distractor_head": 0.0,
+    "distractor_any": 0.125,
+    "truth_region_share": 0.31731590470720905,
+    "error_classes": {
+      "none": 15,
+      "exact_miss": 1,
+      "distractor": 0,
+      "test_missing": 0,
+      "relation_missing": 1,
+      "redundant": 7
+    },
+    "mean_elapsed_ms": 259.9583333333333,
+    "p50_elapsed_ms": 118,
+    "p95_elapsed_ms": 710,
+    "mean_returned_chars": 17710.791666666668,
+    "mean_hit_count": 13.458333333333334,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 24,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "llm_rerank": {
+        "calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "rerank": {
+        "calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "reference": {
+      "cases": 7,
+      "successful_cases": 7,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.4854669140383426,
+      "error_classes": {
+        "none": 7,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 129.57142857142858,
+      "p50_elapsed_ms": 121,
+      "p95_elapsed_ms": 195,
+      "mean_returned_chars": 16708.428571428572,
+      "mean_hit_count": 8.142857142857142
+    },
+    "call_chain": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 0.8333333333333334,
+      "primary_hit_at_3": 0.8333333333333334,
+      "primary_hit_at_10": 0.8333333333333334,
+      "primary_mrr": 0.8484848484848485,
+      "primary_recall": 1.0,
+      "supporting_recall": 0.75,
+      "relation_recall": 0.9027777777777778,
+      "hop_recall": 0.9027777777777778,
+      "chain_closed": 0.6666666666666666,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.3333333333333333,
+      "truth_region_share": 0.09681292137813875,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 1,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 1,
+        "redundant": 4
+      },
+      "mean_elapsed_ms": 701.3333333333334,
+      "p50_elapsed_ms": 631,
+      "p95_elapsed_ms": 994,
+      "mean_returned_chars": 24775.833333333332,
+      "mean_hit_count": 24.333333333333332
+    },
+    "test_mapping": {
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "primary_top1": 0.8,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.9,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.41839826839826844,
+      "error_classes": {
+        "none": 5,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 103.2,
+      "p50_elapsed_ms": 100,
+      "p95_elapsed_ms": 116,
+      "mean_returned_chars": 19992.8,
+      "mean_hit_count": 11.2
+    },
+    "reexport": {
+      "cases": 1,
+      "successful_cases": 1,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.2222222222222222,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 1
+      },
+      "mean_elapsed_ms": 104.0,
+      "p50_elapsed_ms": 104,
+      "p95_elapsed_ms": 104,
+      "mean_returned_chars": 5171.0,
+      "mean_hit_count": 9.0
+    },
+    "multi_impl": {
+      "cases": 5,
+      "successful_cases": 5,
+      "error_cases": 0,
+      "primary_top1": 0.8,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.8666666666666666,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.2,
+      "truth_region_share": 0.2644444444444444,
+      "error_classes": {
+        "none": 3,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 100.8,
+      "p50_elapsed_ms": 89,
+      "p95_elapsed_ms": 147,
+      "mean_returned_chars": 10862.0,
+      "mean_hit_count": 11.0
+    }
+  },
+  "by_snapshot": {
+    "chi-ae6be74": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.3333333333333333,
+      "truth_region_share": 0.2742617688269862,
+      "error_classes": {
+        "none": 4,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 181.5,
+      "p50_elapsed_ms": 96,
+      "p95_elapsed_ms": 608,
+      "mean_returned_chars": 17315.0,
+      "mean_hit_count": 13.0
+    },
+    "click-6aabf09": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 0.6666666666666666,
+      "primary_hit_at_3": 0.8333333333333334,
+      "primary_hit_at_10": 0.8333333333333334,
+      "primary_mrr": 0.7373737373737373,
+      "primary_recall": 1.0,
+      "supporting_recall": 0.8333333333333334,
+      "relation_recall": 0.9444444444444445,
+      "hop_recall": 0.9444444444444445,
+      "chain_closed": 0.8333333333333334,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.16666666666666666,
+      "truth_region_share": 0.32383357383357386,
+      "error_classes": {
+        "none": 4,
+        "exact_miss": 1,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 1
+      },
+      "mean_elapsed_ms": 205.16666666666666,
+      "p50_elapsed_ms": 104,
+      "p95_elapsed_ms": 710,
+      "mean_returned_chars": 18103.166666666668,
+      "mean_hit_count": 12.666666666666666
+    },
+    "fastify-ac28821": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 0.8333333333333334,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.9166666666666666,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.28865079365079366,
+      "error_classes": {
+        "none": 3,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 3
+      },
+      "mean_elapsed_ms": 292.8333333333333,
+      "p50_elapsed_ms": 109,
+      "p95_elapsed_ms": 640,
+      "mean_returned_chars": 16756.0,
+      "mean_hit_count": 13.666666666666666
+    },
+    "jsoup-7860d08": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 0.9166666666666666,
+      "relation_recall": 0.9583333333333334,
+      "hop_recall": 0.9583333333333334,
+      "chain_closed": 0.8333333333333334,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.38251748251748247,
+      "error_classes": {
+        "none": 4,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 1,
+        "redundant": 1
+      },
+      "mean_elapsed_ms": 360.3333333333333,
+      "p50_elapsed_ms": 147,
+      "p95_elapsed_ms": 994,
+      "mean_returned_chars": 18669.0,
+      "mean_hit_count": 14.5
+    }
+  },
+  "cases": [
+    {
+      "id": "click-make-context-callers",
+      "instance_id": "click-6aabf09",
+      "kind": "reference",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 696,
+          "end": 754
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2026,
+          "end": 2092
+        },
+        {
+          "path": "tests/test_basic.py",
+          "start": 73,
+          "end": 138
+        },
+        {
+          "path": "tests/test_custom_classes.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "docs/exceptions.md",
+          "start": 44,
+          "end": 70
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1489,
+          "end": 1623
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 1,
+          "end": 64
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1333,
+          "end": 1344
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.5,
+        "error_class": "none"
+      },
+      "returned_chars": 21357,
+      "hit_count": 8,
+      "elapsed_ms": 128,
+      "wall_elapsed_ms": 149
+    },
+    {
+      "id": "click-main-to-invoke-chain",
+      "instance_id": "click-6aabf09",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/click/core.py",
+          "start": 1422,
+          "end": 1487
+        },
+        {
+          "path": "tests/test_custom_classes.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "docs/advanced.md",
+          "start": 212,
+          "end": 249
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "docs/exceptions.md",
+          "start": 44,
+          "end": 70
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 696,
+          "end": 754
+        },
+        {
+          "path": "docs/commands.md",
+          "start": 91,
+          "end": 125
+        },
+        {
+          "path": "docs/complex.md",
+          "start": 50,
+          "end": 68
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 85,
+          "end": 159
+        },
+        {
+          "path": "src/click/testing.py",
+          "start": 596,
+          "end": 739
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1489,
+          "end": 1500
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1555,
+          "end": 1566
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 855,
+          "end": 857
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1107,
+          "end": 1118
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 945,
+          "end": 955
+        },
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 67,
+          "end": 78
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1247,
+          "end": 1258
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 63,
+          "end": 74
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1333,
+          "end": 1344
+        },
+        {
+          "path": "src/click/decorators.py",
+          "start": 324,
+          "end": 334
+        },
+        {
+          "path": "src/click/termui.py",
+          "start": 641,
+          "end": 652
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1420,
+          "end": 1420
+        },
+        {
+          "path": "src/click/decorators.py",
+          "start": 93,
+          "end": 97
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1657,
+          "end": 1659
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 934,
+          "end": 943
+        },
+        {
+          "path": "tests/test_command_decorators.py",
+          "start": 6,
+          "end": 13
+        },
+        {
+          "path": "tests/test_chain.py",
+          "start": 28,
+          "end": 37
+        },
+        {
+          "path": "tests/test_arguments.py",
+          "start": 10,
+          "end": 19
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.09090909090909091,
+        "primary_recall": 1.0,
+        "supporting_recall": 0.0,
+        "relation_recall": 0.6666666666666666,
+        "hop_recall": 0.6666666666666666,
+        "chain_closed": 0.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 1.0,
+        "truth_region_share": 0.10714285714285714,
+        "error_class": "exact_miss"
+      },
+      "returned_chars": 32406,
+      "hit_count": 28,
+      "elapsed_ms": 710,
+      "wall_elapsed_ms": 730
+    },
+    {
+      "id": "click-make-pass-decorator-tests",
+      "instance_id": "click-6aabf09",
+      "kind": "test_mapping",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "tests/test_context.py",
+          "start": 663,
+          "end": 727
+        },
+        {
+          "path": "src/click/decorators.py",
+          "start": 51,
+          "end": 97
+        },
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 1,
+          "end": 34
+        },
+        {
+          "path": "src/click/__init__.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "examples/complex/complex/cli.py",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "examples/repo/repo.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "docs/complex.md",
+          "start": 172,
+          "end": 199
+        },
+        {
+          "path": "docs/commands.md",
+          "start": 165,
+          "end": 209
+        },
+        {
+          "path": "docs/api.md",
+          "start": 1,
+          "end": 67
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 1,
+          "end": 82
+        },
+        {
+          "path": "tests/test_context.py",
+          "start": 85,
+          "end": 94
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.36363636363636365,
+        "error_class": "none"
+      },
+      "returned_chars": 18367,
+      "hit_count": 11,
+      "elapsed_ms": 95,
+      "wall_elapsed_ms": 115
+    },
+    {
+      "id": "click-pass-context-reexport",
+      "instance_id": "click-6aabf09",
+      "kind": "reexport",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/click/decorators.py",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "src/click/globals.py",
+          "start": 20,
+          "end": 31
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 213,
+          "end": 214
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 964,
+          "end": 965
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 3702,
+          "end": 3713
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1677,
+          "end": 1688
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2886,
+          "end": 2887
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2215,
+          "end": 2216
+        },
+        {
+          "path": "src/click/__init__.py",
+          "start": 26,
+          "end": 35
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.2222222222222222,
+        "error_class": "redundant"
+      },
+      "returned_chars": 5171,
+      "hit_count": 9,
+      "elapsed_ms": 104,
+      "wall_elapsed_ms": 125
+    },
+    {
+      "id": "click-resolve-command-overrides",
+      "instance_id": "click-6aabf09",
+      "kind": "multi_impl",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/click/shell_completion.py",
+          "start": 696,
+          "end": 754
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2026,
+          "end": 2092
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 329,
+          "end": 360
+        },
+        {
+          "path": "tests/typing/typing_aliased_group.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "examples/aliases/aliases.py",
+          "start": 37,
+          "end": 86
+        },
+        {
+          "path": "docs/extending-click.md",
+          "start": 60,
+          "end": 132
+        },
+        {
+          "path": "CHANGES.md",
+          "start": 764,
+          "end": 793
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2094,
+          "end": 2137
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.5,
+        "error_class": "none"
+      },
+      "returned_chars": 17913,
+      "hit_count": 8,
+      "elapsed_ms": 76,
+      "wall_elapsed_ms": 105
+    },
+    {
+      "id": "click-parse-args-definitions",
+      "instance_id": "click-6aabf09",
+      "kind": "multi_impl",
+      "code_language": "python",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/click/core.py",
+          "start": 1370,
+          "end": 1420
+        },
+        {
+          "path": "src/click/parser.py",
+          "start": 265,
+          "end": 314
+        },
+        {
+          "path": "tests/test_commands.py",
+          "start": 144,
+          "end": 207
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1980,
+          "end": 2024
+        },
+        {
+          "path": "src/click/exceptions.py",
+          "start": 332,
+          "end": 339
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1231,
+          "end": 1236
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 147,
+          "end": 157
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1107,
+          "end": 1118
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2758,
+          "end": 2768
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 812,
+          "end": 818
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 1367,
+          "end": 1368
+        },
+        {
+          "path": "src/click/core.py",
+          "start": 2116,
+          "end": 2125
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.25,
+        "error_class": "none"
+      },
+      "returned_chars": 13405,
+      "hit_count": 12,
+      "elapsed_ms": 118,
+      "wall_elapsed_ms": 141
+    },
+    {
+      "id": "fastify-wrap-thenable-callers",
+      "instance_id": "fastify-ac28821",
+      "kind": "reference",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/handle-request.js",
+          "start": 162,
+          "end": 230
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 30,
+          "end": 83
+        },
+        {
+          "path": "lib/wrap-thenable.js",
+          "start": 1,
+          "end": 84
+        },
+        {
+          "path": "test/wrap-thenable.test.js",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "test/encapsulated-error-handler.test.js",
+          "start": 134,
+          "end": 187
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "lib/handle-request.js",
+          "start": 1,
+          "end": 23
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      },
+      "returned_chars": 12786,
+      "hit_count": 7,
+      "elapsed_ms": 195,
+      "wall_elapsed_ms": 220
+    },
+    {
+      "id": "fastify-build-error-handler-callers",
+      "instance_id": "fastify-ac28821",
+      "kind": "reference",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/four-oh-four.js",
+          "start": 128,
+          "end": 158
+        },
+        {
+          "path": "lib/route.js",
+          "start": 375,
+          "end": 447
+        },
+        {
+          "path": "fastify.js",
+          "start": 120,
+          "end": 185
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 85,
+          "end": 132
+        },
+        {
+          "path": "lib/four-oh-four.js",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "fastify.js",
+          "start": 766,
+          "end": 821
+        },
+        {
+          "path": "lib/route.js",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 134,
+          "end": 155
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.5,
+        "error_class": "none"
+      },
+      "returned_chars": 16207,
+      "hit_count": 8,
+      "elapsed_ms": 93,
+      "wall_elapsed_ms": 115
+    },
+    {
+      "id": "fastify-send-to-onsend-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 241
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 278,
+          "end": 372
+        },
+        {
+          "path": "types/instance.d.ts",
+          "start": 335,
+          "end": 355
+        },
+        {
+          "path": "types/hooks.d.ts",
+          "start": 397,
+          "end": 418
+        },
+        {
+          "path": "test/internals/hook-runner.test.js",
+          "start": 289,
+          "end": 354
+        },
+        {
+          "path": "test/skip-reply-send.test.js",
+          "start": 269,
+          "end": 317
+        },
+        {
+          "path": "test/hooks.test.js",
+          "start": 2101,
+          "end": 2158
+        },
+        {
+          "path": "lib/handle-request.js",
+          "start": 95,
+          "end": 160
+        },
+        {
+          "path": "test/hooks-async.test.js",
+          "start": 601,
+          "end": 665
+        },
+        {
+          "path": "lib/route.js",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 952,
+          "end": 963
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 561,
+          "end": 572
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 243,
+          "end": 247
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 520,
+          "end": 531
+        },
+        {
+          "path": "lib/noop-set.js",
+          "start": 8,
+          "end": 8
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 486,
+          "end": 497
+        },
+        {
+          "path": "types/hooks.d.ts",
+          "start": 356,
+          "end": 367
+        },
+        {
+          "path": "types/logger.d.ts",
+          "start": 27,
+          "end": 29
+        },
+        {
+          "path": "examples/parser.js",
+          "start": 46,
+          "end": 53
+        },
+        {
+          "path": "examples/http2.js",
+          "start": 32,
+          "end": 39
+        },
+        {
+          "path": "examples/https.js",
+          "start": 31,
+          "end": 38
+        },
+        {
+          "path": "examples/shared-schema.js",
+          "start": 31,
+          "end": 38
+        },
+        {
+          "path": "examples/benchmark/parser.js",
+          "start": 42,
+          "end": 47
+        },
+        {
+          "path": "examples/benchmark/hooks-benchmark-async-await.js",
+          "start": 37,
+          "end": 44
+        },
+        {
+          "path": "examples/benchmark/hooks-benchmark.js",
+          "start": 45,
+          "end": 52
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.12,
+        "error_class": "redundant"
+      },
+      "returned_chars": 26937,
+      "hit_count": 25,
+      "elapsed_ms": 631,
+      "wall_elapsed_ms": 651
+    },
+    {
+      "id": "fastify-onsend-runner-tests",
+      "instance_id": "fastify-ac28821",
+      "kind": "test_mapping",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "test/diagnostics-channel/error-before-handler.test.js",
+          "start": 1,
+          "end": 35
+        },
+        {
+          "path": "test/internals/hook-runner.test.js",
+          "start": 289,
+          "end": 354
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 278,
+          "end": 372
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 534,
+          "end": 593
+        },
+        {
+          "path": "test/internals/hook-runner.test.js",
+          "start": 251,
+          "end": 287
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 952,
+          "end": 1013
+        },
+        {
+          "path": "lib/hooks.js",
+          "start": 374,
+          "end": 433
+        },
+        {
+          "path": "test/internals/hook-runner.test.js",
+          "start": 4,
+          "end": 13
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.5,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.5,
+        "error_class": "none"
+      },
+      "returned_chars": 14135,
+      "hit_count": 8,
+      "elapsed_ms": 109,
+      "wall_elapsed_ms": 129
+    },
+    {
+      "id": "fastify-handle-request-definition",
+      "instance_id": "fastify-ac28821",
+      "kind": "multi_impl",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/handle-request.js",
+          "start": 25,
+          "end": 93
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 156,
+          "end": 167
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 901,
+          "end": 911
+        },
+        {
+          "path": "lib/noop-set.js",
+          "start": 8,
+          "end": 8
+        },
+        {
+          "path": "lib/handle-request.js",
+          "start": 112,
+          "end": 117
+        },
+        {
+          "path": "lib/content-type-parser.js",
+          "start": 191,
+          "end": 202
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 294,
+          "end": 302
+        },
+        {
+          "path": "lib/content-type.js",
+          "start": 74,
+          "end": 85
+        },
+        {
+          "path": "lib/request.js",
+          "start": 31,
+          "end": 39
+        },
+        {
+          "path": "test/internals/handle-request.test.js",
+          "start": 4,
+          "end": 12
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.1,
+        "error_class": "redundant"
+      },
+      "returned_chars": 6338,
+      "hit_count": 10,
+      "elapsed_ms": 89,
+      "wall_elapsed_ms": 109
+    },
+    {
+      "id": "fastify-set-error-handler-chain",
+      "instance_id": "fastify-ac28821",
+      "kind": "call_chain",
+      "code_language": "javascript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "fastify.js",
+          "start": 766,
+          "end": 821
+        },
+        {
+          "path": "lib/error-handler.js",
+          "start": 85,
+          "end": 132
+        },
+        {
+          "path": "lib/four-oh-four.js",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "test/set-error-handler.test.js",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "test/types/instance.tst.ts",
+          "start": 39,
+          "end": 92
+        },
+        {
+          "path": "types/instance.d.ts",
+          "start": 551,
+          "end": 582
+        },
+        {
+          "path": "test/encapsulated-error-handler.test.js",
+          "start": 103,
+          "end": 133
+        },
+        {
+          "path": "docs/Reference/Server.md",
+          "start": 1154,
+          "end": 1216
+        },
+        {
+          "path": "types/hooks.d.ts",
+          "start": 572,
+          "end": 592
+        },
+        {
+          "path": "lib/route.js",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "fastify.js",
+          "start": 467,
+          "end": 469
+        },
+        {
+          "path": "lib/route.js",
+          "start": 135,
+          "end": 137
+        },
+        {
+          "path": "fastify.js",
+          "start": 694,
+          "end": 705
+        },
+        {
+          "path": "lib/req-id-gen-factory.js",
+          "start": 16,
+          "end": 24
+        },
+        {
+          "path": "lib/schemas.js",
+          "start": 148,
+          "end": 159
+        },
+        {
+          "path": "lib/log-controller.js",
+          "start": 149,
+          "end": 153
+        },
+        {
+          "path": "lib/reply.js",
+          "start": 344,
+          "end": 353
+        },
+        {
+          "path": "fastify.d.ts",
+          "start": 43,
+          "end": 43
+        },
+        {
+          "path": "lib/four-oh-four.js",
+          "start": 145,
+          "end": 154
+        },
+        {
+          "path": "fastify.js",
+          "start": 161,
+          "end": 170
+        },
+        {
+          "path": "lib/route.js",
+          "start": 378,
+          "end": 386
+        },
+        {
+          "path": "test/content-parser.test.js",
+          "start": 285,
+          "end": 294
+        },
+        {
+          "path": "test/async-await.test.js",
+          "start": 542,
+          "end": 551
+        },
+        {
+          "path": "test/content-length.test.js",
+          "start": 74,
+          "end": 83
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.08333333333333333,
+        "error_class": "redundant"
+      },
+      "returned_chars": 24133,
+      "hit_count": 24,
+      "elapsed_ms": 640,
+      "wall_elapsed_ms": 662
+    },
+    {
+      "id": "chi-chain-callers",
+      "instance_id": "chi-ae6be74",
+      "kind": "reference",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "mux.go",
+          "start": 202,
+          "end": 241
+        },
+        {
+          "path": "tree.go",
+          "start": 879,
+          "end": 925
+        },
+        {
+          "path": "chain.go",
+          "start": 1,
+          "end": 49
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1005,
+          "end": 1098
+        },
+        {
+          "path": "README.md",
+          "start": 252,
+          "end": 286
+        },
+        {
+          "path": "middleware/value.go",
+          "start": 1,
+          "end": 17
+        },
+        {
+          "path": "middleware/client_ip.go",
+          "start": 42,
+          "end": 85
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 219,
+          "end": 257
+        },
+        {
+          "path": "middleware/client_ip_test.go",
+          "start": 278,
+          "end": 332
+        },
+        {
+          "path": "middleware/client_ip_example_test.go",
+          "start": 84,
+          "end": 108
+        },
+        {
+          "path": "mux.go",
+          "start": 444,
+          "end": 453
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.2727272727272727,
+        "error_class": "none"
+      },
+      "returned_chars": 19202,
+      "hit_count": 11,
+      "elapsed_ms": 121,
+      "wall_elapsed_ms": 142
+    },
+    {
+      "id": "chi-new-route-context-callers",
+      "instance_id": "chi-ae6be74",
+      "kind": "reference",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "middleware/get_head.go",
+          "start": 1,
+          "end": 39
+        },
+        {
+          "path": "mux.go",
+          "start": 1,
+          "end": 62
+        },
+        {
+          "path": "context.go",
+          "start": 1,
+          "end": 44
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1899,
+          "end": 1961
+        },
+        {
+          "path": "tree_test.go",
+          "start": 125,
+          "end": 154
+        },
+        {
+          "path": "mux.go",
+          "start": 356,
+          "end": 420
+        },
+        {
+          "path": "tree_test.go",
+          "start": 241,
+          "end": 270
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1296,
+          "end": 1338
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1265,
+          "end": 1274
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3333333333333333,
+        "error_class": "none"
+      },
+      "returned_chars": 13616,
+      "hit_count": 9,
+      "elapsed_ms": 90,
+      "wall_elapsed_ms": 109
+    },
+    {
+      "id": "chi-mount-tests",
+      "instance_id": "chi-ae6be74",
+      "kind": "test_mapping",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "mux_test.go",
+          "start": 208,
+          "end": 264
+        },
+        {
+          "path": "mux.go",
+          "start": 295,
+          "end": 354
+        },
+        {
+          "path": "_examples/todos-resource/main.go",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "_examples/versions/main.go",
+          "start": 1,
+          "end": 69
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 55,
+          "end": 112
+        },
+        {
+          "path": "tree_test.go",
+          "start": 582,
+          "end": 613
+        },
+        {
+          "path": "context_test.go",
+          "start": 1,
+          "end": 26
+        },
+        {
+          "path": "chi.go",
+          "start": 68,
+          "end": 117
+        },
+        {
+          "path": "README.md",
+          "start": 175,
+          "end": 250
+        },
+        {
+          "path": "middleware/profiler.go",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "mux.go",
+          "start": 280,
+          "end": 289
+        },
+        {
+          "path": "mux_test.go",
+          "start": 468,
+          "end": 477
+        },
+        {
+          "path": "mux_test.go",
+          "start": 366,
+          "end": 375
+        },
+        {
+          "path": "mux_test.go",
+          "start": 520,
+          "end": 529
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.35714285714285715,
+        "error_class": "none"
+      },
+      "returned_chars": 20594,
+      "hit_count": 14,
+      "elapsed_ms": 100,
+      "wall_elapsed_ms": 118
+    },
+    {
+      "id": "chi-route-to-mount-chain",
+      "instance_id": "chi-ae6be74",
+      "kind": "call_chain",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "mux.go",
+          "start": 242,
+          "end": 354
+        },
+        {
+          "path": "README.md",
+          "start": 175,
+          "end": 250
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1452,
+          "end": 1521
+        },
+        {
+          "path": "_examples/versions/main.go",
+          "start": 1,
+          "end": 69
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 55,
+          "end": 112
+        },
+        {
+          "path": "_examples/todos-resource/main.go",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "tree_test.go",
+          "start": 614,
+          "end": 662
+        },
+        {
+          "path": "context_test.go",
+          "start": 1,
+          "end": 26
+        },
+        {
+          "path": "CHANGELOG.md",
+          "start": 242,
+          "end": 262
+        },
+        {
+          "path": "mux.go",
+          "start": 525,
+          "end": 527
+        },
+        {
+          "path": "chi.go",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "tree.go",
+          "start": 591,
+          "end": 601
+        },
+        {
+          "path": "mux.go",
+          "start": 203,
+          "end": 214
+        },
+        {
+          "path": "mux.go",
+          "start": 223,
+          "end": 234
+        },
+        {
+          "path": "chain.go",
+          "start": 18,
+          "end": 20
+        },
+        {
+          "path": "context.go",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "path": "context.go",
+          "start": 45,
+          "end": 56
+        },
+        {
+          "path": "_examples/router-walk/main.go",
+          "start": 11,
+          "end": 20
+        },
+        {
+          "path": "_examples/todos-resource/todos.go",
+          "start": 12,
+          "end": 21
+        },
+        {
+          "path": "_examples/todos-resource/users.go",
+          "start": 12,
+          "end": 21
+        },
+        {
+          "path": "middleware/strip_test.go",
+          "start": 29,
+          "end": 37
+        },
+        {
+          "path": "middleware/get_head_test.go",
+          "start": 11,
+          "end": 20
+        },
+        {
+          "path": "pattern_test.go",
+          "start": 47,
+          "end": 56
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 1.0,
+        "truth_region_share": 0.043478260869565216,
+        "error_class": "redundant"
+      },
+      "returned_chars": 24739,
+      "hit_count": 23,
+      "elapsed_ms": 608,
+      "wall_elapsed_ms": 634
+    },
+    {
+      "id": "chi-walk-tests",
+      "instance_id": "chi-ae6be74",
+      "kind": "test_mapping",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "tree_test.go",
+          "start": 489,
+          "end": 523
+        },
+        {
+          "path": "middleware/client_ip_bench_test.go",
+          "start": 1,
+          "end": 58
+        },
+        {
+          "path": "tree.go",
+          "start": 879,
+          "end": 925
+        },
+        {
+          "path": "_examples/router-walk/main.go",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "mux_test.go",
+          "start": 1802,
+          "end": 1846
+        },
+        {
+          "path": "middleware/client_ip.go",
+          "start": 222,
+          "end": 274
+        },
+        {
+          "path": "_examples/README.md",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "middleware/client_ip_test.go",
+          "start": 599,
+          "end": 647
+        },
+        {
+          "path": "tree_test.go",
+          "start": 582,
+          "end": 613
+        },
+        {
+          "path": "tree.go",
+          "start": 633,
+          "end": 714
+        },
+        {
+          "path": "tree_test.go",
+          "start": 692,
+          "end": 701
+        },
+        {
+          "path": "tree_test.go",
+          "start": 567,
+          "end": 576
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.4166666666666667,
+        "error_class": "none"
+      },
+      "returned_chars": 19268,
+      "hit_count": 12,
+      "elapsed_ms": 96,
+      "wall_elapsed_ms": 117
+    },
+    {
+      "id": "chi-urlparam-definitions",
+      "instance_id": "chi-ae6be74",
+      "kind": "multi_impl",
+      "code_language": "go",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "context.go",
+          "start": 1,
+          "end": 44
+        },
+        {
+          "path": "context.go",
+          "start": 101,
+          "end": 146
+        },
+        {
+          "path": "context.go",
+          "start": 45,
+          "end": 56
+        },
+        {
+          "path": "context.go",
+          "start": 147,
+          "end": 158
+        },
+        {
+          "path": "chain.go",
+          "start": 18,
+          "end": 20
+        },
+        {
+          "path": "_examples/versions/main.go",
+          "start": 103,
+          "end": 112
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 229,
+          "end": 238
+        },
+        {
+          "path": "_examples/rest/main.go",
+          "start": 124,
+          "end": 133
+        },
+        {
+          "path": "middleware/strip_test.go",
+          "start": 31,
+          "end": 40
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 1.0,
+        "truth_region_share": 0.2222222222222222,
+        "error_class": "redundant"
+      },
+      "returned_chars": 6471,
+      "hit_count": 9,
+      "elapsed_ms": 74,
+      "wall_elapsed_ms": 98
+    },
+    {
+      "id": "jsoup-run-parser-callers",
+      "instance_id": "jsoup-7860d08",
+      "kind": "reference",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 188,
+          "end": 230
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 43,
+          "end": 92
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 94,
+          "end": 151
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 1.0,
+        "error_class": "none"
+      },
+      "returned_chars": 7030,
+      "hit_count": 3,
+      "elapsed_ms": 160,
+      "wall_elapsed_ms": 180
+    },
+    {
+      "id": "jsoup-parse-input-callers",
+      "instance_id": "jsoup-7860d08",
+      "kind": "reference",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 25,
+          "end": 76
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/DataUtil.java",
+          "start": 251,
+          "end": 321
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 69,
+          "end": 107
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/ParserIT.java",
+          "start": 17,
+          "end": 115
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/FuzzFixesTest.java",
+          "start": 22,
+          "end": 80
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/SessionTest.java",
+          "start": 124,
+          "end": 154
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/DocumentTest.java",
+          "start": 71,
+          "end": 109
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/ElementTest.java",
+          "start": 2384,
+          "end": 2433
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 31,
+          "end": 65
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/TokeniserTest.java",
+          "start": 14,
+          "end": 60
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/DataUtil.java",
+          "start": 334,
+          "end": 343
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.36363636363636365,
+        "error_class": "none"
+      },
+      "returned_chars": 26761,
+      "hit_count": 11,
+      "elapsed_ms": 120,
+      "wall_elapsed_ms": 145
+    },
+    {
+      "id": "jsoup-parse-to-run-parser-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 25,
+          "end": 76
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 94,
+          "end": 151
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 188,
+          "end": 230
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilder.java",
+          "start": 68,
+          "end": 87
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TagSet.java",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "src/main/java/org/jsoup/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/XmlTreeBuilderTest.java",
+          "start": 217,
+          "end": 254
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 1,
+          "end": 26
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 88,
+          "end": 95
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 69,
+          "end": 79
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 326,
+          "end": 331
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/QueryParser.java",
+          "start": 447,
+          "end": 458
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Attributes.java",
+          "start": 432,
+          "end": 443
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 62,
+          "end": 62
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/StreamParser.java",
+          "start": 182,
+          "end": 186
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/HtmlTreeBuilder.java",
+          "start": 146,
+          "end": 157
+        },
+        {
+          "path": "src/main/java/org/jsoup/select/Selector.java",
+          "start": 284,
+          "end": 286
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/TreeBuilder.java",
+          "start": 87,
+          "end": 92
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 0.5,
+        "relation_recall": 0.75,
+        "hop_recall": 0.75,
+        "chain_closed": 0.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.15,
+        "error_class": "relation_missing"
+      },
+      "returned_chars": 18289,
+      "hit_count": 20,
+      "elapsed_ms": 994,
+      "wall_elapsed_ms": 1015
+    },
+    {
+      "id": "jsoup-is-valid-tests",
+      "instance_id": "jsoup-7860d08",
+      "kind": "test_mapping",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 199,
+          "end": 219
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 413,
+          "end": 437
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 72,
+          "end": 101
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 1571,
+          "end": 1607
+        },
+        {
+          "path": "change-archive.txt",
+          "start": 1913,
+          "end": 1972
+        },
+        {
+          "path": "CHANGES.md",
+          "start": 231,
+          "end": 305
+        },
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 221,
+          "end": 231
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 103,
+          "end": 137
+        },
+        {
+          "path": "change-archive.txt",
+          "start": 1064,
+          "end": 1171
+        },
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 296,
+          "end": 305
+        },
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 354,
+          "end": 363
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.45454545454545453,
+        "error_class": "none"
+      },
+      "returned_chars": 27600,
+      "hit_count": 11,
+      "elapsed_ms": 116,
+      "wall_elapsed_ms": 137
+    },
+    {
+      "id": "jsoup-clean-definitions",
+      "instance_id": "jsoup-7860d08",
+      "kind": "multi_impl",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 335,
+          "end": 355
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 43,
+          "end": 70
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 357,
+          "end": 389
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 391,
+          "end": 411
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 80,
+          "end": 80
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 435,
+          "end": 437
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 308,
+          "end": 310
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 40,
+          "end": 43
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 65,
+          "end": 74
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 182,
+          "end": 186
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 28,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 544,
+          "end": 548
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/NodeUtils.java",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 56,
+          "end": 58
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 229,
+          "end": 240
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 1576,
+          "end": 1585
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.25,
+        "error_class": "none"
+      },
+      "returned_chars": 10183,
+      "hit_count": 16,
+      "elapsed_ms": 147,
+      "wall_elapsed_ms": 168
+    },
+    {
+      "id": "jsoup-clean-to-cleaner-chain",
+      "instance_id": "jsoup-7860d08",
+      "kind": "call_chain",
+      "code_language": "java",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 335,
+          "end": 355
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 43,
+          "end": 70
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 73,
+          "end": 117
+        },
+        {
+          "path": "src/test/java/org/jsoup/safety/CleanerTest.java",
+          "start": 500,
+          "end": 543
+        },
+        {
+          "path": "src/main/java/org/jsoup/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/package-info.java",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "src/main/java/org/jsoup/internal/package-info.java",
+          "start": 1,
+          "end": 8
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/NodeInternals.java",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "change-archive.txt",
+          "start": 1530,
+          "end": 1651
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 435,
+          "end": 437
+        },
+        {
+          "path": "src/main/java/org/jsoup/Jsoup.java",
+          "start": 308,
+          "end": 310
+        },
+        {
+          "path": "src/main/java/org/jsoup/parser/Parser.java",
+          "start": 319,
+          "end": 324
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 65,
+          "end": 70
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Element.java",
+          "start": 830,
+          "end": 833
+        },
+        {
+          "path": "src/test/java/org/jsoup/nodes/ElementTest.java",
+          "start": 2479,
+          "end": 2484
+        },
+        {
+          "path": "src/main/java/org/jsoup/helper/Validate.java",
+          "start": 40,
+          "end": 43
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Cleaner.java",
+          "start": 182,
+          "end": 186
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 28,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/Document.java",
+          "start": 544,
+          "end": 548
+        },
+        {
+          "path": "src/main/java/org/jsoup/nodes/NodeUtils.java",
+          "start": 25,
+          "end": 28
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 254,
+          "end": 264
+        },
+        {
+          "path": "src/main/java/org/jsoup/safety/Safelist.java",
+          "start": 134,
+          "end": 145
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 1733,
+          "end": 1741
+        },
+        {
+          "path": "src/test/java/org/jsoup/integration/SafelistExtensionTest.java",
+          "start": 16,
+          "end": 25
+        },
+        {
+          "path": "src/test/java/org/jsoup/parser/HtmlParserTest.java",
+          "start": 1744,
+          "end": 1752
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07692307692307693,
+        "error_class": "redundant"
+      },
+      "returned_chars": 22151,
+      "hit_count": 26,
+      "elapsed_ms": 625,
+      "wall_elapsed_ms": 650
+    }
+  ]
+}

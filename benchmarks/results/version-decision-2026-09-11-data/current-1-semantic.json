@@ -1,0 +1,5472 @@
+{
+  "schema_version": 1,
+  "suite": "semantic_queries",
+  "label": "current-1",
+  "created_at": "2026-09-12T01:00:13.843523+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "cdcc0488de9e140439c9fdb277e1fabb1ea8699276de077b021bc4127ace3f18",
+    "semantic_cases_sha256": "aeb73cbe35925d1067e2ad90501969e726ba2adf73f4ef7e94401ad7729f33e7"
+  },
+  "snapshots": [
+    {
+      "id": "axum-v0.7.9",
+      "repo": "tokio-rs/axum",
+      "revision": "9983bc1da460becd3a0f08c513d610411e84dd43",
+      "code_language": "rust"
+    },
+    {
+      "id": "bats-core-v1.11.1",
+      "repo": "bats-core/bats-core",
+      "revision": "b640ec3cf2c7c9cfc9e6351479261186f76eeec8",
+      "code_language": "bash"
+    },
+    {
+      "id": "express-4.21.2",
+      "repo": "expressjs/express",
+      "revision": "1faf228935aa0a13111f92c28ee795be64ce3f0f",
+      "code_language": "javascript"
+    },
+    {
+      "id": "gin-v1.10.0",
+      "repo": "gin-gonic/gin",
+      "revision": "75ccf94d605a05fe24817fc2f166f6f2959d5cea",
+      "code_language": "go"
+    },
+    {
+      "id": "gson-2.11.0",
+      "repo": "google/gson",
+      "revision": "828a97be0f8d58108b140b77df8dc76b657f4a87",
+      "code_language": "java"
+    },
+    {
+      "id": "jq-1.7.1",
+      "repo": "jqlang/jq",
+      "revision": "71c2ab509a8628dbbad4bc7b3f98a64aa90d3297",
+      "code_language": "c"
+    },
+    {
+      "id": "mediatr-v12.4.1",
+      "repo": "jbogard/MediatR",
+      "revision": "fb309026775ef953a64fb5339d074426c1ad2c37",
+      "code_language": "csharp"
+    },
+    {
+      "id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "revision": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+      "code_language": "python"
+    },
+    {
+      "id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "revision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "code_language": "python"
+    },
+    {
+      "id": "pydata__xarray-7233",
+      "repo": "pydata/xarray",
+      "revision": "51d37d1be95547059251076b3fadaa317750aab3",
+      "code_language": "python"
+    },
+    {
+      "id": "pylint-dev__pylint-7080",
+      "repo": "pylint-dev/pylint",
+      "revision": "3c5eca2ded3dd2b59ebaf23eb289453b5d2930f0",
+      "code_language": "python"
+    },
+    {
+      "id": "pytest-dev__pytest-10356",
+      "repo": "pytest-dev/pytest",
+      "revision": "3c1534944cbd34e8a41bc9e76818018fadefc9a1",
+      "code_language": "python"
+    },
+    {
+      "id": "redux-toolkit-v2.2.7",
+      "repo": "reduxjs/redux-toolkit",
+      "revision": "75b4f698e1c58efa6b19096abe5850da0a431da0",
+      "code_language": "typescript"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "current-1-proof.json"
+    }
+  },
+  "case_ids": [
+    "flask-blueprint-registration",
+    "flask-request-context-overview",
+    "flask-wsgi-dispatch-chain",
+    "requests-redirect-cookies",
+    "requests-request-architecture",
+    "requests-send-call-chain",
+    "pytest-fixture-resolution",
+    "pytest-startup-collection-overview",
+    "pytest-main-run-chain",
+    "pylint-checker-messages",
+    "pylint-run-overview",
+    "pylint-run-check-chain",
+    "xarray-combine-by-coordinates",
+    "xarray-indexing-overview",
+    "xarray-apply-ufunc-chain",
+    "redux-create-slice",
+    "redux-store-overview",
+    "redux-query-api-chain",
+    "axum-router-composition",
+    "axum-handler-overview",
+    "axum-serve-request-chain",
+    "gin-route-matching",
+    "gin-request-overview",
+    "gin-json-binding-chain",
+    "jq-json-parsing",
+    "jq-pipeline-overview",
+    "jq-builtin-call-chain",
+    "mediatr-request-dispatch",
+    "mediatr-architecture-overview",
+    "mediatr-publish-chain",
+    "express-route-matching",
+    "express-architecture-overview",
+    "express-request-chain",
+    "bats-test-execution",
+    "bats-architecture-overview",
+    "bats-failure-trace-chain",
+    "gson-adapter-resolution",
+    "gson-architecture-overview",
+    "gson-fromjson-chain"
+  ],
+  "sync": {
+    "axum-v0.7.9": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "bats-core-v1.11.1": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "express-4.21.2": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "gin-v1.10.0": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "gson-2.11.0": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "jq-1.7.1": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "mediatr-v12.4.1": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "pallets__flask-5014": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "psf__requests-5414": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "pydata__xarray-7233": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "pylint-dev__pylint-7080": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "pytest-dev__pytest-10356": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "redux-toolkit-v2.2.7": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 39,
+    "successful_cases": 39,
+    "error_cases": 0,
+    "top1_relevant": 0.7692307692307693,
+    "top1_primary": 0.6923076923076923,
+    "mrr": 0.861965811965812,
+    "hit_at_5": 0.9743589743589743,
+    "weighted_recall_at_5": 0.6199262276185353,
+    "weighted_recall_at_10": 0.7751885578808656,
+    "primary_recall_at_10": 0.9230769230769231,
+    "ndcg_at_10": 0.7311568917657013,
+    "mean_elapsed_ms": 668.2051282051282,
+    "p50_elapsed_ms": 580,
+    "p95_elapsed_ms": 1149,
+    "mean_returned_chars": 30631.79487179487,
+    "mean_hit_count": 20.53846153846154,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 27,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "feature": {
+      "cases": 13,
+      "successful_cases": 13,
+      "error_cases": 0,
+      "top1_relevant": 0.6153846153846154,
+      "top1_primary": 0.5384615384615384,
+      "mrr": 0.758974358974359,
+      "hit_at_5": 0.9230769230769231,
+      "weighted_recall_at_5": 0.6051892551892553,
+      "weighted_recall_at_10": 0.8192918192918193,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.7035696161084228,
+      "mean_elapsed_ms": 754.1538461538462,
+      "p50_elapsed_ms": 591,
+      "p95_elapsed_ms": 2078,
+      "mean_returned_chars": 31367.23076923077,
+      "mean_hit_count": 20.0
+    },
+    "overview": {
+      "cases": 13,
+      "successful_cases": 13,
+      "error_cases": 0,
+      "top1_relevant": 0.6923076923076923,
+      "top1_primary": 0.6153846153846154,
+      "mrr": 0.8269230769230769,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5143023643023643,
+      "weighted_recall_at_10": 0.6674436674436675,
+      "primary_recall_at_10": 0.8333333333333334,
+      "ndcg_at_10": 0.6540770143683725,
+      "mean_elapsed_ms": 581.9230769230769,
+      "p50_elapsed_ms": 570,
+      "p95_elapsed_ms": 763,
+      "mean_returned_chars": 30663.69230769231,
+      "mean_hit_count": 16.692307692307693
+    },
+    "call_chain": {
+      "cases": 13,
+      "successful_cases": 13,
+      "error_cases": 0,
+      "top1_relevant": 1.0,
+      "top1_primary": 0.9230769230769231,
+      "mrr": 1.0,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.7402870633639864,
+      "weighted_recall_at_10": 0.83883018690711,
+      "primary_recall_at_10": 0.9358974358974359,
+      "ndcg_at_10": 0.8358240448203087,
+      "mean_elapsed_ms": 668.5384615384615,
+      "p50_elapsed_ms": 665,
+      "p95_elapsed_ms": 872,
+      "mean_returned_chars": 29864.46153846154,
+      "mean_hit_count": 24.923076923076923
+    },
+    "issue": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "top1_relevant": null,
+      "top1_primary": null,
+      "mrr": null,
+      "hit_at_5": null,
+      "weighted_recall_at_5": null,
+      "weighted_recall_at_10": null,
+      "primary_recall_at_10": null,
+      "ndcg_at_10": null,
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    }
+  },
+  "by_code_language": {
+    "python": {
+      "cases": 15,
+      "successful_cases": 15,
+      "error_cases": 0,
+      "top1_relevant": 0.8666666666666667,
+      "top1_primary": 0.8,
+      "mrr": 0.9111111111111111,
+      "hit_at_5": 0.9333333333333333,
+      "weighted_recall_at_5": 0.6013684463684464,
+      "weighted_recall_at_10": 0.7851851851851852,
+      "primary_recall_at_10": 0.9,
+      "ndcg_at_10": 0.766229596637713,
+      "mean_elapsed_ms": 769.6,
+      "p50_elapsed_ms": 633,
+      "p95_elapsed_ms": 2078,
+      "mean_returned_chars": 34302.46666666667,
+      "mean_hit_count": 21.733333333333334
+    },
+    "typescript": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 1.0,
+      "top1_primary": 1.0,
+      "mrr": 1.0,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5833333333333334,
+      "weighted_recall_at_10": 0.6666666666666666,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.7658278944120437,
+      "mean_elapsed_ms": 612.0,
+      "p50_elapsed_ms": 591,
+      "p95_elapsed_ms": 665,
+      "mean_returned_chars": 26909.0,
+      "mean_hit_count": 19.666666666666668
+    },
+    "javascript": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.8333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.8484848484848485,
+      "weighted_recall_at_10": 0.8484848484848485,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8474659433492514,
+      "mean_elapsed_ms": 609.3333333333334,
+      "p50_elapsed_ms": 543,
+      "p95_elapsed_ms": 750,
+      "mean_returned_chars": 25144.666666666668,
+      "mean_hit_count": 17.666666666666668
+    },
+    "rust": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.75,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5114219114219115,
+      "weighted_recall_at_10": 0.6386946386946387,
+      "primary_recall_at_10": 0.6666666666666666,
+      "ndcg_at_10": 0.6078226485546407,
+      "mean_elapsed_ms": 600.0,
+      "p50_elapsed_ms": 585,
+      "p95_elapsed_ms": 659,
+      "mean_returned_chars": 26119.0,
+      "mean_hit_count": 22.0
+    },
+    "go": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.8333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5444444444444444,
+      "weighted_recall_at_10": 0.7851851851851852,
+      "primary_recall_at_10": 0.8333333333333334,
+      "ndcg_at_10": 0.6659854568154943,
+      "mean_elapsed_ms": 630.3333333333334,
+      "p50_elapsed_ms": 575,
+      "p95_elapsed_ms": 750,
+      "mean_returned_chars": 22080.333333333332,
+      "mean_hit_count": 19.333333333333332
+    },
+    "c": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.8333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5909090909090909,
+      "weighted_recall_at_10": 0.797979797979798,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.7084054011500461,
+      "mean_elapsed_ms": 673.0,
+      "p50_elapsed_ms": 591,
+      "p95_elapsed_ms": 872,
+      "mean_returned_chars": 33837.0,
+      "mean_hit_count": 22.333333333333332
+    },
+    "csharp": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.0,
+      "mrr": 0.8333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5574074074074075,
+      "weighted_recall_at_10": 0.8518518518518517,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.6206877094328759,
+      "mean_elapsed_ms": 552.3333333333334,
+      "p50_elapsed_ms": 570,
+      "p95_elapsed_ms": 574,
+      "mean_returned_chars": 20364.666666666668,
+      "mean_hit_count": 19.333333333333332
+    },
+    "java": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.8333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.8361111111111111,
+      "weighted_recall_at_10": 0.8916666666666666,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.8051737047052047,
+      "mean_elapsed_ms": 602.0,
+      "p50_elapsed_ms": 560,
+      "p95_elapsed_ms": 700,
+      "mean_returned_chars": 33182.333333333336,
+      "mean_hit_count": 25.333333333333332
+    },
+    "bash": {
+      "cases": 3,
+      "successful_cases": 3,
+      "error_cases": 0,
+      "top1_relevant": 0.6666666666666666,
+      "top1_primary": 0.6666666666666666,
+      "mrr": 0.7333333333333334,
+      "hit_at_5": 1.0,
+      "weighted_recall_at_5": 0.5800865800865801,
+      "weighted_recall_at_10": 0.670995670995671,
+      "primary_recall_at_10": 1.0,
+      "ndcg_at_10": 0.6525228513459959,
+      "mean_elapsed_ms": 559.6666666666666,
+      "p50_elapsed_ms": 571,
+      "p95_elapsed_ms": 573,
+      "mean_returned_chars": 39064.0,
+      "mean_hit_count": 12.666666666666666
+    }
+  },
+  "cases": [
+    {
+      "id": "flask-blueprint-registration",
+      "instance_id": "pallets__flask-5014",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 227,
+          "end": 266
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 967,
+          "end": 1019
+        },
+        {
+          "path": "docs/blueprints.rst",
+          "start": 1,
+          "end": 151
+        },
+        {
+          "path": "tests/test_blueprints.py",
+          "start": 690,
+          "end": 757
+        },
+        {
+          "path": "docs/tutorial/views.rst",
+          "start": 1,
+          "end": 153
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 174,
+          "end": 219
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 114,
+          "end": 158
+        },
+        {
+          "path": "examples/tutorial/flaskr/__init__.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "src/flask/wrappers.py",
+          "start": 15,
+          "end": 133
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 32,
+          "end": 43
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 268,
+          "end": 279
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 117,
+          "end": 118
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 408,
+          "end": 419
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 108,
+          "end": 108
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 105,
+          "end": 106
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1593,
+          "end": 1603
+        },
+        {
+          "path": "examples/javascript/js_example/templates/xhr.html",
+          "start": 14,
+          "end": 14
+        },
+        {
+          "path": "src/flask/globals.py",
+          "start": 65,
+          "end": 67
+        },
+        {
+          "path": "tests/test_apps/blueprintapp/__init__.py",
+          "start": 9,
+          "end": 9
+        },
+        {
+          "path": "tests/test_async.py",
+          "start": 73,
+          "end": 78
+        },
+        {
+          "path": "examples/tutorial/tests/conftest.py",
+          "start": 42,
+          "end": 51
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8333333333333334,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9846911488269627
+      },
+      "returned_chars": 35718,
+      "hit_count": 21,
+      "elapsed_ms": 1149,
+      "wall_elapsed_ms": 1171
+    },
+    {
+      "id": "flask-request-context-overview",
+      "instance_id": "pallets__flask-5014",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/flask/app.py",
+          "start": 2057,
+          "end": 2101
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 278,
+          "end": 298
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 555,
+          "end": 599
+        },
+        {
+          "path": "tests/test_reqctx.py",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "tests/test_appctx.py",
+          "start": 134,
+          "end": 190
+        },
+        {
+          "path": "docs/lifecycle.rst",
+          "start": 119,
+          "end": 168
+        },
+        {
+          "path": "docs/reqcontext.rst",
+          "start": 1,
+          "end": 145
+        },
+        {
+          "path": "src/flask/globals.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "docs/shell.rst",
+          "start": 1,
+          "end": 100
+        },
+        {
+          "path": "docs/appcontext.rst",
+          "start": 1,
+          "end": 149
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1556,
+          "end": 1566
+        },
+        {
+          "path": "src/flask/signals.py",
+          "start": 25,
+          "end": 26
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 229,
+          "end": 240
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 228,
+          "end": 239
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 670,
+          "end": 680
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 2119,
+          "end": 2129
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 150,
+          "end": 159
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 408,
+          "end": 419
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8571428571428571,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9845143292854158
+      },
+      "returned_chars": 37097,
+      "hit_count": 18,
+      "elapsed_ms": 526,
+      "wall_elapsed_ms": 545
+    },
+    {
+      "id": "flask-wsgi-dispatch-chain",
+      "instance_id": "pallets__flask-5014",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/flask/app.py",
+          "start": 2175,
+          "end": 2228
+        },
+        {
+          "path": "src/flask/helpers.py",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "tests/test_testing.py",
+          "start": 57,
+          "end": 117
+        },
+        {
+          "path": "tests/test_reqctx.py",
+          "start": 280,
+          "end": 325
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "docs/lifecycle.rst",
+          "start": 1,
+          "end": 117
+        },
+        {
+          "path": "tests/test_basic.py",
+          "start": 1212,
+          "end": 1280
+        },
+        {
+          "path": "src/flask/__init__.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "src/flask/logging.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 113,
+          "end": 143
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1486,
+          "end": 1497
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 2103,
+          "end": 2113
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1363,
+          "end": 1373
+        },
+        {
+          "path": "src/flask/json/provider.py",
+          "start": 88,
+          "end": 99
+        },
+        {
+          "path": "src/flask/json/provider.py",
+          "start": 190,
+          "end": 200
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1546,
+          "end": 1554
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 408,
+          "end": 419
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 2119,
+          "end": 2129
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 108,
+          "end": 108
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 0.8333333333333334,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8375780889557954
+      },
+      "returned_chars": 28149,
+      "hit_count": 19,
+      "elapsed_ms": 529,
+      "wall_elapsed_ms": 550
+    },
+    {
+      "id": "requests-redirect-cookies",
+      "instance_id": "psf__requests-5414",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "requests/sessions.py",
+          "start": 144,
+          "end": 252
+        },
+        {
+          "path": "requests/auth.py",
+          "start": 229,
+          "end": 276
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 376,
+          "end": 425
+        },
+        {
+          "path": "HISTORY.md",
+          "start": 1122,
+          "end": 1171
+        },
+        {
+          "path": "requests/api.py",
+          "start": 1,
+          "end": 61
+        },
+        {
+          "path": "requests/models.py",
+          "start": 606,
+          "end": 657
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 256,
+          "end": 291
+        },
+        {
+          "path": "tests/test_lowlevel.py",
+          "start": 364,
+          "end": 405
+        },
+        {
+          "path": "docs/user/quickstart.rst",
+          "start": 331,
+          "end": 511
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 98,
+          "end": 109
+        },
+        {
+          "path": "requests/models.py",
+          "start": 333,
+          "end": 342
+        },
+        {
+          "path": "requests/exceptions.py",
+          "start": 78,
+          "end": 79
+        },
+        {
+          "path": "requests/_internal_utils.py",
+          "start": 14,
+          "end": 25
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 632,
+          "end": 643
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 301,
+          "end": 312
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 118,
+          "end": 129
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 529,
+          "end": 540
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 276,
+          "end": 279
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 299,
+          "end": 308
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 0.6666666666666666,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7831760069264603
+      },
+      "returned_chars": 34216,
+      "hit_count": 19,
+      "elapsed_ms": 2078,
+      "wall_elapsed_ms": 2099
+    },
+    {
+      "id": "requests-request-architecture",
+      "instance_id": "psf__requests-5414",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "requests/adapters.py",
+          "start": 86,
+          "end": 130
+        },
+        {
+          "path": "requests/api.py",
+          "start": 1,
+          "end": 61
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 411,
+          "end": 455
+        },
+        {
+          "path": "requests/models.py",
+          "start": 200,
+          "end": 274
+        },
+        {
+          "path": "requests/__init__.py",
+          "start": 99,
+          "end": 152
+        },
+        {
+          "path": "docs/api.rst",
+          "start": 1,
+          "end": 214
+        },
+        {
+          "path": "docs/user/advanced.rst",
+          "start": 1,
+          "end": 156
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 1321,
+          "end": 1377
+        },
+        {
+          "path": "requests/__version__.py",
+          "start": 1,
+          "end": 14
+        },
+        {
+          "path": "README.md",
+          "start": 28,
+          "end": 54
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 147,
+          "end": 158
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 324,
+          "end": 334
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 457,
+          "end": 468
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 508,
+          "end": 518
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 529,
+          "end": 540
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 171,
+          "end": 171
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 178,
+          "end": 188
+        },
+        {
+          "path": "requests/models.py",
+          "start": 312,
+          "end": 322
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 1.0
+      },
+      "returned_chars": 36209,
+      "hit_count": 18,
+      "elapsed_ms": 536,
+      "wall_elapsed_ms": 555
+    },
+    {
+      "id": "requests-send-call-chain",
+      "instance_id": "psf__requests-5414",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "requests/sessions.py",
+          "start": 457,
+          "end": 531
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 330,
+          "end": 371
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 564,
+          "end": 600
+        },
+        {
+          "path": "requests/models.py",
+          "start": 275,
+          "end": 331
+        },
+        {
+          "path": "HISTORY.md",
+          "start": 1055,
+          "end": 1120
+        },
+        {
+          "path": "docs/user/advanced.rst",
+          "start": 988,
+          "end": 1090
+        },
+        {
+          "path": "requests/api.py",
+          "start": 64,
+          "end": 117
+        },
+        {
+          "path": "docs/api.rst",
+          "start": 1,
+          "end": 214
+        },
+        {
+          "path": "requests/models.py",
+          "start": 200,
+          "end": 205
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 417,
+          "end": 421
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 691,
+          "end": 696
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 348,
+          "end": 353
+        },
+        {
+          "path": "requests/hooks.py",
+          "start": 17,
+          "end": 18
+        },
+        {
+          "path": "requests/models.py",
+          "start": 177,
+          "end": 181
+        },
+        {
+          "path": "requests/models.py",
+          "start": 274,
+          "end": 274
+        },
+        {
+          "path": "requests/models.py",
+          "start": 256,
+          "end": 261
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 508,
+          "end": 513
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 529,
+          "end": 534
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 171,
+          "end": 171
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 178,
+          "end": 183
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 50,
+          "end": 54
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 81,
+          "end": 86
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 798,
+          "end": 803
+        },
+        {
+          "path": "requests/cookies.py",
+          "start": 343,
+          "end": 346
+        },
+        {
+          "path": "requests/api.py",
+          "start": 16,
+          "end": 27
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 810,
+          "end": 821
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 1019,
+          "end": 1029
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 324,
+          "end": 334
+        },
+        {
+          "path": "requests/api.py",
+          "start": 61,
+          "end": 61
+        },
+        {
+          "path": "requests/api.py",
+          "start": 147,
+          "end": 156
+        },
+        {
+          "path": "requests/api.py",
+          "start": 132,
+          "end": 141
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 477,
+          "end": 485
+        },
+        {
+          "path": "tests/testserver/server.py",
+          "start": 46,
+          "end": 55
+        },
+        {
+          "path": "tests/test_lowlevel.py",
+          "start": 168,
+          "end": 177
+        },
+        {
+          "path": "tests/test_lowlevel.py",
+          "start": 12,
+          "end": 21
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.7272727272727273,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9280214742179889
+      },
+      "returned_chars": 39718,
+      "hit_count": 35,
+      "elapsed_ms": 723,
+      "wall_elapsed_ms": 744
+    },
+    {
+      "id": "pytest-fixture-resolution",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 603,
+          "end": 678
+        },
+        {
+          "path": "testing/python/fixtures.py",
+          "start": 2414,
+          "end": 2501
+        },
+        {
+          "path": "src/_pytest/hookspec.py",
+          "start": 602,
+          "end": 657
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "start": 1164,
+          "end": 1206
+        },
+        {
+          "path": "testing/test_doctest.py",
+          "start": 1238,
+          "end": 1378
+        },
+        {
+          "path": "doc/en/how-to/fixtures.rst",
+          "start": 247,
+          "end": 443
+        },
+        {
+          "path": "doc/en/funcarg_compare.rst",
+          "start": 1,
+          "end": 165
+        },
+        {
+          "path": "testing/example_scripts/fixtures/test_getfixturevalue_dynamic.py",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "testing/acceptance_test.py",
+          "start": 1034,
+          "end": 1104
+        },
+        {
+          "path": "src/_pytest/outcomes.py",
+          "start": 179,
+          "end": 190
+        },
+        {
+          "path": "src/_pytest/pathlib.py",
+          "start": 670,
+          "end": 676
+        },
+        {
+          "path": "src/_pytest/compat.py",
+          "start": 97,
+          "end": 108
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 745,
+          "end": 756
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 686,
+          "end": 697
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 1046,
+          "end": 1057
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 680,
+          "end": 684
+        },
+        {
+          "path": "src/_pytest/fixtures.py",
+          "start": 780,
+          "end": 790
+        },
+        {
+          "path": "src/_pytest/legacypath.py",
+          "start": 107,
+          "end": 109
+        },
+        {
+          "path": "src/_pytest/pytester.py",
+          "start": 830,
+          "end": 836
+        },
+        {
+          "path": "testing/python/metafunc.py",
+          "start": 52,
+          "end": 61
+        },
+        {
+          "path": "testing/test_reports.py",
+          "start": 437,
+          "end": 446
+        },
+        {
+          "path": "testing/python/metafunc.py",
+          "start": 31,
+          "end": 40
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 0.5,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7452525342261976
+      },
+      "returned_chars": 40245,
+      "hit_count": 22,
+      "elapsed_ms": 633,
+      "wall_elapsed_ms": 657
+    },
+    {
+      "id": "pytest-startup-collection-overview",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 236,
+          "end": 303
+        },
+        {
+          "path": "src/_pytest/hookspec.py",
+          "start": 208,
+          "end": 254
+        },
+        {
+          "path": "doc/en/how-to/writing_plugins.rst",
+          "start": 1,
+          "end": 139
+        },
+        {
+          "path": "doc/en/reference/reference.rst",
+          "start": 1850,
+          "end": 1928
+        },
+        {
+          "path": "src/_pytest/pytester.py",
+          "start": 462,
+          "end": 520
+        },
+        {
+          "path": "testing/test_pluginmanager.py",
+          "start": 23,
+          "end": 182
+        },
+        {
+          "path": "doc/en/how-to/plugins.rst",
+          "start": 1,
+          "end": 136
+        },
+        {
+          "path": "testing/test_session.py",
+          "start": 179,
+          "end": 248
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 379,
+          "end": 386
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 894,
+          "end": 905
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 907,
+          "end": 917
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 680,
+          "end": 691
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 749,
+          "end": 760
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 82,
+          "end": 82
+        },
+        {
+          "path": "src/_pytest/hookspec.py",
+          "start": 47,
+          "end": 47
+        },
+        {
+          "path": "src/_pytest/pytester.py",
+          "start": 1546,
+          "end": 1557
+        },
+        {
+          "path": "src/_pytest/pytester.py",
+          "start": 658,
+          "end": 669
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.375,
+        "weighted_recall_at_10": 0.375,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.541942129480027
+      },
+      "returned_chars": 37759,
+      "hit_count": 17,
+      "elapsed_ms": 576,
+      "wall_elapsed_ms": 603
+    },
+    {
+      "id": "pytest-main-run-chain",
+      "instance_id": "pytest-dev__pytest-10356",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/_pytest/main.py",
+          "start": 316,
+          "end": 354
+        },
+        {
+          "path": "src/_pytest/runner.py",
+          "start": 69,
+          "end": 114
+        },
+        {
+          "path": "src/_pytest/hookspec.py",
+          "start": 500,
+          "end": 544
+        },
+        {
+          "path": "src/_pytest/logging.py",
+          "start": 653,
+          "end": 690
+        },
+        {
+          "path": "src/_pytest/cacheprovider.py",
+          "start": 436,
+          "end": 499
+        },
+        {
+          "path": "testing/python/integration.py",
+          "start": 222,
+          "end": 267
+        },
+        {
+          "path": "src/pytest/__init__.py",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "src/_pytest/python.py",
+          "start": 1591,
+          "end": 1654
+        },
+        {
+          "path": "doc/en/reference/reference.rst",
+          "start": 1850,
+          "end": 1928
+        },
+        {
+          "path": "src/_pytest/warnings.py",
+          "start": 74,
+          "end": 118
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 257,
+          "end": 268
+        },
+        {
+          "path": "src/_pytest/hookspec.py",
+          "start": 442,
+          "end": 453
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 594,
+          "end": 597
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 605,
+          "end": 616
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 435,
+          "end": 438
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 457,
+          "end": 457
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 441,
+          "end": 442
+        },
+        {
+          "path": "src/_pytest/main.py",
+          "start": 458,
+          "end": 458
+        },
+        {
+          "path": "src/_pytest/capture.py",
+          "start": 173,
+          "end": 175
+        },
+        {
+          "path": "src/_pytest/config/__init__.py",
+          "start": 1553,
+          "end": 1555
+        },
+        {
+          "path": "src/_pytest/terminal.py",
+          "start": 447,
+          "end": 455
+        },
+        {
+          "path": "src/_pytest/terminal.py",
+          "start": 423,
+          "end": 427
+        },
+        {
+          "path": "scripts/prepare-release-pr.py",
+          "start": 174,
+          "end": 174
+        },
+        {
+          "path": "scripts/release.py",
+          "start": 131,
+          "end": 131
+        },
+        {
+          "path": "scripts/update-plugin-list.py",
+          "start": 140,
+          "end": 140
+        },
+        {
+          "path": "extra/get_issues.py",
+          "start": 85,
+          "end": 85
+        },
+        {
+          "path": "testing/test_config.py",
+          "start": 552,
+          "end": 553
+        },
+        {
+          "path": "testing/freeze/runtests_script.py",
+          "start": 10,
+          "end": 10
+        },
+        {
+          "path": "testing/test_main.py",
+          "start": 12,
+          "end": 13
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.625,
+        "weighted_recall_at_10": 0.625,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.688482449852666
+      },
+      "returned_chars": 28491,
+      "hit_count": 29,
+      "elapsed_ms": 579,
+      "wall_elapsed_ms": 602
+    },
+    {
+      "id": "pylint-checker-messages",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "pylint/checkers/base/__init__.py",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "pylint/lint/message_state_handler.py",
+          "start": 85,
+          "end": 135
+        },
+        {
+          "path": "pylint/checkers/__init__.py",
+          "start": 134,
+          "end": 147
+        },
+        {
+          "path": "tests/lint/unittest_lint.py",
+          "start": 205,
+          "end": 235
+        },
+        {
+          "path": "tests/conftest.py",
+          "start": 1,
+          "end": 68
+        },
+        {
+          "path": "pylint/message/message_definition_store.py",
+          "start": 20,
+          "end": 115
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 237,
+          "end": 267
+        },
+        {
+          "path": "doc/development_guide/how_tos/custom_checkers.rst",
+          "start": 179,
+          "end": 336
+        },
+        {
+          "path": "pylint/checkers/base_checker.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "tests/regrtest_data/dummy_plugin/dummy_plugin.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "pylint/checkers/base/basic_error_checker.py",
+          "start": 99,
+          "end": 110
+        },
+        {
+          "path": "pylint/checkers/base/basic_checker.py",
+          "start": 107,
+          "end": 118
+        },
+        {
+          "path": "pylint/checkers/base/name_checker/checker.py",
+          "start": 147,
+          "end": 158
+        },
+        {
+          "path": "pylint/checkers/base/docstring_checker.py",
+          "start": 50,
+          "end": 61
+        },
+        {
+          "path": "pylint/checkers/base/pass_checker.py",
+          "start": 11,
+          "end": 22
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 457,
+          "end": 466
+        },
+        {
+          "path": "pylint/checkers/base/comparison_checker.py",
+          "start": 25,
+          "end": 32
+        },
+        {
+          "path": "pylint/reporters/reports_handler_mix_in.py",
+          "start": 49,
+          "end": 52
+        },
+        {
+          "path": "tests/functional/i/invalid/invalid_all_format_valid_2.py",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/functional/i/invalid/invalid_all_format_valid_1.py",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/functional/i/invalid/invalid_all_format.py",
+          "start": 5,
+          "end": 7
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.16666666666666666,
+        "hit_at_5": 0.0,
+        "weighted_recall_at_5": 0.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.4436085595339691
+      },
+      "returned_chars": 29389,
+      "hit_count": 21,
+      "elapsed_ms": 818,
+      "wall_elapsed_ms": 850
+    },
+    {
+      "id": "pylint-run-overview",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "pylint/__init__.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "pylint/lint/run.py",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "pylint/lint/__init__.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "pylint/config/config_initialization.py",
+          "start": 20,
+          "end": 114
+        },
+        {
+          "path": "README.rst",
+          "start": 1,
+          "end": 132
+        },
+        {
+          "path": "pylint/config/_pylint_config/main.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "doc/development_guide/technical_reference/startup.rst",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "pylint/config/_pylint_config/__init__.py",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "pylint/testutils/lint_module_test.py",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "doc/faq.rst",
+          "start": 1,
+          "end": 116
+        },
+        {
+          "path": "pylint/lint/run.py",
+          "start": 235,
+          "end": 242
+        },
+        {
+          "path": "pylint/config/config_file_parser.py",
+          "start": 27,
+          "end": 38
+        },
+        {
+          "path": "pylint/config/config_file_parser.py",
+          "start": 100,
+          "end": 111
+        },
+        {
+          "path": "pylint/utils/utils.py",
+          "start": 310,
+          "end": 321
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 361,
+          "end": 371
+        },
+        {
+          "path": "pylint/utils/utils.py",
+          "start": 287,
+          "end": 298
+        },
+        {
+          "path": "pylint/config/arguments_manager.py",
+          "start": 253,
+          "end": 263
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 432,
+          "end": 437
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.75,
+        "weighted_recall_at_10": 0.75,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5753291852022475
+      },
+      "returned_chars": 30880,
+      "hit_count": 18,
+      "elapsed_ms": 763,
+      "wall_elapsed_ms": 791
+    },
+    {
+      "id": "pylint-run-check-chain",
+      "instance_id": "pylint-dev__pylint-7080",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "pylint/lint/run.py",
+          "start": 96,
+          "end": 242
+        },
+        {
+          "path": "pylint/config/_pylint_config/main.py",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "pylint/lint/__init__.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "doc/development_guide/technical_reference/startup.rst",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "pylint/utils/docs.py",
+          "start": 45,
+          "end": 103
+        },
+        {
+          "path": "pylint/__init__.py",
+          "start": 1,
+          "end": 57
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 621,
+          "end": 667
+        },
+        {
+          "path": "pylint/testutils/_run.py",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "pylint/config/_pylint_config/generate_command.py",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "pylint/checkers/classes/__init__.py",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "pylint/config/utils.py",
+          "start": 230,
+          "end": 240
+        },
+        {
+          "path": "pylint/config/find_default_config_files.py",
+          "start": 42,
+          "end": 53
+        },
+        {
+          "path": "pylint/lint/base_options.py",
+          "start": 396,
+          "end": 407
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 357,
+          "end": 359
+        },
+        {
+          "path": "pylint/lint/pylinter.py",
+          "start": 361,
+          "end": 371
+        },
+        {
+          "path": "pylint/lint/message_state_handler.py",
+          "start": 216,
+          "end": 227
+        },
+        {
+          "path": "pylint/config/_pylint_config/setup.py",
+          "start": 29,
+          "end": 40
+        },
+        {
+          "path": "pylint/config/config_initialization.py",
+          "start": 20,
+          "end": 30
+        },
+        {
+          "path": "pylint/checkers/classes/special_methods_checker.py",
+          "start": 382,
+          "end": 387
+        },
+        {
+          "path": "pylint/testutils/lint_module_test.py",
+          "start": 248,
+          "end": 257
+        },
+        {
+          "path": "pylint/checkers/spelling.py",
+          "start": 369,
+          "end": 378
+        },
+        {
+          "path": "tests/checkers/unittest_format.py",
+          "start": 177,
+          "end": 180
+        },
+        {
+          "path": "tests/functional/ext/no_self_use/no_self_use.py",
+          "start": 29,
+          "end": 37
+        },
+        {
+          "path": "tests/lint/unittest_lint.py",
+          "start": 218,
+          "end": 227
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.375,
+        "weighted_recall_at_10": 0.75,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7225895059733694
+      },
+      "returned_chars": 29355,
+      "hit_count": 24,
+      "elapsed_ms": 760,
+      "wall_elapsed_ms": 786
+    },
+    {
+      "id": "xarray-combine-by-coordinates",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "feature",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "xarray/core/combine.py",
+          "start": 281,
+          "end": 333
+        },
+        {
+          "path": "xarray/core/concat.py",
+          "start": 55,
+          "end": 177
+        },
+        {
+          "path": "xarray/core/merge.py",
+          "start": 935,
+          "end": 1032
+        },
+        {
+          "path": "xarray/backends/api.py",
+          "start": 741,
+          "end": 846
+        },
+        {
+          "path": "xarray/__init__.py",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "doc/user-guide/combining.rst",
+          "start": 1,
+          "end": 172
+        },
+        {
+          "path": "asv_bench/benchmarks/combine.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "xarray/tests/test_combine.py",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "xarray/core/merge.py",
+          "start": 785,
+          "end": 796
+        },
+        {
+          "path": "xarray/core/merge.py",
+          "start": 696,
+          "end": 706
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 435,
+          "end": 446
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 945,
+          "end": 956
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 431,
+          "end": 437
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 225,
+          "end": 231
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 3929,
+          "end": 3930
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 1591,
+          "end": 1592
+        },
+        {
+          "path": "xarray/core/combine.py",
+          "start": 664,
+          "end": 674
+        },
+        {
+          "path": "xarray/core/combine.py",
+          "start": 383,
+          "end": 394
+        },
+        {
+          "path": "asv_bench/benchmarks/dataset_io.py",
+          "start": 324,
+          "end": 332
+        },
+        {
+          "path": "xarray/tests/test_backends.py",
+          "start": 119,
+          "end": 128
+        },
+        {
+          "path": "xarray/tests/test_distributed.py",
+          "start": 153,
+          "end": 162
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 1.0
+      },
+      "returned_chars": 37340,
+      "hit_count": 21,
+      "elapsed_ms": 620,
+      "wall_elapsed_ms": 641
+    },
+    {
+      "id": "xarray-indexing-overview",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "overview",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 179,
+          "end": 231
+        },
+        {
+          "path": "xarray/indexes/__init__.py",
+          "start": 1,
+          "end": 7
+        },
+        {
+          "path": "doc/user-guide/terminology.rst",
+          "start": 1,
+          "end": 106
+        },
+        {
+          "path": "doc/user-guide/indexing.rst",
+          "start": 1,
+          "end": 150
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "doc/getting-started-guide/quick-overview.rst",
+          "start": 1,
+          "end": 183
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 279,
+          "end": 284
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 205,
+          "end": 206
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 85,
+          "end": 96
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 200,
+          "end": 211
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 155,
+          "end": 166
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 570,
+          "end": 581
+        },
+        {
+          "path": "xarray/core/alignment.py",
+          "start": 120,
+          "end": 120
+        },
+        {
+          "path": "xarray/core/indexes.py",
+          "start": 34,
+          "end": 45
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.2,
+        "weighted_recall_at_10": 0.5,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.38663023101948213
+      },
+      "returned_chars": 31946,
+      "hit_count": 15,
+      "elapsed_ms": 594,
+      "wall_elapsed_ms": 615
+    },
+    {
+      "id": "xarray-apply-ufunc-chain",
+      "instance_id": "pydata__xarray-7233",
+      "kind": "call_chain",
+      "code_language": "python",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "xarray/core/computation.py",
+          "start": 846,
+          "end": 956
+        },
+        {
+          "path": "xarray/core/dataarray.py",
+          "start": 179,
+          "end": 231
+        },
+        {
+          "path": "xarray/core/arithmetic.py",
+          "start": 22,
+          "end": 93
+        },
+        {
+          "path": "xarray/core/dataset.py",
+          "start": 7603,
+          "end": 7720
+        },
+        {
+          "path": "xarray/tests/test_computation.py",
+          "start": 223,
+          "end": 272
+        },
+        {
+          "path": "xarray/core/common.py",
+          "start": 1214,
+          "end": 1262
+        },
+        {
+          "path": "xarray/core/parallel.py",
+          "start": 163,
+          "end": 258
+        },
+        {
+          "path": "xarray/core/missing.py",
+          "start": 211,
+          "end": 221
+        },
+        {
+          "path": "xarray/core/accessor_str.py",
+          "start": 109,
+          "end": 141
+        },
+        {
+          "path": "xarray/core/computation.py",
+          "start": 1193,
+          "end": 1204
+        },
+        {
+          "path": "xarray/core/computation.py",
+          "start": 285,
+          "end": 296
+        },
+        {
+          "path": "xarray/core/computation.py",
+          "start": 309,
+          "end": 320
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 279,
+          "end": 284
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 205,
+          "end": 206
+        },
+        {
+          "path": "xarray/core/variable.py",
+          "start": 85,
+          "end": 96
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 200,
+          "end": 211
+        },
+        {
+          "path": "xarray/core/indexing.py",
+          "start": 155,
+          "end": 166
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 570,
+          "end": 581
+        },
+        {
+          "path": "xarray/core/utils.py",
+          "start": 217,
+          "end": 228
+        },
+        {
+          "path": "xarray/core/options.py",
+          "start": 141,
+          "end": 142
+        },
+        {
+          "path": "xarray/core/rolling.py",
+          "start": 220,
+          "end": 224
+        },
+        {
+          "path": "xarray/core/rolling.py",
+          "start": 862,
+          "end": 866
+        },
+        {
+          "path": "xarray/convert.py",
+          "start": 294,
+          "end": 298
+        },
+        {
+          "path": "xarray/coding/calendar_ops.py",
+          "start": 275,
+          "end": 283
+        },
+        {
+          "path": "xarray/backends/rasterio_.py",
+          "start": 365,
+          "end": 374
+        },
+        {
+          "path": "xarray/coding/frequencies.py",
+          "start": 86,
+          "end": 94
+        },
+        {
+          "path": "asv_bench/benchmarks/dataarray_missing.py",
+          "start": 8,
+          "end": 16
+        },
+        {
+          "path": "asv_bench/benchmarks/combine.py",
+          "start": 9,
+          "end": 18
+        },
+        {
+          "path": "asv_bench/benchmarks/dataset_io.py",
+          "start": 50,
+          "end": 59
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.7777777777777778,
+        "weighted_recall_at_10": 0.7777777777777778,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8716283060651122
+      },
+      "returned_chars": 38025,
+      "hit_count": 29,
+      "elapsed_ms": 660,
+      "wall_elapsed_ms": 682
+    },
+    {
+      "id": "redux-create-slice",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "feature",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 823,
+          "end": 868
+        },
+        {
+          "path": "docs/usage/migrating-rtk-2.md",
+          "start": 884,
+          "end": 956
+        },
+        {
+          "path": "docs/api/createSlice.mdx",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "packages/toolkit/src/tests/createSlice.test.ts",
+          "start": 190,
+          "end": 295
+        },
+        {
+          "path": "packages/toolkit/src/tests/createSlice.test-d.ts",
+          "start": 32,
+          "end": 98
+        },
+        {
+          "path": "docs/usage/usage-guide.md",
+          "start": 436,
+          "end": 472
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "start": 76,
+          "end": 140
+        },
+        {
+          "path": "packages/toolkit/README.md",
+          "start": 65,
+          "end": 79
+        },
+        {
+          "path": "docs/introduction/why-rtk-is-redux-today.md",
+          "start": 112,
+          "end": 148
+        },
+        {
+          "path": "errors.json",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 743,
+          "end": 747
+        },
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 580,
+          "end": 591
+        },
+        {
+          "path": "packages/toolkit/src/createAction.ts",
+          "start": 260,
+          "end": 271
+        },
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 628,
+          "end": 639
+        },
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 650,
+          "end": 653
+        },
+        {
+          "path": "packages/toolkit/src/mapBuilders.ts",
+          "start": 190,
+          "end": 198
+        },
+        {
+          "path": "packages/toolkit/src/createAction.ts",
+          "start": 21,
+          "end": 32
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.input.ts",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createSliceBuilder/__testfixtures__/basic-ts.output.ts",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createSliceReducerBuilder/__testfixtures__/basic-ts.input.ts",
+          "start": 2,
+          "end": 11
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.375,
+        "weighted_recall_at_10": 0.625,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7391347775232319
+      },
+      "returned_chars": 30755,
+      "hit_count": 20,
+      "elapsed_ms": 591,
+      "wall_elapsed_ms": 614
+    },
+    {
+      "id": "redux-store-overview",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "overview",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "packages/toolkit/src/configureStore.ts",
+          "start": 40,
+          "end": 89
+        },
+        {
+          "path": "website/src/pages/index.js",
+          "start": 29,
+          "end": 40
+        },
+        {
+          "path": "docs/api/configureStore.mdx",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "examples/query/react/kitchen-sink/src/app/store.ts",
+          "start": 1,
+          "end": 26
+        },
+        {
+          "path": "packages/toolkit/src/tests/configureStore.test.ts",
+          "start": 18,
+          "end": 79
+        },
+        {
+          "path": "docs/usage/migrating-to-modern-redux.mdx",
+          "start": 88,
+          "end": 108
+        },
+        {
+          "path": "docs/introduction/why-rtk-is-redux-today.md",
+          "start": 150,
+          "end": 188
+        },
+        {
+          "path": "docs/usage/usage-guide.md",
+          "start": 61,
+          "end": 93
+        },
+        {
+          "path": "packages/toolkit/README.md",
+          "start": 65,
+          "end": 79
+        },
+        {
+          "path": "docs/introduction/getting-started.md",
+          "start": 85,
+          "end": 101
+        },
+        {
+          "path": "packages/toolkit/src/configureStore.ts",
+          "start": 116,
+          "end": 127
+        },
+        {
+          "path": "examples/publish-ci/react-native/src/features/quotes/Quotes.tsx",
+          "start": 14,
+          "end": 14
+        },
+        {
+          "path": "packages/toolkit/src/utils.ts",
+          "start": 65,
+          "end": 67
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.375,
+        "weighted_recall_at_10": 0.375,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.6467429303328279
+      },
+      "returned_chars": 23960,
+      "hit_count": 13,
+      "elapsed_ms": 580,
+      "wall_elapsed_ms": 604
+    },
+    {
+      "id": "redux-query-api-chain",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "call_chain",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "packages/toolkit/src/query/createApi.ts",
+          "start": 252,
+          "end": 386
+        },
+        {
+          "path": "packages/toolkit/src/query/core/index.ts",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "packages/toolkit/src/query/core/module.ts",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/index.ts",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildThunks.ts",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "packages/toolkit/src/query/index.ts",
+          "start": 1,
+          "end": 61
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildInitiate.ts",
+          "start": 189,
+          "end": 201
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/cacheLifecycle.ts",
+          "start": 1,
+          "end": 61
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildMiddleware/invalidationByTags.ts",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "docs/rtk-query/internal/overview.mdx",
+          "start": 1,
+          "end": 16
+        },
+        {
+          "path": "packages/toolkit/src/query/defaultSerializeQueryArgs.ts",
+          "start": 9,
+          "end": 13
+        },
+        {
+          "path": "packages/toolkit/src/nanoid.ts",
+          "start": 11,
+          "end": 16
+        },
+        {
+          "path": "packages/toolkit/src/immutableStateInvariantMiddleware.ts",
+          "start": 166,
+          "end": 171
+        },
+        {
+          "path": "packages/toolkit/src/query/utils/copyWithStructuralSharing.ts",
+          "start": 4,
+          "end": 4
+        },
+        {
+          "path": "packages/toolkit/src/query/core/module.ts",
+          "start": 460,
+          "end": 471
+        },
+        {
+          "path": "packages/toolkit/src/query/endpointDefinitions.ts",
+          "start": 658,
+          "end": 661
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildThunks.ts",
+          "start": 210,
+          "end": 221
+        },
+        {
+          "path": "packages/toolkit/src/query/apiTypes.ts",
+          "start": 59,
+          "end": 65
+        },
+        {
+          "path": "packages/toolkit/src/query/baseQueryTypes.ts",
+          "start": 35,
+          "end": 45
+        },
+        {
+          "path": "packages/toolkit/src/query/core/buildInitiate.ts",
+          "start": 55,
+          "end": 66
+        },
+        {
+          "path": "examples/type-portability/bundler/src/app/customModule.ts",
+          "start": 51,
+          "end": 51
+        },
+        {
+          "path": "examples/type-portability/nodenext-esm/src/app/customModule.ts",
+          "start": 51,
+          "end": 51
+        },
+        {
+          "path": "packages/toolkit/src/query/react/index.ts",
+          "start": 11,
+          "end": 20
+        },
+        {
+          "path": "examples/type-portability/nodenext-cjs/src/app/customModule.ts",
+          "start": 38,
+          "end": 47
+        },
+        {
+          "path": "packages/toolkit/src/query/tests/apiProvider.test.tsx",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "packages/toolkit/src/query/tests/buildCreateApi.test.tsx",
+          "start": 2,
+          "end": 11
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9116059753800713
+      },
+      "returned_chars": 26012,
+      "hit_count": 26,
+      "elapsed_ms": 665,
+      "wall_elapsed_ms": 687
+    },
+    {
+      "id": "axum-router-composition",
+      "instance_id": "axum-v0.7.9",
+      "kind": "feature",
+      "code_language": "rust",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 135,
+          "end": 173
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 131,
+          "end": 194
+        },
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 805,
+          "end": 818
+        },
+        {
+          "path": "axum/src/extract/matched_path.rs",
+          "start": 266,
+          "end": 321
+        },
+        {
+          "path": "axum/CHANGELOG.md",
+          "start": 932,
+          "end": 1101
+        },
+        {
+          "path": "axum/src/docs/routing/nest.md",
+          "start": 1,
+          "end": 35
+        },
+        {
+          "path": "axum/src/routing/route.rs",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "axum/src/docs/routing/merge.md",
+          "start": 1,
+          "end": 36
+        },
+        {
+          "path": "axum/src/extract/request_parts.rs",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "axum-extra/src/routing/mod.rs",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 389,
+          "end": 399
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 97,
+          "end": 108
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 26,
+          "end": 30
+        },
+        {
+          "path": "axum-core/src/body.rs",
+          "start": 24,
+          "end": 35
+        },
+        {
+          "path": "axum/src/util.rs",
+          "start": 42,
+          "end": 53
+        },
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 819,
+          "end": 830
+        },
+        {
+          "path": "axum/src/routing/route.rs",
+          "start": 33,
+          "end": 43
+        },
+        {
+          "path": "axum/src/middleware/map_request.rs",
+          "start": 117,
+          "end": 119
+        },
+        {
+          "path": "axum/src/middleware/mod.rs",
+          "start": 7,
+          "end": 7
+        },
+        {
+          "path": "axum-core/src/response/into_response_parts.rs",
+          "start": 121,
+          "end": 123
+        },
+        {
+          "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via_parts.rs",
+          "start": 1,
+          "end": 10
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9794468878315378
+      },
+      "returned_chars": 25115,
+      "hit_count": 23,
+      "elapsed_ms": 585,
+      "wall_elapsed_ms": 605
+    },
+    {
+      "id": "axum-handler-overview",
+      "instance_id": "axum-v0.7.9",
+      "kind": "overview",
+      "code_language": "rust",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "axum/src/lib.rs",
+          "start": 49,
+          "end": 109
+        },
+        {
+          "path": "axum-extra/src/either.rs",
+          "start": 1,
+          "end": 68
+        },
+        {
+          "path": "axum-extra/src/extract/with_rejection.rs",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "axum/src/handler/mod.rs",
+          "start": 134,
+          "end": 191
+        },
+        {
+          "path": "axum-core/src/lib.rs",
+          "start": 1,
+          "end": 70
+        },
+        {
+          "path": "axum-extra/src/lib.rs",
+          "start": 100,
+          "end": 129
+        },
+        {
+          "path": "axum-macros/src/lib.rs",
+          "start": 1,
+          "end": 64
+        },
+        {
+          "path": "axum-macros/src/from_request.rs",
+          "start": 858,
+          "end": 859
+        },
+        {
+          "path": "axum/CHANGELOG.md",
+          "start": 1752,
+          "end": 1870
+        },
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "axum-core/src/ext_traits/mod.rs",
+          "start": 1,
+          "end": 1
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 131,
+          "end": 142
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 469,
+          "end": 480
+        },
+        {
+          "path": "axum-core/src/response/into_response.rs",
+          "start": 112,
+          "end": 116
+        },
+        {
+          "path": "axum-extra/src/lib.rs",
+          "start": 80,
+          "end": 80
+        },
+        {
+          "path": "axum/src/lib.rs",
+          "start": 481,
+          "end": 481
+        },
+        {
+          "path": "axum-core/src/extract/mod.rs",
+          "start": 79,
+          "end": 86
+        },
+        {
+          "path": "axum-extra/src/json_lines.rs",
+          "start": 195,
+          "end": 206
+        },
+        {
+          "path": "axum-core/src/extract/mod.rs",
+          "start": 52,
+          "end": 59
+        },
+        {
+          "path": "axum-core/src/extract/mod.rs",
+          "start": 24,
+          "end": 24
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.25,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.2727272727272727,
+        "weighted_recall_at_10": 0.45454545454545453,
+        "primary_recall_at_10": 0.3333333333333333,
+        "ndcg_at_10": 0.2394991082865764
+      },
+      "returned_chars": 26517,
+      "hit_count": 21,
+      "elapsed_ms": 659,
+      "wall_elapsed_ms": 682
+    },
+    {
+      "id": "axum-serve-request-chain",
+      "instance_id": "axum-v0.7.9",
+      "kind": "call_chain",
+      "code_language": "rust",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 1,
+          "end": 72
+        },
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 676,
+          "end": 740
+        },
+        {
+          "path": "axum/src/serve.rs",
+          "start": 1,
+          "end": 68
+        },
+        {
+          "path": "axum/src/handler/service.rs",
+          "start": 28,
+          "end": 109
+        },
+        {
+          "path": "axum/src/lib.rs",
+          "start": 496,
+          "end": 518
+        },
+        {
+          "path": "axum-extra/src/extract/with_rejection.rs",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "axum-extra/src/routing/mod.rs",
+          "start": 187,
+          "end": 303
+        },
+        {
+          "path": "axum/src/extension.rs",
+          "start": 1,
+          "end": 73
+        },
+        {
+          "path": "axum/src/routing/route.rs",
+          "start": 1,
+          "end": 31
+        },
+        {
+          "path": "axum/src/middleware/map_request.rs",
+          "start": 1,
+          "end": 68
+        },
+        {
+          "path": "axum-core/src/response/into_response.rs",
+          "start": 112,
+          "end": 116
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 131,
+          "end": 142
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 469,
+          "end": 480
+        },
+        {
+          "path": "axum/src/lib.rs",
+          "start": 481,
+          "end": 481
+        },
+        {
+          "path": "axum/src/handler/mod.rs",
+          "start": 134,
+          "end": 145
+        },
+        {
+          "path": "axum/src/routing/into_make_service.rs",
+          "start": 16,
+          "end": 20
+        },
+        {
+          "path": "axum/src/extract/connect_info.rs",
+          "start": 40,
+          "end": 47
+        },
+        {
+          "path": "axum/src/extract/connect_info.rs",
+          "start": 140,
+          "end": 140
+        },
+        {
+          "path": "axum/src/routing/method_filter.rs",
+          "start": 74,
+          "end": 76
+        },
+        {
+          "path": "axum-macros/tests/debug_handler/pass/impl_into_response.rs",
+          "start": 2,
+          "end": 9
+        },
+        {
+          "path": "axum-macros/tests/debug_handler/pass/returns_self.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/debug_handler/fail/wrong_return_tuple.rs",
+          "start": 16,
+          "end": 25
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.46153846153846156,
+        "weighted_recall_at_10": 0.46153846153846156,
+        "primary_recall_at_10": 0.6666666666666666,
+        "ndcg_at_10": 0.6045219495458081
+      },
+      "returned_chars": 26725,
+      "hit_count": 22,
+      "elapsed_ms": 556,
+      "wall_elapsed_ms": 578
+    },
+    {
+      "id": "gin-route-matching",
+      "instance_id": "gin-v1.10.0",
+      "kind": "feature",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "ginS/gins.go",
+          "start": 107,
+          "end": 148
+        },
+        {
+          "path": "gin.go",
+          "start": 605,
+          "end": 671
+        },
+        {
+          "path": "docs/doc.md",
+          "start": 128,
+          "end": 164
+        },
+        {
+          "path": "routergroup.go",
+          "start": 141,
+          "end": 179
+        },
+        {
+          "path": "context.go",
+          "start": 116,
+          "end": 181
+        },
+        {
+          "path": "tree.go",
+          "start": 1,
+          "end": 84
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "tree_test.go",
+          "start": 222,
+          "end": 242
+        },
+        {
+          "path": "routes_test.go",
+          "start": 276,
+          "end": 338
+        },
+        {
+          "path": "gin_test.go",
+          "start": 479,
+          "end": 536
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 18,
+          "end": 23
+        },
+        {
+          "path": "routergroup.go",
+          "start": 203,
+          "end": 214
+        },
+        {
+          "path": "gin.go",
+          "start": 362,
+          "end": 367
+        },
+        {
+          "path": "gin.go",
+          "start": 389,
+          "end": 400
+        },
+        {
+          "path": "gin.go",
+          "start": 509,
+          "end": 520
+        },
+        {
+          "path": "path.go",
+          "start": 21,
+          "end": 32
+        },
+        {
+          "path": "tree.go",
+          "start": 423,
+          "end": 428
+        },
+        {
+          "path": "response_writer.go",
+          "start": 74,
+          "end": 79
+        },
+        {
+          "path": "context_test.go",
+          "start": 2580,
+          "end": 2585
+        },
+        {
+          "path": "binding/default_validator_test.go",
+          "start": 41,
+          "end": 47
+        },
+        {
+          "path": "benchmarks_test.go",
+          "start": 20,
+          "end": 29
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.50816559865435
+      },
+      "returned_chars": 24488,
+      "hit_count": 21,
+      "elapsed_ms": 566,
+      "wall_elapsed_ms": 588
+    },
+    {
+      "id": "gin-request-overview",
+      "instance_id": "gin-v1.10.0",
+      "kind": "overview",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "gin.go",
+          "start": 569,
+          "end": 603
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 107,
+          "end": 148
+        },
+        {
+          "path": "doc.go",
+          "start": 1,
+          "end": 6
+        },
+        {
+          "path": "routes_test.go",
+          "start": 1,
+          "end": 67
+        },
+        {
+          "path": "README.md",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "utils.go",
+          "start": 1,
+          "end": 82
+        },
+        {
+          "path": "gin_integration_test.go",
+          "start": 369,
+          "end": 413
+        },
+        {
+          "path": "context.go",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "benchmarks_test.go",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "routergroup_test.go",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "debug.go",
+          "start": 53,
+          "end": 64
+        },
+        {
+          "path": "debug.go",
+          "start": 107,
+          "end": 111
+        },
+        {
+          "path": "gin.go",
+          "start": 446,
+          "end": 448
+        },
+        {
+          "path": "context.go",
+          "start": 161,
+          "end": 163
+        },
+        {
+          "path": "gin.go",
+          "start": 228,
+          "end": 235
+        },
+        {
+          "path": "context.go",
+          "start": 97,
+          "end": 108
+        },
+        {
+          "path": "gin.go",
+          "start": 605,
+          "end": 616
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 18,
+          "end": 23
+        },
+        {
+          "path": "routergroup.go",
+          "start": 203,
+          "end": 214
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.3333333333333333,
+        "weighted_recall_at_10": 0.5555555555555556,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.5953610989687094
+      },
+      "returned_chars": 19647,
+      "hit_count": 19,
+      "elapsed_ms": 575,
+      "wall_elapsed_ms": 595
+    },
+    {
+      "id": "gin-json-binding-chain",
+      "instance_id": "gin-v1.10.0",
+      "kind": "call_chain",
+      "code_language": "go",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "context.go",
+          "start": 688,
+          "end": 730
+        },
+        {
+          "path": "binding/json.go",
+          "start": 1,
+          "end": 56
+        },
+        {
+          "path": "binding/binding_nomsgpack.go",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "binding/binding.go",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "deprecated.go",
+          "start": 1,
+          "end": 23
+        },
+        {
+          "path": "context_test.go",
+          "start": 1732,
+          "end": 1783
+        },
+        {
+          "path": "binding/binding_test.go",
+          "start": 738,
+          "end": 815
+        },
+        {
+          "path": "binding/json_test.go",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "docs/doc.md",
+          "start": 2026,
+          "end": 2087
+        },
+        {
+          "path": "CHANGELOG.md",
+          "start": 375,
+          "end": 395
+        },
+        {
+          "path": "context.go",
+          "start": 751,
+          "end": 753
+        },
+        {
+          "path": "errors.go",
+          "start": 45,
+          "end": 48
+        },
+        {
+          "path": "context.go",
+          "start": 222,
+          "end": 225
+        },
+        {
+          "path": "context.go",
+          "start": 849,
+          "end": 851
+        },
+        {
+          "path": "binding/binding.go",
+          "start": 117,
+          "end": 122
+        },
+        {
+          "path": "binding/binding_nomsgpack.go",
+          "start": 111,
+          "end": 116
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 18,
+          "end": 23
+        },
+        {
+          "path": "recovery.go",
+          "start": 138,
+          "end": 144
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8,
+        "weighted_recall_at_10": 0.8,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8944296728234234
+      },
+      "returned_chars": 22106,
+      "hit_count": 18,
+      "elapsed_ms": 750,
+      "wall_elapsed_ms": 770
+    },
+    {
+      "id": "jq-json-parsing",
+      "instance_id": "jq-1.7.1",
+      "kind": "feature",
+      "code_language": "c",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/main.c",
+          "start": 310,
+          "end": 383
+        },
+        {
+          "path": "src/jv_parse.c",
+          "start": 765,
+          "end": 860
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 464,
+          "end": 524
+        },
+        {
+          "path": "src/jq.h",
+          "start": 1,
+          "end": 80
+        },
+        {
+          "path": "src/util.c",
+          "start": 351,
+          "end": 399
+        },
+        {
+          "path": "src/jv.h",
+          "start": 225,
+          "end": 293
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 252,
+          "end": 331
+        },
+        {
+          "path": "docs/content/manual/v1.6/manual.yml",
+          "start": 2929,
+          "end": 3075
+        },
+        {
+          "path": "tests/jq_fuzz_fixed.cpp",
+          "start": 260,
+          "end": 297
+        },
+        {
+          "path": "docs/content/manual/manual.yml",
+          "start": 3208,
+          "end": 3368
+        },
+        {
+          "path": "src/jv_dtoa_tsd.c",
+          "start": 31,
+          "end": 37
+        },
+        {
+          "path": "src/jv.c",
+          "start": 961,
+          "end": 963
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1740,
+          "end": 1742
+        },
+        {
+          "path": "src/execute.c",
+          "start": 1052,
+          "end": 1063
+        },
+        {
+          "path": "src/util.c",
+          "start": 202,
+          "end": 213
+        },
+        {
+          "path": "src/jv.c",
+          "start": 130,
+          "end": 132
+        },
+        {
+          "path": "src/main.c",
+          "start": 128,
+          "end": 130
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1002,
+          "end": 1005
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5,
+        "weighted_recall_at_10": 0.6666666666666666,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5081254704681017
+      },
+      "returned_chars": 35832,
+      "hit_count": 18,
+      "elapsed_ms": 591,
+      "wall_elapsed_ms": 612
+    },
+    {
+      "id": "jq-pipeline-overview",
+      "instance_id": "jq-1.7.1",
+      "kind": "overview",
+      "code_language": "c",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "src/execute.c",
+          "start": 1206,
+          "end": 1267
+        },
+        {
+          "path": "jq.1.prebuilt",
+          "start": 1,
+          "end": 94
+        },
+        {
+          "path": "docs/content/manual/v1.7/manual.yml",
+          "start": 1,
+          "end": 148
+        },
+        {
+          "path": "docs/content/manual/manual.yml",
+          "start": 1,
+          "end": 148
+        },
+        {
+          "path": "docs/content/manual/v1.4/manual.yml",
+          "start": 158,
+          "end": 321
+        },
+        {
+          "path": "src/compile.c",
+          "start": 1,
+          "end": 66
+        },
+        {
+          "path": "src/main.c",
+          "start": 310,
+          "end": 383
+        },
+        {
+          "path": "src/execute.c",
+          "start": 1188,
+          "end": 1199
+        },
+        {
+          "path": "src/jv.c",
+          "start": 98,
+          "end": 100
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1740,
+          "end": 1742
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1250,
+          "end": 1252
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1769,
+          "end": 1777
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1744,
+          "end": 1755
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1865,
+          "end": 1870
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1872,
+          "end": 1883
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.2727272727272727,
+        "weighted_recall_at_10": 0.7272727272727273,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7189564489813571
+      },
+      "returned_chars": 36882,
+      "hit_count": 15,
+      "elapsed_ms": 556,
+      "wall_elapsed_ms": 575
+    },
+    {
+      "id": "jq-builtin-call-chain",
+      "instance_id": "jq-1.7.1",
+      "kind": "call_chain",
+      "code_language": "c",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/execute.c",
+          "start": 341,
+          "end": 401
+        },
+        {
+          "path": "src/bytecode.c",
+          "start": 95,
+          "end": 147
+        },
+        {
+          "path": "src/builtin.h",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "src/compile.c",
+          "start": 1316,
+          "end": 1368
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1788,
+          "end": 1846
+        },
+        {
+          "path": "src/jq.h",
+          "start": 1,
+          "end": 80
+        },
+        {
+          "path": "src/opcode_list.h",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "src/main.c",
+          "start": 707,
+          "end": 769
+        },
+        {
+          "path": "tests/jq_fuzz_fixed.cpp",
+          "start": 260,
+          "end": 297
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 252,
+          "end": 331
+        },
+        {
+          "path": "src/jv_alloc.c",
+          "start": 32,
+          "end": 34
+        },
+        {
+          "path": "src/jv_alloc.c",
+          "start": 91,
+          "end": 95
+        },
+        {
+          "path": "src/execute.c",
+          "start": 273,
+          "end": 278
+        },
+        {
+          "path": "src/jv.c",
+          "start": 98,
+          "end": 100
+        },
+        {
+          "path": "src/jv.c",
+          "start": 158,
+          "end": 160
+        },
+        {
+          "path": "src/jv_alloc.c",
+          "start": 80,
+          "end": 85
+        },
+        {
+          "path": "src/jv.c",
+          "start": 477,
+          "end": 482
+        },
+        {
+          "path": "src/exec_stack.h",
+          "start": 71,
+          "end": 73
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1872,
+          "end": 1877
+        },
+        {
+          "path": "src/execute.c",
+          "start": 172,
+          "end": 177
+        },
+        {
+          "path": "src/execute.c",
+          "start": 153,
+          "end": 158
+        },
+        {
+          "path": "src/exec_stack.h",
+          "start": 75,
+          "end": 77
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1019,
+          "end": 1023
+        },
+        {
+          "path": "src/bytecode.c",
+          "start": 31,
+          "end": 36
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1744,
+          "end": 1749
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1865,
+          "end": 1870
+        },
+        {
+          "path": "src/bytecode.c",
+          "start": 87,
+          "end": 92
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1250,
+          "end": 1252
+        },
+        {
+          "path": "src/jv.c",
+          "start": 972,
+          "end": 977
+        },
+        {
+          "path": "src/execute.c",
+          "start": 80,
+          "end": 91
+        },
+        {
+          "path": "src/exec_stack.h",
+          "start": 79,
+          "end": 81
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 196,
+          "end": 205
+        },
+        {
+          "path": "src/main.c",
+          "start": 196,
+          "end": 205
+        },
+        {
+          "path": "tests/jq_fuzz_execute.cpp",
+          "start": 28,
+          "end": 37
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8981342840006799
+      },
+      "returned_chars": 28797,
+      "hit_count": 34,
+      "elapsed_ms": 872,
+      "wall_elapsed_ms": 896
+    },
+    {
+      "id": "mediatr-request-dispatch",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "feature",
+      "code_language": "csharp",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "src/MediatR/IPipelineBehavior.cs",
+          "start": 2,
+          "end": 30
+        },
+        {
+          "path": "src/MediatR/Pipeline/RequestExceptionProcessorBehavior.cs",
+          "start": 1,
+          "end": 18
+        },
+        {
+          "path": "src/MediatR/IStreamPipelineBehavior.cs",
+          "start": 2,
+          "end": 30
+        },
+        {
+          "path": "src/MediatR/Wrappers/RequestHandlerWrapper.cs",
+          "start": 48,
+          "end": 72
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/ServiceCollectionExtensions.cs",
+          "start": 1,
+          "end": 17
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs",
+          "start": 939,
+          "end": 972
+        },
+        {
+          "path": "test/MediatR.Benchmarks/GenericPipelineBehavior.cs",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "test/MediatR.Tests/Pipeline/RequestPostProcessorTests.cs",
+          "start": 1,
+          "end": 65
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 1,
+          "end": 15
+        },
+        {
+          "path": "src/MediatR/Pipeline/RequestExceptionHandlerState.cs",
+          "start": 17,
+          "end": 17
+        },
+        {
+          "path": "src/MediatR.Contracts/Unit.cs",
+          "start": 21,
+          "end": 21
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/RequestExceptionActionProcessorStrategy.cs",
+          "start": 1,
+          "end": 1
+        },
+        {
+          "path": "test/MediatR.Tests/GenericRequestHandlerTests.cs",
+          "start": 14,
+          "end": 14
+        },
+        {
+          "path": "test/MediatR.Tests/MicrosoftExtensionsDI/NotificationPublisherTests.cs",
+          "start": 7,
+          "end": 11
+        },
+        {
+          "path": "test/MediatR.Tests/MicrosoftExtensionsDI/TypeResolutionTests.cs",
+          "start": 9,
+          "end": 18
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5555555555555556,
+        "weighted_recall_at_10": 0.8888888888888888,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.6022385837364574
+      },
+      "returned_chars": 16096,
+      "hit_count": 16,
+      "elapsed_ms": 513,
+      "wall_elapsed_ms": 533
+    },
+    {
+      "id": "mediatr-architecture-overview",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "overview",
+      "code_language": "csharp",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/ServiceCollectionExtensions.cs",
+          "start": 1,
+          "end": 17
+        },
+        {
+          "path": "src/MediatR/Registration/ServiceRegistrar.cs",
+          "start": 387,
+          "end": 433
+        },
+        {
+          "path": "README.md",
+          "start": 29,
+          "end": 50
+        },
+        {
+          "path": "src/MediatR/IMediator.cs",
+          "start": 1,
+          "end": 8
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 16,
+          "end": 40
+        },
+        {
+          "path": "test/MediatR.Benchmarks/Benchmarks.cs",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "test/MediatR.Tests/MicrosoftExtensionsDI/PipelineTests.cs",
+          "start": 939,
+          "end": 972
+        },
+        {
+          "path": "samples/MediatR.Examples.Lamar/Program.cs",
+          "start": 1,
+          "end": 56
+        },
+        {
+          "path": "samples/MediatR.Examples.Autofac/Program.cs",
+          "start": 1,
+          "end": 91
+        },
+        {
+          "path": "src/MediatR/Registration/ServiceRegistrar.cs",
+          "start": 435,
+          "end": 446
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/RequestExceptionActionProcessorStrategy.cs",
+          "start": 1,
+          "end": 1
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/RequestExceptionActionProcessorStrategy.cs",
+          "start": 3,
+          "end": 7
+        },
+        {
+          "path": "src/MediatR/INotificationPublisher.cs",
+          "start": 7,
+          "end": 11
+        },
+        {
+          "path": "src/MediatR/IPipelineBehavior.cs",
+          "start": 20,
+          "end": 30
+        },
+        {
+          "path": "src/MediatR/Pipeline/RequestPreProcessorBehavior.cs",
+          "start": 12,
+          "end": 23
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/ServiceCollectionExtensions.cs",
+          "start": 42,
+          "end": 52
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.4166666666666667,
+        "weighted_recall_at_10": 0.6666666666666666,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5471992875694839
+      },
+      "returned_chars": 24202,
+      "hit_count": 17,
+      "elapsed_ms": 570,
+      "wall_elapsed_ms": 592
+    },
+    {
+      "id": "mediatr-publish-chain",
+      "instance_id": "mediatr-v12.4.1",
+      "kind": "call_chain",
+      "code_language": "csharp",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "src/MediatR/INotificationPublisher.cs",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/MediatR/IPublisher.cs",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "src/MediatR/Wrappers/NotificationHandlerWrapper.cs",
+          "start": 1,
+          "end": 30
+        },
+        {
+          "path": "src/MediatR/NotificationPublishers/ForeachAwaitPublisher.cs",
+          "start": 1,
+          "end": 24
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/MediatrServiceConfiguration.cs",
+          "start": 1,
+          "end": 54
+        },
+        {
+          "path": "src/MediatR/NotificationPublishers/TaskWhenAllPublisher.cs",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 1,
+          "end": 15
+        },
+        {
+          "path": "src/MediatR/IMediator.cs",
+          "start": 1,
+          "end": 8
+        },
+        {
+          "path": "test/MediatR.Tests/NotificationPublisherTests.cs",
+          "start": 1,
+          "end": 74
+        },
+        {
+          "path": "test/MediatR.Tests/MicrosoftExtensionsDI/NotificationPublisherTests.cs",
+          "start": 13,
+          "end": 120
+        },
+        {
+          "path": "src/MediatR.Contracts/INotification.cs",
+          "start": 6,
+          "end": 6
+        },
+        {
+          "path": "src/MediatR.Contracts/Unit.cs",
+          "start": 21,
+          "end": 21
+        },
+        {
+          "path": "src/MediatR/NotificationHandlerExecutor.cs",
+          "start": 7,
+          "end": 7
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/RequestExceptionActionProcessorStrategy.cs",
+          "start": 1,
+          "end": 1
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/ServiceCollectionExtensions.cs",
+          "start": 7,
+          "end": 7
+        },
+        {
+          "path": "src/MediatR/MicrosoftExtensionsDI/RequestExceptionActionProcessorStrategy.cs",
+          "start": 3,
+          "end": 7
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 16,
+          "end": 27
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 36,
+          "end": 40
+        },
+        {
+          "path": "samples/MediatR.Examples/Runner.cs",
+          "start": 26,
+          "end": 35
+        },
+        {
+          "path": "samples/MediatR.Examples.PublishStrategies/Program.cs",
+          "start": 33,
+          "end": 42
+        },
+        {
+          "path": "samples/MediatR.Examples.PublishStrategies/Publisher.cs",
+          "start": 30,
+          "end": 39
+        },
+        {
+          "path": "src/MediatR/Mediator.cs",
+          "start": 139,
+          "end": 140
+        },
+        {
+          "path": "test/MediatR.Benchmarks/Benchmarks.cs",
+          "start": 40,
+          "end": 45
+        },
+        {
+          "path": "test/MediatR.Tests/ExceptionTests.cs",
+          "start": 94,
+          "end": 103
+        },
+        {
+          "path": "test/MediatR.Tests/PublishTests.cs",
+          "start": 72,
+          "end": 77
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.7,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7126252569926865
+      },
+      "returned_chars": 20796,
+      "hit_count": 25,
+      "elapsed_ms": 574,
+      "wall_elapsed_ms": 593
+    },
+    {
+      "id": "express-route-matching",
+      "instance_id": "express-4.21.2",
+      "kind": "feature",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "lib/router/layer.js",
+          "start": 1,
+          "end": 108
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 502,
+          "end": 591
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 1,
+          "end": 99
+        },
+        {
+          "path": "lib/application.js",
+          "start": 194,
+          "end": 264
+        },
+        {
+          "path": "lib/express.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "test/req.route.js",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "test/app.router.js",
+          "start": 94,
+          "end": 167
+        },
+        {
+          "path": "test/app.param.js",
+          "start": 158,
+          "end": 236
+        },
+        {
+          "path": "test/req.baseUrl.js",
+          "start": 1,
+          "end": 88
+        },
+        {
+          "path": "test/req.path.js",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "lib/application.js",
+          "start": 144,
+          "end": 154
+        },
+        {
+          "path": "lib/application.js",
+          "start": 165,
+          "end": 176
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 136,
+          "end": 146
+        },
+        {
+          "path": "examples/mvc/controllers/user-pet/index.js",
+          "start": 12,
+          "end": 22
+        },
+        {
+          "path": "lib/application.js",
+          "start": 64,
+          "end": 70
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 46,
+          "end": 48
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 1.0
+      },
+      "returned_chars": 23142,
+      "hit_count": 16,
+      "elapsed_ms": 543,
+      "wall_elapsed_ms": 566
+    },
+    {
+      "id": "express-architecture-overview",
+      "instance_id": "express-4.21.2",
+      "kind": "overview",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "lib/express.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "lib/application.js",
+          "start": 1,
+          "end": 75
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 1,
+          "end": 61
+        },
+        {
+          "path": "test/exports.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "lib/router/layer.js",
+          "start": 1,
+          "end": 108
+        },
+        {
+          "path": "examples/README.md",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "index.js",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 101,
+          "end": 182
+        },
+        {
+          "path": "test/app.js",
+          "start": 1,
+          "end": 69
+        },
+        {
+          "path": "Readme.md",
+          "start": 81,
+          "end": 119
+        },
+        {
+          "path": "lib/application.js",
+          "start": 165,
+          "end": 176
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 136,
+          "end": 146
+        },
+        {
+          "path": "examples/mvc/controllers/user-pet/index.js",
+          "start": 12,
+          "end": 22
+        },
+        {
+          "path": "lib/middleware/init.js",
+          "start": 28,
+          "end": 38
+        },
+        {
+          "path": "lib/application.js",
+          "start": 77,
+          "end": 88
+        },
+        {
+          "path": "lib/response.js",
+          "start": 111,
+          "end": 122
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.5454545454545454,
+        "weighted_recall_at_10": 0.5454545454545454,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5423978300477543
+      },
+      "returned_chars": 22684,
+      "hit_count": 16,
+      "elapsed_ms": 535,
+      "wall_elapsed_ms": 556
+    },
+    {
+      "id": "express-request-chain",
+      "instance_id": "express-4.21.2",
+      "kind": "call_chain",
+      "code_language": "javascript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "lib/router/index.js",
+          "start": 136,
+          "end": 331
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 101,
+          "end": 182
+        },
+        {
+          "path": "lib/application.js",
+          "start": 136,
+          "end": 192
+        },
+        {
+          "path": "lib/router/layer.js",
+          "start": 1,
+          "end": 108
+        },
+        {
+          "path": "test/app.router.js",
+          "start": 1,
+          "end": 92
+        },
+        {
+          "path": "test/Router.js",
+          "start": 204,
+          "end": 289
+        },
+        {
+          "path": "test/Route.js",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "test/app.param.js",
+          "start": 238,
+          "end": 303
+        },
+        {
+          "path": "lib/express.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "test/req.route.js",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 338,
+          "end": 349
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 546,
+          "end": 557
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 631,
+          "end": 642
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 662,
+          "end": 673
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 651,
+          "end": 659
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 537,
+          "end": 543
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 583,
+          "end": 589
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 58,
+          "end": 69
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 47,
+          "end": 56
+        },
+        {
+          "path": "lib/application.js",
+          "start": 235,
+          "end": 244
+        },
+        {
+          "path": "test/Router.js",
+          "start": 28,
+          "end": 37
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 1.0
+      },
+      "returned_chars": 29608,
+      "hit_count": 21,
+      "elapsed_ms": 750,
+      "wall_elapsed_ms": 776
+    },
+    {
+      "id": "bats-test-execution",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "feature",
+      "code_language": "bash",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "libexec/bats-core/bats-exec-suite",
+          "start": 181,
+          "end": 309
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-file",
+          "start": 1,
+          "end": 205
+        },
+        {
+          "path": "test/bats.bats",
+          "start": 174,
+          "end": 342
+        },
+        {
+          "path": "test/file_setup_teardown.bats",
+          "start": 141,
+          "end": 198
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-test",
+          "start": 1,
+          "end": 182
+        },
+        {
+          "path": "docs/source/tutorial.rst",
+          "start": 342,
+          "end": 523
+        },
+        {
+          "path": "test/fixtures/suite_setup_teardown/no_setup_suite_function/test.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "test/fixtures/suite_setup_teardown/default_name/test.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "test/fixtures/suite_setup_teardown/stderr_in_setup_teardown_suite/test.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "test/fixtures/suite_setup_teardown/pick_up_toplevel/test.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 7,
+          "end": 9
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 28,
+          "end": 39
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 86,
+          "end": 97
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 44,
+          "end": 54
+        },
+        {
+          "path": "test/fixtures/bats/external_functions.bash",
+          "start": 9,
+          "end": 15
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.2,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.42857142857142855,
+        "weighted_recall_at_10": 0.42857142857142855,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.2605623555630197
+      },
+      "returned_chars": 39294,
+      "hit_count": 15,
+      "elapsed_ms": 571,
+      "wall_elapsed_ms": 597
+    },
+    {
+      "id": "bats-architecture-overview",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "overview",
+      "code_language": "bash",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "libexec/bats-core/bats",
+          "start": 365,
+          "end": 516
+        },
+        {
+          "path": "man/bats.1",
+          "start": 1,
+          "end": 112
+        },
+        {
+          "path": "test/suite.bats",
+          "start": 1,
+          "end": 153
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-file",
+          "start": 1,
+          "end": 205
+        },
+        {
+          "path": "test/formatter.bats",
+          "start": 1,
+          "end": 114
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-suite",
+          "start": 181,
+          "end": 309
+        },
+        {
+          "path": "docs/CHANGELOG.md",
+          "start": 429,
+          "end": 452
+        },
+        {
+          "path": "test/fixtures/junit-formatter/suite/file1.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "test/fixtures/formatter/passing.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "test/fixtures/junit-formatter/suite/file2.bats",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "contrib/semver",
+          "start": 238,
+          "end": 238
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.45454545454545453,
+        "weighted_recall_at_10": 0.7272727272727273,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.7389647981302846
+      },
+      "returned_chars": 38696,
+      "hit_count": 11,
+      "elapsed_ms": 535,
+      "wall_elapsed_ms": 557
+    },
+    {
+      "id": "bats-failure-trace-chain",
+      "instance_id": "bats-core-v1.11.1",
+      "kind": "call_chain",
+      "code_language": "bash",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 194,
+          "end": 233
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-test",
+          "start": 1,
+          "end": 182
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-suite",
+          "start": 181,
+          "end": 309
+        },
+        {
+          "path": "test/trace.bats",
+          "start": 1,
+          "end": 84
+        },
+        {
+          "path": "test/bats.bats",
+          "start": 1,
+          "end": 172
+        },
+        {
+          "path": "libexec/bats-core/bats-gather-tests",
+          "start": 196,
+          "end": 365
+        },
+        {
+          "path": "lib/bats-core/test_functions.bash",
+          "start": 311,
+          "end": 435
+        },
+        {
+          "path": "libexec/bats-core/bats-exec-file",
+          "start": 358,
+          "end": 389
+        },
+        {
+          "path": "lib/bats-core/warnings.bash",
+          "start": 37,
+          "end": 44
+        },
+        {
+          "path": "test/fixtures/trace/failing_complex.bats",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "contrib/semver",
+          "start": 238,
+          "end": 238
+        },
+        {
+          "path": "lib/bats-core/tracing.bash",
+          "start": 7,
+          "end": 9
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8571428571428571,
+        "weighted_recall_at_10": 0.8571428571428571,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9580414003446834
+      },
+      "returned_chars": 39202,
+      "hit_count": 12,
+      "elapsed_ms": 573,
+      "wall_elapsed_ms": 593
+    },
+    {
+      "id": "gson-adapter-resolution",
+      "instance_id": "gson-2.11.0",
+      "kind": "feature",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 738,
+          "end": 772
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "start": 21,
+          "end": 170
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+          "start": 1025,
+          "end": 1069
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 669,
+          "end": 729
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java",
+          "start": 102,
+          "end": 159
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+          "start": 147,
+          "end": 182
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/MapTypeAdapterFactory.java",
+          "start": 115,
+          "end": 152
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapter.java",
+          "start": 121,
+          "end": 177
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/GsonTest.java",
+          "start": 101,
+          "end": 151
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnClassesTest.java",
+          "start": 467,
+          "end": 513
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/$Gson$Types.java",
+          "start": 130,
+          "end": 141
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/$Gson$Types.java",
+          "start": 543,
+          "end": 546
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 161,
+          "end": 163
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 213,
+          "end": 216
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 222,
+          "end": 233
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 244,
+          "end": 255
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java",
+          "start": 88,
+          "end": 94
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapter.java",
+          "start": 291,
+          "end": 302
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+          "start": 54,
+          "end": 54
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonAdapterAnnotationTypeAdapterFactory.java",
+          "start": 96,
+          "end": 100
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 151,
+          "end": 162
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 278,
+          "end": 289
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "start": 33,
+          "end": 33
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "start": 271,
+          "end": 271
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactoryTest.java",
+          "start": 27,
+          "end": 30
+        },
+        {
+          "path": "graal-native-image-test/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java",
+          "start": 22,
+          "end": 28
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java",
+          "start": 25,
+          "end": 34
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.875,
+        "weighted_recall_at_10": 0.875,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.5920030861192086
+      },
+      "returned_chars": 36144,
+      "hit_count": 27,
+      "elapsed_ms": 546,
+      "wall_elapsed_ms": 567
+    },
+    {
+      "id": "gson-architecture-overview",
+      "instance_id": "gson-2.11.0",
+      "kind": "overview",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 5,
+      "retrieved": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 401,
+          "end": 475
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 773,
+          "end": 795
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/JsonElement.java",
+          "start": 98,
+          "end": 160
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapter.java",
+          "start": 121,
+          "end": 177
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 211,
+          "end": 254
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+          "start": 163,
+          "end": 213
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "start": 21,
+          "end": 170
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/package-info.java",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+          "start": 243,
+          "end": 331
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 93,
+          "end": 104
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 131,
+          "end": 142
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 311,
+          "end": 313
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+          "start": 232,
+          "end": 235
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 951,
+          "end": 962
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 974,
+          "end": 984
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+          "start": 655,
+          "end": 666
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/LazilyParsedNumber.java",
+          "start": 71,
+          "end": 74
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 507,
+          "end": 514
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8333333333333334,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.9854638094846768
+      },
+      "returned_chars": 32149,
+      "hit_count": 19,
+      "elapsed_ms": 560,
+      "wall_elapsed_ms": 586
+    },
+    {
+      "id": "gson-fromjson-chain",
+      "instance_id": "gson-2.11.0",
+      "kind": "call_chain",
+      "code_language": "java",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1083,
+          "end": 1109
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 211,
+          "end": 254
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapter.java",
+          "start": 30,
+          "end": 100
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 472,
+          "end": 540
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/functional/JsonAdapterAnnotationOnFieldsTest.java",
+          "start": 206,
+          "end": 252
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/JsonParser.java",
+          "start": 1,
+          "end": 25
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TypeAdapters.java",
+          "start": 526,
+          "end": 583
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/Streams.java",
+          "start": 1,
+          "end": 34
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/functional/TypeAdapterRuntimeTypeWrapperTest.java",
+          "start": 96,
+          "end": 143
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 311,
+          "end": 313
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/Primitives.java",
+          "start": 63,
+          "end": 74
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeWriter.java",
+          "start": 232,
+          "end": 237
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonWriter.java",
+          "start": 655,
+          "end": 666
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/reflect/ReflectionHelper.java",
+          "start": 198,
+          "end": 206
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java",
+          "start": 222,
+          "end": 229
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 951,
+          "end": 962
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 550,
+          "end": 553
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 617,
+          "end": 620
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java",
+          "start": 193,
+          "end": 196
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 870,
+          "end": 881
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/JsonTreeReader.java",
+          "start": 298,
+          "end": 309
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/stream/JsonReader.java",
+          "start": 1334,
+          "end": 1345
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/TreeTypeAdapter.java",
+          "start": 198,
+          "end": 202
+        },
+        {
+          "path": "metrics/src/main/java/com/google/gson/metrics/ParseBenchmark.java",
+          "start": 286,
+          "end": 289
+        },
+        {
+          "path": "metrics/src/main/java/com/google/gson/metrics/CollectionsDeserializationBenchmark.java",
+          "start": 57,
+          "end": 66
+        },
+        {
+          "path": "examples/android-proguard-example/src/com/google/gson/examples/android/GsonProguardExampleActivity.java",
+          "start": 50,
+          "end": 59
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/interceptors/InterceptorTest.java",
+          "start": 57,
+          "end": 66
+        },
+        {
+          "path": "graal-native-image-test/src/test/java/com/google/gson/native_test/Java17RecordReflectionTest.java",
+          "start": 34,
+          "end": 43
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "start": 63,
+          "end": 72
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.8,
+        "weighted_recall_at_10": 0.8,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.8380542185117285
+      },
+      "returned_chars": 31254,
+      "hit_count": 30,
+      "elapsed_ms": 700,
+      "wall_elapsed_ms": 726
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+"""Copy immutable decision evidence and emit a byte-level archive manifest."""
+
+import hashlib
+import json
+from pathlib import Path
+
+OUT = Path(__file__).resolve().parent
+ROOT = Path("/home/yuqian/workspace/oce")
+DEST = ROOT / "benchmarks/results/version-decision-2026-09-11-data"
+assert not DEST.exists()
+protocol = json.loads((OUT / "protocol.json").read_text())
+repeat = json.loads((OUT / "operational-repeat-selection.json").read_text())
+names = [
+    "protocol.json", "comparison.json", "comparison-method.json", "comparison-helper-repair.json",
+    "operational-repeat-protocol.json", "operational-repeat-selection.json", "operational-comparison.json",
+    "foundation-commit.json", "selected-source.json", "qualification.json", "selected-commit.json", "runtime-warning-review.json",
+    "packaged-reference-v2.json", "observer-proof.json", "selected-observer.jsonl", "selected-credential-scan.json",
+]
+for label in ("foundation-1", "current-1", "foundation-2", "current-2"):
+    suites = protocol["suites"] if label.endswith("-1") else repeat["suites"]
+    names.extend(f"{label}-{suite}.json" for suite in suites)
+    names.extend(f"{label}-{kind}.json" for kind in ("proof", "runtime", "warning-audit"))
+    names.append(f"{label}-server.log")
+for directory in ("foundation-units-python313", "selected-units-python313", "selected-units-python311"):
+    names.append(f"{directory}/proof.json")
+    names.extend(str(path.relative_to(OUT)) for path in sorted((OUT / directory).glob("*.log")))
+names.extend(f"package/{name}" for name in ("package-proof.json", "runtime-proof.json", "runtime-preflight.json", "server.log", "reference-v2.log"))
+names.extend(["milvus-integration.log", "observer-smoke.log", "quality-gates.log"])
+scripts = ["run_pair.py", "compare_pair.py", "compare_pair.original.py.txt", "compare_operational.py",
+           "associate_warnings.py", "select_foundation.py", "check_units.py", "check_selected313.py",
+           "check_package.py", "qualify_selected.py", "scan_artifacts.py", "archive_evidence.py"]
+sources = [(OUT / name, Path(name)) for name in names]
+sources.extend((OUT / name, Path(name if name.endswith(".txt") else name + ".txt")) for name in scripts)
+assert len({str(relative) for _, relative in sources}) == len(sources)
+for source, _ in sources:
+    assert source.is_file(), source
+manifest = {}
+for source, relative in sources:
+    target = DEST / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    content = source.read_bytes()
+    with target.open("xb") as stream:
+        stream.write(content)
+    assert target.read_bytes() == content
+    manifest[str(relative)] = {"sha256": hashlib.sha256(content).hexdigest(), "bytes": len(content)}
+result = {"files": manifest, "note": "All archived evidence is byte-identical to the completed run outputs. Python runner snapshots use .txt solely to keep frozen evidence out of source formatting."}
+(DEST / "artifact-manifest.json").write_text(json.dumps(result, indent=2) + "\n")
+print("Archived", len(manifest), "files", sum(row["bytes"] for row in manifest.values()), "bytes")

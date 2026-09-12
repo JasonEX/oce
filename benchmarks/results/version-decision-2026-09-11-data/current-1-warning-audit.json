@@ -1,0 +1,214 @@
+{
+  "association": "Sequential response order; not independent proof of root cause. Startup warnings are not request failures.",
+  "completed_requests": 631,
+  "request_model_failures": 18,
+  "affected_suites": [
+    "csn",
+    "layout",
+    "short",
+    "upsemantic",
+    "variants"
+  ],
+  "warnings": [
+    {
+      "line": 6,
+      "completed_requests_before": 0,
+      "next_case": [
+        "short",
+        "flask-flask-symbol"
+      ],
+      "request_model_failure": false,
+      "message": "Warm-up of the dense store failed: TimeoutError"
+    },
+    {
+      "line": 75,
+      "completed_requests_before": 35,
+      "next_case": [
+        "short",
+        "pytest-config-reference-zh"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 80,
+      "completed_requests_before": 38,
+      "next_case": [
+        "short",
+        "pylint-pylinter-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 85,
+      "completed_requests_before": 41,
+      "next_case": [
+        "short",
+        "pylint-pylinter-reference-zh"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 90,
+      "completed_requests_before": 44,
+      "next_case": [
+        "short",
+        "pylint-message-definition-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 95,
+      "completed_requests_before": 47,
+      "next_case": [
+        "short",
+        "pylint-message-definition-reference-zh"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 568,
+      "completed_requests_before": 392,
+      "next_case": [
+        "csn",
+        "csn-GitbookIO__repofs-09"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 599,
+      "completed_requests_before": 403,
+      "next_case": [
+        "swe",
+        "pylint-dev__pylint-7080"
+      ],
+      "request_model_failure": false,
+      "message": "Exact symbol lookup timed out; returning no exact evidence"
+    },
+    {
+      "line": 630,
+      "completed_requests_before": 418,
+      "next_case": [
+        "upsemantic",
+        "cc-switch-sync-protocol"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 718,
+      "completed_requests_before": 478,
+      "next_case": [
+        "variants",
+        "requests-extract-cookies-callers--context"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 720,
+      "completed_requests_before": 479,
+      "next_case": [
+        "variants",
+        "requests-get-to-adapter-send--original"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 722,
+      "completed_requests_before": 480,
+      "next_case": [
+        "variants",
+        "requests-get-to-adapter-send--unquoted"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 724,
+      "completed_requests_before": 481,
+      "next_case": [
+        "variants",
+        "requests-get-to-adapter-send--noun"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 726,
+      "completed_requests_before": 482,
+      "next_case": [
+        "variants",
+        "requests-get-to-adapter-send--imperative"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 854,
+      "completed_requests_before": 591,
+      "next_case": [
+        "layout",
+        "typescript-index.ts-collectOptions-0-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 856,
+      "completed_requests_before": 592,
+      "next_case": [
+        "layout",
+        "typescript-index.ts-collectOptions-0-tests"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 860,
+      "completed_requests_before": 594,
+      "next_case": [
+        "layout",
+        "typescript-index.ts-collectOptions-80-semantic"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 862,
+      "completed_requests_before": 595,
+      "next_case": [
+        "layout",
+        "typescript-index.ts-collectOptions-80-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 864,
+      "completed_requests_before": 596,
+      "next_case": [
+        "layout",
+        "typescript-index.ts-collectOptions-80-tests"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 868,
+      "completed_requests_before": 598,
+      "next_case": [
+        "layout",
+        "typescript-types.ts-parseConfig-0-semantic"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    }
+  ]
+}

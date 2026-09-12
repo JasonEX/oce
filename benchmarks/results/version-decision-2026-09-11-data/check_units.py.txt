@@ -1,0 +1,59 @@
+"""One process per test file, bound to the source inventory."""
+
+import argparse
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import time
+
+parser = argparse.ArgumentParser()
+parser.add_argument("source", type=Path)
+parser.add_argument("label")
+parser.add_argument("--venv", type=Path, default=Path("/home/yuqian/workspace/oce/.venv"))
+args = parser.parse_args()
+root = args.source.resolve()
+destination = Path(__file__).parent / args.label
+destination.mkdir(exist_ok=False)
+
+
+def inventory():
+    return {
+        str(path.relative_to(root)): hashlib.sha256(path.read_bytes()).hexdigest()
+        for pattern in ("src/oce/**/*.py", "tests/unit/**/*.py")
+        for path in sorted(root.glob(pattern))
+    }
+
+
+before = inventory()
+environment = os.environ | {
+    "UV_PROJECT_ENVIRONMENT": str(args.venv),
+    "PYTHONPATH": str(root / "src"),
+}
+rows = []
+counts = {}
+for path in sorted(root.glob("tests/unit/**/test_*.py")):
+    relative = str(path.relative_to(root))
+    logfile = destination / (relative.replace("/", "__") + ".log")
+    started = time.monotonic()
+    with logfile.open("x") as stream:
+        result = subprocess.run(
+            ["uv", "run", "--no-sync", "python", "-m", "pytest", relative, "-q"],
+            cwd=root,
+            env=environment,
+            stdout=stream,
+            stderr=subprocess.STDOUT,
+        )
+    rows.append({"file": relative, "exit": result.returncode, "seconds": time.monotonic() - started})
+    for number, kind in re.findall(r"(\d+) (passed|skipped|deselected|failed)", logfile.read_text()):
+        counts[kind] = counts.get(kind, 0) + int(number)
+    if result.returncode or len(rows) % 20 == 0:
+        print(args.label, len(rows), counts, "last_exit", result.returncode, flush=True)
+    (destination / "progress.json").write_text(json.dumps({"results": rows, "counts": counts}, indent=2) + "\n")
+assert inventory() == before, "Source changed during checks"
+proof = {"source_and_tests": before, "results": rows, "counts": counts}
+(destination / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+print("DONE", args.label, counts, "files", len(rows), flush=True)
+raise SystemExit(int(any(row["exit"] for row in rows)))

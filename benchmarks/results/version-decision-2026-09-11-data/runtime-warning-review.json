@@ -1,0 +1,10 @@
+{
+  "original_current_exact_timeout_case": "pylint-dev__pylint-7080",
+  "suite": "swe",
+  "warning": "Exact symbol lookup timed out; returning no exact evidence",
+  "already_in_frozen_repeat_selection": true,
+  "guard_failures_have_no_request_pipeline_warnings": true,
+  "repeat_interpretation": "Check all non-startup request warnings, including SQL timeouts, before crediting a repeat difference to source behavior.",
+  "source_changes": false,
+  "truth_changes": false
+}

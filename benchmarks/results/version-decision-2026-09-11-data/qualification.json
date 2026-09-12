@@ -1,0 +1,172 @@
+{
+  "selected_source_sha256": "58550a0608555893ac2491deda5c5a5d96da74142781f6643ad20766e193617c",
+  "checks": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "."
+      ],
+      "exit": 0,
+      "seconds": 0.1562167799565941,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit": 0,
+      "seconds": 0.09470388805493712,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "exit": 0,
+      "seconds": 0.06359767494723201,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "exit": 0,
+      "seconds": 0.05231218598783016,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check",
+        "HEAD"
+      ],
+      "exit": 0,
+      "seconds": 0.021398712182417512,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/check_selected313.py"
+      ],
+      "exit": 0,
+      "seconds": 5.994189600925893,
+      "log": null
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/check_units.py",
+        "/home/yuqian/workspace/oce",
+        "selected-units-python311",
+        "--venv",
+        "/home/yuqian/.cache/oce/bench-runs/state-machine-simplification-2026-09-10/venv311"
+      ],
+      "exit": 0,
+      "seconds": 90.53014921606518,
+      "log": null
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/integration/infrastructure/test_milvus3_integration.py",
+        "-q",
+        "-m",
+        "integration"
+      ],
+      "exit": 0,
+      "seconds": 4.2413194419350475,
+      "log": "milvus-integration.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "-c",
+        "import pytest; from benchmarks.internal import retrieval_sql_trace as capture; capture.install(); raise SystemExit(pytest.main(['tests/unit/infrastructure/test_lexical_index.py::test_error_text_and_identifiers_are_found_in_scope','-q']))"
+      ],
+      "exit": 0,
+      "seconds": 1.1619061059318483,
+      "log": "observer-smoke.log"
+    },
+    {
+      "command": [
+        "uv",
+        "build",
+        "--out-dir",
+        "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist"
+      ],
+      "exit": 0,
+      "seconds": 2.3747501929756254,
+      "log": "quality-gates.log"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "python",
+        "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/check_package.py"
+      ],
+      "exit": 0,
+      "seconds": 33.72999741300009,
+      "log": null
+    }
+  ],
+  "unit_counts": {
+    "selected-units-python313": {
+      "passed": 839,
+      "skipped": 1
+    },
+    "selected-units-python311": {
+      "passed": 839,
+      "skipped": 1
+    }
+  },
+  "unit_files": {
+    "selected-units-python313": 98,
+    "selected-units-python311": 98
+  },
+  "python313_evidence": "89 production test files reuse the exact matching foundation source/test proof; all 9 retained benchmark test files were rerun on the final tree.",
+  "python311_evidence": "All 98 unit files ran in separate processes on the final tree.",
+  "integration": "Six real Milvus Lite integration tests.",
+  "package": {
+    "wheel": "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist/opencontextengine-0.3.0-py3-none-any.whl",
+    "wheel_sha256": "1348cd142836ee639a8b2074409b6bdfbe4c17da33668ca348cded6db34ea73d",
+    "sdist": "/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11/package/dist/opencontextengine-0.3.0.tar.gz",
+    "sdist_sha256": "4555d4ae20098850d581cfbb8e07c248d8f49b3dbae45d9d1318a76cb1726777",
+    "all_python_matches_final_source": true,
+    "openapi_matches_foundation": true,
+    "openapi_sha256": "25bfb1ebb58fbb6f15f98ec02e296a94b1f2d4c24d6cbc70940b8e341c3a7fad",
+    "source_sha256": "58550a0608555893ac2491deda5c5a5d96da74142781f6643ad20766e193617c",
+    "openapi_matches_archived_current": true,
+    "reference_manifest_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211",
+    "reference_report_sha256": "8ba7e8f3a1df650eda5ed1e69bfe0c290203333024f01c96495546575e28b9a7",
+    "reference_cases": 18,
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "stable_api_runtime": true,
+    "normal_shutdown": true
+  },
+  "limitations": "Optional PostgreSQL environment-dependent unit case skipped; no service-mode end-to-end run. Benchmarks use personal mode, Qwen3-Embedding-4B, and no reranker. No new validation set was consumed."
+}

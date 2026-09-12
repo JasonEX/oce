@@ -1,0 +1,3492 @@
+{
+  "schema_version": 1,
+  "suite": "layout_controls",
+  "label": "current-1",
+  "created_at": "2026-09-12T01:05:55.028941+00:00",
+  "source_revisions": {
+    "fixture_spec_sha256": "ba1998c488a7d8f0997ac93b850a93bb09122d21059816274c5a4da031284f0e"
+  },
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "current-1-proof.json"
+    }
+  },
+  "case_ids": [
+    "python-parser.py-parse_config-0-definition",
+    "python-parser.py-parse_config-0-semantic",
+    "python-parser.py-parse_config-0-reference",
+    "python-parser.py-parse_config-0-tests",
+    "python-parser.py-parse_config-80-definition",
+    "python-parser.py-parse_config-80-semantic",
+    "python-parser.py-parse_config-80-reference",
+    "python-parser.py-parse_config-80-tests",
+    "python-parser.py-collect_options-0-definition",
+    "python-parser.py-collect_options-0-semantic",
+    "python-parser.py-collect_options-0-reference",
+    "python-parser.py-collect_options-0-tests",
+    "python-parser.py-collect_options-80-definition",
+    "python-parser.py-collect_options-80-semantic",
+    "python-parser.py-collect_options-80-reference",
+    "python-parser.py-collect_options-80-tests",
+    "python-__init__.py-parse_config-0-definition",
+    "python-__init__.py-parse_config-0-semantic",
+    "python-__init__.py-parse_config-0-reference",
+    "python-__init__.py-parse_config-0-tests",
+    "python-__init__.py-parse_config-80-definition",
+    "python-__init__.py-parse_config-80-semantic",
+    "python-__init__.py-parse_config-80-reference",
+    "python-__init__.py-parse_config-80-tests",
+    "python-__init__.py-collect_options-0-definition",
+    "python-__init__.py-collect_options-0-semantic",
+    "python-__init__.py-collect_options-0-reference",
+    "python-__init__.py-collect_options-0-tests",
+    "python-__init__.py-collect_options-80-definition",
+    "python-__init__.py-collect_options-80-semantic",
+    "python-__init__.py-collect_options-80-reference",
+    "python-__init__.py-collect_options-80-tests",
+    "typescript-parser.ts-parseConfig-0-definition",
+    "typescript-parser.ts-parseConfig-0-semantic",
+    "typescript-parser.ts-parseConfig-0-reference",
+    "typescript-parser.ts-parseConfig-0-tests",
+    "typescript-parser.ts-parseConfig-80-definition",
+    "typescript-parser.ts-parseConfig-80-semantic",
+    "typescript-parser.ts-parseConfig-80-reference",
+    "typescript-parser.ts-parseConfig-80-tests",
+    "typescript-parser.ts-collectOptions-0-definition",
+    "typescript-parser.ts-collectOptions-0-semantic",
+    "typescript-parser.ts-collectOptions-0-reference",
+    "typescript-parser.ts-collectOptions-0-tests",
+    "typescript-parser.ts-collectOptions-80-definition",
+    "typescript-parser.ts-collectOptions-80-semantic",
+    "typescript-parser.ts-collectOptions-80-reference",
+    "typescript-parser.ts-collectOptions-80-tests",
+    "typescript-index.ts-parseConfig-0-definition",
+    "typescript-index.ts-parseConfig-0-semantic",
+    "typescript-index.ts-parseConfig-0-reference",
+    "typescript-index.ts-parseConfig-0-tests",
+    "typescript-index.ts-parseConfig-80-definition",
+    "typescript-index.ts-parseConfig-80-semantic",
+    "typescript-index.ts-parseConfig-80-reference",
+    "typescript-index.ts-parseConfig-80-tests",
+    "typescript-index.ts-collectOptions-0-definition",
+    "typescript-index.ts-collectOptions-0-semantic",
+    "typescript-index.ts-collectOptions-0-reference",
+    "typescript-index.ts-collectOptions-0-tests",
+    "typescript-index.ts-collectOptions-80-definition",
+    "typescript-index.ts-collectOptions-80-semantic",
+    "typescript-index.ts-collectOptions-80-reference",
+    "typescript-index.ts-collectOptions-80-tests",
+    "typescript-types.ts-parseConfig-0-definition",
+    "typescript-types.ts-parseConfig-0-semantic",
+    "typescript-types.ts-parseConfig-0-reference",
+    "typescript-types.ts-parseConfig-0-tests",
+    "typescript-types.ts-parseConfig-80-definition",
+    "typescript-types.ts-parseConfig-80-semantic",
+    "typescript-types.ts-parseConfig-80-reference",
+    "typescript-types.ts-parseConfig-80-tests",
+    "typescript-types.ts-collectOptions-0-definition",
+    "typescript-types.ts-collectOptions-0-semantic",
+    "typescript-types.ts-collectOptions-0-reference",
+    "typescript-types.ts-collectOptions-0-tests",
+    "typescript-types.ts-collectOptions-80-definition",
+    "typescript-types.ts-collectOptions-80-semantic",
+    "typescript-types.ts-collectOptions-80-reference",
+    "typescript-types.ts-collectOptions-80-tests"
+  ],
+  "summary": {
+    "cases": 80,
+    "successful_cases": 80,
+    "error_cases": 0,
+    "needs": 4,
+    "top1": 1.0,
+    "hit_at_3": 1.0,
+    "mrr": 1.0,
+    "worst_family_hit_at_3": 1.0,
+    "p50_elapsed_ms": 456,
+    "mean_returned_chars": 1131.55
+  },
+  "by_family": {
+    "definition": {
+      "cases": 20,
+      "successful_cases": 20,
+      "error_cases": 0,
+      "needs": 1,
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "worst_family_hit_at_3": 1.0,
+      "p50_elapsed_ms": 36,
+      "mean_returned_chars": 941.0
+    },
+    "reference": {
+      "cases": 20,
+      "successful_cases": 20,
+      "error_cases": 0,
+      "needs": 1,
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "worst_family_hit_at_3": 1.0,
+      "p50_elapsed_ms": 461,
+      "mean_returned_chars": 978.6
+    },
+    "semantic": {
+      "cases": 20,
+      "successful_cases": 20,
+      "error_cases": 0,
+      "needs": 1,
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "worst_family_hit_at_3": 1.0,
+      "p50_elapsed_ms": 564,
+      "mean_returned_chars": 1628.0
+    },
+    "tests": {
+      "cases": 20,
+      "successful_cases": 20,
+      "error_cases": 0,
+      "needs": 1,
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "worst_family_hit_at_3": 1.0,
+      "p50_elapsed_ms": 446,
+      "mean_returned_chars": 978.6
+    }
+  },
+  "cases": [
+    {
+      "id": "python-parser.py-parse_config-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Where is parse_config defined?",
+      "target": [
+        "pkg/parser.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 29,
+      "returned_chars": 840,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/parser.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 671,
+      "returned_chars": 1404,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "callers of parse_config",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 451,
+      "returned_chars": 847,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Locate tests exercising parse_config.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 664,
+      "returned_chars": 847,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Where is parse_config defined?",
+      "target": [
+        "pkg/parser.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 26,
+      "returned_chars": 841,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/parser.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 570,
+      "returned_chars": 1405,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "callers of parse_config",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 468,
+      "returned_chars": 848,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-parse_config-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Locate tests exercising parse_config.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 444,
+      "returned_chars": 848,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Where is collect_options defined?",
+      "target": [
+        "pkg/parser.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 25,
+      "returned_chars": 849,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/parser.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 549,
+      "returned_chars": 1419,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "callers of collect_options",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 421,
+      "returned_chars": 862,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Locate tests exercising collect_options.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 444,
+      "returned_chars": 862,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Where is collect_options defined?",
+      "target": [
+        "pkg/parser.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 26,
+      "returned_chars": 850,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/parser.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 551,
+      "returned_chars": 1420,
+      "retrieved": [
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "callers of collect_options",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 461,
+      "returned_chars": 863,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-parser.py-collect_options-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "parser.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Locate tests exercising collect_options.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 438,
+      "returned_chars": 863,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/parser.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Where is parse_config defined?",
+      "target": [
+        "pkg/__init__.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 31,
+      "returned_chars": 842,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/__init__.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 554,
+      "returned_chars": 1392,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "callers of parse_config",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 451,
+      "returned_chars": 835,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 0,
+      "query": "Locate tests exercising parse_config.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 435,
+      "returned_chars": 835,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Where is parse_config defined?",
+      "target": [
+        "pkg/__init__.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 27,
+      "returned_chars": 843,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/__init__.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 577,
+      "returned_chars": 1393,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "callers of parse_config",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 830,
+      "returned_chars": 836,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-parse_config-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "parse_config",
+      "offset": 80,
+      "query": "Locate tests exercising parse_config.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 461,
+      "returned_chars": 836,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Where is collect_options defined?",
+      "target": [
+        "pkg/__init__.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 26,
+      "returned_chars": 851,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/__init__.py",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 569,
+      "returned_chars": 1407,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "callers of collect_options",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 462,
+      "returned_chars": 850,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 0,
+      "query": "Locate tests exercising collect_options.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 444,
+      "returned_chars": 850,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 1,
+          "end": 10
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Where is collect_options defined?",
+      "target": [
+        "pkg/__init__.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 26,
+      "returned_chars": 852,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 3,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 3,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "pkg/__init__.py",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 564,
+      "returned_chars": 1408,
+      "retrieved": [
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        },
+        {
+          "path": "pkg/writer.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/validator.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/display.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "callers of collect_options",
+      "target": [
+        "pkg/consumer.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 756,
+      "returned_chars": 851,
+      "retrieved": [
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "python-__init__.py-collect_options-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "python",
+      "filename": "__init__.py",
+      "name": "collect_options",
+      "offset": 80,
+      "query": "Locate tests exercising collect_options.",
+      "target": [
+        "tests/test_reader.py",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 446,
+      "returned_chars": 851,
+      "retrieved": [
+        {
+          "path": "tests/test_reader.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/consumer.py",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "pkg/__init__.py",
+          "start": 81,
+          "end": 90
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/parser.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 38,
+      "returned_chars": 1000,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/parser.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 839,
+      "returned_chars": 1770,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 437,
+      "returned_chars": 1059,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 435,
+      "returned_chars": 1059,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/parser.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 37,
+      "returned_chars": 1001,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/parser.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 564,
+      "returned_chars": 1771,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 456,
+      "returned_chars": 1060,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-parseConfig-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 433,
+      "returned_chars": 1060,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/parser.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 37,
+      "returned_chars": 1009,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/parser.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 564,
+      "returned_chars": 1785,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 447,
+      "returned_chars": 1074,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 437,
+      "returned_chars": 1074,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/parser.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 37,
+      "returned_chars": 1010,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/parser.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 535,
+      "returned_chars": 1786,
+      "retrieved": [
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 434,
+      "returned_chars": 1075,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-parser.ts-collectOptions-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "parser.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 460,
+      "returned_chars": 1075,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/parser.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/index.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 38,
+      "returned_chars": 999,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/index.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 550,
+      "returned_chars": 1767,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 435,
+      "returned_chars": 1056,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 539,
+      "returned_chars": 1056,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/index.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 37,
+      "returned_chars": 1000,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/index.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 575,
+      "returned_chars": 1768,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 472,
+      "returned_chars": 1057,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-parseConfig-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 472,
+      "returned_chars": 1057,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/index.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 40,
+      "returned_chars": 1008,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/index.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 547,
+      "returned_chars": 1782,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1513,
+      "returned_chars": 1071,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1469,
+      "returned_chars": 1071,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/index.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/index.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 38,
+      "returned_chars": 1009,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/index.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1482,
+      "returned_chars": 1783,
+      "retrieved": [
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1476,
+      "returned_chars": 1072,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-index.ts-collectOptions-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "index.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1506,
+      "returned_chars": 1072,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/index.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/types.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 39,
+      "returned_chars": 999,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/types.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1598,
+      "returned_chars": 1767,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 1983,
+      "returned_chars": 1056,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 0,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 455,
+      "returned_chars": 1056,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Where is parseConfig defined?",
+      "target": [
+        "src/types.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 35,
+      "returned_chars": 1000,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/types.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 541,
+      "returned_chars": 1768,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "callers of parseConfig",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 448,
+      "returned_chars": 1057,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-parseConfig-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "parseConfig",
+      "offset": 80,
+      "query": "Locate tests exercising parseConfig.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 438,
+      "returned_chars": 1057,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-0-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/types.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 36,
+      "returned_chars": 1008,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-0-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/types.ts",
+        1
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 594,
+      "returned_chars": 1782,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-0-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 469,
+      "returned_chars": 1071,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-0-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 0,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 671,
+      "returned_chars": 1071,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/types.ts",
+          "start": 1,
+          "end": 11
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-80-definition",
+      "family_id": "definition",
+      "kind": "definition",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Where is collectOptions defined?",
+      "target": [
+        "src/types.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 36,
+      "returned_chars": 1009,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 2,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 3,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-80-semantic",
+      "family_id": "semantic",
+      "kind": "semantic",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Read key=value settings from text, ignoring blank lines and comment lines.",
+      "target": [
+        "src/types.ts",
+        81
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 579,
+      "returned_chars": 1783,
+      "retrieved": [
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        },
+        {
+          "path": "src/writer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/validator.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/display.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-80-reference",
+      "family_id": "reference",
+      "kind": "reference",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "callers of collectOptions",
+      "target": [
+        "src/consumer.ts",
+        3
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 481,
+      "returned_chars": 1072,
+      "retrieved": [
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    },
+    {
+      "id": "typescript-types.ts-collectOptions-80-tests",
+      "family_id": "tests",
+      "kind": "tests",
+      "language": "typescript",
+      "filename": "types.ts",
+      "name": "collectOptions",
+      "offset": 80,
+      "query": "Locate tests exercising collectOptions.",
+      "target": [
+        "tests/reader.test.ts",
+        4
+      ],
+      "status": "ok",
+      "top1": 1.0,
+      "hit_at_3": 1.0,
+      "mrr": 1.0,
+      "elapsed_ms": 500,
+      "returned_chars": 1072,
+      "retrieved": [
+        {
+          "path": "tests/reader.test.ts",
+          "start": 1,
+          "end": 5
+        },
+        {
+          "path": "src/consumer.ts",
+          "start": 1,
+          "end": 4
+        },
+        {
+          "path": "src/types.ts",
+          "start": 81,
+          "end": 91
+        }
+      ]
+    }
+  ]
+}

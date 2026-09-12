@@ -1,0 +1,8 @@
+{
+  "created_at": "2026-09-12T00:57:26.739205+00:00",
+  "reason": "Foundation run has upstream embedding InternalServerError fallbacks, including CSN and SWE; preserve original reports and do not credit fallback differences to code.",
+  "source_changes": false,
+  "label_changes": false,
+  "planned_followup": "After the original full pair, perform one same-source paired repeat of every suite with request-time model failures in either variant. Keep original and repeat scores separately. If repeat also fails, mark affected utility comparison inconclusive and do not credit gains; unaffected guard failures may still reject current.",
+  "new_validation_consumed": false
+}

@@ -1,0 +1,82 @@
+"""Run the selected source's remaining CI, package, and runtime checks sequentially."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import subprocess
+import time
+
+ROOT = Path("/home/yuqian/workspace/oce")
+OUT = Path(__file__).resolve().parent
+PY311 = Path("/home/yuqian/.cache/oce/bench-runs/state-machine-simplification-2026-09-10/venv311")
+assert "Application shutdown complete." in (OUT / "current-2-server.log").read_text()
+selected = json.loads((OUT / "selected-source.json").read_text())
+
+
+def inventory():
+    return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(ROOT.glob("src/oce/**/*.py"))}
+
+
+assert inventory() == selected["source_files"]
+rows = []
+
+
+def run(command, logfile=None, *, environment=None):
+    print("CHECK", " ".join(command), flush=True)
+    started = time.monotonic()
+    if logfile:
+        with (OUT / logfile).open("a") as stream:
+            stream.write("$ " + " ".join(command) + "\n")
+            stream.flush()
+            result = subprocess.run(command, cwd=ROOT, env=environment, stdout=stream, stderr=subprocess.STDOUT)
+    else:
+        result = subprocess.run(command, cwd=ROOT, env=environment)
+    rows.append({"command": command, "exit": result.returncode, "seconds": time.monotonic() - started,
+                 "log": logfile})
+    (OUT / "qualification-progress.json").write_text(json.dumps(rows, indent=2) + "\n")
+    assert result.returncode == 0, command
+
+
+for command in (
+    ["uv", "run", "ruff", "format", "."],
+    ["uv", "run", "ruff", "check", "."],
+    ["uv", "run", "ruff", "format", "--check", "."],
+    ["uv", "lock", "--check"],
+    ["git", "diff", "--check", "HEAD"],
+):
+    run(command, "quality-gates.log")
+assert inventory() == selected["source_files"], "Formatting changed frozen production"
+run(["uv", "run", "python", str(OUT / "check_selected313.py")])
+run(["uv", "run", "python", str(OUT / "check_units.py"), str(ROOT), "selected-units-python311", "--venv", str(PY311)])
+run(["uv", "run", "pytest", "tests/integration/infrastructure/test_milvus3_integration.py", "-q", "-m", "integration"], "milvus-integration.log")
+observer_command = (
+    "import pytest; from benchmarks.internal import retrieval_sql_trace as capture; "
+    "capture.install(); raise SystemExit(pytest.main(['tests/unit/infrastructure/test_lexical_index.py::test_error_text_and_identifiers_are_found_in_scope','-q']))"
+)
+run(["uv", "run", "python", "-c", observer_command], "observer-smoke.log",
+    environment=os.environ | {"OCE_TIMEOUT_CAPTURE": str(OUT / "selected-observer.jsonl")})
+observer_rows = [json.loads(line) for line in (OUT / "selected-observer.jsonl").read_text().splitlines()]
+assert len(observer_rows) == 4 and all(row["operation"] == "lexical" and row["sql"] for row in observer_rows)
+assert all(all("statement_sha256" in statement and "completed_ms" in statement for statement in row["sql"])
+           for row in observer_rows)
+observer_proof = {"test_passed": True, "actual_sql_calls_recorded": len(observer_rows),
+                  "observer_sha256": hashlib.sha256((ROOT / "benchmarks/internal/retrieval_sql_trace.py").read_bytes()).hexdigest(),
+                  "trace_sha256": hashlib.sha256((OUT / "selected-observer.jsonl").read_bytes()).hexdigest(),
+                  "purpose": "Import and real-SQL instrumentation conformance only; not a product utility or latency benchmark."}
+(OUT / "observer-proof.json").write_text(json.dumps(observer_proof, indent=2) + "\n")
+run(["uv", "build", "--out-dir", str(OUT / "package/dist")], "quality-gates.log")
+run(["uv", "run", "python", str(OUT / "check_package.py")])
+assert inventory() == selected["source_files"]
+proofs = {name: json.loads((OUT / name / "proof.json").read_text()) for name in ("selected-units-python313", "selected-units-python311")}
+result = {"selected_source_sha256": selected["source_sha256"], "checks": rows,
+          "unit_counts": {name: value["counts"] for name, value in proofs.items()},
+          "unit_files": {name: len(value["results"]) for name, value in proofs.items()},
+          "python313_evidence": "89 production test files reuse the exact matching foundation source/test proof; all 9 retained benchmark test files were rerun on the final tree.",
+          "python311_evidence": "All 98 unit files ran in separate processes on the final tree.",
+          "integration": "Six real Milvus Lite integration tests.",
+          "package": json.loads((OUT / "package/runtime-proof.json").read_text()),
+          "limitations": "Optional PostgreSQL environment-dependent unit case skipped; no service-mode end-to-end run. Benchmarks use personal mode, Qwen3-Embedding-4B, and no reranker. No new validation set was consumed."}
+(OUT / "qualification.json").write_text(json.dumps(result, indent=2) + "\n")
+print("QUALIFIED", result["unit_counts"], flush=True)

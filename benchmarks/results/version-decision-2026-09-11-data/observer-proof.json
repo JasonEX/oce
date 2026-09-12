@@ -1,0 +1,7 @@
+{
+  "test_passed": true,
+  "actual_sql_calls_recorded": 4,
+  "observer_sha256": "e12bc6276679c21378cfdd7ade90f66b9a1669505ba3393300c1b46ddbebc93e",
+  "trace_sha256": "3d280ade44591fe9e9ade572f997a51c2373fa73dbdc42f41dc9bcb438a33f01",
+  "purpose": "Import and real-SQL instrumentation conformance only; not a product utility or latency benchmark."
+}

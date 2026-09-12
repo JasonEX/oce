@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-09-12T01:06:53.113563+00:00",
+  "suites": [
+    "short",
+    "csn",
+    "swe",
+    "upsemantic",
+    "variants",
+    "layout"
+  ],
+  "cases_per_variant": 491,
+  "basis": "One paired operational repeat for the union of suites with logged request model failures in the original pair; source and native labels remain frozen.",
+  "audit_files": [
+    "foundation-1-warning-audit.json",
+    "current-1-warning-audit.json"
+  ]
+}

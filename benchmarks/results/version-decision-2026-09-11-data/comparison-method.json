@@ -1,0 +1,16 @@
+{
+  "created_at": "2026-09-12T00:51:34.610206+00:00",
+  "comparison_script_sha256": "2d2cd81f546a9b679b2bfa75de4549b2c90378444edff4bef06ce747067cfed3",
+  "timing": "Recorded while only the foundation short suite is complete; current variant has not started.",
+  "noncausal_limits": [
+    "Same-index preparation includes common correctness fixes; foundation is not pristine remote master.",
+    "The numeric report is not a composite quality score or a downstream agent success rate."
+  ],
+  "setup_attempts": [
+    {
+      "status": "INVALID_SETUP",
+      "operation": "initial standalone runner invocation without evaluator PYTHONPATH",
+      "effect": "Import failed before server or retrieval requests; rerun uses explicit frozen evaluator PYTHONPATH."
+    }
+  ]
+}

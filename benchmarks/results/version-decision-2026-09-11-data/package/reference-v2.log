@@ -1,0 +1,65 @@
+[sync 1/8] axum-v0.7.9
+[sync 2/8] express-4.21.2
+[sync 3/8] gin-v1.10.0
+[sync 4/8] gson-2.11.0
+[sync 5/8] jq-1.7.1
+[sync 6/8] pallets__flask-5014
+[sync 7/8] psf__requests-5414
+[sync 8/8] redux-toolkit-v2.2.7
+[retrieve 1/18] reference-v2-flask-flask-en
+[retrieve 2/18] reference-v2-flask-flask-zh
+[retrieve 3/18] reference-v2-requests-prepared-request-en
+[retrieve 4/18] reference-v2-requests-prepared-request-zh
+[retrieve 5/18] reference-v2-redux-create-reducer-en
+[retrieve 6/18] reference-v2-redux-create-reducer-zh
+[retrieve 7/18] reference-v2-axum-router-en
+[retrieve 8/18] reference-v2-axum-router-zh
+[retrieve 9/18] reference-v2-gin-handlers-chain-en
+[retrieve 10/18] reference-v2-gin-handlers-chain-zh
+[retrieve 11/18] reference-v2-jq-jv-array-append-en
+[retrieve 12/18] reference-v2-jq-jv-array-append-zh
+[retrieve 13/18] reference-v2-express-route-en
+[retrieve 14/18] reference-v2-express-route-zh
+[retrieve 15/18] reference-v2-gson-type-token-en
+[retrieve 16/18] reference-v2-gson-type-token-zh
+[retrieve 17/18] reference-v2-flask-blueprint-en
+[retrieve 18/18] reference-v2-flask-blueprint-zh
+{
+  "cases": 18,
+  "successful_cases": 18,
+  "error_cases": 0,
+  "primary_top1": 0.6111111111111112,
+  "primary_hit_at_3": 0.8333333333333334,
+  "primary_hit_at_10": 0.8333333333333334,
+  "primary_mrr": 0.7037037037037037,
+  "primary_recall": 0.4261913055016503,
+  "supporting_recall": 1.0,
+  "relation_recall": 0.4261913055016503,
+  "hop_recall": 1.0,
+  "chain_closed": 1.0,
+  "test_recall": 1.0,
+  "distractor_head": 0.0,
+  "distractor_any": 0.0,
+  "truth_region_share": 0.15092060717060718,
+  "error_classes": {
+    "none": 4,
+    "exact_miss": 3,
+    "distractor": 0,
+    "test_missing": 0,
+    "relation_missing": 0,
+    "redundant": 11
+  },
+  "mean_elapsed_ms": 288.72222222222223,
+  "p50_elapsed_ms": 130,
+  "p95_elapsed_ms": 746,
+  "mean_returned_chars": 22554.11111111111,
+  "mean_hit_count": 13.444444444444445,
+  "external_model_tokens": {
+    "embed": {
+      "calls": 6,
+      "prompt_tokens": 0,
+      "completion_tokens": 0,
+      "total_tokens": 0
+    }
+  }
+}

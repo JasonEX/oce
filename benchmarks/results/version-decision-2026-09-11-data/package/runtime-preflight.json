@@ -1,0 +1,62 @@
+{
+  "retrieval": {
+    "embedding_enabled": true,
+    "embedding_query_char_limit": 3000,
+    "semantic_chunking_enabled": true,
+    "exact_enabled": true,
+    "path_index_enabled": true,
+    "source_priority_enabled": true,
+    "coverage_selection_enabled": true,
+    "query_decomposition_enabled": true,
+    "lexical_enabled": true,
+    "path_lookup_enabled": true,
+    "merge_adjacent_enabled": true,
+    "related_definitions_enabled": true,
+    "rerank_enabled": false,
+    "rerank_provider": "none",
+    "rerank_candidate_limit": 0,
+    "rerank_query_char_limit": 0,
+    "rerank_document_char_limit": 0,
+    "rerank_token_limit": 0,
+    "rerank_policy": "adaptive",
+    "llm_rerank_enabled": false,
+    "llm_rerank_policy": "adaptive",
+    "query_rewrite_enabled": false,
+    "decisive_skips_dense": true
+  },
+  "index_profile": {
+    "state": "compatible",
+    "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+    "schema_version": 3,
+    "embedding_enabled": true,
+    "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+    "embedding_model": "Qwen3-Embedding-4B",
+    "embedding_dimensions": 1024
+  },
+  "query_cache": {
+    "enabled": false,
+    "entries": 0,
+    "max_entries": 0,
+    "ttl_seconds": 600.0,
+    "hits": 0,
+    "misses": 0,
+    "evictions": 0,
+    "invalidations": 0
+  },
+  "dense": {
+    "enabled": true,
+    "available": true,
+    "collection_name": "oce_chunks",
+    "exists": true,
+    "entities": 346265,
+    "error_type": null
+  },
+  "path": {
+    "enabled": true,
+    "available": true,
+    "collection_name": "oce_paths_v1",
+    "exists": true,
+    "entities": 57751,
+    "error_type": null
+  }
+}

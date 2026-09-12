@@ -1,0 +1,9 @@
+{
+  "created_at": "2026-09-12T01:07:36.876855+00:00",
+  "initial_error": "KeyError: controls on the layout native report after the first ten suites; no comparison file had been emitted.",
+  "repair": "The layout native schema omits controls and puts top1/hit_at_3/mrr directly on each case. The comparator now reads that schema directly. No native report, label, production source, threshold, or metric was changed.",
+  "sha256": {
+    "compare_pair.original.py.txt": "2d2cd81f546a9b679b2bfa75de4549b2c90378444edff4bef06ce747067cfed3",
+    "compare_pair.py": "65b925c3f4f85a15e5397766d67c33b5f9efd9ec376c2108a3123de3fc7cd560"
+  }
+}

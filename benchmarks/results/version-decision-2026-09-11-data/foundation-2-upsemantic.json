@@ -1,0 +1,863 @@
+{
+  "schema_version": 1,
+  "suite": "semantic_queries",
+  "label": "foundation-2",
+  "created_at": "2026-09-12T01:10:38.926405+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "7ad6ae15760dbbd0a04e5f5767b6c58883e62e898be33b36d82504aba77167b4",
+    "semantic_cases_sha256": "0d80f2e855b863eb495c52b137d6608f7a53f1fdfced4d033fb9d1804e4a6abc"
+  },
+  "snapshots": [
+    {
+      "id": "cc-switch-40cac1a",
+      "repo": "farion1231/cc-switch",
+      "revision": "40cac1a68edf8c9e7b3a89125cf40bb93a348404",
+      "code_language": "typescript"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "foundation-2-proof.json"
+    }
+  },
+  "case_ids": [
+    "cc-switch-auto-launch",
+    "cc-switch-webdav-scheduling",
+    "cc-switch-endpoint-speedtest",
+    "cc-switch-proxy-error-response",
+    "cc-switch-provider-failover",
+    "cc-switch-sync-protocol"
+  ],
+  "sync": {
+    "cc-switch-40cac1a": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 6,
+    "successful_cases": 6,
+    "error_cases": 0,
+    "top1_relevant": 0.5,
+    "top1_primary": 0.3333333333333333,
+    "mrr": 0.6018518518518519,
+    "hit_at_5": 0.6666666666666666,
+    "weighted_recall_at_5": 0.41111111111111115,
+    "weighted_recall_at_10": 0.4777777777777778,
+    "primary_recall_at_10": 0.4166666666666667,
+    "ndcg_at_10": 0.3771554208839283,
+    "mean_elapsed_ms": 995.1666666666666,
+    "p50_elapsed_ms": 742,
+    "p95_elapsed_ms": 1604,
+    "mean_returned_chars": 28598.333333333332,
+    "mean_hit_count": 16.166666666666668,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 10,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "feature": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "top1_relevant": 0.5,
+      "top1_primary": 0.5,
+      "mrr": 0.6527777777777778,
+      "hit_at_5": 0.75,
+      "weighted_recall_at_5": 0.575,
+      "weighted_recall_at_10": 0.675,
+      "primary_recall_at_10": 0.625,
+      "ndcg_at_10": 0.5391169693892426,
+      "mean_elapsed_ms": 736.0,
+      "p50_elapsed_ms": 705,
+      "p95_elapsed_ms": 832,
+      "mean_returned_chars": 25591.0,
+      "mean_hit_count": 19.25
+    },
+    "overview": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "top1_relevant": 0.5,
+      "top1_primary": 0.0,
+      "mrr": 0.5,
+      "hit_at_5": 0.5,
+      "weighted_recall_at_5": 0.08333333333333333,
+      "weighted_recall_at_10": 0.08333333333333333,
+      "primary_recall_at_10": 0.0,
+      "ndcg_at_10": 0.05323232387329983,
+      "mean_elapsed_ms": 1513.5,
+      "p50_elapsed_ms": 1423,
+      "p95_elapsed_ms": 1604,
+      "mean_returned_chars": 34613.0,
+      "mean_hit_count": 10.0
+    },
+    "call_chain": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "top1_relevant": null,
+      "top1_primary": null,
+      "mrr": null,
+      "hit_at_5": null,
+      "weighted_recall_at_5": null,
+      "weighted_recall_at_10": null,
+      "primary_recall_at_10": null,
+      "ndcg_at_10": null,
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "issue": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "top1_relevant": null,
+      "top1_primary": null,
+      "mrr": null,
+      "hit_at_5": null,
+      "weighted_recall_at_5": null,
+      "weighted_recall_at_10": null,
+      "primary_recall_at_10": null,
+      "ndcg_at_10": null,
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    }
+  },
+  "by_code_language": {
+    "typescript": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "top1_relevant": 0.5,
+      "top1_primary": 0.3333333333333333,
+      "mrr": 0.6018518518518519,
+      "hit_at_5": 0.6666666666666666,
+      "weighted_recall_at_5": 0.41111111111111115,
+      "weighted_recall_at_10": 0.4777777777777778,
+      "primary_recall_at_10": 0.4166666666666667,
+      "ndcg_at_10": 0.3771554208839283,
+      "mean_elapsed_ms": 995.1666666666666,
+      "p50_elapsed_ms": 742,
+      "p95_elapsed_ms": 1604,
+      "mean_returned_chars": 28598.333333333332,
+      "mean_hit_count": 16.166666666666668
+    }
+  },
+  "cases": [
+    {
+      "id": "cc-switch-auto-launch",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "feature",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "src-tauri/src/auto_launch.rs",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "src-tauri/src/services/proxy.rs",
+          "start": 695,
+          "end": 739
+        },
+        {
+          "path": "src-tauri/src/commands/settings.rs",
+          "start": 623,
+          "end": 683
+        },
+        {
+          "path": "src-tauri/src/services/mcp.rs",
+          "start": 271,
+          "end": 296
+        },
+        {
+          "path": "src/lib/query/failover.ts",
+          "start": 195,
+          "end": 208
+        },
+        {
+          "path": "src-tauri/src/tray.rs",
+          "start": 507,
+          "end": 593
+        },
+        {
+          "path": "src-tauri/src/app_config.rs",
+          "start": 90,
+          "end": 107
+        },
+        {
+          "path": "src-tauri/src/commands/failover.rs",
+          "start": 104,
+          "end": 208
+        },
+        {
+          "path": "README.md",
+          "start": 318,
+          "end": 335
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1893,
+          "end": 1931
+        },
+        {
+          "path": "src-tauri/src/commands/proxy.rs",
+          "start": 128,
+          "end": 137
+        },
+        {
+          "path": "src-tauri/src/database/dao/proxy.rs",
+          "start": 215,
+          "end": 226
+        },
+        {
+          "path": "src-tauri/src/auto_launch.rs",
+          "start": 64,
+          "end": 69
+        },
+        {
+          "path": "src-tauri/src/database/dao/settings.rs",
+          "start": 244,
+          "end": 250
+        },
+        {
+          "path": "src-tauri/src/database/dao/settings.rs",
+          "start": 253,
+          "end": 260
+        },
+        {
+          "path": "src-tauri/src/database/dao/settings.rs",
+          "start": 267,
+          "end": 273
+        },
+        {
+          "path": "src-tauri/src/database/dao/settings.rs",
+          "start": 276,
+          "end": 283
+        },
+        {
+          "path": "src-tauri/src/database/dao/settings.rs",
+          "start": 290,
+          "end": 298
+        },
+        {
+          "path": "src-tauri/src/services/mcp.rs",
+          "start": 72,
+          "end": 83
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.95583058934618
+      },
+      "returned_chars": 23321,
+      "hit_count": 19,
+      "elapsed_ms": 832,
+      "wall_elapsed_ms": 858
+    },
+    {
+      "id": "cc-switch-webdav-scheduling",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "overview",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src-tauri/src/services/webdav_sync.rs",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "src-tauri/src/services/webdav.rs",
+          "start": 1,
+          "end": 32
+        },
+        {
+          "path": "src-tauri/src/commands/webdav_sync.rs",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "src/i18n/locales/zh-TW.json",
+          "start": 464,
+          "end": 619
+        },
+        {
+          "path": "src/i18n/locales/zh.json",
+          "start": 464,
+          "end": 619
+        },
+        {
+          "path": "src/i18n/locales/ja.json",
+          "start": 401,
+          "end": 541
+        },
+        {
+          "path": "docs/user-manual/zh/1-getting-started/1.5-settings.md",
+          "start": 222,
+          "end": 260
+        },
+        {
+          "path": "docs/user-manual/ja/1-getting-started/1.5-settings.md",
+          "start": 222,
+          "end": 260
+        },
+        {
+          "path": "src/lib/api/settings.ts",
+          "start": 137,
+          "end": 203
+        },
+        {
+          "path": "docs/release-notes/v3.12.0-ja.md",
+          "start": 65,
+          "end": 91
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 0.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.16666666666666666,
+        "weighted_recall_at_10": 0.16666666666666666,
+        "primary_recall_at_10": 0.0,
+        "ndcg_at_10": 0.10646464774659967
+      },
+      "returned_chars": 32855,
+      "hit_count": 10,
+      "elapsed_ms": 1604,
+      "wall_elapsed_ms": 1632
+    },
+    {
+      "id": "cc-switch-endpoint-speedtest",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "feature",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "src-tauri/src/services/stream_check.rs",
+          "start": 134,
+          "end": 167
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 449,
+          "end": 511
+        },
+        {
+          "path": "src/components/providers/forms/EndpointSpeedTest.tsx",
+          "start": 312,
+          "end": 394
+        },
+        {
+          "path": "src/components/providers/ProviderList.tsx",
+          "start": 51,
+          "end": 73
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 1087,
+          "end": 1112
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex.rs",
+          "start": 1326,
+          "end": 1371
+        },
+        {
+          "path": "src/utils/providerConfigUtils.ts",
+          "start": 548,
+          "end": 588
+        },
+        {
+          "path": "src/components/providers/forms/ProviderForm.tsx",
+          "start": 2065,
+          "end": 2128
+        },
+        {
+          "path": "src-tauri/src/commands/provider.rs",
+          "start": 751,
+          "end": 799
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/claude.rs",
+          "start": 468,
+          "end": 534
+        },
+        {
+          "path": "src-tauri/src/services/stream_check.rs",
+          "start": 168,
+          "end": 179
+        },
+        {
+          "path": "src-tauri/src/services/stream_check.rs",
+          "start": 290,
+          "end": 295
+        },
+        {
+          "path": "src-tauri/src/services/stream_check.rs",
+          "start": 205,
+          "end": 216
+        },
+        {
+          "path": "src-tauri/src/services/stream_check.rs",
+          "start": 233,
+          "end": 244
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 132,
+          "end": 143
+        },
+        {
+          "path": "src/lib/api/vscode.ts",
+          "start": 17,
+          "end": 25
+        },
+        {
+          "path": "src/components/providers/forms/EndpointSpeedTest.tsx",
+          "start": 55,
+          "end": 56
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 48,
+          "end": 59
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.1111111111111111,
+        "hit_at_5": 0.0,
+        "weighted_recall_at_5": 0.0,
+        "weighted_recall_at_10": 0.4,
+        "primary_recall_at_10": 0.0,
+        "ndcg_at_10": 0.10155306288225219
+      },
+      "returned_chars": 25320,
+      "hit_count": 18,
+      "elapsed_ms": 665,
+      "wall_elapsed_ms": 691
+    },
+    {
+      "id": "cc-switch-proxy-error-response",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "feature",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 2,
+      "retrieved": [
+        {
+          "path": "src-tauri/src/proxy/handlers.rs",
+          "start": 1739,
+          "end": 1772
+        },
+        {
+          "path": "src-tauri/src/proxy/error_mapper.rs",
+          "start": 19,
+          "end": 66
+        },
+        {
+          "path": "src-tauri/src/proxy/error.rs",
+          "start": 82,
+          "end": 181
+        },
+        {
+          "path": "src-tauri/src/proxy/hyper_client.rs",
+          "start": 772,
+          "end": 804
+        },
+        {
+          "path": "src-tauri/src/mcp/codex.rs",
+          "start": 94,
+          "end": 152
+        },
+        {
+          "path": "src-tauri/src/claude_mcp.rs",
+          "start": 197,
+          "end": 267
+        },
+        {
+          "path": "src-tauri/src/mcp/grokbuild.rs",
+          "start": 214,
+          "end": 251
+        },
+        {
+          "path": "src-tauri/src/proxy/forwarder.rs",
+          "start": 2291,
+          "end": 2344
+        },
+        {
+          "path": "src-tauri/src/gemini_mcp.rs",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "src-tauri/src/proxy/mod.rs",
+          "start": 1,
+          "end": 55
+        },
+        {
+          "path": "src-tauri/src/proxy/handlers.rs",
+          "start": 1774,
+          "end": 1785
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex_responses_sse.rs",
+          "start": 349,
+          "end": 351
+        },
+        {
+          "path": "src-tauri/src/proxy/hyper_client.rs",
+          "start": 119,
+          "end": 125
+        },
+        {
+          "path": "src-tauri/src/app_config.rs",
+          "start": 451,
+          "end": 462
+        },
+        {
+          "path": "src-tauri/src/commands/misc.rs",
+          "start": 372,
+          "end": 378
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 241,
+          "end": 252
+        },
+        {
+          "path": "src-tauri/src/proxy/hyper_client.rs",
+          "start": 99,
+          "end": 105
+        },
+        {
+          "path": "src-tauri/src/proxy/hyper_client.rs",
+          "start": 169,
+          "end": 180
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/streaming_codex_chat.rs",
+          "start": 935,
+          "end": 937
+        },
+        {
+          "path": "src-tauri/src/proxy/error.rs",
+          "start": 10,
+          "end": 21
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.5,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 1.0,
+        "weighted_recall_at_10": 1.0,
+        "primary_recall_at_10": 1.0,
+        "ndcg_at_10": 0.606422698504514
+      },
+      "returned_chars": 29539,
+      "hit_count": 20,
+      "elapsed_ms": 742,
+      "wall_elapsed_ms": 768
+    },
+    {
+      "id": "cc-switch-provider-failover",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "feature",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 4,
+      "retrieved": [
+        {
+          "path": "src-tauri/src/proxy/forwarder.rs",
+          "start": 551,
+          "end": 558
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 449,
+          "end": 511
+        },
+        {
+          "path": "src/components/providers/ProviderList.tsx",
+          "start": 51,
+          "end": 73
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 1087,
+          "end": 1112
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex.rs",
+          "start": 1326,
+          "end": 1371
+        },
+        {
+          "path": "src/utils/providerConfigUtils.ts",
+          "start": 548,
+          "end": 588
+        },
+        {
+          "path": "src/components/providers/forms/ProviderForm.tsx",
+          "start": 2065,
+          "end": 2128
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/claude.rs",
+          "start": 468,
+          "end": 534
+        },
+        {
+          "path": "src-tauri/src/services/provider/live.rs",
+          "start": 1123,
+          "end": 1176
+        },
+        {
+          "path": "src/components/providers/EditProviderDialog.tsx",
+          "start": 184,
+          "end": 201
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 132,
+          "end": 143
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 48,
+          "end": 59
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 74,
+          "end": 85
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 95,
+          "end": 106
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 101,
+          "end": 103
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex.rs",
+          "start": 76,
+          "end": 85
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 428,
+          "end": 439
+        },
+        {
+          "path": "src-tauri/src/provider.rs",
+          "start": 575,
+          "end": 585
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex.rs",
+          "start": 28,
+          "end": 39
+        },
+        {
+          "path": "src/lib/api/types.ts",
+          "start": 2,
+          "end": 11
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 1.0,
+        "top1_primary": 1.0,
+        "mrr": 1.0,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.3,
+        "weighted_recall_at_10": 0.3,
+        "primary_recall_at_10": 0.5,
+        "ndcg_at_10": 0.492661526824024
+      },
+      "returned_chars": 24184,
+      "hit_count": 20,
+      "elapsed_ms": 705,
+      "wall_elapsed_ms": 731
+    },
+    {
+      "id": "cc-switch-sync-protocol",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "overview",
+      "code_language": "typescript",
+      "status": "ok",
+      "relevant_path_count": 3,
+      "retrieved": [
+        {
+          "path": "src/components/settings/WebdavSyncSection.tsx",
+          "start": 54,
+          "end": 103
+        },
+        {
+          "path": "src-tauri/src/settings.rs",
+          "start": 1096,
+          "end": 1161
+        },
+        {
+          "path": "src/lib/api/settings.ts",
+          "start": 137,
+          "end": 203
+        },
+        {
+          "path": "src/i18n/locales/zh.json",
+          "start": 464,
+          "end": 619
+        },
+        {
+          "path": "src/i18n/locales/zh-TW.json",
+          "start": 464,
+          "end": 619
+        },
+        {
+          "path": "src/i18n/locales/ja.json",
+          "start": 542,
+          "end": 680
+        },
+        {
+          "path": "src/i18n/locales/en.json",
+          "start": 511,
+          "end": 620
+        },
+        {
+          "path": "docs/release-notes/v3.16.2-ja.md",
+          "start": 60,
+          "end": 66
+        },
+        {
+          "path": "docs/release-notes/v3.16.2-en.md",
+          "start": 224,
+          "end": 238
+        },
+        {
+          "path": "docs/release-notes/v3.16.2-zh.md",
+          "start": 60,
+          "end": 70
+        }
+      ],
+      "metrics": {
+        "top1_relevant": 0.0,
+        "top1_primary": 0.0,
+        "mrr": 0.0,
+        "hit_at_5": 0.0,
+        "weighted_recall_at_5": 0.0,
+        "weighted_recall_at_10": 0.0,
+        "primary_recall_at_10": 0.0,
+        "ndcg_at_10": 0.0
+      },
+      "returned_chars": 36371,
+      "hit_count": 10,
+      "elapsed_ms": 1423,
+      "wall_elapsed_ms": 1450
+    }
+  ]
+}

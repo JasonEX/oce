@@ -1,0 +1,17 @@
+{
+  "commit": "33ef932bdec9681e279871434d62dfb0a40fe90b",
+  "source_sha256": "58550a0608555893ac2491deda5c5a5d96da74142781f6643ad20766e193617c",
+  "source_matches_frozen_foundation": true,
+  "archive_branch": "archive/retrieval-current-20260911",
+  "archive_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+  "foundation_comparison_commit": "14dbd642189d4b16913d120eebca5a65280463c1",
+  "production_difference_from_ac5c9e1": [
+    "src/oce/application/container.py",
+    "src/oce/domain/services/source_filter.py",
+    "src/oce/infrastructure/persistence/lexical_index.py",
+    "src/oce/infrastructure/persistence/scope_filter.py",
+    "src/oce/infrastructure/persistence/sql_symbol_projection.py",
+    "src/oce/infrastructure/persistence/symbol_search_store.py",
+    "src/oce/shared/index_profile.py"
+  ]
+}

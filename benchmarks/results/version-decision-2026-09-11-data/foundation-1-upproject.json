@@ -1,0 +1,1124 @@
+{
+  "schema_version": 1,
+  "suite": "project_cases",
+  "label": "foundation-1",
+  "created_at": "2026-09-12T00:54:06.134233+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "7ad6ae15760dbbd0a04e5f5767b6c58883e62e898be33b36d82504aba77167b4",
+    "project_cases_sha256": "9aeeccf1d4ef8695520b98a864ef12d1107265000e12a9644feb0ccb336e9084"
+  },
+  "snapshots": [
+    {
+      "id": "cc-switch-40cac1a",
+      "repo": "farion1231/cc-switch",
+      "revision": "40cac1a68edf8c9e7b3a89125cf40bb93a348404",
+      "code_language": "typescript"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": false,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "provenance": "foundation-1-proof.json"
+    }
+  },
+  "case_ids": [
+    "cc-switch-add-provider-ipc",
+    "cc-switch-auth-login-ipc",
+    "cc-switch-delete-profile-ipc",
+    "cc-switch-enable-prompt-ipc",
+    "cc-switch-first-run-settings-use",
+    "cc-switch-session-search-use"
+  ],
+  "sync": {
+    "cc-switch-40cac1a": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 6,
+    "successful_cases": 6,
+    "error_cases": 0,
+    "primary_top1": 1.0,
+    "primary_hit_at_3": 1.0,
+    "primary_hit_at_10": 1.0,
+    "primary_mrr": 1.0,
+    "primary_recall": 0.7222222222222222,
+    "supporting_recall": 1.0,
+    "relation_recall": 0.8194444444444445,
+    "hop_recall": 0.8194444444444445,
+    "chain_closed": 0.5,
+    "test_recall": 1.0,
+    "distractor_head": 0.16666666666666666,
+    "distractor_any": 0.3333333333333333,
+    "truth_region_share": 0.12816091954022987,
+    "error_classes": {
+      "none": 0,
+      "exact_miss": 0,
+      "distractor": 1,
+      "test_missing": 0,
+      "relation_missing": 0,
+      "redundant": 5
+    },
+    "mean_elapsed_ms": 974.3333333333334,
+    "p50_elapsed_ms": 768,
+    "p95_elapsed_ms": 1805,
+    "mean_returned_chars": 25568.166666666668,
+    "mean_hit_count": 19.833333333333332,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 6,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "llm_rerank": {
+        "calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      },
+      "rerank": {
+        "calls": 0,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "reference": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.5,
+      "distractor_any": 1.0,
+      "truth_region_share": 0.1,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 1,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 1
+      },
+      "mean_elapsed_ms": 760.0,
+      "p50_elapsed_ms": 721,
+      "p95_elapsed_ms": 799,
+      "mean_returned_chars": 26525.5,
+      "mean_hit_count": 20.0
+    },
+    "call_chain": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.5833333333333334,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.7291666666666666,
+      "hop_recall": 0.7291666666666666,
+      "chain_closed": 0.25,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.14224137931034483,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 4
+      },
+      "mean_elapsed_ms": 1081.5,
+      "p50_elapsed_ms": 768,
+      "p95_elapsed_ms": 1805,
+      "mean_returned_chars": 25089.5,
+      "mean_hit_count": 19.75
+    },
+    "test_mapping": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "reexport": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "multi_impl": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    }
+  },
+  "by_snapshot": {
+    "cc-switch-40cac1a": {
+      "cases": 6,
+      "successful_cases": 6,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.7222222222222222,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.8194444444444445,
+      "hop_recall": 0.8194444444444445,
+      "chain_closed": 0.5,
+      "test_recall": 1.0,
+      "distractor_head": 0.16666666666666666,
+      "distractor_any": 0.3333333333333333,
+      "truth_region_share": 0.12816091954022987,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 1,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 5
+      },
+      "mean_elapsed_ms": 974.3333333333334,
+      "p50_elapsed_ms": 768,
+      "p95_elapsed_ms": 1805,
+      "mean_returned_chars": 25568.166666666668,
+      "mean_hit_count": 19.833333333333332
+    }
+  },
+  "cases": [
+    {
+      "id": "cc-switch-add-provider-ipc",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "call_chain",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src-tauri/src/commands/provider.rs",
+          "start": 39,
+          "end": 94
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1342,
+          "end": 1386
+        },
+        {
+          "path": "src/lib/api/providers.ts",
+          "start": 1,
+          "end": 47
+        },
+        {
+          "path": "README.md",
+          "start": 501,
+          "end": 591
+        },
+        {
+          "path": "src/lib/api/pi.ts",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "src/hooks/useUsageCacheBridge.ts",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "src-tauri/src/commands/hermes.rs",
+          "start": 1,
+          "end": 44
+        },
+        {
+          "path": "src/hooks/useHermes.ts",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "src/hooks/useProviderActions.ts",
+          "start": 471,
+          "end": 484
+        },
+        {
+          "path": "src/main.tsx",
+          "start": 1,
+          "end": 48
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.6666666666666666,
+        "hop_recall": 0.5,
+        "chain_closed": 0.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.2,
+        "error_class": "redundant"
+      },
+      "returned_chars": 19174,
+      "hit_count": 10,
+      "elapsed_ms": 1805,
+      "wall_elapsed_ms": 1831
+    },
+    {
+      "id": "cc-switch-auth-login-ipc",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "call_chain",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src-tauri/src/commands/auth.rs",
+          "start": 104,
+          "end": 141
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1627,
+          "end": 1674
+        },
+        {
+          "path": "src-tauri/src/commands/copilot.rs",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "README.md",
+          "start": 399,
+          "end": 417
+        },
+        {
+          "path": "src/lib/api/auth.ts",
+          "start": 1,
+          "end": 64
+        },
+        {
+          "path": "src/components/providers/forms/hooks/useManagedAuth.ts",
+          "start": 61,
+          "end": 132
+        },
+        {
+          "path": "src/lib/api/copilot.ts",
+          "start": 1,
+          "end": 62
+        },
+        {
+          "path": "CONTRIBUTING.md",
+          "start": 45,
+          "end": 77
+        },
+        {
+          "path": "src-tauri/src/commands/mod.rs",
+          "start": 1,
+          "end": 74
+        },
+        {
+          "path": "src-tauri/src/commands/lightweight.rs",
+          "start": 1,
+          "end": 14
+        },
+        {
+          "path": "src-tauri/src/commands/auth.rs",
+          "start": 47,
+          "end": 52
+        },
+        {
+          "path": "src-tauri/src/commands/auth.rs",
+          "start": 89,
+          "end": 94
+        },
+        {
+          "path": "src-tauri/src/services/pi_prompt_files.rs",
+          "start": 42,
+          "end": 53
+        },
+        {
+          "path": "src-tauri/src/services/pi_prompt_files.rs",
+          "start": 109,
+          "end": 112
+        },
+        {
+          "path": "src-tauri/src/services/skill.rs",
+          "start": 4570,
+          "end": 4579
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/codex_oauth_auth.rs",
+          "start": 264,
+          "end": 275
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/copilot_auth.rs",
+          "start": 591,
+          "end": 602
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/xai_oauth_auth.rs",
+          "start": 220,
+          "end": 231
+        },
+        {
+          "path": "src-tauri/src/commands/auth.rs",
+          "start": 38,
+          "end": 45
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 10,
+          "end": 10
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.15,
+        "error_class": "redundant"
+      },
+      "returned_chars": 22073,
+      "hit_count": 20,
+      "elapsed_ms": 753,
+      "wall_elapsed_ms": 776
+    },
+    {
+      "id": "cc-switch-delete-profile-ipc",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "call_chain",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src-tauri/src/commands/profile.rs",
+          "start": 96,
+          "end": 152
+        },
+        {
+          "path": "src/lib/api/profiles.ts",
+          "start": 57,
+          "end": 109
+        },
+        {
+          "path": "src/lib/query/profiles.ts",
+          "start": 44,
+          "end": 92
+        },
+        {
+          "path": "src-tauri/src/services/profile.rs",
+          "start": 269,
+          "end": 316
+        },
+        {
+          "path": "src/components/profiles/ProfileManageDialog.tsx",
+          "start": 1,
+          "end": 37
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1437,
+          "end": 1483
+        },
+        {
+          "path": "src/components/profiles/ProfileSwitcher.tsx",
+          "start": 1,
+          "end": 63
+        },
+        {
+          "path": "src-tauri/src/database/dao/profiles.rs",
+          "start": 138,
+          "end": 207
+        },
+        {
+          "path": "src/lib/query/mutations.ts",
+          "start": 402,
+          "end": 460
+        },
+        {
+          "path": "src/components/sessions/SessionManagerPage.tsx",
+          "start": 455,
+          "end": 558
+        },
+        {
+          "path": "src-tauri/src/database/dao/profiles.rs",
+          "start": 109,
+          "end": 115
+        },
+        {
+          "path": "src-tauri/src/database/dao/profiles.rs",
+          "start": 118,
+          "end": 120
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/streaming_codex_chat.rs",
+          "start": 935,
+          "end": 937
+        },
+        {
+          "path": "src-tauri/src/services/profile.rs",
+          "start": 246,
+          "end": 257
+        },
+        {
+          "path": "src/lib/query/profiles.ts",
+          "start": 8,
+          "end": 14
+        },
+        {
+          "path": "src/utils/errorUtils.ts",
+          "start": 6,
+          "end": 16
+        },
+        {
+          "path": "src-tauri/src/database/dao/profiles.rs",
+          "start": 63,
+          "end": 74
+        },
+        {
+          "path": "src-tauri/src/app_config.rs",
+          "start": 451,
+          "end": 462
+        },
+        {
+          "path": "src-tauri/src/commands/misc.rs",
+          "start": 372,
+          "end": 378
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 241,
+          "end": 252
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.75,
+        "hop_recall": 0.75,
+        "chain_closed": 0.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.15,
+        "error_class": "redundant"
+      },
+      "returned_chars": 27659,
+      "hit_count": 20,
+      "elapsed_ms": 768,
+      "wall_elapsed_ms": 794
+    },
+    {
+      "id": "cc-switch-enable-prompt-ipc",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "call_chain",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src-tauri/src/commands/prompt.rs",
+          "start": 1,
+          "end": 55
+        },
+        {
+          "path": "src/lib/api/prompts.ts",
+          "start": 1,
+          "end": 26
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 1387,
+          "end": 1437
+        },
+        {
+          "path": "src/hooks/usePromptActions.ts",
+          "start": 116,
+          "end": 161
+        },
+        {
+          "path": "README.md",
+          "start": 501,
+          "end": 591
+        },
+        {
+          "path": "src-tauri/src/commands/lightweight.rs",
+          "start": 1,
+          "end": 14
+        },
+        {
+          "path": "src-tauri/src/services/profile.rs",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/components/prompts/PiPromptPanel.tsx",
+          "start": 147,
+          "end": 214
+        },
+        {
+          "path": "src-tauri/src/deeplink/prompt.rs",
+          "start": 15,
+          "end": 86
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 116,
+          "end": 191
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 447,
+          "end": 452
+        },
+        {
+          "path": "src-tauri/src/prompt_files.rs",
+          "start": 12,
+          "end": 17
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 13,
+          "end": 18
+        },
+        {
+          "path": "src-tauri/src/database/dao/prompts.rs",
+          "start": 57,
+          "end": 62
+        },
+        {
+          "path": "src-tauri/src/services/profile.rs",
+          "start": 107,
+          "end": 112
+        },
+        {
+          "path": "src-tauri/src/config.rs",
+          "start": 319,
+          "end": 324
+        },
+        {
+          "path": "src-tauri/src/app_config.rs",
+          "start": 451,
+          "end": 462
+        },
+        {
+          "path": "src-tauri/src/commands/misc.rs",
+          "start": 372,
+          "end": 378
+        },
+        {
+          "path": "src-tauri/src/proxy/providers/mod.rs",
+          "start": 241,
+          "end": 252
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 54,
+          "end": 62
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 64,
+          "end": 75
+        },
+        {
+          "path": "src-tauri/src/services/prompt.rs",
+          "start": 100,
+          "end": 110
+        },
+        {
+          "path": "src/lib/api/prompts.ts",
+          "start": 37,
+          "end": 39
+        },
+        {
+          "path": "src/lib/api/prompts.ts",
+          "start": 41,
+          "end": 43
+        },
+        {
+          "path": "src-tauri/src/prompt.rs",
+          "start": 4,
+          "end": 15
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 10,
+          "end": 10
+        },
+        {
+          "path": "src-tauri/src/services/profile.rs",
+          "start": 446,
+          "end": 455
+        },
+        {
+          "path": "src-tauri/tests/profile_roundtrip.rs",
+          "start": 208,
+          "end": 217
+        },
+        {
+          "path": "src-tauri/tests/profile_roundtrip.rs",
+          "start": 550,
+          "end": 558
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.3333333333333333,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 0.6666666666666666,
+        "chain_closed": 0.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.06896551724137931,
+        "error_class": "redundant"
+      },
+      "returned_chars": 31452,
+      "hit_count": 29,
+      "elapsed_ms": 1000,
+      "wall_elapsed_ms": 1025
+    },
+    {
+      "id": "cc-switch-first-run-settings-use",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "reference",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/components/FirstRunNoticeDialog.tsx",
+          "start": 17,
+          "end": 67
+        },
+        {
+          "path": "src/App.tsx",
+          "start": 176,
+          "end": 215
+        },
+        {
+          "path": "src/hooks/useSettings.ts",
+          "start": 66,
+          "end": 134
+        },
+        {
+          "path": "tests/components/SettingsDialog.test.tsx",
+          "start": 241,
+          "end": 254
+        },
+        {
+          "path": "src/components/UsageScriptModal.tsx",
+          "start": 207,
+          "end": 224
+        },
+        {
+          "path": "tests/hooks/useSettings.test.tsx",
+          "start": 418,
+          "end": 457
+        },
+        {
+          "path": "src/lib/query/queries.ts",
+          "start": 56,
+          "end": 116
+        },
+        {
+          "path": "src/components/settings/SettingsPage.tsx",
+          "start": 549,
+          "end": 581
+        },
+        {
+          "path": "src-tauri/src/settings.rs",
+          "start": 387,
+          "end": 420
+        },
+        {
+          "path": "src-tauri/src/lib.rs",
+          "start": 811,
+          "end": 840
+        },
+        {
+          "path": "src/lib/platform.ts",
+          "start": 21,
+          "end": 31
+        },
+        {
+          "path": "src/lib/query/mutations.ts",
+          "start": 446,
+          "end": 457
+        },
+        {
+          "path": "src/hooks/useSettingsForm.ts",
+          "start": 72,
+          "end": 83
+        },
+        {
+          "path": "src/hooks/useDirectorySettings.ts",
+          "start": 127,
+          "end": 138
+        },
+        {
+          "path": "src/hooks/useSettingsMetadata.ts",
+          "start": 18,
+          "end": 29
+        },
+        {
+          "path": "src/hooks/useSettings.ts",
+          "start": 53,
+          "end": 57
+        },
+        {
+          "path": "src/components/FrontendErrorBoundary.tsx",
+          "start": 29,
+          "end": 40
+        },
+        {
+          "path": "src/hooks/useDarkMode.ts",
+          "start": 10,
+          "end": 21
+        },
+        {
+          "path": "src/components/settings/SettingsPage.tsx",
+          "start": 93,
+          "end": 102
+        },
+        {
+          "path": "tests/hooks/useSettings.test.tsx",
+          "start": 221,
+          "end": 229
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 1.0,
+        "distractor_any": 1.0,
+        "truth_region_share": 0.1,
+        "error_class": "distractor"
+      },
+      "returned_chars": 21465,
+      "hit_count": 20,
+      "elapsed_ms": 799,
+      "wall_elapsed_ms": 826
+    },
+    {
+      "id": "cc-switch-session-search-use",
+      "instance_id": "cc-switch-40cac1a",
+      "kind": "reference",
+      "code_language": "typescript",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/components/sessions/SessionManagerPage.tsx",
+          "start": 234,
+          "end": 301
+        },
+        {
+          "path": "src/hooks/useSessionSearch.ts",
+          "start": 1,
+          "end": 72
+        },
+        {
+          "path": "src/components/sessions/SessionItem.tsx",
+          "start": 32,
+          "end": 110
+        },
+        {
+          "path": "tests/components/SessionManagerPage.test.tsx",
+          "start": 362,
+          "end": 390
+        },
+        {
+          "path": "src/components/sessions/SessionMessageItem.tsx",
+          "start": 30,
+          "end": 123
+        },
+        {
+          "path": "docs/user-manual/en/3-extensions/3.4-sessions.md",
+          "start": 22,
+          "end": 45
+        },
+        {
+          "path": "src-tauri/src/proxy/copilot_optimizer.rs",
+          "start": 1147,
+          "end": 1208
+        },
+        {
+          "path": "src-tauri/src/session_manager/providers/gemini.rs",
+          "start": 177,
+          "end": 258
+        },
+        {
+          "path": "README.md",
+          "start": 239,
+          "end": 252
+        },
+        {
+          "path": "src/i18n/locales/en.json",
+          "start": 1032,
+          "end": 1149
+        },
+        {
+          "path": "src/components/sessions/utils.ts",
+          "start": 157,
+          "end": 168
+        },
+        {
+          "path": "src/components/sessions/utils.ts",
+          "start": 72,
+          "end": 78
+        },
+        {
+          "path": "src/components/sessions/SessionManagerPage.tsx",
+          "start": 165,
+          "end": 172
+        },
+        {
+          "path": "src/components/sessions/SessionManagerPage.tsx",
+          "start": 174,
+          "end": 185
+        },
+        {
+          "path": "src-tauri/src/services/provider/mod.rs",
+          "start": 2559,
+          "end": 2570
+        },
+        {
+          "path": "src-tauri/src/services/provider/pi.rs",
+          "start": 32,
+          "end": 43
+        },
+        {
+          "path": "src/lib/api/providers.ts",
+          "start": 58,
+          "end": 64
+        },
+        {
+          "path": "src/components/sessions/utils.ts",
+          "start": 149,
+          "end": 155
+        },
+        {
+          "path": "src/components/sessions/utils.ts",
+          "start": 69,
+          "end": 70
+        },
+        {
+          "path": "src/components/sessions/utils.ts",
+          "start": 122,
+          "end": 129
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 1.0,
+        "truth_region_share": 0.1,
+        "error_class": "redundant"
+      },
+      "returned_chars": 31586,
+      "hit_count": 20,
+      "elapsed_ms": 721,
+      "wall_elapsed_ms": 747
+    }
+  ]
+}

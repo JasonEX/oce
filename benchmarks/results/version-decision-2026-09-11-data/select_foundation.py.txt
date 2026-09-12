@@ -1,0 +1,56 @@
+"""Restore the approved foundation in the main tree while retaining experiment history."""
+
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+
+ROOT = Path("/home/yuqian/workspace/oce")
+OUT = Path(__file__).resolve().parent
+FOUNDATION = "14dbd64"
+CURRENT = "be9be3b"
+
+
+def git(*args):
+    return subprocess.check_output(["git", *args], cwd=ROOT, text=True)
+
+
+assert not git("status", "--porcelain")
+assert git("rev-parse", "HEAD") == git("rev-parse", CURRENT)
+assert git("rev-parse", "archive/retrieval-current-20260911") == git("rev-parse", CURRENT)
+comparison = json.loads((OUT / "comparison.json").read_text())
+audits = [json.loads((OUT / f"{label}-warning-audit.json").read_text())
+          for label in ("foundation-1", "current-1")]
+affected = set().union(*(set(audit["affected_suites"]) for audit in audits))
+clean_failures = [row for row in comparison["guard_failures"] if row["suite"] not in affected]
+assert clean_failures, "Selection needs an uncontaminated guard failure"
+paths = set(git("ls-tree", "-r", "--name-only", FOUNDATION).splitlines())
+paths.update(git("ls-tree", "-r", "--name-only", CURRENT).splitlines())
+selected = sorted(path for path in paths if (
+    path.startswith("src/")
+    or (path.startswith("tests/") and not path.startswith("tests/unit/benchmarks/"))
+    or path in (".env.example", "AGENTS.md", "README.md", "README.zh-CN.md")
+))
+subprocess.run(["git", "restore", "--source", FOUNDATION, "--worktree", "--", *selected],
+               cwd=ROOT, check=True)
+files = {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+         for path in sorted(ROOT.glob("src/oce/**/*.py"))}
+protocol = json.loads((OUT / "protocol.json").read_text())
+assert files == protocol["variants"]["foundation"]["source_files"]
+source_hash = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+assert source_hash == protocol["variants"]["foundation"]["source_sha256"]
+result = {
+    "selected": "foundation",
+    "foundation_commit": git("rev-parse", FOUNDATION).strip(),
+    "retained_current_commit": git("rev-parse", CURRENT).strip(),
+    "source_sha256": source_hash,
+    "source_files": files,
+    "restored_paths": selected,
+    "clean_guard_failures": clean_failures,
+    "new_validation_consumed": False,
+    "reason": "The approved original guards fail on unaffected suites. Deliver the common-repair foundation and preserve the current version for research.",
+}
+with (OUT / "selected-source.json").open("x") as stream:
+    json.dump(result, stream, indent=2)
+    stream.write("\n")
+print("Selected foundation production:", source_hash)

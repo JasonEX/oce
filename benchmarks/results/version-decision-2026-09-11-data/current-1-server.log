@@ -1,0 +1,924 @@
+oce serving on http://127.0.0.1:18987 (data dir: /home/yuqian/.cache/oce/simplification-candidate-index)
+INFO:     Started server process [37587]
+INFO:     Waiting for application startup.
+2026-09-11 17:57:45.804 | INFO     | oce.infrastructure.milvus3.base:__init__:65 - Connecting to Milvus: /home/yuqian/.cache/oce/simplification-candidate-index/oce_milvus.db
+2026-09-11 17:57:45.804 | INFO     | oce.infrastructure.milvus3.base:__init__:65 - Connecting to Milvus: /home/yuqian/.cache/oce/simplification-candidate-index/oce_milvus.db
+2026-09-11 17:57:55.876 | WARNING  | oce.application.warmup:warm_retrieval_stores:85 - Warm-up of the dense store failed: TimeoutError
+2026-09-11 17:58:00.297 | INFO     | oce.infrastructure.milvus3.base:initialize:89 - Milvus collection ready: oce_paths_v1
+2026-09-11 17:58:00.529 | INFO     | oce.application.warmup:warm_retrieval_stores:90 - Retrieval stores warmed: {'path': 4496, 'lexical': 156}
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:18987 (Press CTRL+C to quit)
+INFO:     127.0.0.1:49382 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49383 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49385 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49386 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49387 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49388 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49389 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49390 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49391 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49392 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49393 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49394 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49395 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49396 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49397 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49399 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49400 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:15.960 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49402 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:16.691 | INFO     | oce.infrastructure.milvus3.base:initialize:89 - Milvus collection ready: oce_chunks
+INFO:     127.0.0.1:49404 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49407 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:17.115 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49668 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49670 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:17.924 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49672 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49673 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49674 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:18.669 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49675 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49677 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49678 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:19.414 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49679 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49680 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49682 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:20.168 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49683 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49684 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49685 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:20.978 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49686 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49687 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49688 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:21.709 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49689 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49690 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49691 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:22.493 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49692 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49693 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49694 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:23.272 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49695 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49696 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49697 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:24.073 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 16 path hits (boosted=0, backfilled=16)
+INFO:     127.0.0.1:49698 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49699 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49700 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:24.789 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 16 path hits (boosted=0, backfilled=16)
+INFO:     127.0.0.1:49701 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:26.153 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:49702 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49703 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:26.492 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49704 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:28.036 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:49705 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49706 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:28.455 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49707 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:29.863 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:49708 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49710 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:30.236 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49711 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:31.718 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:49712 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49713 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:32.067 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49714 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:33.675 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:49715 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49716 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:33.918 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49717 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49718 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49719 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:36.133 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49720 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49721 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49723 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:36.947 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49724 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49725 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49726 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:37.722 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49727 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49728 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49731 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:38.982 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49732 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49733 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49735 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:40.247 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49736 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49737 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49739 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:40.997 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49740 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49741 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49743 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:41.850 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49744 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49745 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49746 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:42.604 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49747 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49748 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49751 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:43.774 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49752 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49753 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49754 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:44.899 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 7 path hits (boosted=0, backfilled=7)
+INFO:     127.0.0.1:49755 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49756 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49757 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:46.113 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 7 path hits (boosted=0, backfilled=7)
+INFO:     127.0.0.1:49759 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49760 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49761 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:47.160 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 7 path hits (boosted=0, backfilled=7)
+INFO:     127.0.0.1:49762 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49763 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49764 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:48.075 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 7 path hits (boosted=0, backfilled=7)
+INFO:     127.0.0.1:49765 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49766 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49767 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:48.948 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49768 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49769 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49770 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:49.681 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49771 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49772 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49776 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:50.475 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49779 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49780 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49783 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:51.316 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49784 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49785 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49788 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:52.126 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49789 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49790 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49791 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:52.924 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49792 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49793 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49794 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:53.696 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49795 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49796 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49799 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:54.501 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49801 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49803 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49806 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:55.346 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 19 path hits (boosted=0, backfilled=19)
+INFO:     127.0.0.1:49807 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49808 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49811 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:56.154 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 19 path hits (boosted=0, backfilled=19)
+INFO:     127.0.0.1:49812 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49813 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49814 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:56.931 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 19 path hits (boosted=0, backfilled=19)
+INFO:     127.0.0.1:49815 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49816 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49817 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:57.711 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 19 path hits (boosted=0, backfilled=19)
+INFO:     127.0.0.1:49818 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49819 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49820 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:58.398 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49821 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49822 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49824 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:58:59.170 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49825 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49826 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49827 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:00.009 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49829 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49830 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49831 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:00.906 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49832 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49833 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49834 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:01.628 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49835 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49836 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49837 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:02.363 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49838 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49839 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49840 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:03.100 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49841 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49842 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49843 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:03.844 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49844 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49845 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49846 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:04.593 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49847 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49848 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49849 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:05.353 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49850 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49851 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49852 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:06.102 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49853 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49854 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49855 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:06.857 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49856 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49857 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49858 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:07.644 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49859 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49860 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49861 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:08.373 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49862 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49863 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49864 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:09.100 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49865 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49866 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49867 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:09.836 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49868 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49869 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49871 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:10.559 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49872 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49873 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49874 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:11.322 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49875 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49876 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49877 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:12.124 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49878 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49879 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49880 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:12.848 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49881 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49882 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49883 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:13.614 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49884 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49885 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49886 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:14.331 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 2 path hits (boosted=0, backfilled=2)
+INFO:     127.0.0.1:49887 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49888 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49889 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:15.090 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49890 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49891 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49892 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:15.851 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49893 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49894 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49895 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:16.623 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 3 path hits (boosted=0, backfilled=3)
+INFO:     127.0.0.1:49896 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49897 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49898 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:17.349 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 3 path hits (boosted=0, backfilled=3)
+INFO:     127.0.0.1:49899 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49900 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49901 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:18.102 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49902 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49903 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49904 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:18.792 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49905 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49906 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49907 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:19.519 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49908 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49909 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49911 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:20.149 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49912 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49913 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49914 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:20.943 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49915 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49916 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49917 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:21.702 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49918 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49920 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49921 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:22.478 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49922 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49923 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49924 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:23.409 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49925 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49926 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49929 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:24.164 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49930 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49931 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49932 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:24.930 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49933 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49934 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49935 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:25.660 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49936 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49937 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49940 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 17:59:26.402 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 0 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:49941 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49942 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49944 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49945 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49946 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49947 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49948 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49949 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49950 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49951 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49952 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49953 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49954 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49955 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49956 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49957 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49958 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49959 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49963 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49964 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49966 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49967 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49970 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49971 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49972 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49973 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49974 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49975 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49976 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49977 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49980 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49982 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49988 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49989 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49990 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49991 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49992 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49993 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49994 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49995 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49996 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49997 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49999 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50063 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50064 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50065 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50066 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50067 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50068 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50070 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50072 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50078 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50079 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50080 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50081 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50082 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50083 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50084 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50085 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50086 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50087 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50088 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50089 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50090 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50092 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50093 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50095 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50096 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50097 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50098 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50099 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50101 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50103 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50104 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50105 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50106 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50107 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50108 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50109 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50110 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50111 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50112 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50113 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50114 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50116 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50117 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50118 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50119 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50120 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50121 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50123 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50124 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50125 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50127 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50128 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50129 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50130 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50131 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50134 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50135 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50139 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50140 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50141 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50142 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50143 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50144 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50145 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50146 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50147 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50148 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50149 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50152 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50153 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:00:51.325 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 2 results
+2026-09-11 18:00:51.484 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 9 content hits with 2 path hits (boosted=1, backfilled=1)
+INFO:     127.0.0.1:50155 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50156 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50157 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:00:54.166 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 0 results
+2026-09-11 18:00:54.713 | INFO     | oce.application.retrieval:_fuse:1141 - No path results, using content-only
+INFO:     127.0.0.1:50160 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:00:55.061 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 2 results
+2026-09-11 18:00:55.336 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 19 content hits with 2 path hits (boosted=1, backfilled=1)
+INFO:     127.0.0.1:50161 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:00:55.718 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 1 results
+2026-09-11 18:00:55.940 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 7 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:50162 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50163 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:00:56.883 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 0 results
+2026-09-11 18:00:57.141 | INFO     | oce.application.retrieval:_fuse:1141 - No path results, using content-only
+INFO:     127.0.0.1:50167 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50168 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50169 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50170 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50171 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50172 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50176 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50177 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50178 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50179 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50180 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50181 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50182 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50183 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50184 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50185 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50186 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50187 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50188 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50189 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50190 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50191 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50193 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50194 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50198 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50199 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50201 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50202 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50203 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50204 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50205 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50206 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50207 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50208 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50210 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50215 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50216 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50217 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50218 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50219 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50220 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50221 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50222 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50224 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50227 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50228 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50230 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:33.265 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 3 results
+2026-09-11 18:01:33.510 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 39 content hits with 3 path hits (boosted=0, backfilled=3)
+INFO:     127.0.0.1:50231 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50232 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56502 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56503 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56504 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56505 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56506 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56507 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56509 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56512 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56513 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56514 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56515 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56516 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56518 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:47.496 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 0 results
+2026-09-11 18:01:47.701 | INFO     | oce.application.retrieval:_fuse:1141 - No path results, using content-only
+INFO:     127.0.0.1:56519 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:48.110 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 1 results
+2026-09-11 18:01:48.347 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:56520 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:48.708 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 1 results
+2026-09-11 18:01:48.911 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 1 path hits (boosted=0, backfilled=1)
+INFO:     127.0.0.1:56521 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56522 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:49.837 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 15 results
+2026-09-11 18:01:50.088 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 15 path hits (boosted=10, backfilled=5)
+INFO:     127.0.0.1:56523 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56524 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56528 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:01:53.616 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56529 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56530 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56534 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56535 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56536 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56537 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56538 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56539 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56540 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56541 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56542 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56543 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56544 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56546 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56547 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56548 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56550 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56551 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56559 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56560 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:12.413 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 5 path hits (boosted=5, backfilled=0)
+INFO:     127.0.0.1:56568 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56569 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56571 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:17.305 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 51 content hits with 7 path hits (boosted=5, backfilled=0)
+INFO:     127.0.0.1:56572 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56577 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56578 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56580 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56582 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:28.408 | WARNING  | oce.infrastructure.persistence.symbol_search_store:search_exact:201 - Exact symbol lookup timed out; returning no exact evidence
+2026-09-11 18:02:28.900 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 1 path hits (boosted=1, backfilled=0)
+INFO:     127.0.0.1:56583 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56584 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:32.615 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 4 path hits (boosted=0, backfilled=0)
+INFO:     127.0.0.1:56588 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:34.363 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 1 path hits (boosted=0, backfilled=0)
+INFO:     127.0.0.1:56589 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56593 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56594 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56595 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56596 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56602 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56603 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:02:49.444 | INFO     | oce.application.retrieval:_recall_paths:1052 - Path index returned 20 results
+2026-09-11 18:02:49.754 | INFO     | oce.application.retrieval:_merge_path_and_content:1347 - Merged 50 content hits with 20 path hits (boosted=3, backfilled=17)
+INFO:     127.0.0.1:56707 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56708 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56714 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56716 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56719 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56721 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56722 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56725 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56726 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56728 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56731 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56732 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56733 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:03:12.416 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56735 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56738 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56739 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56740 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56741 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56743 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56744 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56746 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56747 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56750 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56751 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56752 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56753 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56755 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56756 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56757 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56758 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56759 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56761 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56762 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56763 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56764 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56765 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56766 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56767 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56768 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56769 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56770 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56773 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56774 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56775 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56779 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56781 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56783 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56787 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56788 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56789 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56790 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56795 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56796 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56797 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56798 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56802 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56803 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56806 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56807 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56808 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56809 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56810 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56811 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56816 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56820 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56822 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56843 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56844 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56845 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56846 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56847 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56848 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56849 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56850 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56851 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56852 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56855 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56856 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56858 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56859 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56860 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56861 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56866 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56869 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56870 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56871 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56872 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56873 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56875 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56877 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56878 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56879 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56880 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56881 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:04:36.514 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56882 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:04:38.123 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56883 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:04:39.669 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56884 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:04:41.234 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56885 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:04:42.691 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:56887 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56890 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56891 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56896 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56897 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56898 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56900 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56902 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56903 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56907 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56908 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56909 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56910 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56911 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56912 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56914 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56915 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56916 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56920 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56921 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56931 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56939 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56940 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56941 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56942 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56946 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56947 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56948 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56949 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56950 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56951 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56952 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56953 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56954 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56955 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56956 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56957 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56958 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50641 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50642 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50645 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50646 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50647 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50649 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50651 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50652 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50653 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50654 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50655 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50656 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50657 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50660 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50661 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50662 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50663 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50664 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50666 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50668 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50669 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50670 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50671 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50672 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50674 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50675 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50676 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50677 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50678 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50679 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50680 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50681 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50682 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50683 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50684 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50685 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50686 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50687 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50688 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50690 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50691 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50692 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50693 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50694 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50695 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50696 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50697 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50698 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50699 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50700 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50701 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50702 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50703 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50704 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50705 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50707 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50708 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50709 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50710 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50711 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50712 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50713 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50714 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50715 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50716 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50717 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50719 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50720 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50721 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50722 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50723 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50724 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50725 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50726 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50727 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50728 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50729 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50730 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50731 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50733 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50734 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50735 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50736 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50737 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50738 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50741 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50742 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50743 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50744 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:39.478 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50745 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:40.969 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50746 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50748 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50749 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:42.538 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50750 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:44.060 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50751 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:45.591 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50752 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50753 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50754 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+2026-09-11 18:05:47.279 | WARNING  | oce.application.retrieval:_await_embedding:443 - Query embedding failed; trying SQL retrieval: InternalServerError
+INFO:     127.0.0.1:50755 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50758 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50759 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50760 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50761 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50762 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50764 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50766 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50767 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50768 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50769 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50770 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50771 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50772 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50773 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50774 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50776 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50777 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50778 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50779 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50780 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50781 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50782 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50783 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50784 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50785 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50786 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50787 - "POST /agents/blob-status HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50790 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50791 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50793 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50794 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50795 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50796 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50797 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50798 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50800 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50801 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50802 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50803 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50804 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50805 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50806 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50807 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50808 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50810 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50811 - "POST /agents/codebase-retrieval HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50813 - "GET /admin/stats?window_hours=24 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50814 - "GET /version HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50815 - "GET /admin/index-stats HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-09-11 18:06:18.721 | INFO     | oce.infrastructure.milvus3.base:close:317 - Milvus client closed: oce_chunks
+2026-09-11 18:06:18.721 | INFO     | oce.infrastructure.milvus3.base:close:317 - Milvus client closed: oce_paths_v1
+INFO:     Application shutdown complete.
+INFO:     Finished server process [37587]

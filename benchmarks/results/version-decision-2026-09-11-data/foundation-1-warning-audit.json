@@ -1,0 +1,102 @@
+{
+  "association": "Sequential response order; not independent proof of root cause. Startup warnings are not request failures.",
+  "completed_requests": 631,
+  "request_model_failures": 8,
+  "affected_suites": [
+    "csn",
+    "layout",
+    "swe"
+  ],
+  "warnings": [
+    {
+      "line": 6,
+      "completed_requests_before": 0,
+      "next_case": [
+        "short",
+        "flask-flask-symbol"
+      ],
+      "request_model_failure": false,
+      "message": "Warm-up of the dense store failed: TimeoutError"
+    },
+    {
+      "line": 518,
+      "completed_requests_before": 349,
+      "next_case": [
+        "csn",
+        "csn-segmentio__objconv-06"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 520,
+      "completed_requests_before": 350,
+      "next_case": [
+        "csn",
+        "csn-segmentio__objconv-07"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 610,
+      "completed_requests_before": 402,
+      "next_case": [
+        "swe",
+        "pylint-dev__pylint-6528"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 613,
+      "completed_requests_before": 403,
+      "next_case": [
+        "swe",
+        "pylint-dev__pylint-7080"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 616,
+      "completed_requests_before": 404,
+      "next_case": [
+        "swe",
+        "pytest-dev__pytest-10081"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 619,
+      "completed_requests_before": 405,
+      "next_case": [
+        "swe",
+        "pytest-dev__pytest-10356"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 622,
+      "completed_requests_before": 406,
+      "next_case": [
+        "swe",
+        "pytest-dev__pytest-5787"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    },
+    {
+      "line": 893,
+      "completed_requests_before": 603,
+      "next_case": [
+        "layout",
+        "typescript-types.ts-parseConfig-80-reference"
+      ],
+      "request_model_failure": true,
+      "message": "Query embedding failed; trying SQL retrieval: InternalServerError"
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+"""Review the single operational repeat separately from the original decision pair."""
+
+import hashlib
+import json
+from pathlib import Path
+
+from benchmarks.blackbox.harness import ensure_comparable
+
+OUT = Path(__file__).resolve().parent
+selection = json.loads((OUT / "operational-repeat-selection.json").read_text())
+labels = ("foundation-2", "current-2")
+audits = {label: json.loads((OUT / f"{label}-warning-audit.json").read_text()) for label in labels}
+result = {"labels": labels, "suites": {}, "additional_repeats": False,
+          "interpretation": "One repeat of the union of affected original suites. Original reports remain separate. Any repeat with request pipeline warnings is INCONCLUSIVE for code-attributed utility; it cannot override clean original guard failures. The original current SWE exact timeout is also covered by this repeat selection."}
+
+
+def delta(left, right):
+    return {key: right[key] - value for key, value in left.items()
+            if type(value) in (int, float) and type(right.get(key)) in (int, float)}
+
+
+for suite in selection["suites"]:
+    paths = [OUT / f"{label}-{suite}.json" for label in labels]
+    before, after = [json.loads(path.read_text()) for path in paths]
+    ensure_comparable([before, after], suite=before["suite"])
+    assert before.get("controls") == after.get("controls")
+    for field in ("client_sha256", "client_version", "server_configuration", "harness_source_commit"):
+        assert before["runtime"][field] == after["runtime"][field], (suite, field)
+    assert before.get("case_manifest_sha256") == after.get("case_manifest_sha256")
+    for report in (before, after):
+        assert report["summary"]["error_cases"] == 0
+    errors = {label: sum(row["request_model_failure"] and row["next_case"][0] == suite
+                        for row in audits[label]["warnings"]) for label in labels}
+    request_warnings = {label: [row for row in audits[label]["warnings"]
+                               if row["next_case"] and row["next_case"][0] == suite
+                               and not row["message"].startswith("Warm-up ")]
+                        for label in labels}
+    strata = {key: {"foundation": before[key], "current": after[key]}
+              for key in before if key.startswith("by_") or key == "family_summary"}
+    result["suites"][suite] = {
+        "status": "INCONCLUSIVE" if any(request_warnings.values()) else "NO_RECORDED_REQUEST_WARNING",
+        "request_model_failures": errors,
+        "request_warnings": request_warnings,
+        "foundation_summary": before["summary"], "current_summary": after["summary"],
+        "summary_delta": delta(before["summary"], after["summary"]),
+        "strata": strata,
+        "native_report_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in paths},
+    }
+with (OUT / "operational-comparison.json").open("x") as stream:
+    json.dump(result, stream, indent=2)
+    stream.write("\n")
+for suite, row in result["suites"].items():
+    print(suite, row["status"], row["request_model_failures"])

@@ -1,0 +1,105 @@
+"""Check built source identity and serve the wheel through the stable API."""
+import hashlib
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import sys
+import tarfile
+import time
+import zipfile
+
+import httpx
+from dotenv import dotenv_values
+
+root = Path('/home/yuqian/workspace/oce')
+out = Path('/home/yuqian/.cache/oce/bench-runs/version-decision-2026-09-11')
+package = out / 'package'
+unpacked = package / 'unpacked'
+assert not unpacked.exists()
+wheel, = (package / 'dist').glob('*.whl')
+sdist, = (package / 'dist').glob('*.tar.gz')
+current = {str(p.relative_to(root / 'src')): p.read_bytes() for p in root.glob('src/oce/**/*.py')}
+with zipfile.ZipFile(wheel) as archive:
+    assert {n for n in archive.namelist() if n.startswith('oce/') and n.endswith('.py')} == set(current)
+    assert all(archive.read(name) == content for name, content in current.items())
+    archive.extractall(unpacked)
+with tarfile.open(sdist) as archive:
+    prefix = archive.getnames()[0].split('/')[0] + '/src/'
+    assert all(archive.extractfile(prefix + name).read() == content for name, content in current.items())
+script = 'import hashlib,json; from pathlib import Path; import oce.domain.services.retrieval as r; from oce.main import app; assert Path(r.__file__).is_relative_to(Path(' + repr(str(unpacked)) + ')); print(hashlib.sha256(json.dumps(app.openapi(),sort_keys=True).encode()).hexdigest())'
+api_hash = subprocess.check_output([str(root / '.venv/bin/python'), '-c', script], cwd='/tmp', env=os.environ | {'PYTHONPATH': str(unpacked)}, text=True).strip()
+baseline_hash = subprocess.check_output([str(root / '.venv/bin/python'), '-c', 'import hashlib,json; from oce.main import app; print(hashlib.sha256(json.dumps(app.openapi(),sort_keys=True).encode()).hexdigest())'], cwd='/tmp', env=os.environ | {'PYTHONPATH': str(out / 'foundation/src')}, text=True).strip()
+assert api_hash == baseline_hash
+previous_hash = subprocess.check_output([str(root / '.venv/bin/python'), '-c', 'import hashlib,json; from oce.main import app; print(hashlib.sha256(json.dumps(app.openapi(),sort_keys=True).encode()).hexdigest())'], cwd='/tmp', env=os.environ | {'PYTHONPATH': str(out / 'current/src')}, text=True).strip()
+assert api_hash == previous_hash, 'Public API schema changed across selected and archived variants'
+proof = {'wheel': str(wheel), 'wheel_sha256': hashlib.sha256(wheel.read_bytes()).hexdigest(), 'sdist': str(sdist), 'sdist_sha256': hashlib.sha256(sdist.read_bytes()).hexdigest(), 'all_python_matches_final_source': True, 'openapi_matches_foundation': True, 'openapi_sha256': api_hash, 'source_sha256': json.loads((out / 'selected-source.json').read_text())['source_sha256']}
+proof['openapi_matches_archived_current'] = True
+(package / 'package-proof.json').write_text(json.dumps(proof, indent=2) + '\n')
+print('Wheel and sdist match final source; packaged import and API schema verified.', flush=True)
+
+sys.path.insert(0, str(root))
+from benchmarks.blackbox.harness import server_configuration
+creds = dotenv_values('/home/yuqian/.oce/benchmark.env')
+client = Path('/home/yuqian/workspace/oce-client/target/release/oce-client')
+manifest = root / 'benchmarks/blackbox/reference_regions_v2_2026_09_11.json'
+env = {k: v for k, v in os.environ.items() if not k.startswith('RETRIEVAL_')}
+env.update(OCE_API_KEY=creds['API_KEY'], OCE_ADMIN_API_KEY=creds['API_KEY'], OCE_CLIENT_BINARY=str(client), EMBED_QUERY_CACHE_MAX_ENTRIES='0', RERANK_ENABLED='false', LLM_RERANK_ENABLED='false', MONITORING_STORE_QUERY_TEXT='false')
+api = 'http://127.0.0.1:18987'
+with socket.socket() as sock:
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(('127.0.0.1', 18987))
+server_log = package / 'server.log'
+with server_log.open('x') as log:
+    proc = subprocess.Popen([str(root / '.venv/bin/python'), '-c', 'from pathlib import Path; import oce.domain.services.retrieval as r; assert Path(r.__file__).is_relative_to(Path(' + repr(str(unpacked)) + ')); from oce.cli import main; main()', '-v', 'serve', '--data-dir', '/home/yuqian/.cache/oce/simplification-candidate-index', '--env-file', '/home/yuqian/.oce/benchmark.env', '--host', '127.0.0.1', '--port', '18987'], cwd='/tmp', env=env | {'PYTHONPATH': str(unpacked)}, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        for _ in range(180):
+            if proc.poll() is not None:
+                raise RuntimeError('Packaged server exited before readiness')
+            try:
+                if httpx.get(api + '/health', timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(.5)
+        else:
+            raise RuntimeError('Packaged server readiness timeout')
+        for _ in range(6):
+            runtime = server_configuration(api, creds['API_KEY'])
+            if runtime is not None:
+                break
+            time.sleep(5)
+        assert runtime is not None and not runtime['query_cache']['enabled']
+        controls = json.loads((out / 'protocol.json').read_text())['runtime_control']
+        for key, value in controls.items():
+            assert runtime[key] == value, f'Packaged runtime control drift: {key}'
+        (package / 'runtime-preflight.json').write_text(json.dumps(runtime, indent=2) + '\n')
+        print('Packaged server ready; evaluating frozen reference catalog.', flush=True)
+        target = out / 'packaged-reference-v2.json'
+        with (package / 'reference-v2.log').open('x') as log:
+            subprocess.run([str(root / '.venv/bin/python'), '-m', 'benchmarks.blackbox.project_cases', '--cases', str(manifest), 'run', '--api-url', api, '--label', 'selected-package-reference-v2', '--metadata', 'purpose=development annotation contract and packaged runtime smoke', '--output', str(target)], cwd=root, env=env | {'PYTHONPATH': str(root)}, stdout=log, stderr=subprocess.STDOUT, check=True)
+        report = json.loads(target.read_text())
+        assert report['summary']['error_cases'] == 0
+        captured = report['runtime']['server_configuration']
+        for field in ('index_profile', 'retrieval', 'query_cache'):
+            assert runtime[field] == captured[field]
+        for store in ('dense', 'path'):
+            assert runtime[store]['entities'] == captured[store]['entities']
+        proof.update(reference_manifest_sha256=hashlib.sha256(manifest.read_bytes()).hexdigest(), reference_report_sha256=hashlib.sha256(target.read_bytes()).hexdigest(), reference_cases=report['summary']['cases'], client_sha256=hashlib.sha256(client.read_bytes()).hexdigest(), stable_api_runtime=True)
+        print('Packaged reference run:', json.dumps(report['summary']), flush=True)
+    finally:
+        if proc.poll() is None:
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(timeout=120)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGTERM)
+                proc.wait(timeout=10)
+        assert proc.returncode in (0, -signal.SIGTERM)
+        assert 'Application shutdown complete.' in server_log.read_text()
+        proof['normal_shutdown'] = True
+assert all((root / 'src' / name).read_bytes() == data for name, data in current.items())
+(package / 'runtime-proof.json').write_text(json.dumps(proof, indent=2) + '\n')
+print('Packaged final-source runtime verified; server shut down normally.', flush=True)

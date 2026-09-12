@@ -1,0 +1,2768 @@
+{
+  "schema_version": 1,
+  "suite": "project_cases",
+  "label": "selected-package-reference-v2",
+  "created_at": "2026-09-12T01:20:32.557397+00:00",
+  "controls": {
+    "metrics_settle_seconds": 6.0
+  },
+  "source_revisions": {
+    "curated_corpus_sha256": "cdcc0488de9e140439c9fdb277e1fabb1ea8699276de077b021bc4127ace3f18",
+    "project_cases_sha256": "5714d64fc59f266ad92747114a9c12ba71fd499ec78c4705cf7ade170572f211"
+  },
+  "snapshots": [
+    {
+      "id": "axum-v0.7.9",
+      "repo": "tokio-rs/axum",
+      "revision": "9983bc1da460becd3a0f08c513d610411e84dd43",
+      "code_language": "rust"
+    },
+    {
+      "id": "express-4.21.2",
+      "repo": "expressjs/express",
+      "revision": "1faf228935aa0a13111f92c28ee795be64ce3f0f",
+      "code_language": "javascript"
+    },
+    {
+      "id": "gin-v1.10.0",
+      "repo": "gin-gonic/gin",
+      "revision": "75ccf94d605a05fe24817fc2f166f6f2959d5cea",
+      "code_language": "go"
+    },
+    {
+      "id": "gson-2.11.0",
+      "repo": "google/gson",
+      "revision": "828a97be0f8d58108b140b77df8dc76b657f4a87",
+      "code_language": "java"
+    },
+    {
+      "id": "jq-1.7.1",
+      "repo": "jqlang/jq",
+      "revision": "71c2ab509a8628dbbad4bc7b3f98a64aa90d3297",
+      "code_language": "c"
+    },
+    {
+      "id": "pallets__flask-5014",
+      "repo": "pallets/flask",
+      "revision": "7ee9ceb71e868944a46e1ff00b506772a53a4f1d",
+      "code_language": "python"
+    },
+    {
+      "id": "psf__requests-5414",
+      "repo": "psf/requests",
+      "revision": "39d0fdd9096f7dceccbc8f82e1eda7dd64717a8e",
+      "code_language": "python"
+    },
+    {
+      "id": "redux-toolkit-v2.2.7",
+      "repo": "reduxjs/redux-toolkit",
+      "revision": "75b4f698e1c58efa6b19096abe5850da0a431da0",
+      "code_language": "typescript"
+    }
+  ],
+  "runtime": {
+    "harness_source_commit": "be9be3b69411a64213e485f3223711b17bd45353",
+    "harness_source_dirty": true,
+    "server_version": {
+      "name": "oce",
+      "version": "0.3.0"
+    },
+    "server_configuration": {
+      "retrieval": {
+        "embedding_enabled": true,
+        "embedding_query_char_limit": 3000,
+        "semantic_chunking_enabled": true,
+        "exact_enabled": true,
+        "path_index_enabled": true,
+        "source_priority_enabled": true,
+        "coverage_selection_enabled": true,
+        "query_decomposition_enabled": true,
+        "lexical_enabled": true,
+        "path_lookup_enabled": true,
+        "merge_adjacent_enabled": true,
+        "related_definitions_enabled": true,
+        "rerank_enabled": false,
+        "rerank_provider": "none",
+        "rerank_candidate_limit": 0,
+        "rerank_query_char_limit": 0,
+        "rerank_document_char_limit": 0,
+        "rerank_token_limit": 0,
+        "rerank_policy": "adaptive",
+        "llm_rerank_enabled": false,
+        "llm_rerank_policy": "adaptive",
+        "query_rewrite_enabled": false,
+        "decisive_skips_dense": true
+      },
+      "index_profile": {
+        "state": "compatible",
+        "fingerprint": "ca1a70df0d12599cb305aede959e7bb99c46991fe0472faa7e71d50cb4862b1c",
+        "schema_version": 3,
+        "embedding_enabled": true,
+        "embedding_fingerprint": "730fd631bca280f14b40e7f42ddb2335d8427c7158ed06168c6c2704a02ad854",
+        "embedding_model": "Qwen3-Embedding-4B",
+        "embedding_dimensions": 1024
+      },
+      "query_cache": {
+        "enabled": false,
+        "entries": 0,
+        "max_entries": 0,
+        "ttl_seconds": 600.0,
+        "hits": 0,
+        "misses": 0,
+        "evictions": 0,
+        "invalidations": 0
+      },
+      "dense": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_chunks",
+        "exists": true,
+        "entities": 346265,
+        "error_type": null
+      },
+      "path": {
+        "enabled": true,
+        "available": true,
+        "collection_name": "oce_paths_v1",
+        "exists": true,
+        "entities": 57751,
+        "error_type": null
+      }
+    },
+    "client_version": "oce-client 0.2.0",
+    "client_sha256": "ae27c49198e946730f7eccd5596b814f412cd0aa89b823ebb928561872b085fc",
+    "runner_environment": {
+      "RERANK_ENABLED": "false",
+      "LLM_RERANK_ENABLED": "false",
+      "purpose": "development annotation contract and packaged runtime smoke"
+    }
+  },
+  "case_ids": [
+    "reference-v2-flask-flask-en",
+    "reference-v2-flask-flask-zh",
+    "reference-v2-requests-prepared-request-en",
+    "reference-v2-requests-prepared-request-zh",
+    "reference-v2-redux-create-reducer-en",
+    "reference-v2-redux-create-reducer-zh",
+    "reference-v2-axum-router-en",
+    "reference-v2-axum-router-zh",
+    "reference-v2-gin-handlers-chain-en",
+    "reference-v2-gin-handlers-chain-zh",
+    "reference-v2-jq-jv-array-append-en",
+    "reference-v2-jq-jv-array-append-zh",
+    "reference-v2-express-route-en",
+    "reference-v2-express-route-zh",
+    "reference-v2-gson-type-token-en",
+    "reference-v2-gson-type-token-zh",
+    "reference-v2-flask-blueprint-en",
+    "reference-v2-flask-blueprint-zh"
+  ],
+  "sync": {
+    "axum-v0.7.9": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "express-4.21.2": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "gin-v1.10.0": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "gson-2.11.0": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "jq-1.7.1": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "pallets__flask-5014": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "psf__requests-5414": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    },
+    "redux-toolkit-v2.2.7": {
+      "status": "ok",
+      "uploaded_blobs": 0
+    }
+  },
+  "summary": {
+    "cases": 18,
+    "successful_cases": 18,
+    "error_cases": 0,
+    "primary_top1": 0.6111111111111112,
+    "primary_hit_at_3": 0.8333333333333334,
+    "primary_hit_at_10": 0.8333333333333334,
+    "primary_mrr": 0.7037037037037037,
+    "primary_recall": 0.4261913055016503,
+    "supporting_recall": 1.0,
+    "relation_recall": 0.4261913055016503,
+    "hop_recall": 1.0,
+    "chain_closed": 1.0,
+    "test_recall": 1.0,
+    "distractor_head": 0.0,
+    "distractor_any": 0.0,
+    "truth_region_share": 0.15092060717060718,
+    "error_classes": {
+      "none": 4,
+      "exact_miss": 3,
+      "distractor": 0,
+      "test_missing": 0,
+      "relation_missing": 0,
+      "redundant": 11
+    },
+    "mean_elapsed_ms": 288.72222222222223,
+    "p50_elapsed_ms": 130,
+    "p95_elapsed_ms": 746,
+    "mean_returned_chars": 22554.11111111111,
+    "mean_hit_count": 13.444444444444445,
+    "external_model_tokens": {
+      "embed": {
+        "calls": 6,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  },
+  "by_kind": {
+    "reference": {
+      "cases": 18,
+      "successful_cases": 18,
+      "error_cases": 0,
+      "primary_top1": 0.6111111111111112,
+      "primary_hit_at_3": 0.8333333333333334,
+      "primary_hit_at_10": 0.8333333333333334,
+      "primary_mrr": 0.7037037037037037,
+      "primary_recall": 0.4261913055016503,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.4261913055016503,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.15092060717060718,
+      "error_classes": {
+        "none": 4,
+        "exact_miss": 3,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 11
+      },
+      "mean_elapsed_ms": 288.72222222222223,
+      "p50_elapsed_ms": 130,
+      "p95_elapsed_ms": 746,
+      "mean_returned_chars": 22554.11111111111,
+      "mean_hit_count": 13.444444444444445
+    },
+    "call_chain": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "test_mapping": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "reexport": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    },
+    "multi_impl": {
+      "cases": 0,
+      "successful_cases": 0,
+      "error_cases": 0,
+      "primary_top1": null,
+      "primary_hit_at_3": null,
+      "primary_hit_at_10": null,
+      "primary_mrr": null,
+      "primary_recall": null,
+      "supporting_recall": null,
+      "relation_recall": null,
+      "hop_recall": null,
+      "chain_closed": null,
+      "test_recall": null,
+      "distractor_head": null,
+      "distractor_any": null,
+      "truth_region_share": null,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": null,
+      "p50_elapsed_ms": null,
+      "p95_elapsed_ms": null,
+      "mean_returned_chars": null,
+      "mean_hit_count": null
+    }
+  },
+  "by_snapshot": {
+    "axum-v0.7.9": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.3333333333333333,
+      "primary_recall": 0.16666666666666666,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.16666666666666666,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.0625,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 668.5,
+      "p50_elapsed_ms": 591,
+      "p95_elapsed_ms": 746,
+      "mean_returned_chars": 27483.5,
+      "mean_hit_count": 16.0
+    },
+    "express-4.21.2": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.5,
+      "primary_recall": 0.3333333333333333,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.3333333333333333,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.09090909090909091,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 548.0,
+      "p50_elapsed_ms": 479,
+      "p95_elapsed_ms": 617,
+      "mean_returned_chars": 19795.5,
+      "mean_hit_count": 11.0
+    },
+    "gin-v1.10.0": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.36363636363636365,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.36363636363636365,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.3,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 523.5,
+      "p50_elapsed_ms": 471,
+      "p95_elapsed_ms": 576,
+      "mean_returned_chars": 19170.0,
+      "mean_hit_count": 10.0
+    },
+    "gson-2.11.0": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 0.0,
+      "primary_hit_at_10": 0.0,
+      "primary_mrr": 0.0,
+      "primary_recall": 0.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.0,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 2,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 129.0,
+      "p50_elapsed_ms": 128,
+      "p95_elapsed_ms": 130,
+      "mean_returned_chars": 16428.0,
+      "mean_hit_count": 13.0
+    },
+    "jq-1.7.1": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.4482758620689655,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.4482758620689655,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.42857142857142855,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 108.0,
+      "p50_elapsed_ms": 106,
+      "p95_elapsed_ms": 110,
+      "mean_returned_chars": 26647.0,
+      "mean_hit_count": 14.0
+    },
+    "pallets__flask-5014": {
+      "cases": 4,
+      "successful_cases": 4,
+      "error_cases": 0,
+      "primary_top1": 0.75,
+      "primary_hit_at_3": 0.75,
+      "primary_hit_at_10": 0.75,
+      "primary_mrr": 0.75,
+      "primary_recall": 0.2619047619047619,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.2619047619047619,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.08705357142857142,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 1,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 3
+      },
+      "mean_elapsed_ms": 187.0,
+      "p50_elapsed_ms": 114,
+      "p95_elapsed_ms": 404,
+      "mean_returned_chars": 21362.5,
+      "mean_hit_count": 15.0
+    },
+    "psf__requests-5414": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.23076923076923078,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 88.5,
+      "p50_elapsed_ms": 88,
+      "p95_elapsed_ms": 89,
+      "mean_returned_chars": 29103.0,
+      "mean_hit_count": 13.0
+    },
+    "redux-toolkit-v2.2.7": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.07142857142857142,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 159.0,
+      "p50_elapsed_ms": 158,
+      "p95_elapsed_ms": 160,
+      "mean_returned_chars": 21635.0,
+      "mean_hit_count": 14.0
+    }
+  },
+  "cases": [
+    {
+      "id": "reference-v2-flask-flask-en",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-flask-flask",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/flask/templating.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 51,
+          "end": 106
+        },
+        {
+          "path": "tests/test_config.py",
+          "start": 162,
+          "end": 215
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 1,
+          "end": 22
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "src/flask/globals.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "src/flask/json/provider.py",
+          "start": 1,
+          "end": 104
+        },
+        {
+          "path": "src/flask/logging.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "examples/javascript/js_example/__init__.py",
+          "start": 3,
+          "end": 5
+        },
+        {
+          "path": "examples/celery/src/task_app/__init__.py",
+          "start": 7,
+          "end": 16
+        },
+        {
+          "path": "examples/tutorial/flaskr/__init__.py",
+          "start": 6,
+          "end": 14
+        },
+        {
+          "path": "tests/test_apps/cliapp/app.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_apps/cliapp/inner1/__init__.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_apps/cliapp/importerrorapp.py",
+          "start": 1,
+          "end": 5
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.047619047619047616,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.047619047619047616,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      },
+      "returned_chars": 21338,
+      "hit_count": 16,
+      "elapsed_ms": 404,
+      "wall_elapsed_ms": 424
+    },
+    {
+      "id": "reference-v2-flask-flask-zh",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-flask-flask",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 1,
+          "end": 22
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 51,
+          "end": 106
+        },
+        {
+          "path": "tests/test_config.py",
+          "start": 162,
+          "end": 215
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 1,
+          "end": 38
+        },
+        {
+          "path": "src/flask/globals.py",
+          "start": 1,
+          "end": 59
+        },
+        {
+          "path": "src/flask/json/provider.py",
+          "start": 1,
+          "end": 104
+        },
+        {
+          "path": "src/flask/logging.py",
+          "start": 1,
+          "end": 50
+        },
+        {
+          "path": "src/flask/sessions.py",
+          "start": 1,
+          "end": 46
+        },
+        {
+          "path": "examples/javascript/js_example/__init__.py",
+          "start": 3,
+          "end": 5
+        },
+        {
+          "path": "examples/celery/src/task_app/__init__.py",
+          "start": 7,
+          "end": 16
+        },
+        {
+          "path": "examples/tutorial/flaskr/__init__.py",
+          "start": 6,
+          "end": 14
+        },
+        {
+          "path": "tests/test_apps/cliapp/app.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_apps/cliapp/inner1/__init__.py",
+          "start": 1,
+          "end": 3
+        },
+        {
+          "path": "tests/test_apps/cliapp/importerrorapp.py",
+          "start": 1,
+          "end": 5
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "returned_chars": 21332,
+      "hit_count": 16,
+      "elapsed_ms": 114,
+      "wall_elapsed_ms": 139
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-en",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-requests-prepared-request",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "requests/sessions.py",
+          "start": 411,
+          "end": 455
+        },
+        {
+          "path": "requests/models.py",
+          "start": 333,
+          "end": 358
+        },
+        {
+          "path": "requests/__init__.py",
+          "start": 99,
+          "end": 152
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2270,
+          "end": 2335
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 1036,
+          "end": 1048
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 330,
+          "end": 371
+        },
+        {
+          "path": "HISTORY.md",
+          "start": 740,
+          "end": 776
+        },
+        {
+          "path": "docs/user/advanced.rst",
+          "start": 1,
+          "end": 156
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 144,
+          "end": 252
+        },
+        {
+          "path": "requests/models.py",
+          "start": 200,
+          "end": 274
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2400,
+          "end": 2406
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2344,
+          "end": 2353
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2365,
+          "end": 2374
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      },
+      "returned_chars": 29103,
+      "hit_count": 13,
+      "elapsed_ms": 89,
+      "wall_elapsed_ms": 110
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-zh",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-requests-prepared-request",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "requests/sessions.py",
+          "start": 411,
+          "end": 455
+        },
+        {
+          "path": "requests/models.py",
+          "start": 333,
+          "end": 358
+        },
+        {
+          "path": "requests/__init__.py",
+          "start": 99,
+          "end": 152
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2270,
+          "end": 2335
+        },
+        {
+          "path": "requests/utils.py",
+          "start": 1036,
+          "end": 1048
+        },
+        {
+          "path": "requests/adapters.py",
+          "start": 330,
+          "end": 371
+        },
+        {
+          "path": "HISTORY.md",
+          "start": 740,
+          "end": 776
+        },
+        {
+          "path": "docs/user/advanced.rst",
+          "start": 1,
+          "end": 156
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 144,
+          "end": 252
+        },
+        {
+          "path": "requests/models.py",
+          "start": 200,
+          "end": 274
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2400,
+          "end": 2406
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2344,
+          "end": 2353
+        },
+        {
+          "path": "tests/test_requests.py",
+          "start": 2365,
+          "end": 2374
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.23076923076923078,
+        "error_class": "redundant"
+      },
+      "returned_chars": 29103,
+      "hit_count": 13,
+      "elapsed_ms": 88,
+      "wall_elapsed_ms": 108
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-en",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reference",
+      "code_language": "typescript",
+      "family_id": "reference-v2-redux-create-reducer",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 664,
+          "end": 725
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "start": 32,
+          "end": 74
+        },
+        {
+          "path": "packages/toolkit/src/mapBuilders.ts",
+          "start": 1,
+          "end": 19
+        },
+        {
+          "path": "packages/toolkit/src/index.ts",
+          "start": 1,
+          "end": 70
+        },
+        {
+          "path": "packages/toolkit/src/tests/createReducer.test.ts",
+          "start": 44,
+          "end": 110
+        },
+        {
+          "path": "packages/toolkit/src/tests/createReducer.test-d.ts",
+          "start": 1,
+          "end": 77
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "start": 140,
+          "end": 150
+        },
+        {
+          "path": "docs/virtual/matchers/index.ts",
+          "start": 56,
+          "end": 64
+        },
+        {
+          "path": "packages/toolkit/src/tests/combineSlices.test.ts",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+          "start": 6,
+          "end": 15
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      },
+      "returned_chars": 21635,
+      "hit_count": 14,
+      "elapsed_ms": 160,
+      "wall_elapsed_ms": 187
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-zh",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reference",
+      "code_language": "typescript",
+      "family_id": "reference-v2-redux-create-reducer",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 664,
+          "end": 725
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "start": 32,
+          "end": 74
+        },
+        {
+          "path": "packages/toolkit/src/mapBuilders.ts",
+          "start": 1,
+          "end": 19
+        },
+        {
+          "path": "packages/toolkit/src/index.ts",
+          "start": 1,
+          "end": 70
+        },
+        {
+          "path": "packages/toolkit/src/tests/createReducer.test.ts",
+          "start": 44,
+          "end": 110
+        },
+        {
+          "path": "packages/toolkit/src/tests/createReducer.test-d.ts",
+          "start": 1,
+          "end": 77
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.input.ts",
+          "start": 1,
+          "end": 60
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic-ts.output.ts",
+          "start": 1,
+          "end": 53
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.input.js",
+          "start": 1,
+          "end": 40
+        },
+        {
+          "path": "packages/rtk-codemods/transforms/createReducerBuilder/__testfixtures__/basic.output.js",
+          "start": 1,
+          "end": 48
+        },
+        {
+          "path": "packages/toolkit/src/createReducer.ts",
+          "start": 140,
+          "end": 150
+        },
+        {
+          "path": "docs/virtual/matchers/index.ts",
+          "start": 56,
+          "end": 64
+        },
+        {
+          "path": "packages/toolkit/src/tests/combineSlices.test.ts",
+          "start": 2,
+          "end": 11
+        },
+        {
+          "path": "packages/toolkit/src/query/tests/createApi.test.ts",
+          "start": 6,
+          "end": 15
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 1.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 1.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.07142857142857142,
+        "error_class": "redundant"
+      },
+      "returned_chars": 21635,
+      "hit_count": 14,
+      "elapsed_ms": 158,
+      "wall_elapsed_ms": 186
+    },
+    {
+      "id": "reference-v2-axum-router-en",
+      "instance_id": "axum-v0.7.9",
+      "kind": "reference",
+      "code_language": "rust",
+      "family_id": "reference-v2-axum-router",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 475,
+          "end": 535
+        },
+        {
+          "path": "axum/src/extract/state.rs",
+          "start": 60,
+          "end": 120
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 74,
+          "end": 129
+        },
+        {
+          "path": "axum/src/routing/tests/nest.rs",
+          "start": 350,
+          "end": 383
+        },
+        {
+          "path": "axum-extra/src/routing/mod.rs",
+          "start": 1,
+          "end": 29
+        },
+        {
+          "path": "axum/CHANGELOG.md",
+          "start": 932,
+          "end": 1101
+        },
+        {
+          "path": "axum/src/routing/path_router.rs",
+          "start": 412,
+          "end": 482
+        },
+        {
+          "path": "axum-extra/src/extract/cached.rs",
+          "start": 112,
+          "end": 166
+        },
+        {
+          "path": "axum-extra/src/extract/cookie/mod.rs",
+          "start": 234,
+          "end": 385
+        },
+        {
+          "path": "axum-extra/src/extract/form.rs",
+          "start": 117,
+          "end": 148
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 131,
+          "end": 142
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 469,
+          "end": 480
+        },
+        {
+          "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via_parts.rs",
+          "start": 1,
+          "end": 10
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.2222222222222222,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.2222222222222222,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      },
+      "returned_chars": 28578,
+      "hit_count": 16,
+      "elapsed_ms": 746,
+      "wall_elapsed_ms": 771
+    },
+    {
+      "id": "reference-v2-axum-router-zh",
+      "instance_id": "axum-v0.7.9",
+      "kind": "reference",
+      "code_language": "rust",
+      "family_id": "reference-v2-axum-router",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "axum/src/routing/method_routing.rs",
+          "start": 475,
+          "end": 535
+        },
+        {
+          "path": "axum/src/extract/state.rs",
+          "start": 60,
+          "end": 120
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 230,
+          "end": 280
+        },
+        {
+          "path": "axum/src/docs/routing/merge.md",
+          "start": 38,
+          "end": 80
+        },
+        {
+          "path": "axum-extra/src/extract/cached.rs",
+          "start": 112,
+          "end": 166
+        },
+        {
+          "path": "axum-extra/src/extract/cookie/mod.rs",
+          "start": 234,
+          "end": 385
+        },
+        {
+          "path": "axum-extra/src/extract/form.rs",
+          "start": 117,
+          "end": 148
+        },
+        {
+          "path": "axum-extra/src/extract/json_deserializer.rs",
+          "start": 213,
+          "end": 286
+        },
+        {
+          "path": "axum-extra/src/extract/multipart.rs",
+          "start": 413,
+          "end": 478
+        },
+        {
+          "path": "axum-extra/src/extract/optional_path.rs",
+          "start": 63,
+          "end": 102
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 62,
+          "end": 64
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 131,
+          "end": 142
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 469,
+          "end": 480
+        },
+        {
+          "path": "axum-macros/tests/from_request/fail/generic_without_via_rejection.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via.rs",
+          "start": 1,
+          "end": 10
+        },
+        {
+          "path": "axum-macros/tests/from_request/pass/enum_via_parts.rs",
+          "start": 1,
+          "end": 10
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.3333333333333333,
+        "primary_recall": 0.1111111111111111,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.1111111111111111,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0625,
+        "error_class": "redundant"
+      },
+      "returned_chars": 26389,
+      "hit_count": 16,
+      "elapsed_ms": 591,
+      "wall_elapsed_ms": 616
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-en",
+      "instance_id": "gin-v1.10.0",
+      "kind": "reference",
+      "code_language": "go",
+      "family_id": "reference-v2-gin-handlers-chain",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "routergroup.go",
+          "start": 216,
+          "end": 259
+        },
+        {
+          "path": "tree.go",
+          "start": 404,
+          "end": 428
+        },
+        {
+          "path": "context.go",
+          "start": 55,
+          "end": 115
+        },
+        {
+          "path": "gin.go",
+          "start": 1,
+          "end": 70
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 62,
+          "end": 106
+        },
+        {
+          "path": "logger.go",
+          "start": 1,
+          "end": 62
+        },
+        {
+          "path": "debug.go",
+          "start": 1,
+          "end": 67
+        },
+        {
+          "path": "gin_test.go",
+          "start": 307,
+          "end": 360
+        },
+        {
+          "path": "context_test.go",
+          "start": 149,
+          "end": 207
+        },
+        {
+          "path": "middleware_test.go",
+          "start": 159,
+          "end": 227
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "returned_chars": 19170,
+      "hit_count": 10,
+      "elapsed_ms": 576,
+      "wall_elapsed_ms": 601
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-zh",
+      "instance_id": "gin-v1.10.0",
+      "kind": "reference",
+      "code_language": "go",
+      "family_id": "reference-v2-gin-handlers-chain",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "routergroup.go",
+          "start": 216,
+          "end": 259
+        },
+        {
+          "path": "tree.go",
+          "start": 404,
+          "end": 428
+        },
+        {
+          "path": "context.go",
+          "start": 55,
+          "end": 115
+        },
+        {
+          "path": "gin.go",
+          "start": 1,
+          "end": 70
+        },
+        {
+          "path": "ginS/gins.go",
+          "start": 62,
+          "end": 106
+        },
+        {
+          "path": "logger.go",
+          "start": 1,
+          "end": 62
+        },
+        {
+          "path": "debug.go",
+          "start": 1,
+          "end": 67
+        },
+        {
+          "path": "gin_test.go",
+          "start": 307,
+          "end": 360
+        },
+        {
+          "path": "context_test.go",
+          "start": 149,
+          "end": 207
+        },
+        {
+          "path": "middleware_test.go",
+          "start": 159,
+          "end": 227
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.36363636363636365,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.36363636363636365,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.3,
+        "error_class": "none"
+      },
+      "returned_chars": 19170,
+      "hit_count": 10,
+      "elapsed_ms": 471,
+      "wall_elapsed_ms": 491
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-en",
+      "instance_id": "jq-1.7.1",
+      "kind": "reference",
+      "code_language": "c",
+      "family_id": "reference-v2-jq-jv-array-append",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/jq_test.c",
+          "start": 344,
+          "end": 394
+        },
+        {
+          "path": "src/execute.c",
+          "start": 237,
+          "end": 271
+        },
+        {
+          "path": "src/jv_aux.c",
+          "start": 274,
+          "end": 376
+        },
+        {
+          "path": "src/jv.c",
+          "start": 972,
+          "end": 1050
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 218,
+          "end": 276
+        },
+        {
+          "path": "src/compile.c",
+          "start": 484,
+          "end": 527
+        },
+        {
+          "path": "src/jv_file.c",
+          "start": 1,
+          "end": 81
+        },
+        {
+          "path": "src/jv_parse.c",
+          "start": 156,
+          "end": 239
+        },
+        {
+          "path": "src/linker.c",
+          "start": 51,
+          "end": 93
+        },
+        {
+          "path": "src/main.c",
+          "start": 310,
+          "end": 383
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1477,
+          "end": 1480
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 345,
+          "end": 354
+        },
+        {
+          "path": "src/compile.c",
+          "start": 708,
+          "end": 717
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 955,
+          "end": 963
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4482758620689655,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4482758620689655,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      },
+      "returned_chars": 26647,
+      "hit_count": 14,
+      "elapsed_ms": 110,
+      "wall_elapsed_ms": 129
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-zh",
+      "instance_id": "jq-1.7.1",
+      "kind": "reference",
+      "code_language": "c",
+      "family_id": "reference-v2-jq-jv-array-append",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/jq_test.c",
+          "start": 344,
+          "end": 394
+        },
+        {
+          "path": "src/execute.c",
+          "start": 237,
+          "end": 271
+        },
+        {
+          "path": "src/jv_aux.c",
+          "start": 274,
+          "end": 376
+        },
+        {
+          "path": "src/jv.c",
+          "start": 972,
+          "end": 1050
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 218,
+          "end": 276
+        },
+        {
+          "path": "src/compile.c",
+          "start": 484,
+          "end": 527
+        },
+        {
+          "path": "src/jv_file.c",
+          "start": 1,
+          "end": 81
+        },
+        {
+          "path": "src/jv_parse.c",
+          "start": 156,
+          "end": 239
+        },
+        {
+          "path": "src/linker.c",
+          "start": 51,
+          "end": 93
+        },
+        {
+          "path": "src/main.c",
+          "start": 310,
+          "end": 383
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1477,
+          "end": 1480
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 345,
+          "end": 354
+        },
+        {
+          "path": "src/compile.c",
+          "start": 708,
+          "end": 717
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 955,
+          "end": 963
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.4482758620689655,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.4482758620689655,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.42857142857142855,
+        "error_class": "none"
+      },
+      "returned_chars": 26647,
+      "hit_count": 14,
+      "elapsed_ms": 106,
+      "wall_elapsed_ms": 128
+    },
+    {
+      "id": "reference-v2-express-route-en",
+      "instance_id": "express-4.21.2",
+      "kind": "reference",
+      "code_language": "javascript",
+      "family_id": "reference-v2-express-route",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/application.js",
+          "start": 194,
+          "end": 264
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 184,
+          "end": 230
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 424,
+          "end": 500
+        },
+        {
+          "path": "test/Route.js",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "test/req.route.js",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "test/app.route.js",
+          "start": 1,
+          "end": 64
+        },
+        {
+          "path": "lib/express.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "test/app.router.js",
+          "start": 925,
+          "end": 1008
+        },
+        {
+          "path": "test/acceptance/route-separation.js",
+          "start": 2,
+          "end": 97
+        },
+        {
+          "path": "test/acceptance/route-map.js",
+          "start": 2,
+          "end": 45
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 43,
+          "end": 51
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.5,
+        "primary_recall": 0.3333333333333333,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.3333333333333333,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.09090909090909091,
+        "error_class": "redundant"
+      },
+      "returned_chars": 19892,
+      "hit_count": 11,
+      "elapsed_ms": 617,
+      "wall_elapsed_ms": 638
+    },
+    {
+      "id": "reference-v2-express-route-zh",
+      "instance_id": "express-4.21.2",
+      "kind": "reference",
+      "code_language": "javascript",
+      "family_id": "reference-v2-express-route",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "lib/application.js",
+          "start": 194,
+          "end": 264
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 184,
+          "end": 230
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 424,
+          "end": 500
+        },
+        {
+          "path": "test/Route.js",
+          "start": 1,
+          "end": 45
+        },
+        {
+          "path": "test/req.route.js",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "test/app.route.js",
+          "start": 1,
+          "end": 64
+        },
+        {
+          "path": "lib/express.js",
+          "start": 1,
+          "end": 87
+        },
+        {
+          "path": "test/Router.js",
+          "start": 64,
+          "end": 131
+        },
+        {
+          "path": "test/acceptance/route-map.js",
+          "start": 2,
+          "end": 45
+        },
+        {
+          "path": "test/acceptance/route-separation.js",
+          "start": 2,
+          "end": 97
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 43,
+          "end": 51
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 0.5,
+        "primary_recall": 0.3333333333333333,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.3333333333333333,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.09090909090909091,
+        "error_class": "redundant"
+      },
+      "returned_chars": 19699,
+      "hit_count": 11,
+      "elapsed_ms": 479,
+      "wall_elapsed_ms": 500
+    },
+    {
+      "id": "reference-v2-gson-type-token-en",
+      "instance_id": "gson-2.11.0",
+      "kind": "reference",
+      "code_language": "java",
+      "family_id": "reference-v2-gson-type-token",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 37,
+          "end": 63
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 38,
+          "end": 54
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "start": 1,
+          "end": 19
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 54,
+          "end": 94
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+          "start": 300,
+          "end": 342
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+          "start": 1,
+          "end": 32
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "start": 24,
+          "end": 29
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/CommentsTest.java",
+          "start": 21,
+          "end": 30
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+          "start": 22,
+          "end": 31
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "returned_chars": 16428,
+      "hit_count": 13,
+      "elapsed_ms": 128,
+      "wall_elapsed_ms": 150
+    },
+    {
+      "id": "reference-v2-gson-type-token-zh",
+      "instance_id": "gson-2.11.0",
+      "kind": "reference",
+      "code_language": "java",
+      "family_id": "reference-v2-gson-type-token",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 37,
+          "end": 63
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/GsonBuilder.java",
+          "start": 38,
+          "end": 54
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/TypeAdapterFactory.java",
+          "start": 1,
+          "end": 19
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 54,
+          "end": 94
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/reflect/TypeTokenTest.java",
+          "start": 300,
+          "end": 342
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/graph/GraphAdapterBuilder.java",
+          "start": 1,
+          "end": 42
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/interceptors/InterceptorFactory.java",
+          "start": 1,
+          "end": 27
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/typeadapters/PostConstructAdapterFactory.java",
+          "start": 1,
+          "end": 28
+        },
+        {
+          "path": "extras/src/main/java/com/google/gson/typeadapters/RuntimeTypeAdapterFactory.java",
+          "start": 1,
+          "end": 32
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/ConstructorConstructor.java",
+          "start": 1,
+          "end": 51
+        },
+        {
+          "path": "extras/src/test/java/com/google/gson/graph/GraphAdapterBuilderTest.java",
+          "start": 24,
+          "end": 29
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/CommentsTest.java",
+          "start": 21,
+          "end": 30
+        },
+        {
+          "path": "gson/src/test/java/com/google/gson/FieldAttributesTest.java",
+          "start": 22,
+          "end": 31
+        }
+      ],
+      "metrics": {
+        "primary_top1": 0.0,
+        "primary_hit_at_3": 0.0,
+        "primary_hit_at_10": 0.0,
+        "primary_mrr": 0.0,
+        "primary_recall": 0.0,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.0,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.0,
+        "error_class": "exact_miss"
+      },
+      "returned_chars": 16428,
+      "hit_count": 13,
+      "elapsed_ms": 130,
+      "wall_elapsed_ms": 151
+    },
+    {
+      "id": "reference-v2-flask-blueprint-en",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-flask-blueprint",
+      "query_form": "en",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/flask/app.py",
+          "start": 967,
+          "end": 1019
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 613,
+          "end": 653
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 114,
+          "end": 158
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 32,
+          "end": 118
+        },
+        {
+          "path": "src/flask/__init__.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+          "start": 1,
+          "end": 14
+        },
+        {
+          "path": "tests/test_async.py",
+          "start": 1,
+          "end": 78
+        },
+        {
+          "path": "tests/test_basic.py",
+          "start": 1591,
+          "end": 1650
+        },
+        {
+          "path": "tests/test_blueprints.py",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "examples/tutorial/flaskr/blog.py",
+          "start": 13,
+          "end": 22
+        },
+        {
+          "path": "examples/celery/src/task_app/views.py",
+          "start": 7,
+          "end": 16
+        },
+        {
+          "path": "examples/tutorial/flaskr/auth.py",
+          "start": 16,
+          "end": 25
+        },
+        {
+          "path": "tests/test_cli.py",
+          "start": 15,
+          "end": 24
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.14285714285714285,
+        "error_class": "redundant"
+      },
+      "returned_chars": 21390,
+      "hit_count": 14,
+      "elapsed_ms": 118,
+      "wall_elapsed_ms": 139
+    },
+    {
+      "id": "reference-v2-flask-blueprint-zh",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "code_language": "python",
+      "family_id": "reference-v2-flask-blueprint",
+      "query_form": "zh",
+      "status": "ok",
+      "retrieved": [
+        {
+          "path": "src/flask/app.py",
+          "start": 967,
+          "end": 1019
+        },
+        {
+          "path": "src/flask/scaffold.py",
+          "start": 613,
+          "end": 653
+        },
+        {
+          "path": "src/flask/debughelpers.py",
+          "start": 114,
+          "end": 158
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 32,
+          "end": 118
+        },
+        {
+          "path": "src/flask/__init__.py",
+          "start": 1,
+          "end": 33
+        },
+        {
+          "path": "tests/test_apps/blueprintapp/apps/admin/__init__.py",
+          "start": 1,
+          "end": 20
+        },
+        {
+          "path": "tests/test_apps/blueprintapp/apps/frontend/__init__.py",
+          "start": 1,
+          "end": 14
+        },
+        {
+          "path": "tests/test_async.py",
+          "start": 1,
+          "end": 78
+        },
+        {
+          "path": "tests/test_basic.py",
+          "start": 1591,
+          "end": 1650
+        },
+        {
+          "path": "tests/test_blueprints.py",
+          "start": 1,
+          "end": 43
+        },
+        {
+          "path": "examples/tutorial/flaskr/blog.py",
+          "start": 13,
+          "end": 22
+        },
+        {
+          "path": "examples/celery/src/task_app/views.py",
+          "start": 7,
+          "end": 16
+        },
+        {
+          "path": "examples/tutorial/flaskr/auth.py",
+          "start": 16,
+          "end": 25
+        },
+        {
+          "path": "tests/test_cli.py",
+          "start": 15,
+          "end": 24
+        }
+      ],
+      "metrics": {
+        "primary_top1": 1.0,
+        "primary_hit_at_3": 1.0,
+        "primary_hit_at_10": 1.0,
+        "primary_mrr": 1.0,
+        "primary_recall": 0.5,
+        "supporting_recall": 1.0,
+        "relation_recall": 0.5,
+        "hop_recall": 1.0,
+        "chain_closed": 1.0,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.0,
+        "truth_region_share": 0.14285714285714285,
+        "error_class": "redundant"
+      },
+      "returned_chars": 21390,
+      "hit_count": 14,
+      "elapsed_ms": 112,
+      "wall_elapsed_ms": 133
+    }
+  ],
+  "family_summary": {
+    "families": 9,
+    "successful_families": 9,
+    "error_families": 0,
+    "primary_hit_at_3": 0.8333333333333334,
+    "worst_primary_hit_at_3": 0.7777777777777778,
+    "primary_mrr": 0.7037037037037037,
+    "worst_primary_mrr": 0.6481481481481481,
+    "relation_recall": 0.4261913055016503,
+    "worst_relation_recall": 0.41737296334997487,
+    "test_recall": 1.0,
+    "worst_test_recall": 1.0
+  },
+  "by_family": {
+    "reference-v2-axum-router": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.3333333333333333,
+      "primary_recall": 0.16666666666666666,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.16666666666666666,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.0625,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 668.5,
+      "p50_elapsed_ms": 591,
+      "p95_elapsed_ms": 746,
+      "mean_returned_chars": 27483.5,
+      "mean_hit_count": 16.0
+    },
+    "reference-v2-express-route": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 0.5,
+      "primary_recall": 0.3333333333333333,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.3333333333333333,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.09090909090909091,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 548.0,
+      "p50_elapsed_ms": 479,
+      "p95_elapsed_ms": 617,
+      "mean_returned_chars": 19795.5,
+      "mean_hit_count": 11.0
+    },
+    "reference-v2-flask-blueprint": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.5,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.5,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.14285714285714285,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 115.0,
+      "p50_elapsed_ms": 112,
+      "p95_elapsed_ms": 118,
+      "mean_returned_chars": 21390.0,
+      "mean_hit_count": 14.0
+    },
+    "reference-v2-flask-flask": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.5,
+      "primary_hit_at_3": 0.5,
+      "primary_hit_at_10": 0.5,
+      "primary_mrr": 0.5,
+      "primary_recall": 0.023809523809523808,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.023809523809523808,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.03125,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 1,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 1
+      },
+      "mean_elapsed_ms": 259.0,
+      "p50_elapsed_ms": 114,
+      "p95_elapsed_ms": 404,
+      "mean_returned_chars": 21335.0,
+      "mean_hit_count": 16.0
+    },
+    "reference-v2-gin-handlers-chain": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.36363636363636365,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.36363636363636365,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.3,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 523.5,
+      "p50_elapsed_ms": 471,
+      "p95_elapsed_ms": 576,
+      "mean_returned_chars": 19170.0,
+      "mean_hit_count": 10.0
+    },
+    "reference-v2-gson-type-token": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 0.0,
+      "primary_hit_at_3": 0.0,
+      "primary_hit_at_10": 0.0,
+      "primary_mrr": 0.0,
+      "primary_recall": 0.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.0,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 2,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 129.0,
+      "p50_elapsed_ms": 128,
+      "p95_elapsed_ms": 130,
+      "mean_returned_chars": 16428.0,
+      "mean_hit_count": 13.0
+    },
+    "reference-v2-jq-jv-array-append": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 0.4482758620689655,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.4482758620689655,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.42857142857142855,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 0
+      },
+      "mean_elapsed_ms": 108.0,
+      "p50_elapsed_ms": 106,
+      "p95_elapsed_ms": 110,
+      "mean_returned_chars": 26647.0,
+      "mean_hit_count": 14.0
+    },
+    "reference-v2-redux-create-reducer": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.07142857142857142,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 159.0,
+      "p50_elapsed_ms": 158,
+      "p95_elapsed_ms": 160,
+      "mean_returned_chars": 21635.0,
+      "mean_hit_count": 14.0
+    },
+    "reference-v2-requests-prepared-request": {
+      "cases": 2,
+      "successful_cases": 2,
+      "error_cases": 0,
+      "primary_top1": 1.0,
+      "primary_hit_at_3": 1.0,
+      "primary_hit_at_10": 1.0,
+      "primary_mrr": 1.0,
+      "primary_recall": 1.0,
+      "supporting_recall": 1.0,
+      "relation_recall": 1.0,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.23076923076923078,
+      "error_classes": {
+        "none": 0,
+        "exact_miss": 0,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 2
+      },
+      "mean_elapsed_ms": 88.5,
+      "p50_elapsed_ms": 88,
+      "p95_elapsed_ms": 89,
+      "mean_returned_chars": 29103.0,
+      "mean_hit_count": 13.0
+    }
+  },
+  "by_query_form": {
+    "en": {
+      "cases": 9,
+      "successful_cases": 9,
+      "error_cases": 0,
+      "primary_top1": 0.6666666666666666,
+      "primary_hit_at_3": 0.8888888888888888,
+      "primary_hit_at_10": 0.8888888888888888,
+      "primary_mrr": 0.7592592592592592,
+      "primary_recall": 0.43500964765332584,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.43500964765332584,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.1543928293928294,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 1,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 6
+      },
+      "mean_elapsed_ms": 327.55555555555554,
+      "p50_elapsed_ms": 160,
+      "p95_elapsed_ms": 746,
+      "mean_returned_chars": 22686.777777777777,
+      "mean_hit_count": 13.444444444444445
+    },
+    "zh": {
+      "cases": 9,
+      "successful_cases": 9,
+      "error_cases": 0,
+      "primary_top1": 0.5555555555555556,
+      "primary_hit_at_3": 0.7777777777777778,
+      "primary_hit_at_10": 0.7777777777777778,
+      "primary_mrr": 0.6481481481481481,
+      "primary_recall": 0.41737296334997487,
+      "supporting_recall": 1.0,
+      "relation_recall": 0.41737296334997487,
+      "hop_recall": 1.0,
+      "chain_closed": 1.0,
+      "test_recall": 1.0,
+      "distractor_head": 0.0,
+      "distractor_any": 0.0,
+      "truth_region_share": 0.14744838494838494,
+      "error_classes": {
+        "none": 2,
+        "exact_miss": 2,
+        "distractor": 0,
+        "test_missing": 0,
+        "relation_missing": 0,
+        "redundant": 5
+      },
+      "mean_elapsed_ms": 249.88888888888889,
+      "p50_elapsed_ms": 130,
+      "p95_elapsed_ms": 591,
+      "mean_returned_chars": 22421.444444444445,
+      "mean_hit_count": 13.444444444444445
+    }
+  }
+}

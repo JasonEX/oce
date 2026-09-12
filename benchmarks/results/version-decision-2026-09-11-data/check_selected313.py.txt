@@ -1,0 +1,62 @@
+"""Reuse identical foundation unit evidence; recheck all retained benchmark code."""
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import time
+
+ROOT = Path("/home/yuqian/workspace/oce")
+OUT = Path(__file__).resolve().parent
+OLD = OUT / "foundation-units-python313"
+DEST = OUT / "selected-units-python313"
+DEST.mkdir(exist_ok=False)
+base = json.loads((OLD / "proof.json").read_text())
+
+
+def inventory():
+    return {str(path.relative_to(ROOT)): hashlib.sha256(path.read_bytes()).hexdigest()
+            for pattern in ("src/oce/**/*.py", "tests/unit/**/*.py")
+            for path in sorted(ROOT.glob(pattern))}
+
+
+before = inventory()
+reused = {path: digest for path, digest in base["source_and_tests"].items()
+          if not path.startswith("tests/unit/benchmarks/")}
+assert reused == {path: digest for path, digest in before.items()
+                  if not path.startswith("tests/unit/benchmarks/")}
+config = {}
+for name in ("pyproject.toml", "uv.lock", "tests/conftest.py"):
+    assert (ROOT / name).read_bytes() == (OUT / "foundation" / name).read_bytes()
+    config[name] = hashlib.sha256((ROOT / name).read_bytes()).hexdigest()
+rows = []
+counts = {}
+environment = os.environ | {"PYTHONPATH": str(ROOT / "src")}
+for old in base["results"]:
+    name = old["file"]
+    if name.startswith("tests/unit/benchmarks/"):
+        logfile = DEST / (name.replace("/", "__") + ".log")
+        started = time.monotonic()
+        with logfile.open("x") as stream:
+            result = subprocess.run(["uv", "run", "--no-sync", "python", "-m", "pytest", name, "-q"],
+                                    cwd=ROOT, env=environment, stdout=stream, stderr=subprocess.STDOUT)
+        row = {"file": name, "exit": result.returncode, "seconds": time.monotonic() - started,
+               "evidence": "rechecked_final_tree"}
+    else:
+        logfile = OLD / (name.replace("/", "__") + ".log")
+        row = old | {"evidence": "identical_source_and_tests", "original_log": str(logfile)}
+    row["log_sha256"] = hashlib.sha256(logfile.read_bytes()).hexdigest()
+    for number, kind in re.findall(r"(\d+) (passed|skipped|deselected|failed)", logfile.read_text()):
+        counts[kind] = counts.get(kind, 0) + int(number)
+    rows.append(row)
+assert set(row["file"] for row in rows) == {str(path.relative_to(ROOT)) for path in ROOT.glob("tests/unit/**/test_*.py")}
+assert inventory() == before
+proof = {"source_and_tests": before, "results": rows, "counts": counts, "config_sha256": config,
+         "python": subprocess.check_output([str(ROOT / ".venv/bin/python"), "--version"], text=True).strip(),
+         "foundation_proof_sha256": hashlib.sha256((OLD / "proof.json").read_bytes()).hexdigest(),
+         "rechecked_files": sum(row["evidence"] == "rechecked_final_tree" for row in rows)}
+(DEST / "proof.json").write_text(json.dumps(proof, indent=2) + "\n")
+print("Selected Python 3.13 evidence:", counts, "files", len(rows), "rechecked", proof["rechecked_files"])
+raise SystemExit(int(any(row["exit"] for row in rows)))
