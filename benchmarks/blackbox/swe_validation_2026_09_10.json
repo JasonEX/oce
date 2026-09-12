@@ -1,0 +1,160 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-09-10T17:14:44.317017+00:00",
+  "baseline_commit": "879bc2e5322edd2f3763c7d71deeee891550f5c7",
+  "selection": "SHA256(oce-blind-simplification-2026-09-10:{instance_id}), first 3 per repository absent from existing JSON corpora and SWE development; all eligible repositories included",
+  "excluded_repositories": [
+    "GitbookIO/repofs",
+    "Jasig/NotificationPortlet",
+    "MisterY/price-database",
+    "bats-core/bats-core",
+    "ekzhu/datasketch",
+    "expressjs/express",
+    "farion1231/cc-switch",
+    "fastify/fastify",
+    "gin-gonic/gin",
+    "go-chi/chi",
+    "google/gson",
+    "jbogard/MediatR",
+    "jhy/jsoup",
+    "jqlang/jq",
+    "moxiecode/moxie",
+    "pallets/click",
+    "pallets/flask",
+    "phax/ph-math",
+    "pivotal-pez/pezdispenser",
+    "psf/requests",
+    "pydata/xarray",
+    "pylint-dev/pylint",
+    "pytest-dev/pytest",
+    "reduxjs/redux-toolkit",
+    "segmentio/objconv",
+    "tokio-rs/axum"
+  ],
+  "dataset_sha256": {
+    "swe_bench_verified": "030cfd7f2a704c4c0226e7f104c725a3b41230b1d3517f9c915ad7ea5be3fa25",
+    "swe_explore": "dc4f114ececd0bfb987361c26ae5e2440456e2cccb36adfccb09ea5385aec202"
+  },
+  "cases": [
+    {
+      "instance_id": "astropy__astropy-8872",
+      "repo": "astropy/astropy",
+      "base_commit": "b750a0e6ee76fb6b8a099a4d16ec51977be46bf6",
+      "sha256": "4dad7101f6462275b3fefbce73811b1d43aa28c602786da6038f1ca20ded2119"
+    },
+    {
+      "instance_id": "astropy__astropy-14598",
+      "repo": "astropy/astropy",
+      "base_commit": "80c3854a5f4f4a6ab86c03d9db7854767fcd83c1",
+      "sha256": "6c592d687bd3341199647f02a95ec3983f35eb34706ee299edd31d3648b0c9da"
+    },
+    {
+      "instance_id": "astropy__astropy-14995",
+      "repo": "astropy/astropy",
+      "base_commit": "b16c7d12ccbc7b2d20364b89fb44285bcbfede54",
+      "sha256": "059c41b10cbd7ac34480e38c574fcfd7d8090ef475c6f18eeb80b3b1bbfbc996"
+    },
+    {
+      "instance_id": "django__django-11211",
+      "repo": "django/django",
+      "base_commit": "ba726067604ce5a8ca3919edf653496722b433ab",
+      "sha256": "64d282fb8b6e40b85372b7dd42bf594c18ee404b36bf3ceb11f9dfbe0dce367c"
+    },
+    {
+      "instance_id": "django__django-17087",
+      "repo": "django/django",
+      "base_commit": "4a72da71001f154ea60906a2f74898d32b7322a7",
+      "sha256": "a1401efcb93136b2a3b1fb29c340f77993a92fe898330983c1f228df871658f7"
+    },
+    {
+      "instance_id": "django__django-14534",
+      "repo": "django/django",
+      "base_commit": "910ecd1b8df7678f45c3d507dde6bcb1faafa243",
+      "sha256": "78701704bb1e796b3fb753a8ab660095bb6ad920bf31ce15d569cd87e647bb6c"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-20488",
+      "repo": "matplotlib/matplotlib",
+      "base_commit": "b7ce415c15eb39b026a097a2865da73fbcf15c9c",
+      "sha256": "0332bb5eebeb2b8da75b5da9ae35a40473fce3e8efe7b3414a0dc46bd7876ecf"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-20826",
+      "repo": "matplotlib/matplotlib",
+      "base_commit": "a0d2e399729d36499a1924e5ca5bc067c8396810",
+      "sha256": "5208f0ff0b0081bdf5936ac8eca5ab5e5e6dd7fe677aac354736e597d21b5522"
+    },
+    {
+      "instance_id": "matplotlib__matplotlib-21568",
+      "repo": "matplotlib/matplotlib",
+      "base_commit": "f0632c0fc7339f68e992ed63ae4cfac76cd41aad",
+      "sha256": "cd1aa5f50fa6731769ac6883b4d720cf96d2ede27a6cb5d4633775b1680ec9a0"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3069",
+      "repo": "mwaskom/seaborn",
+      "base_commit": "54cab15bdacfaa05a88fbc5502a5b322d99f148e",
+      "sha256": "c6eda6b0791afdd2f1e8d7f370ade2560feb4a3f26891ea9b1dd2126b72edc10"
+    },
+    {
+      "instance_id": "mwaskom__seaborn-3187",
+      "repo": "mwaskom/seaborn",
+      "base_commit": "22cdfb0c93f8ec78492d87edb810f10cb7f57a31",
+      "sha256": "4037e76a120e390c5f0ac387efd95d662b3d2a0718c607ca550d71f11702f557"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-15100",
+      "repo": "scikit-learn/scikit-learn",
+      "base_commit": "af8a6e592a1a15d92d77011856d5aa0ec4db4c6c",
+      "sha256": "86243fadea6cc9eddc51deca37659ea96a56fa2428175a626300bf612e3d6b09"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-14053",
+      "repo": "scikit-learn/scikit-learn",
+      "base_commit": "6ab8c86c383dd847a1be7103ad115f174fe23ffd",
+      "sha256": "ad5d8cbeb25edee3167a104c5547e04dfb2608ae76ff2c87f995fb73e7d1e648"
+    },
+    {
+      "instance_id": "scikit-learn__scikit-learn-10844",
+      "repo": "scikit-learn/scikit-learn",
+      "base_commit": "97523985b39ecde369d83352d7c3baf403b60a22",
+      "sha256": "ace13fe958b836a2652536263f0375ae44065a263031f5e29d939f1eb4adbdb4"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-9320",
+      "repo": "sphinx-doc/sphinx",
+      "base_commit": "e05cef574b8f23ab1b57f57e7da6dee509a4e230",
+      "sha256": "d911a5793fc10dbe1919646afd6ab6d3250a61d3426a2ce8b0891697e751a468"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-8056",
+      "repo": "sphinx-doc/sphinx",
+      "base_commit": "e188d56ed1248dead58f3f8018c0e9a3f99193f7",
+      "sha256": "ae9090d13ef075297a35fdd5d963445df489b5216702a7349beb97fd3c6eb1c8"
+    },
+    {
+      "instance_id": "sphinx-doc__sphinx-11510",
+      "repo": "sphinx-doc/sphinx",
+      "base_commit": "6cb783c0024a873722952a67ebb9f41771c8eb6d",
+      "sha256": "5412289cb7d436ad611dcefce1b1033d9139af26092d3eba0a05c8e0ace73450"
+    },
+    {
+      "instance_id": "sympy__sympy-24539",
+      "repo": "sympy/sympy",
+      "base_commit": "193e3825645d93c73e31cdceb6d742cc6919624d",
+      "sha256": "967cc8892b1525a3822fff76130f0900d237418c1aa7be532dd2d22ea1491e78"
+    },
+    {
+      "instance_id": "sympy__sympy-23262",
+      "repo": "sympy/sympy",
+      "base_commit": "fdc707f73a65a429935c01532cd3970d3355eab6",
+      "sha256": "e2309ca294cb89f990916975c40d8ccccba6cbc8d061be48d44f6498413faf08"
+    },
+    {
+      "instance_id": "sympy__sympy-22080",
+      "repo": "sympy/sympy",
+      "base_commit": "3f8c8c2377cb8e0daaf8073e8d03ac7d87580813",
+      "sha256": "598b8eaf4866bd747ab1513d680242e0cdf298bd45da27280f0c51c8dd6fadb4"
+    }
+  ]
+}

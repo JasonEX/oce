@@ -12,7 +12,7 @@ import re
 import shutil
 import urllib.request
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import cast
 
@@ -178,7 +178,38 @@ def _valid_region(value: object) -> Region | None:
     return Region(path=path, start=start, end=end)
 
 
-def load_cases(workdir: Path, profile: str) -> list[BenchmarkCase]:
+def case_fingerprint(case: BenchmarkCase) -> str:
+    """Bind a selection to the original question, snapshot and native truth."""
+    payload = json.dumps(
+        asdict(case), sort_keys=True, ensure_ascii=False, separators=(",", ":")
+    )
+    return hashlib.sha256(payload.encode()).hexdigest()
+
+
+def select_frozen_cases(
+    cases: Sequence[BenchmarkCase], manifest: Path
+) -> list[BenchmarkCase]:
+    value = json.loads(manifest.read_text(encoding="utf-8"))
+    if value.get("schema_version") != 1 or not value.get("cases"):
+        raise ValueError("frozen SWE selection requires schema_version 1 and cases")
+    available = {case.instance_id: case for case in cases}
+    selected: list[BenchmarkCase] = []
+    seen: set[str] = set()
+    for row in value["cases"]:
+        identifier = row["instance_id"]
+        case = available.get(identifier)
+        if case is None or identifier in seen:
+            raise ValueError(f"unknown or duplicate frozen case: {identifier}")
+        if row["sha256"] != case_fingerprint(case):
+            raise ValueError(f"frozen case contents changed: {identifier}")
+        seen.add(identifier)
+        selected.append(case)
+    return selected
+
+
+def load_cases(
+    workdir: Path, profile: str, manifest: Path | None = None
+) -> list[BenchmarkCase]:
     verified_path, explore_path, _metrics_path = prepare_datasets(workdir)
     explore = _load_explore(explore_path)
     cases: list[BenchmarkCase] = []
@@ -214,6 +245,8 @@ def load_cases(workdir: Path, profile: str) -> list[BenchmarkCase]:
             )
         )
 
+    if manifest is not None:
+        return select_frozen_cases(cases, manifest)
     if profile == "verified":
         return sorted(cases, key=lambda item: item.instance_id)
     selected: list[BenchmarkCase] = []

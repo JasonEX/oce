@@ -32,6 +32,7 @@ from benchmarks.blackbox.harness import (
     resolve_client_binary,
     run_client,
     runtime_metadata,
+    sha256_file,
 )
 from benchmarks.blackbox.prewarm import prewarm_snapshots
 from benchmarks.blackbox.swe_data import (
@@ -85,7 +86,7 @@ def load_official_metric_computer(workdir: Path) -> MetricComputer:
 
 def prewarm_index(args: argparse.Namespace) -> dict[str, object]:
     workdir = args.workdir.expanduser().resolve()
-    cases = load_cases(workdir, args.profile)
+    cases = load_cases(workdir, args.profile, args.case_manifest)
     if args.limit is not None:
         cases = cases[: args.limit]
     binary = resolve_client_binary(args.client_binary)
@@ -213,7 +214,7 @@ def _aggregate(results: Sequence[dict[str, object]]) -> dict[str, object]:
 
 def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
     workdir = args.workdir.expanduser().resolve()
-    cases = load_cases(workdir, args.profile)
+    cases = load_cases(workdir, args.profile, args.case_manifest)
     if args.limit is not None:
         cases = cases[: args.limit]
     prepare_snapshots(workdir, snapshots_for_cases(cases))
@@ -338,6 +339,9 @@ def run_benchmark(args: argparse.Namespace) -> dict[str, object]:
         "label": args.label,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "profile": args.profile,
+        "case_manifest_sha256": (
+            sha256_file(args.case_manifest) if args.case_manifest else None
+        ),
         "controls": {
             "metrics_settle_seconds": args.metrics_settle_seconds,
             "sync_attempts": args.sync_attempts,
@@ -430,6 +434,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workdir", type=Path, default=DEFAULT_WORKDIR)
     parser.add_argument(
+        "--case-manifest",
+        type=Path,
+        help="frozen case IDs and content checksums; overrides profile selection",
+    )
+    parser.add_argument(
         "--profile",
         choices=("pilot", "development", "standard", "verified"),
         default="development",
@@ -480,7 +489,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.handler == "prepare":
         workdir = args.workdir.expanduser().resolve()
-        cases = load_cases(workdir, args.profile)
+        cases = load_cases(workdir, args.profile, args.case_manifest)
         prepare_snapshots(workdir, snapshots_for_cases(cases))
         print(
             json.dumps(

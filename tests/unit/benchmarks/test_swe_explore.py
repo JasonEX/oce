@@ -1,13 +1,48 @@
 import json
+from dataclasses import replace
+
+import pytest
 
 from benchmarks.blackbox.harness import RetrievedRegion, parse_retrieved_regions
-from benchmarks.blackbox.swe_data import BenchmarkCase, Region, parse_patch_regions
+from benchmarks.blackbox.swe_data import (
+    BenchmarkCase,
+    Region,
+    case_fingerprint,
+    parse_patch_regions,
+    select_frozen_cases,
+)
 from benchmarks.blackbox.swe_explore import (
     SWE_EXPLORE_METRIC_NAMES,
     compare,
     score_case,
     score_swe_explore,
 )
+
+
+def test_frozen_selection_rejects_changed_questions_truth_and_duplicate_ids(tmp_path):
+    case = BenchmarkCase(
+        "case-1",
+        "example/repo",
+        "a" * 40,
+        "find the handler",
+        (Region("src/a.py", 1, 2),),
+        (),
+        ("src/a.py",),
+    )
+    manifest = tmp_path / "selection.json"
+    row = {"instance_id": case.instance_id, "sha256": case_fingerprint(case)}
+    manifest.write_text(json.dumps({"schema_version": 1, "cases": [row]}))
+    assert select_frozen_cases([case], manifest) == [case]
+    for changed in (
+        replace(case, query="another question"),
+        replace(case, core_files=("src/b.py",)),
+        replace(case, base_commit="b" * 40),
+    ):
+        with pytest.raises(ValueError, match="contents changed"):
+            select_frozen_cases([changed], manifest)
+    manifest.write_text(json.dumps({"schema_version": 1, "cases": [row, row]}))
+    with pytest.raises(ValueError, match="duplicate"):
+        select_frozen_cases([case], manifest)
 
 
 def test_parse_patch_regions_uses_base_tree_lines() -> None:

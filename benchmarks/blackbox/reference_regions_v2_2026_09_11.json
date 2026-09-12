@@ -1,0 +1,1584 @@
+{
+  "schema_version": 1,
+  "labeling": {
+    "method": "Manually reviewed exact source-use lines in pinned snapshots; separate region contract v2, evaluated with the existing project_cases scorer",
+    "reference_contract_version": 2,
+    "catalog_revision": 2,
+    "revision_reason": "Source audit after initial comparison of existing reports found unlisted valid type uses and calls; expand reviewed use sites and add the known Blueprint prose control. Initial manifest and audit are retained. No independent validation claim.",
+    "previous_manifest_sha256": "232ee0cbc9164f14fb7e8f0a14781563b544f815034c1362227787a3efec71e5",
+    "purpose": "development annotation repair, not independent validation",
+    "exhaustive": false
+  },
+  "cases": [
+    {
+      "id": "reference-v2-flask-flask-en",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "Where is `Flask` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/flask/cli.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 46,
+          "end": 46
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 65,
+          "end": 65
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 178,
+          "end": 178
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 278,
+          "end": 278
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 290,
+          "end": 290
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 292,
+          "end": 292
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 513,
+          "end": 513
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 236,
+          "end": 236
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 302,
+          "end": 302
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 47,
+          "end": 47
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 108,
+          "end": 108
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 259,
+          "end": 259
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 54,
+          "end": 54
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 127,
+          "end": 127
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 163,
+          "end": 163
+        },
+        {
+          "path": "src/flask/logging.py",
+          "start": 53,
+          "end": 53
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 242,
+          "end": 242
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 268,
+          "end": 268
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.rst"
+      ],
+      "family_id": "reference-v2-flask-flask",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-flask-flask-zh",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "哪些地方引用了 `Flask`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/flask/cli.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 46,
+          "end": 46
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 65,
+          "end": 65
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 178,
+          "end": 178
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 278,
+          "end": 278
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 290,
+          "end": 290
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 292,
+          "end": 292
+        },
+        {
+          "path": "src/flask/cli.py",
+          "start": 513,
+          "end": 513
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 236,
+          "end": 236
+        },
+        {
+          "path": "src/flask/ctx.py",
+          "start": 302,
+          "end": 302
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 47,
+          "end": 47
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 108,
+          "end": 108
+        },
+        {
+          "path": "src/flask/testing.py",
+          "start": 259,
+          "end": 259
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 54,
+          "end": 54
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 127,
+          "end": 127
+        },
+        {
+          "path": "src/flask/templating.py",
+          "start": 163,
+          "end": 163
+        },
+        {
+          "path": "src/flask/logging.py",
+          "start": 53,
+          "end": 53
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 42,
+          "end": 42
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 242,
+          "end": 242
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 268,
+          "end": 268
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.rst"
+      ],
+      "family_id": "reference-v2-flask-flask",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-en",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "query": "Where is `PreparedRequest` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "requests/models.py",
+          "start": 258,
+          "end": 258
+        },
+        {
+          "path": "requests/models.py",
+          "start": 334,
+          "end": 334
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 442,
+          "end": 442
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-requests-prepared-request",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-requests-prepared-request-zh",
+      "instance_id": "psf__requests-5414",
+      "kind": "reference",
+      "query": "哪些地方引用了 `PreparedRequest`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "requests/models.py",
+          "start": 258,
+          "end": 258
+        },
+        {
+          "path": "requests/models.py",
+          "start": 334,
+          "end": 334
+        },
+        {
+          "path": "requests/sessions.py",
+          "start": 442,
+          "end": 442
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-requests-prepared-request",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-en",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reference",
+      "query": "Where is `createReducer` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 709,
+          "end": 709
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "LICENSE"
+      ],
+      "family_id": "reference-v2-redux-create-reducer",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-redux-create-reducer-zh",
+      "instance_id": "redux-toolkit-v2.2.7",
+      "kind": "reference",
+      "query": "哪些地方引用了 `createReducer`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "packages/toolkit/src/createSlice.ts",
+          "start": 709,
+          "end": 709
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "LICENSE"
+      ],
+      "family_id": "reference-v2-redux-create-reducer",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-axum-router-en",
+      "instance_id": "axum-v0.7.9",
+      "kind": "reference",
+      "query": "Where is `Router` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 66,
+          "end": 66
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 81,
+          "end": 81
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 90,
+          "end": 90
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 508,
+          "end": 508
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 525,
+          "end": 525
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 111,
+          "end": 111
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 124,
+          "end": 124
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 177,
+          "end": 177
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 195,
+          "end": 195
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 232,
+          "end": 232
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 237,
+          "end": 237
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 281,
+          "end": 281
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 370,
+          "end": 370
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 550,
+          "end": 550
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 589,
+          "end": 589
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 595,
+          "end": 595
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 565,
+          "end": 565
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 616,
+          "end": 616
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-axum-router",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-axum-router-zh",
+      "instance_id": "axum-v0.7.9",
+      "kind": "reference",
+      "query": "哪些地方引用了 `Router`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 66,
+          "end": 66
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 81,
+          "end": 81
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 90,
+          "end": 90
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 508,
+          "end": 508
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 525,
+          "end": 525
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 111,
+          "end": 111
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 124,
+          "end": 124
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 177,
+          "end": 177
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 195,
+          "end": 195
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 232,
+          "end": 232
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 237,
+          "end": 237
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 281,
+          "end": 281
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 370,
+          "end": 370
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 550,
+          "end": 550
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 589,
+          "end": 589
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 595,
+          "end": 595
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 565,
+          "end": 565
+        },
+        {
+          "path": "axum/src/routing/mod.rs",
+          "start": 616,
+          "end": 616
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-axum-router",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-en",
+      "instance_id": "gin-v1.10.0",
+      "kind": "reference",
+      "query": "Where is `HandlersChain` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "gin.go",
+          "start": 57,
+          "end": 57
+        },
+        {
+          "path": "gin.go",
+          "start": 166,
+          "end": 166
+        },
+        {
+          "path": "gin.go",
+          "start": 167,
+          "end": 167
+        },
+        {
+          "path": "gin.go",
+          "start": 168,
+          "end": 168
+        },
+        {
+          "path": "gin.go",
+          "start": 169,
+          "end": 169
+        },
+        {
+          "path": "gin.go",
+          "start": 336,
+          "end": 336
+        },
+        {
+          "path": "routergroup.go",
+          "start": 56,
+          "end": 56
+        },
+        {
+          "path": "routergroup.go",
+          "start": 86,
+          "end": 86
+        },
+        {
+          "path": "routergroup.go",
+          "start": 241,
+          "end": 241
+        },
+        {
+          "path": "routergroup.go",
+          "start": 244,
+          "end": 244
+        },
+        {
+          "path": "context.go",
+          "start": 61,
+          "end": 61
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-gin-handlers-chain",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-gin-handlers-chain-zh",
+      "instance_id": "gin-v1.10.0",
+      "kind": "reference",
+      "query": "哪些地方引用了 `HandlersChain`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "gin.go",
+          "start": 57,
+          "end": 57
+        },
+        {
+          "path": "gin.go",
+          "start": 166,
+          "end": 166
+        },
+        {
+          "path": "gin.go",
+          "start": 167,
+          "end": 167
+        },
+        {
+          "path": "gin.go",
+          "start": 168,
+          "end": 168
+        },
+        {
+          "path": "gin.go",
+          "start": 169,
+          "end": 169
+        },
+        {
+          "path": "gin.go",
+          "start": 336,
+          "end": 336
+        },
+        {
+          "path": "routergroup.go",
+          "start": 56,
+          "end": 56
+        },
+        {
+          "path": "routergroup.go",
+          "start": 86,
+          "end": 86
+        },
+        {
+          "path": "routergroup.go",
+          "start": 241,
+          "end": 241
+        },
+        {
+          "path": "routergroup.go",
+          "start": 244,
+          "end": 244
+        },
+        {
+          "path": "context.go",
+          "start": 61,
+          "end": 61
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-gin-handlers-chain",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-en",
+      "instance_id": "jq-1.7.1",
+      "kind": "reference",
+      "query": "Where is `jv_array_append` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/jv.c",
+          "start": 943,
+          "end": 943
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1013,
+          "end": 1013
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1038,
+          "end": 1038
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1285,
+          "end": 1285
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1309,
+          "end": 1309
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1315,
+          "end": 1315
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1318,
+          "end": 1318
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1334,
+          "end": 1334
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 238,
+          "end": 238
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 249,
+          "end": 249
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 345,
+          "end": 345
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 955,
+          "end": 955
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 959,
+          "end": 959
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 998,
+          "end": 998
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1012,
+          "end": 1012
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1016,
+          "end": 1016
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1477,
+          "end": 1477
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1879,
+          "end": 1879
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 350,
+          "end": 350
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 354,
+          "end": 354
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 361,
+          "end": 361
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 368,
+          "end": 368
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 389,
+          "end": 389
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 403,
+          "end": 403
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 408,
+          "end": 408
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 417,
+          "end": 417
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 418,
+          "end": 418
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 420,
+          "end": 420
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 423,
+          "end": 423
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-jq-jv-array-append",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-jq-jv-array-append-zh",
+      "instance_id": "jq-1.7.1",
+      "kind": "reference",
+      "query": "哪些地方引用了 `jv_array_append`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/jv.c",
+          "start": 943,
+          "end": 943
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1013,
+          "end": 1013
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1038,
+          "end": 1038
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1285,
+          "end": 1285
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1309,
+          "end": 1309
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1315,
+          "end": 1315
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1318,
+          "end": 1318
+        },
+        {
+          "path": "src/jv.c",
+          "start": 1334,
+          "end": 1334
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 238,
+          "end": 238
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 249,
+          "end": 249
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 345,
+          "end": 345
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 955,
+          "end": 955
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 959,
+          "end": 959
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 998,
+          "end": 998
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1012,
+          "end": 1012
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1016,
+          "end": 1016
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1477,
+          "end": 1477
+        },
+        {
+          "path": "src/builtin.c",
+          "start": 1879,
+          "end": 1879
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 350,
+          "end": 350
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 354,
+          "end": 354
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 361,
+          "end": 361
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 368,
+          "end": 368
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 389,
+          "end": 389
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 403,
+          "end": 403
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 408,
+          "end": 408
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 417,
+          "end": 417
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 418,
+          "end": 418
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 420,
+          "end": 420
+        },
+        {
+          "path": "src/jq_test.c",
+          "start": 423,
+          "end": 423
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-jq-jv-array-append",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-express-route-en",
+      "instance_id": "express-4.21.2",
+      "kind": "reference",
+      "query": "Where is `Route` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "lib/router/route.js",
+          "start": 58,
+          "end": 58
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 80,
+          "end": 80
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 101,
+          "end": 101
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 184,
+          "end": 184
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 207,
+          "end": 207
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 503,
+          "end": 503
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "LICENSE"
+      ],
+      "family_id": "reference-v2-express-route",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-express-route-zh",
+      "instance_id": "express-4.21.2",
+      "kind": "reference",
+      "query": "哪些地方引用了 `Route`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "lib/router/route.js",
+          "start": 58,
+          "end": 58
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 80,
+          "end": 80
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 101,
+          "end": 101
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 184,
+          "end": 184
+        },
+        {
+          "path": "lib/router/route.js",
+          "start": 207,
+          "end": 207
+        },
+        {
+          "path": "lib/router/index.js",
+          "start": 503,
+          "end": 503
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "LICENSE"
+      ],
+      "family_id": "reference-v2-express-route",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-gson-type-token-en",
+      "instance_id": "gson-2.11.0",
+      "kind": "reference",
+      "query": "Where is `TypeToken` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 99,
+          "end": 99
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 109,
+          "end": 109
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 214,
+          "end": 214
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 346,
+          "end": 346
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 355,
+          "end": 355
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 360,
+          "end": 360
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 385,
+          "end": 385
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 449,
+          "end": 449
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 356,
+          "end": 356
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 361,
+          "end": 361
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 443,
+          "end": 443
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 450,
+          "end": 450
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 106,
+          "end": 106
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 182,
+          "end": 182
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 317,
+          "end": 317
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 400,
+          "end": 400
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 421,
+          "end": 421
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 182,
+          "end": 182
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 185,
+          "end": 185
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 598,
+          "end": 598
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 607,
+          "end": 607
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 730,
+          "end": 730
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1166,
+          "end": 1166
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1259,
+          "end": 1259
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1345,
+          "end": 1345
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1459,
+          "end": 1459
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 666,
+          "end": 666
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 928,
+          "end": 928
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1107,
+          "end": 1107
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1137,
+          "end": 1137
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1199,
+          "end": 1199
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1230,
+          "end": 1230
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1306,
+          "end": 1306
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1406,
+          "end": 1406
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1434,
+          "end": 1434
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-gson-type-token",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-gson-type-token-zh",
+      "instance_id": "gson-2.11.0",
+      "kind": "reference",
+      "query": "哪些地方引用了 `TypeToken`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 99,
+          "end": 99
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 109,
+          "end": 109
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 214,
+          "end": 214
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 346,
+          "end": 346
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 355,
+          "end": 355
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 360,
+          "end": 360
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 385,
+          "end": 385
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 449,
+          "end": 449
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 356,
+          "end": 356
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 361,
+          "end": 361
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 443,
+          "end": 443
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/reflect/TypeToken.java",
+          "start": 450,
+          "end": 450
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 106,
+          "end": 106
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 182,
+          "end": 182
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 317,
+          "end": 317
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 400,
+          "end": 400
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/internal/bind/ReflectiveTypeAdapterFactory.java",
+          "start": 421,
+          "end": 421
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 182,
+          "end": 182
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 185,
+          "end": 185
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 598,
+          "end": 598
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 607,
+          "end": 607
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 730,
+          "end": 730
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1166,
+          "end": 1166
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1259,
+          "end": 1259
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1345,
+          "end": 1345
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1459,
+          "end": 1459
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 666,
+          "end": 666
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 928,
+          "end": 928
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1107,
+          "end": 1107
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1137,
+          "end": 1137
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1199,
+          "end": 1199
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1230,
+          "end": 1230
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1306,
+          "end": 1306
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1406,
+          "end": 1406
+        },
+        {
+          "path": "gson/src/main/java/com/google/gson/Gson.java",
+          "start": 1434,
+          "end": 1434
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.md"
+      ],
+      "family_id": "reference-v2-gson-type-token",
+      "query_form": "zh"
+    },
+    {
+      "id": "reference-v2-flask-blueprint-en",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "Where is `Blueprint` referenced?",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 41,
+          "end": 41
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 206,
+          "end": 206
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 251,
+          "end": 251
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 462,
+          "end": 462
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 985,
+          "end": 985
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1012,
+          "end": 1012
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.rst"
+      ],
+      "family_id": "reference-v2-flask-blueprint",
+      "query_form": "en"
+    },
+    {
+      "id": "reference-v2-flask-blueprint-zh",
+      "instance_id": "pallets__flask-5014",
+      "kind": "reference",
+      "query": "哪些地方引用了 `Blueprint`？",
+      "rationale": "Actual source use locations; same-file uses count, while own declarations, import-only lines, prose and examples in comments do not.",
+      "primary_regions": [
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 41,
+          "end": 41
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 206,
+          "end": 206
+        },
+        {
+          "path": "src/flask/blueprints.py",
+          "start": 251,
+          "end": 251
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 462,
+          "end": 462
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 985,
+          "end": 985
+        },
+        {
+          "path": "src/flask/app.py",
+          "start": 1012,
+          "end": 1012
+        }
+      ],
+      "supporting_regions": [],
+      "must_not_paths": [
+        "README.rst"
+      ],
+      "family_id": "reference-v2-flask-blueprint",
+      "query_form": "zh"
+    }
+  ]
+}
