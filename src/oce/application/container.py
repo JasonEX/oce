@@ -63,13 +63,13 @@ from oce.application.queries.status import (
     ResolveScopeQuery,
     ResolveScopeQueryHandler,
 )
-from oce.application.retrieval import RetrievalPipeline
 from oce.application.service import RetrievalApplication
 from oce.application.warmup import warm_retrieval_stores
 from oce.application.worker import EmbedWorker
 from oce.domain.services.llm.reranker import LLMReranker
 from oce.domain.services.llm.rewriter import QueryRewriter
 from oce.domain.services.reranker import Reranker
+from oce.domain.services.retrieval import RetrievalPipeline
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder

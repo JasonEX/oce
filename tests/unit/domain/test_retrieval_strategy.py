@@ -74,3 +74,32 @@ def test_route_label_lists_applied_rerankers():
 def test_unsupported_policy_is_rejected(field):
     with pytest.raises(ValueError, match="Unsupported .* rerank policy"):
         plan_rerank(QueryIntent.FEATURE, 5, **{field: "sometimes"})
+
+
+def test_ambiguous_definitions_only_rerank_when_opted_in():
+    quiet = plan_rerank(QueryIntent.SYMBOL, 10, has_exact_hits=True, definition_sites=6)
+    assert quiet.route == "skip:exact_definition"
+
+    opted = plan_rerank(
+        QueryIntent.SYMBOL,
+        10,
+        has_exact_hits=True,
+        definition_sites=6,
+        head_slots=3,
+        rerank_ambiguous_definitions=True,
+    )
+    assert (opted.dedicated, opted.llm, opted.reason) == (
+        True,
+        False,
+        "ambiguous_definition",
+    )
+
+    fits = plan_rerank(
+        QueryIntent.SYMBOL,
+        10,
+        has_exact_hits=True,
+        definition_sites=2,
+        head_slots=3,
+        rerank_ambiguous_definitions=True,
+    )
+    assert fits.route == "skip:exact_definition"

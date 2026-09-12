@@ -3,9 +3,9 @@
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
+    extract_code_identifiers,
     should_use_path_index,
 )
-from oce.domain.services.query_symbols import extract_code_identifiers
 
 
 def test_extract_code_identifiers_preserves_explicit_anchors():
@@ -35,9 +35,9 @@ class TestQueryIntentClassification:
     """意图分类核心场景"""
 
     def test_symbol_with_extension_not_path(self):
-        """A registration question keeps semantic coverage and the exact operator."""
+        """Q33 回归：符号+扩展名应判为SYMBOL，不能误判为PATH"""
         query = "`invoke_handler` 在 lib.rs 中注册了哪些命令？"
-        assert classify_query_intent(query) == QueryIntent.FEATURE
+        assert classify_query_intent(query) == QueryIntent.SYMBOL
         assert not should_use_path_index(query)
 
     def test_symbol_location_queries(self):
@@ -134,7 +134,7 @@ class TestPathIndexRouting:
         query = "Where would you diagnose pending blobs that stopped progressing?"
 
         assert classify_query_intent(query) == QueryIntent.FEATURE
-        assert not should_use_path_index(query)
+        assert should_use_path_index(query)
 
     def test_type_location_is_a_symbol_query(self):
         query = "Where is WorkspaceContext defined?"
@@ -263,10 +263,8 @@ class TestDottedQualifiedNames:
         assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
 
     def test_plain_dotted_words_and_domains_are_not_symbols(self):
-        assert extract_code_identifiers("see example.com and Foo.bar") == ("Foo.bar",)
-        assert extract_code_identifiers("Session.request sends it") == (
-            "Session.request",
-        )
+        assert extract_code_identifiers("see example.com and Foo.bar") == ()
+        assert extract_code_identifiers("Session.request sends it") == ()
 
     def test_real_filenames_still_route_to_path(self):
         assert classify_query_intent("where is the tsconfig.json file?") == (
@@ -283,17 +281,14 @@ class TestDottedQualifiedNames:
             assert classify_query_intent(query) == QueryIntent.PATH
 
 
-def test_mentions_alone_cannot_select_focused_recall():
-    for query in (
-        "Session.request sends it",
-        "Explain how parseConfig handles invalid input",
-    ):
-        from oce.domain.services.query_classifier import route_query
-        from oce.domain.services.query_evidence import extract_query_evidence
+def test_reviewed_semantic_queries_use_their_declared_routing_intent():
+    from benchmarks.blackbox.semantic_queries import DEFAULT_CASES, load_manifest
 
-        route = route_query(query, extract_query_evidence(query))
-        assert route.intent in (QueryIntent.FEATURE, QueryIntent.OVERVIEW)
-        assert route.targets == ()
+    assert {
+        case.id: classify_query_intent(case.query).value
+        for case in load_manifest(DEFAULT_CASES)
+        if classify_query_intent(case.query).value != case.kind
+    } == {}
 
 
 def test_test_and_implementor_questions_ask_for_use_sites():
@@ -396,105 +391,3 @@ def test_private_and_public_spellings_remain_distinct_identifiers():
 
     assert extract_code_identifiers(query) == ("_start_flow", "start_flow")
     assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
-
-
-def test_definition_routing_survives_renaming_and_quoting():
-    from oce.domain.services.query_classifier import route_query
-    from oce.domain.services.query_evidence import extract_query_evidence
-
-    for name in ("parseOptions", "collect_records", "Session.fetch", "acquire"):
-        for spelling in (name, f"`{name}`"):
-            for query in (
-                f"Where is {spelling} defined?",
-                f"Definition of {spelling}",
-                f"找到 {spelling} 的定义",
-                f"I am reviewing input handling.\nLocate the definition of {spelling}.",
-            ):
-                evidence = extract_query_evidence(query)
-                route = route_query(query, evidence)
-                assert evidence.identifiers == (name,), query
-                assert route.intent == QueryIntent.SYMBOL, query
-                assert route.targets == (name,), query
-
-
-def test_overload_parameters_are_constraints_regardless_of_text_order():
-    from oce.domain.services.query_classifier import route_query
-    from oce.domain.services.query_evidence import extract_query_evidence
-
-    for query in (
-        "Definition of decodeRecord with ByteReader and DecodePolicy parameters",
-        "找到接收 ByteReader 和 DecodePolicy 的 decodeRecord 重载定义",
-    ):
-        route = route_query(query, extract_query_evidence(query))
-        assert route.intent == QueryIntent.SYMBOL
-        assert route.targets == ("decodeRecord",)
-
-
-def test_chinese_nominal_definitions_allow_optional_possessive():
-    for name in ("TaxTable", "PolicyIndex"):
-        for qualifier in ("类型", "类型的", "的", ""):
-            assert (
-                classify_query_intent(f"`{name}` {qualifier}定义") == QueryIntent.SYMBOL
-            )
-
-
-def test_call_chain_is_not_reclassified_when_an_intermediate_name_is_added():
-    assert (
-        classify_query_intent(
-            "How does readPacket reach applyRecord through decodePacket?"
-        )
-        == QueryIntent.CALL_CHAIN
-    )
-
-
-def test_requests_for_tests_are_distinct_from_test_framework_behavior():
-    from oce.domain.services.query_classifier import route_query
-    from oce.domain.services.query_evidence import extract_query_evidence
-
-    for query in ("Locate tests exercising parseOptions", "parseOptions 有测试吗？"):
-        route = route_query(query, extract_query_evidence(query))
-        assert route.intent == QueryIntent.REFERENCE and route.tests_requested
-    route = route_query(
-        "How does the test framework execute a function?",
-        extract_query_evidence("How does the test framework execute a function?"),
-    )
-    assert not route.tests_requested
-
-
-def test_a_named_intermediate_does_not_anchor_an_unnamed_chain_start():
-    from oce.domain.services.query_classifier import route_query
-    from oce.domain.services.query_evidence import extract_query_evidence
-
-    for name in ("IntoResponse", "PacketAdapter"):
-        query = f"Trace a request from connection acceptance through dispatch and {name} conversion."
-        route = route_query(query, extract_query_evidence(query))
-        assert route.intent == QueryIntent.CALL_CHAIN
-        assert route.targets == ()
-
-
-def test_incidental_definition_nouns_do_not_make_an_explanation_focused():
-    for query in (
-        "How does makeReducer turn case definitions into actions?",
-        "How does a RecordAdapter use its RecordFactory list?",
-    ):
-        assert classify_query_intent(query) != QueryIntent.SYMBOL
-    assert (
-        classify_query_intent(
-            "Trace how buildService initializes modules and injects endpoint definitions."
-        )
-        == QueryIntent.CALL_CHAIN
-    )
-
-
-def test_chain_endpoints_follow_direction_instead_of_mention_count():
-    from oce.domain.services.query_classifier import route_query
-    from oce.domain.services.query_evidence import extract_query_evidence
-
-    for query in (
-        "Trace readPacket through decodePacket to applyRecord.",
-        "readPacket 如何通过 decodePacket 到达 applyRecord？",
-        "How does readPacket reach applyRecord using DecodePolicy?",
-    ):
-        route = route_query(query, extract_query_evidence(query))
-        assert route.intent == QueryIntent.CALL_CHAIN
-        assert route.targets == ("readPacket", "applyRecord")

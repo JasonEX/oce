@@ -1,23 +1,29 @@
-"""Qualified use sites, declaration signatures and traceback anchors."""
+"""Round-3 lanes: qualified use sites, signature windows, hub spellings, anchors."""
 
 from __future__ import annotations
 
 import pytest
 
-from oce.domain.services.query_classifier import QueryIntent, QueryRoute
+from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.query_evidence import QueryFrame, extract_query_evidence
-from oce.domain.services.retrieval_strategy import plan_rerank
-from oce.domain.services.search import (
-    DefinitionHit,
-    SearchHit,
-)
-from oce.domain.services.symbol_resolution import (
+from oce.domain.services.retrieval import (
+    RetrievalPipeline,
+    RetrievalState,
     _frame_matches,
     _signature_text,
+    hub_spellings,
     order_by_signature_comentions,
     resolve_qualified_definitions,
     resolve_qualified_hits,
 )
+from oce.domain.services.retrieval_strategy import plan_rerank
+from oce.domain.services.search import (
+    DefinitionHit,
+    HubDefinition,
+    SearchHit,
+    SearchScope,
+)
+from oce.shared.config.settings import RetrievalSettings
 
 
 def _hit(path, content, start=1, context=None, blob=None):
@@ -82,31 +88,6 @@ def test_qualified_definitions_prefer_the_recorded_enclosing():
     assert resolved == [router]
 
 
-def test_a_namespace_import_does_not_qualify_an_unrelated_same_name_definition():
-    helper = _hit("tools/debug.py", "import engine\n\ndef start(): pass")
-
-    assert resolve_qualified_hits([helper], {"start": ("engine",)}, strict=True) == []
-
-
-def test_module_qualified_reference_accepts_a_use_inside_that_module():
-    from oce.domain.services.symbol_resolution import mentions_requested_name
-
-    local_use = _hit("binding/binding_test.go", "Default(method, contentType)")
-    neighbour = _hit("other/binding_extra.go", "Default(method, contentType)")
-
-    assert mentions_requested_name(local_use, "binding.Default")
-    assert not mentions_requested_name(neighbour, "binding.Default")
-
-
-def test_dollar_prefix_is_part_of_a_complete_identifier():
-    from oce.domain.services.symbol_resolution import mentions_requested_name
-
-    hit = _hit("src/reader.js", "return $readPacket()")
-
-    assert mentions_requested_name(hit, "$readPacket")
-    assert not mentions_requested_name(hit, "readPacket")
-
-
 def test_signature_window_stops_at_the_parameter_list():
     lines = [
         "  public <T> T fromJson(Reader json, TypeToken<T> typeOfT)",
@@ -144,6 +125,26 @@ def test_overload_order_uses_the_parameter_list_only():
         [reader_chunk, json_reader_chunk], definitions, ["JsonReader", "TypeToken"]
     )
     assert ordered[0] is json_reader_chunk
+
+
+def test_hub_spellings_join_content_words_in_every_case():
+    spellings = hub_spellings("How does pylint register a checker's messages?")
+    assert {"register_checker", "registerChecker", "RegisterChecker"} <= set(spellings)
+    assert {"Checker", "checker", "Message", "message"} <= set(spellings)
+    # Stopwords and short words never become spellings.
+    assert "how" not in spellings and "does" not in spellings
+
+
+def test_hub_spellings_keep_mentions_and_identifiers_first():
+    evidence = extract_query_evidence(
+        "Explain the flow from Engine.ServeHTTP to IntoResponse conversion"
+    )
+    # A qualified spelling is a routing identifier; the CamelCase type the
+    # prose mentions is not, so it is recorded as a mention instead.
+    assert evidence.identifiers == ("Engine.ServeHTTP",)
+    assert evidence.mentions == ("IntoResponse",)
+    spellings = hub_spellings("x", evidence.mentions, ("ServeHTTP",))
+    assert spellings[:2] == ("ServeHTTP", "IntoResponse")
 
 
 def test_frames_carry_lines_and_ipython_style_frames_are_read():
@@ -184,19 +185,126 @@ def test_frame_path_matching_is_component_aligned(frame, indexed, expected):
 
 
 def test_deterministic_requests_skip_adaptive_rerankers_but_not_always():
-    skipped = plan_rerank(QueryIntent.SYMBOL, 10, has_exact_hits=True)
-    assert skipped.route == "skip:exact_definition"
+    skipped = plan_rerank(
+        QueryIntent.REFERENCE, 10, has_exact_hits=True, dense_skipped=True
+    )
+    assert skipped.route == "skip:deterministic"
     forced = plan_rerank(
-        QueryIntent.SYMBOL,
+        QueryIntent.REFERENCE,
         10,
         has_exact_hits=True,
+        dense_skipped=True,
         dedicated_policy="always",
     )
     assert forced.dedicated is True
 
 
+class _Store:
+    async def find_definitions(
+        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
+    ):
+        return []
+
+
+def _pipeline(**settings):
+    class Embedder:
+        async def embed_query(self, text):
+            return [0.0]
+
+    class Search:
+        async def search(self, **kwargs):
+            return []
+
+    return RetrievalPipeline(
+        embedder=Embedder(),
+        store=Search(),
+        settings=RetrievalSettings(**settings),
+        exact_store=_Store(),
+    )
+
+
+def test_hub_heads_skip_packages_unreferenced_names_and_tests():
+    pipeline = _pipeline(hub_head_slots=2)
+    state = RetrievalState(query="explain routing", scope=SearchScope(frozenset({"a"})))
+    state.intent = QueryIntent.OVERVIEW
+    package = HubDefinition(
+        "routing",
+        (
+            DefinitionHit(
+                "routing",
+                "definition",
+                _hit("axum/src/lib.rs", "pub mod routing;"),
+                1,
+                1,
+            ),
+        ),
+        130,
+        True,
+    )
+    router = HubDefinition(
+        "Router",
+        (
+            DefinitionHit(
+                "Router",
+                "definition",
+                _hit("axum/src/routing/mod.rs", "pub struct Router<S>"),
+                1,
+                40,
+            ),
+            DefinitionHit(
+                "Router",
+                "definition",
+                _hit("axum/src/routing/mod.rs", "type Router = ()", start=90),
+                90,
+                90,
+            ),
+        ),
+        115,
+        False,
+    )
+    test_only = HubDefinition(
+        "Fixture",
+        (
+            DefinitionHit(
+                "Fixture",
+                "definition",
+                _hit("tests/fixture.rs", "struct Fixture"),
+                1,
+                3,
+            ),
+        ),
+        4,
+        False,
+    )
+    unreferenced = HubDefinition(
+        "Orphan",
+        (
+            DefinitionHit(
+                "Orphan", "definition", _hit("src/orphan.rs", "struct Orphan"), 1, 3
+            ),
+        ),
+        0,
+        False,
+    )
+    state.hubs = [package, router, test_only, unreferenced]
+    heads = pipeline._hub_heads(state)
+    assert [(hit.path, hit.start_line) for hit in heads] == [
+        ("axum/src/routing/mod.rs", 1)
+    ]
+
+
+def test_strict_qualified_resolution_yields_nothing_for_unknown_scopes():
+    outcomes = _hit(
+        "src/_pytest/outcomes.py", "def skip(reason: str = '') -> NoReturn:"
+    )
+    assert resolve_qualified_hits([outcomes], {"skip": ("unittest",)}) == [outcomes]
+    assert (
+        resolve_qualified_hits([outcomes], {"skip": ("unittest",)}, strict=True) == []
+    )
+
+
 def test_test_name_distance_prefers_the_test_named_after_the_symbol():
-    from oce.domain.services.ranking import _test_name_distance
+    from oce.domain.services.retrieval import _test_name_distance
 
     walker = _hit("tree_test.go", "func TestWalker(t *testing.T) {\n\tWalk(r, fn)\n}")
     inline = _hit(
@@ -213,28 +321,33 @@ def test_test_name_distance_prefers_the_test_named_after_the_symbol():
     assert _test_name_distance(python, ("as_compatible_data",)) == 4
 
 
-def test_test_question_prefers_named_test_over_earlier_file_header():
-    from oce.domain.services.ranking import (
-        HeadEvidence,
-        source_heads,
-        source_priority_factor,
+@pytest.mark.asyncio
+async def test_test_question_prefers_named_test_over_earlier_file_header():
+    pipeline = _pipeline(source_head_slots=2)
+    state = RetrievalState(
+        query="Which tests cover Walk?", scope=SearchScope(frozenset({"a", "b"}))
     )
-    from oce.domain.services.search import search_hit_key
-
+    state.intent = QueryIntent.REFERENCE
+    state.lookup_identifiers = ("Walk",)
     header = _hit("a/walk_test.go", 'import "testing"', blob="a")
     named_test = _hit(
-        "b/walk_test.go", "func TestWalker(t *testing.T) {\n\tWalk(r, fn)\n}", blob="b"
+        "b/walk_test.go",
+        "func TestWalker(t *testing.T) {\n\tWalk(r, fn)\n}",
+        blob="b",
     )
-    evidence = HeadEvidence(
-        route=QueryRoute(QueryIntent.REFERENCE, tests_requested=True),
-        identifiers=("Walk",),
-        exact=[header, named_test],
-        use_sites=[named_test],
+    state.exact = [header, named_test]
+    state.use_sites = [named_test]
+
+    ranked = await pipeline._prefer_source_head(
+        state, [header, named_test], pipeline.priority_factor
     )
-    assert source_heads(
-        evidence,
-        [header, named_test],
-        source_priority_factor,
-        slots=2,
-        reference_fallback=True,
-    ) == (search_hit_key(named_test), search_hit_key(header))
+
+    assert ranked == [named_test, header]
+
+
+def test_asks_how_separates_questions_from_docstrings():
+    from oce.domain.services.query_classifier import asks_how
+
+    assert asks_how("How does gin match a request path against the routes?")
+    assert asks_how("Explain the request context lifecycle")
+    assert not asks_how("Fetches the securities that match the given filters")

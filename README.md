@@ -4,9 +4,6 @@
 
 # OpenContextEngine
 
-当前索引准入版本为 2：普通的 `-retrieval-eval` 结尾目录也会入库。
-版本 1 索引需要使用新数据目录并通过客户端完整重新同步；启动时仍拒绝不兼容的索引。
-
 **Self-hosted, ACE-compatible code retrieval for AI coding agents.**
 
 Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking · task-aware selection
@@ -91,6 +88,10 @@ oce init                    # writes ~/.oce/data/.env
 
 This fork does not publish to PyPI. Use a versioned GHCR image for releases, or install
 the current source directly with `uv` as shown above.
+
+Source-admission version 2 includes ordinary directories ending in `-retrieval-eval`.
+When upgrading from a version 1 index, use a new data directory and fully resynchronize
+through the client. Startup rejects incompatible indexes.
 
 Edit `~/.oce/data/.env`. The embedding service is the only required setting for indexing
 and retrieval. The defaults use SiliconFlow and Qwen3-Embedding-4B (1024-dimensional
@@ -311,55 +312,50 @@ name the whole identifier to enter the lane, while every term still shapes the r
 Each cAST chunk is embedded with its enclosing scope chain (`class Foo > def bar`), and the
 same chain is shown as a `Context:` line in results. Exact symbol definitions and explicit SQL
 path matches occupy bounded head slots instead of mixing incompatible structural and RRF scores.
-The path prior treats documentation, tests, configuration and type stubs as supporting
-material; a root `README` keeps full weight. Ordinary source filenames such as `index.ts`,
-`types.ts`, and `__init__.py` have no special penalty. Optional semantic source slots are
-controlled by `RETRIEVAL_SOURCE_HEAD_SLOTS`; import-only headers yield those slots when
-`RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` is enabled. Source priors run once and do not replace a
-model reranker's final semantic order.
-
-Routing separates the request's entities (`QueryEvidence`) from its requested subjects and
-evidence (`QueryRoute`). A mentioned identifier can supplement recall without forcing a
-focused definition request. Whole names and qualification survive quoting changes; a third
-identifier does not override an explicit call-chain request. Informational preambles do not
-create extra requests. Parameter types constrain the asked overload rather than becoming its
-primary subjects, including when the types appear before the function name.
-
-Reference requests keep dense recall. Primary reference candidates must carry a SQL occurrence
-or mention a complete requested identifier, so semantic neighbours do not become asserted uses.
-Bounded heads prefer use sites over declarations and can include evidenced tests or examples.
-Explicit test requests prioritize named test declarations and calls before filename proximity.
-Quoted test titles are compared in full, including their scenario after punctuation. Override
-requests place declarations of the named method before its callers.
-Explicit implementation requests reuse one bounded set of inherit occurrences for their
-head evidence and implementation section. A constructor call alone is not inheritance
-evidence. Test requests without a named target can expand the implementations called by
-their selected tests; only named reference requests restrict related definitions to the
-asked symbols.
-Qualified exact hits require scope evidence: enclosing declaration, a declaration line naming
-both scope and leaf, or a full qualified spelling in chunk text; path components must match
-whole. SQL use-site batches already prove a leaf occurrence, skip declaration-line evidence,
-and can use a mentioned scope when the receiver has a local name. Dense candidates require
-the complete spelling, recorded enclosing scope, or a whole module path component. This is
-bounded reference evidence, not type-resolved receiver analysis. Missing definition scope
-evidence leaves semantic recall active.
-
-Exact, path-lookup and routed lexical recall start before the embedding round trip. Only all
-requested definitions resolving, or a SQL path match with retrievable content, can make dense
-recall unnecessary. Parameter-type definitions and individual use sites do not suffice.
-`RETRIEVAL_DECISIVE_SKIPS_DENSE=false` restores the wait; `retrieval_metrics.dense_route`
-records `dense`, `skip:exact_definition`, or `skip:path_evidence`. Released embedding requests
-are allowed to finish rather than cancelled, preserving the HTTP connection pool.
-
-Under adaptive reranking, resolved symbol/path answers retain their structural skip routes;
-reference requests permit the dedicated reranker while preserving coverage from chat-LLM
-reranking. `always` still runs an authorized model. Structural head keys are computed once,
-seed the model's candidate window, and are restored after reranking. The dedicated reranker
-receives at most `RERANK_MAX_QUERY_CHARS` of the request.
-
-The unused hub experiment, uncalibrated ambiguous-definition rerank switch and mixed-score
-`confidence_floor` have been retired. Historical ablations remain in `benchmarks/results`.
-Issue-style requests are anchored on their
+The path prior treats documentation directories (`docs/`, `doc/`, `examples/`, changelogs),
+change logs, configuration files, `.pyi` stubs, `__init__.py` barrels, and test files as
+supporting material behind implementation files; a root `README` keeps full weight. Feature,
+compound, call-chain, and reference requests reserve a few leading slots for implementation
+files the path prior does not demote (the root `README` remains documentation for this rule).
+A test or document chunk that leads both the dense and lexical lists keeps a fused score no
+multiplicative prior can undercut; requests that name tests keep a neutral prior, and chunks whose only symbol evidence is imports
+(file headers) yield those slots to implementing code (`RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS`, on by
+default). Reference
+requests only promote exact or whole-identifier lexical evidence and place the symbol's own
+declaration chunk after its use sites; within that evidence, chunks that call or extend the
+symbol come before textual mentions and before mere imports, a chunk that also names the
+request's other symbol ("implemented for `StatusCode`") comes first, uses in other files come
+before uses next to the declaration, a file named after the symbol leads a test question, and
+files nearer the declaring package come before scripts and examples; a test question leads
+with the test whose declared name is closest to the symbol (`TestWalker` for `Walk`). Qualified
+names are pinned by the recorded enclosing declaration, then by a declaration line naming both
+scope and leaf (`app.render = function render`), then by chunk text, and path evidence must match
+a whole path component. "Which functions call X"
+and "哪些地方调用了 X" are reference questions; "how does A reach B" with two symbols is a
+call-chain question; "where is X defined" stays a definition question however many parameter
+types it names, and overloads are ordered by the types in their declaration line. Both head rules are reapplied after a model reranker
+runs, keeping the model's order inside each tier. The dedicated reranker also receives at most
+`RERANK_MAX_QUERY_CHARS` of the request so issue-length text does not multiply its latency.
+Exact, path-lookup, and routed lexical recall start before the query embedding round trip,
+and the embedding is never waited for when they already answered: a definition of the
+requested symbol (not merely a named parameter type), a matched path, or a call/inherit
+site of the referenced symbol makes the request
+decisive, vector recall is dropped, and the remaining lexical evidence joins the exact lane by
+rank. `RETRIEVAL_DECISIVE_SKIPS_DENSE=false` restores the wait; `retrieval_metrics.dense_route`
+records `dense`, `skip:exact_definition`, `skip:path_evidence`, or `skip:use_sites` per request.
+Under the adaptive policies, a reference request whose SQL use sites made dense recall unnecessary
+also skips the dedicated reranker (`rerank_route = skip:deterministic`); symbol and path requests
+retain their existing `skip:exact_definition` and `skip:path_evidence` routes. `always` still runs.
+Overview requests and flow questions that name no symbol get a hub lane: the request's words are
+joined into the identifier spellings a declaration could use (`Router`, `register_checker`,
+`createSlice`), the scope's declarations of those spellings are fetched with the number of files
+that call, import or extend each, and the most widely referenced ones that are not package
+names take protected head slots, one file each (`RETRIEVAL_HUB_HEAD_SLOTS`, off by default at 0:
+it raised the curated overview nDCG@10 67.8→74.3 but lowered a sealed held-out semantic set's
+overview 66.4→54.1 and call-chain 85.6→78.2, so the gain did not generalize;
+`RETRIEVAL_HUB_MAX_DEFINITIONS` bounds how many places a hub may be declared in;
+`RETRIEVAL_HUB_FEATURE_ENABLED` would extend the lane to feature questions and displaced the
+implementing function there). Issue-style requests are anchored on their
 deterministic facts: each traceback frame (Python, IPython and Node forms) is resolved to the
 declaration of that function in that file at that line, the title's identifiers are resolved with
 their qualifier pinned strictly, and those declarations take protected head slots in trace order
@@ -373,14 +369,11 @@ after the named lanes, a name declared both in the selected file and elsewhere r
 the local one, a qualified name is pinned to its scope exactly as in the primary lane, and
 a reference answer appends only the asked symbol's own declaration when its use sites
 crowded it out), callers grouped per enclosing
-function (symbol, reference, call-chain), implementations and subclasses (symbol or an
-explicit implementation request), tests
+function (symbol, reference, call-chain), implementations and subclasses (symbol), tests
 that exercise the symbol (symbol, reference, call-chain, feature, compound), and the
 barrel file that re-exports it (symbol). The primary budget is not reserved up front:
 only novel relation evidence can trim its lowest-priority tail, and the relation cap
-scales with the active context budget. Bounded declaration facts are fetched once; after trimming,
-excerpt selection and deduplication run again in memory, excluding names supported only by removed
-primary chunks. Qualified names (`Session.get`) are resolved to
+scales with the active context budget. Qualified names (`Session.get`) are resolved to
 the declaration inside the named scope; overloads are ordered by the parameter types the
 request spells out. Call-chain queries can opt into a second upstream hop with
 `RETRIEVAL_CALL_CHAIN_MAX_HOPS=2`; expansion requires the intermediate enclosing definition
@@ -522,14 +515,13 @@ flowchart TB
     subgraph APP["Application layer · CQRS (application/)"]
         direction LR
         AppSvc["RetrievalApplication"]
-        Pipeline["RetrievalPipeline · call traversal"]
         Buses["CommandBus · QueryBus"]
         Worker["EmbedWorker · service mode"]
     end
 
     subgraph DOMAIN["Domain layer (domain/services/)"]
         direction LR
-        Policies["Query routing · name resolution<br/>ranking · evidence assembly"]
+        Pipeline["RetrievalPipeline"]
         Indexing["Indexing · cAST orchestration"]
         Proto["Protocols<br/>Embedder·SearchStore<br/>Reranker·Repository"]
     end
@@ -573,26 +565,24 @@ stores dense vectors and the path index.
 
 ### Retrieval pipeline
 
-`RetrievalPipeline.search` (`application/retrieval.py`) is one fixed sequence of
-state transitions over a `RetrievalState`. The application coordinates I/O; pure name resolution,
-ranking and evidence assembly live in domain services. `application/call_chain.py` traverses
-scoped call edges with explicit endpoints, selected spans and bounds, without the mutable
-pipeline state.
+`RetrievalPipeline.search` (`domain/services/retrieval.py`) is one fixed sequence of
+state transitions over a `RetrievalState`; every stage reads and writes only its own
+fields, and every optional operator degrades to the identity transform when disabled.
 
 | Stage | What it does |
 | --- | --- |
-| route | `QueryEvidence` extracts entities; `QueryRoute` identifies requested subjects, evidence and path operators |
+| route | deterministic intent, plus `QueryEvidence`: identifiers, traceback frames, quoted error text, filenames, lexical terms |
 | plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
 | recall | dense (Milvus) ∥ exact symbols (SQL) ∥ intent-routed lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
 | fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |
-| prior | source priority × working-set boost once; compute structural head keys and optional semantic source slots |
+| prior | source priority × working-set boost; bounded head slots: exact symbol/path answers, undemoted source files for semantic requests, use sites before the declaration for reference requests |
 | rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
 | select | focused / coverage selection under a hard character budget |
 | expand | merge touching spans; append budgeted relation sections: related definitions, callers, implementations, tests, re-exports |
 
 ```mermaid
 flowchart TB
-    Q["query + SearchScope"] --> Route["route<br/>QueryEvidence + QueryRoute"]
+    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
     Route --> Plan["plan<br/>rewrite (optional) · facets · embed"]
     Plan --> Recall
     subgraph Recall["recall (concurrent)"]

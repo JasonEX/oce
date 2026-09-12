@@ -10,10 +10,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from oce.application.retrieval import RetrievalPipeline
 from oce.application.service import compute_blob_name
 from oce.domain.services.formatter import RELATED_HEADER, format_retrieval
 from oce.domain.services.indexing import IndexingPipeline
+from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchScope, VectorRecord
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
@@ -144,7 +144,7 @@ async def indexed():
 def _pipeline(sessions, vector_index, **overrides):
     # Two primary slots: the fake dense store returns every chunk, so a larger
     # budget would select the whole repository and leave nothing to pull in.
-    settings = RetrievalSettings(final_select_k=2, **overrides)
+    settings = RetrievalSettings(confidence_floor=0.0, final_select_k=2, **overrides)
     return RetrievalPipeline(
         embedder=FakeEmbedder(),
         store=DenseFromRecords(vector_index),

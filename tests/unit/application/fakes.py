@@ -230,24 +230,3 @@ class FakeUnitOfWorkFactory:
 
     def __call__(self) -> FakeUnitOfWork:
         return self.uow
-
-
-class EmptyExactSearchStore:
-    """A scoped exact store with no indexed evidence."""
-
-    async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
-        return []
-
-    async def find_definitions(
-        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
-    ):
-        return []
-
-    async def occurrence_kinds(self, occurrences, scope):
-        return {}
-
-    async def calls_within(self, *, blob_name, start_line, end_line, scope):
-        return []
-
-    async def chunk_for_line(self, *, blob_name, line, scope):
-        return None
