@@ -1,4 +1,4 @@
-"""SearchQuery 处理器测试"""
+"""SearchQuery handler tests."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from oce.application.queries.search import SearchQuery, SearchQueryHandler
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
-from tests.unit.application.fakes import FakeEmbedder, FakeSearchStore
+from tests.fakes.indexing import ConstantEmbedder
+from tests.fakes.retrieval import FakeSearchStore
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ def handler():
         ]
     )
     pipe = RetrievalPipeline(
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(),
         store=store,
         settings=RetrievalSettings(),
     )

@@ -4,9 +4,11 @@ Revision ID: a1b2c3d4e5f6
 Revises: f3a5c7d9e1b2
 Create Date: 2026-09-02 12:00:00.000000
 
-rate_limit / last_used_at 从未被写入或读取；max_candidates / output_top_k /
-snippet_chars / num_rewrites 只能通过 admin API 存取，运行时始终使用 LLM_*
-环境变量，保留它们会让 admin 面板呈现一个并不生效的配置。SQLite 走 batch 重建表。
+rate_limit and last_used_at were never written or read; max_candidates,
+output_top_k, snippet_chars and num_rewrites were only reachable through the
+admin API while the runtime always used the LLM_* settings, so keeping them
+showed the admin panel a configuration that had no effect. SQLite rebuilds
+the table in batch mode.
 """
 
 from typing import Sequence, Union

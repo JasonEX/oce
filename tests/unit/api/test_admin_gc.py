@@ -1,4 +1,4 @@
-"""/admin/gc 契约测试：dry-run 默认 + 真删。"""
+"""Contract tests of /admin/gc: dry run by default, real deletion on request."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ async def test_gc_defaults_to_dry_run():
     assert body["dry_run"] is True
     assert body["deletable_blobs"] == 2
     assert body["deleted_blobs"] == 0
-    # 未显式传入时 dry_run 默认 True
+    # dry_run defaults to True
     assert stub.calls[0]["dry_run"] is True
     assert stub.calls[0]["ttl_days"] == 30
 

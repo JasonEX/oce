@@ -36,7 +36,7 @@ TypedRange = tuple[int, int, str]
 
 
 def is_meaningful(text: str | bytes) -> bool:
-    """是否含有效信息（至少一个字母/数字）。"""
+    """Whether the text holds at least one letter or digit."""
     if isinstance(text, bytes):
         text = text.decode("utf-8", errors="ignore")
     return any(ch.isalnum() for ch in text)

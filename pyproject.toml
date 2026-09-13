@@ -30,17 +30,18 @@ dependencies = [
     "httpx>=0.25.0",
     "loguru>=0.7.0",
     "python-dotenv>=1.0.0",
-    # Redis（任务队列）
+    # Redis task queue (service mode)
     "redis>=5.0.0",
-    # Milvus 3.0（向量数据库）
+    # Milvus 3.0 vector store
     "pymilvus>=3.0.0",
-    # 本地个人模式的嵌入式 Milvus Lite
+    # Embedded Milvus Lite for personal mode
     "milvus-lite>=2.4.0",
-    # AST 解析（cAST 切块）
-    "tree-sitter==0.25.2", # 0.26 在 Windows 深层遍历时会触发 native access violation
+    # AST parsing for cAST chunking; 0.26 raises a native access violation
+    # during deep traversal on Windows
+    "tree-sitter==0.25.2",
     "tree-sitter-language-pack>=0.1.0",
     "numpy>=1.24.0",
-    # SQLite 异步支持（测试用）
+    # Async SQLite driver: the personal-mode metadata store, also used by tests.
     "aiosqlite>=0.19.0",
     "langchain-text-splitters>=1.1.2",
     "psutil>=7.2.2",
@@ -67,13 +68,14 @@ dev = [
     "faker>=22.0.0",
     "pyarrow>=21.0.0",
     "ruff==0.14.2",
+    "mypy>=1.14",
 ]
 
 [project.scripts]
 oce = "oce.cli:main"
 
 [build-system]
-# setuptools>=77 支持 PEP 639 的 license 字符串写法与 license-files
+# setuptools>=77 understands the PEP 639 license string and license-files
 requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
@@ -82,16 +84,16 @@ where = ["src"]
 include = ["oce*"]
 
 [tool.setuptools.package-data]
-# alembic 模板只在 wheel 中存在时，个人模式 oce serve 才能离线跑迁移
+# The alembic template must ship in the wheel for oce serve to migrate offline
 "oce.alembic" = ["script.py.mako"]
 
-# ==================== Pytest 配置 ====================
+# ==================== pytest ====================
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = ["src"]
 asyncio_mode = "auto"
-# 测试环境默认使用 SQLite 内存数据库
+# Tests default to an in-memory SQLite database
 env = [
     "DB_URL=sqlite+aiosqlite:///:memory:",
 ]
@@ -122,9 +124,30 @@ extend-exclude = ["src/oce/alembic/versions"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "I", "UP", "B"]
-# B008：FastAPI 的 Depends()/Header() 就是设计成写在参数默认值里的。
-# UP017：项目统一使用语义更明确的 timezone.utc。
+# B008: FastAPI's Depends()/Header() are designed as parameter defaults.
+# UP017: the project spells timezone.utc for clarity.
 ignore = ["B008", "UP017"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["oce", "tests"]
+
+# ==================== mypy ====================
+[tool.mypy]
+# 3.12 is the lowest version whose stub parsing accepts numpy's PEP 695 type
+# statements; the runtime floor stays 3.11 and CI still runs the tests there.
+python_version = "3.12"
+files = ["src/oce"]
+mypy_path = "src"
+exclude = ["src/oce/alembic/versions"]
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+# Some adapters lack upstream stubs; optional model packages may be absent.
+# Installed packages with type information are still checked.
+module = ["pymilvus", "pymilvus.*", "onnxruntime", "tokenizers", "psutil"]
+ignore_missing_imports = true

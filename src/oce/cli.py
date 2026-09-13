@@ -13,7 +13,7 @@ from oce import __version__
 
 _DEFAULT_DATA_DIR = Path.home() / ".oce" / "data"
 
-# -v 次数 → loguru / uvicorn 级别；默认 WARNING 避免检索管线 info 日志刷屏
+# -v count to log level; WARNING by default keeps the pipeline's info logs quiet.
 _LOG_LEVELS = ("WARNING", "INFO", "DEBUG")
 
 
@@ -22,12 +22,7 @@ def _verbose_level(verbose: int) -> int:
 
 
 def _configure_logging(verbose: int, data_dir: Path | None = None) -> None:
-    """按 -v 次数配置 loguru；替换默认 stderr handler，只影响 OCE 内部日志。
-
-    Args:
-        verbose: -v 次数，决定日志级别
-        data_dir: 数据目录（个人模式）；服务模式下为 None
-    """
+    """Configure loguru from the -v count; only OCE's own logging is affected."""
     from oce.shared.config.settings import get_settings
     from oce.shared.logging import DATA_DIR_ENV, LOG_LEVEL_ENV, configure_logging
 
@@ -35,7 +30,8 @@ def _configure_logging(verbose: int, data_dir: Path | None = None) -> None:
     settings = get_settings()
     configure_logging(settings.log, level=level, data_dir=data_dir)
 
-    # 把上下文传给 uvicorn 启动后的 app lifespan，使其复用同一配置（避免二次配置丢失路径/级别）
+    # Hand the level and data directory to the ASGI lifespan through the
+    # environment so its own configure call reproduces this one.
     os.environ[LOG_LEVEL_ENV] = level
     if data_dir is not None:
         os.environ[DATA_DIR_ENV] = str(data_dir)
@@ -128,11 +124,11 @@ def _local_defaults(data_dir: Path) -> dict[str, str]:
 
 
 def _load_personal_env(data_dir: Path, env_file: str | None) -> None:
-    """在读取 settings 前把个人模式 .env 灌进 os.environ。
+    """Load the personal-mode .env into the environment before settings are read.
 
-    优先级：--env-file（显式指定，覆盖已有环境变量） > <data-dir>/.env（常驻配置，
-    不覆盖已 export 的真实环境变量）。os.environ 优先级高于 pydantic 的 .env 文件读取，
-    因此对全部配置组统一生效，且不依赖进程 CWD。
+    ``--env-file`` overrides existing variables; ``<data-dir>/.env`` does not.
+    The environment outranks pydantic's own .env reading, so every settings
+    group sees the same values regardless of the working directory.
     """
     if env_file:
         path = Path(env_file).expanduser().resolve()
@@ -163,10 +159,10 @@ def _serve(args: argparse.Namespace) -> None:
     for key, value in _local_defaults(data_dir).items():
         os.environ.setdefault(key, value)
 
-    # 配置日志（需在加载 .env 后，读取配置前）
+    # After the .env is loaded, before settings are read.
     _configure_logging(args.verbose, data_dir)
 
-    # 个人模式每次启动自动迁移（SQLite 文件可直接幂等升级）
+    # Personal mode migrates on every start; SQLite upgrades in place.
     from oce.infrastructure.persistence.migrations import run_migrations
 
     run_migrations()
@@ -231,7 +227,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main() -> None:
     args = build_parser().parse_args()
-    # serve 在 _serve 内配置日志（带 data_dir 上下文）；init/version 不打日志，无需配置
     args.handler(args)
 
 

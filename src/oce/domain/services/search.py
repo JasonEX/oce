@@ -1,8 +1,7 @@
-"""检索领域类型 - SearchHit 值对象 + SearchStore 协议
+"""Retrieval value objects and store protocols.
 
-SearchHit 是检索命中的不可变值对象；
-SearchStore 是向量检索的存储抽象，
-由基础设施层实现，领域层只依赖此协议。
+``SearchHit`` is the immutable hit; the store protocols are implemented by
+the infrastructure layer and are all the domain depends on.
 """
 
 from __future__ import annotations
@@ -11,10 +10,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-# 命中在最终结果中的角色：primary 是回答查询的片段，其余是按关系车道附带的摘录：
-# related 是被引用符号的定义，caller 是调用方，implementation 是子类/实现，
-# test 是覆盖该符号的测试，reexport 是转出该符号的入口文件，chain 是两个端点
-# 之间调用路径上的定义（按 hop 编号）。
+# A hit's role in the result: primary answers the request; the rest are
+# excerpts appended by relation lane: related is a referenced definition,
+# caller a call site, implementation a subclass or impl, test a covering
+# test, reexport a barrel entry, chain a definition on the call path between
+# two endpoints (numbered by hop).
 HitRole = Literal[
     "primary", "related", "caller", "implementation", "test", "reexport", "chain"
 ]
@@ -22,7 +22,7 @@ HitRole = Literal[
 
 @dataclass(frozen=True)
 class SearchHit:
-    """检索命中的代码片段"""
+    """One retrieved chunk."""
 
     blob_name: str
     path: str
@@ -31,7 +31,8 @@ class SearchHit:
     content_hash: str = ""
     start_line: int = 1
     end_line: int = 1
-    # 切块时记录的封闭作用域签名链（如 ``class Foo > def bar``）；无 AST 时为 None。
+    # Enclosing scope chain recorded at chunking (``class Foo > def bar``);
+    # None without an AST.
     context: str | None = None
     role: HitRole = "primary"
     hop: int | None = None
@@ -71,7 +72,7 @@ def search_hit_key(hit: SearchHit) -> SearchHitKey:
 
 
 class SearchStore(Protocol):
-    """检索存储接口（Milvus 3.0：向量检索）"""
+    """Dense vector search (Milvus 3.0)."""
 
     async def search(
         self,
@@ -81,10 +82,7 @@ class SearchStore(Protocol):
         top_k: int = 50,
         vector_threshold: float = 0.0,
     ) -> list[SearchHit]:
-        """向量检索，返回按相似度降序的命中列表
-
-        allowed_blob_names 非空时做索引级过滤（范围外不参与排序）。
-        """
+        """Hits by descending similarity, filtered to ``allowed_blob_names`` when given."""
         ...
 
 
@@ -123,7 +121,7 @@ class HubDefinition:
 
 
 class ExactSearchStore(Protocol):
-    """按代码标识符精确召回已索引片段。"""
+    """Exact recall of indexed chunks by code identifier."""
 
     async def search_exact(
         self,
@@ -133,7 +131,7 @@ class ExactSearchStore(Protocol):
         top_k: int = 50,
         kinds: Sequence[str] | None = None,
     ) -> list[SearchHit]:
-        """``kinds`` 限定 occurrence 种类（endpoint/definition/import）；None 不限。"""
+        """``kinds`` restricts the occurrence kinds; None allows every kind."""
         ...
 
     async def find_definitions(
@@ -193,10 +191,11 @@ class ExactSearchStore(Protocol):
 
 
 class LexicalSearchStore(Protocol):
-    """词法召回：对 chunk 词元索引做 term/phrase 匹配，按词法相关度排序。
+    """Term and phrase recall over the chunk token index, ranked lexically.
 
-    ``required`` 是必须至少命中一个的词元组：引用类查询用它把「真正用到这个
-    标识符」的片段和「只是碰到同样子词」的片段分开；排序仍按全部 terms 计算。
+    ``required`` is a group of tokens of which at least one must match:
+    reference requests use it to tell chunks that use the identifier from
+    chunks that merely share a sub-word; ranking still uses every term.
     """
 
     async def search_lexical(
@@ -241,7 +240,7 @@ class VectorRecord:
 
 
 class VectorIndex(Protocol):
-    """向量索引写路径。"""
+    """The write side of the vector index."""
 
     async def upsert(self, records: Sequence[VectorRecord]) -> None: ...
 

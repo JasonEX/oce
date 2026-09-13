@@ -1,15 +1,12 @@
-"""EmbedWorker — 消费嵌入队列，对 blob 补算向量
+"""EmbedWorker: consume the embedding queue and embed pending blobs.
 
-流程
-----
-    dequeue_many(blob_names) → IndexingPipeline.embed_pending(blob_names)
-    成功 → 逐条 ack；整批异常 → 逐条隔离重试，失败项递增 retry_count
+    dequeue_many(blob_names) -> IndexingPipeline.embed_pending(blob_names)
+    success: ack each blob; batch failure: retry each blob alone and count
+    the failure on the ones that still fail
 
-并发
-----
-启动 N 个 worker 协程并行消费（concurrency 可配）。
-每个协程一个消费循环，stop() 置标志后协程在下次 dequeue 超时自然退出。
-每个批次在自己的 UoW 内构造独立 IndexingPipeline，协程间不共享可变状态。
+N consumer coroutines run in parallel; ``stop()`` sets a flag and each loop
+exits at its next dequeue timeout. Every batch builds its own pipeline inside
+its own unit of work, so coroutines share no mutable state.
 """
 
 from __future__ import annotations
@@ -24,8 +21,6 @@ from oce.application.uow import UnitOfWorkFactory
 
 
 class EmbedWorker:
-    """异步嵌入 worker（持有 queue + uow_factory + pipeline 工厂）"""
-
     def __init__(
         self,
         *,
@@ -52,20 +47,20 @@ class EmbedWorker:
         return self._running
 
     async def start(self) -> None:
-        """启动前先恢复上次崩溃残留，再拉起 N 个消费协程"""
+        """Recover what a crashed run left in processing, then start the consumers."""
         if self._running:
             return
         self._running = True
         recovered = await self._queue.recover_processing()
         if recovered:
-            logger.info("EmbedWorker: 恢复 {} 条处理中残留任务", recovered)
+            logger.info("EmbedWorker recovered {} in-flight tasks", recovered)
         self._tasks = [
             asyncio.create_task(self._loop(i)) for i in range(self._concurrency)
         ]
-        logger.info("EmbedWorker 启动，{} 个消费协程", self._concurrency)
+        logger.info("EmbedWorker started with {} consumers", self._concurrency)
 
     async def stop(self) -> None:
-        """停止：置标志 + 取消协程并等待退出"""
+        """Set the stop flag, cancel the consumers and wait for them."""
         self._running = False
         for t in self._tasks:
             t.cancel()
@@ -75,10 +70,10 @@ class EmbedWorker:
             except (asyncio.CancelledError, Exception):
                 pass
         self._tasks = []
-        logger.info("EmbedWorker 已停止")
+        logger.info("EmbedWorker stopped")
 
     async def _loop(self, worker_id: int) -> None:
-        """单个消费协程：取任务 → 嵌入 → ack/fail"""
+        """One consumer: dequeue, embed, ack or fail."""
         while self._running:
             try:
                 blob_names = await self._queue.dequeue_many(
@@ -88,7 +83,7 @@ class EmbedWorker:
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning("worker#{} dequeue 异常: {}", worker_id, e)
+                logger.warning("worker#{} dequeue failed: {}", worker_id, e)
                 await asyncio.sleep(1)
                 continue
 
@@ -102,7 +97,7 @@ class EmbedWorker:
                 break
 
     async def _process_batch(self, worker_id: int, blob_names: list[str]) -> None:
-        """优先整批处理；失败时逐条隔离，避免健康 blob 被共同记为失败。"""
+        """Embed the batch at once; on failure isolate each blob so healthy ones are not blamed."""
         try:
             embedded = await self._embed(blob_names)
         except asyncio.CancelledError:
@@ -131,7 +126,8 @@ class EmbedWorker:
         )
 
     async def _embed(self, blob_names: list[str]) -> int:
-        # 外部向量写入是内容寻址幂等的；事务失败后的逐条回退可安全重复 upsert。
+        # Vector writes are content-addressed and idempotent, so the per-blob
+        # retry after a failed transaction may upsert the same rows again.
         async with self._uow_factory() as uow:
             pipeline = self._pipeline_factory(uow)
             embedded = await pipeline.embed_pending(
@@ -145,8 +141,9 @@ class EmbedWorker:
         try:
             await self._queue.ack(blob_name)
         except Exception as exc:
-            # DB/向量写入已经完成，不能把队列确认失败误记成索引失败。消息留在
-            # processing，进程重启时 recover_processing 会再次安全处理。
+            # The database and vector writes succeeded; a failed ack is not an
+            # indexing failure. The message stays in processing and
+            # recover_processing handles it safely on the next start.
             logger.error(
                 "worker#{} ack failed for blob {}: {}",
                 worker_id,

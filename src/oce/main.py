@@ -1,8 +1,9 @@
-"""OpenContextEngine ASGI 入口。"""
+"""The OpenContextEngine ASGI entry point."""
 
 from __future__ import annotations
 
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -18,12 +19,13 @@ from oce.application.container import get_container
 from oce.shared.config.settings import get_settings
 from oce.shared.database.session import engine
 from oce.shared.logging import DATA_DIR_ENV, LOG_LEVEL_ENV, configure_logging
+from oce.shared.metrics import ManagedMetricsSink
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    # 配置日志：`oce serve` 由 CLI 通过环境变量传递上下文（级别 + data dir）；
-    # 直接 `uvicorn oce.main:app` 时无上下文，使用配置默认值。
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # `oce serve` passes the log level and data directory through the
+    # environment; a bare `uvicorn oce.main:app` uses the settings defaults.
     settings = get_settings()
     data_dir = os.environ.get(DATA_DIR_ENV)
     configure_logging(
@@ -81,8 +83,8 @@ app.include_router(router)
 app.include_router(admin_router)
 
 
-def _metrics_sink_provider():
-    """仅在容器已装配后返回 sink；未装配（如未跑 lifespan）时返回 None 跳过，避免误构建容器。"""
+def _metrics_sink_provider() -> ManagedMetricsSink | None:
+    """The metrics sink once the container exists; None before the lifespan ran."""
     if get_container.cache_info().currsize == 0:
         return None
     return get_container().metrics
@@ -99,5 +101,5 @@ async def health() -> dict[str, str]:
 
 @app.get("/version", tags=["Meta"])
 async def version() -> dict[str, str]:
-    """服务端版本号，公开无需鉴权，供客户端做兼容性检查与升级提醒。"""
+    """Unauthenticated server version for client compatibility checks."""
     return {"name": "oce", "version": __version__}

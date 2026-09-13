@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -24,29 +25,29 @@ from oce.shared.database.session import Base
 _AutoId = BigInteger().with_variant(Integer, "sqlite")
 
 
-def _timestamp(**kwargs) -> Mapped[datetime]:
+def _timestamp(**kwargs: Any) -> Mapped[datetime]:
     return mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), **kwargs
     )
 
 
 class ModelCredentialModel(Base):
-    """多用途模型凭据：一行 = 一个 (kind, 账号) 通道。
+    """One model credential: a (kind, account) channel.
 
-    kind ∈ embed | rerank | llm_rerank | query_rewrite。同一把 key 可服务多个
-    用途/模型：唯一约束是 (kind, model, api_key_hash)，故同 key 跨 kind、同 kind 下同 key
-    挂不同 model 都允许，只挡住 kind+model+key 三者全同的纯重复行。endpoint 语义随 kind 变化：
-    embed/rerank 存完整 URL（/v1/embeddings、/v1/rerank），chat 两类（llm_rerank/
-    query_rewrite）存 base_url（/v1）。resolve 时按 kind + status='active' +
-    priority 取最高优先级一条，取不到回落各自的环境变量。kind 专属参数列对其它 kind 恒为
-    NULL，解析时缺失的字段回落 fallback 设置。
+    ``kind`` is embed, rerank, llm_rerank or query_rewrite. One key may serve
+    several kinds and models: the unique constraint is (kind, model,
+    api_key_hash), so only an exact duplicate is rejected. ``endpoint`` is the
+    full URL for embed/rerank (/v1/embeddings, /v1/rerank) and the base URL
+    (/v1) for the chat kinds. Resolution picks the active row with the lowest
+    priority per kind and falls back to the environment; kind-specific columns
+    are NULL for other kinds and fall back field by field.
     """
 
     __tablename__ = "model_credentials"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     kind: Mapped[str] = mapped_column(String(16))
-    # 渠道标签（如 siliconflow），仅用于分组/复制
+    # Provider label (siliconflow), for grouping and duplication only.
     provider: Mapped[str | None] = mapped_column(String(64))
     name: Mapped[str] = mapped_column(String(128))
     api_key: Mapped[str] = mapped_column(String(512))
@@ -58,18 +59,18 @@ class ModelCredentialModel(Base):
     timeout_seconds: Mapped[int] = mapped_column(Integer, default=30)
     note: Mapped[str | None] = mapped_column(Text)
 
-    # embed 专属
+    # embed only
     dimensions: Mapped[int | None] = mapped_column(Integer)
     max_batch_size: Mapped[int | None] = mapped_column(Integer)
     max_batch_chars: Mapped[int | None] = mapped_column(Integer)
     max_input_chars: Mapped[int | None] = mapped_column(Integer)
     input_overlap_chars: Mapped[int | None] = mapped_column(Integer)
 
-    # rerank(API) 专属
+    # rerank (API) only
     top_n: Mapped[int | None] = mapped_column(Integer)
     min_score: Mapped[float | None]
 
-    # chat 两类专属：llm_rerank / query_rewrite
+    # chat kinds only: llm_rerank, query_rewrite
     tpm_limit: Mapped[int | None] = mapped_column(Integer)
 
     created_at: Mapped[datetime] = _timestamp()
@@ -167,7 +168,7 @@ class BlobChunkModel(Base):
     start_line: Mapped[int] = mapped_column(Integer)
     end_line: Mapped[int] = mapped_column(Integer)
     chunk_index: Mapped[int] = mapped_column(Integer)
-    # 封闭作用域签名链；属于文件内的这次出现，不属于内容寻址的 chunk 本身。
+    # Enclosing scope chain of this occurrence, not of the content-addressed chunk.
     context: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
@@ -225,7 +226,8 @@ class SymbolOccurrenceModel(Base):
     kind: Mapped[str] = mapped_column(String(16))
     start_line: Mapped[int] = mapped_column(Integer)
     end_line: Mapped[int] = mapped_column(Integer)
-    # 所在的最内层定义名；模块级或无法判定时为空串（非 NULL，才能进唯一键去重）。
+    # Innermost enclosing definition; empty (not NULL, so the unique key
+    # deduplicates) at module level or when unknown.
     enclosing: Mapped[str] = mapped_column(String(256), server_default="", default="")
     created_at: Mapped[datetime] = _timestamp()
 
@@ -246,7 +248,7 @@ class SymbolOccurrenceModel(Base):
 
 
 class ApiCallMetricModel(Base):
-    """每次 HTTP 请求一行：调用次数/耗时/状态码的事件明细。"""
+    """One row per HTTP request: latency and status."""
 
     __tablename__ = "api_call_metrics"
 
@@ -265,7 +267,7 @@ class ApiCallMetricModel(Base):
 
 
 class TokenUsageMetricModel(Base):
-    """每次外部模型调用一行：embed/rerank/rewrite 的 token 消耗明细。"""
+    """One row per model call: token usage of embed, rerank and rewrite."""
 
     __tablename__ = "token_usage_metrics"
 
@@ -286,7 +288,7 @@ class TokenUsageMetricModel(Base):
 
 
 class ResourceSampleModel(Base):
-    """周期采样一行：磁盘/内存/CPU 的瞬时占用。"""
+    """One row per resource sample: disk, memory and CPU."""
 
     __tablename__ = "resource_samples"
 
@@ -303,7 +305,7 @@ class ResourceSampleModel(Base):
 
 
 class RetrievalMetricModel(Base):
-    """一次检索的阶段耗时与结果审计。hit_count=0 即空回；source 区分真实检索与 overview 子查询。"""
+    """One row per retrieval: stage timings and routing evidence; ``hit_count`` 0 is an empty answer."""
 
     __tablename__ = "retrieval_metrics"
 
@@ -318,13 +320,16 @@ class RetrievalMetricModel(Base):
     rerank_route: Mapped[str | None] = mapped_column(String(48))
     dense_route: Mapped[str | None] = mapped_column(String(48))
     head_slots: Mapped[int] = mapped_column(Integer, server_default="0")
-    # 路由看到的结构证据与附带的关系小节规模，供离线校准 adaptive 阈值。
+    # Structural evidence the router saw and the size of the relation
+    # sections, for calibrating the adaptive thresholds offline.
     exact_definitions: Mapped[int] = mapped_column(Integer, server_default="0")
     definition_sites: Mapped[int] = mapped_column(Integer, server_default="0")
     relation_hits: Mapped[int] = mapped_column(Integer, server_default="0")
     relation_chars: Mapped[int] = mapped_column(Integer, server_default="0")
+    # ``lane:ExceptionType`` pairs, comma separated; NULL when every lane ran.
+    lane_failures: Mapped[str | None] = mapped_column(Text)
     query_text: Mapped[str | None] = mapped_column(Text)
-    # 阶段耗时（毫秒）；未运行的阶段留 NULL，不冒充 0。
+    # Stage timings in ms; a stage that never ran stays NULL rather than 0.
     rewrite_ms: Mapped[int | None] = mapped_column(Integer)
     embed_ms: Mapped[int | None] = mapped_column(Integer)
     dense_ms: Mapped[int | None] = mapped_column(Integer)

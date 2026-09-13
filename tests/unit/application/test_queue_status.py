@@ -1,4 +1,4 @@
-"""QueueStatusQueryHandler 单元测试。"""
+"""QueueStatusQueryHandler tests."""
 
 from __future__ import annotations
 

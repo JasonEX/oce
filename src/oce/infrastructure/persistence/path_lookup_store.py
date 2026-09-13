@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from typing import Any
 
-from sqlalchemy import case, func, literal, or_, select
+from sqlalchemy import Select, case, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -82,16 +83,16 @@ class SqlPathLookupStore:
         if not suffixes and not basenames:
             return {}
 
-        def build(predicate: ColumnElement[bool]):
-            full_suffix_conditions = (
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
+            full_suffix_conditions: list[ColumnElement[bool]] = (
                 [BlobModel.path.in_(full_suffixes)] if full_suffixes else []
             )
-            suffix_conditions = [
+            suffix_conditions: list[ColumnElement[bool]] = [
                 BlobModel.path.like(f"%/{_escape_like(suffix)}", escape="\\")
                 for suffix in suffixes
             ]
             suffix_conditions.extend(BlobModel.path == suffix for suffix in suffixes)
-            basename_conditions = [
+            basename_conditions: list[ColumnElement[bool]] = [
                 BlobModel.path.like(f"%/{_escape_like(name)}", escape="\\")
                 for name in basenames
             ]

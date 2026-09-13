@@ -1,6 +1,7 @@
-"""SQLAlchemy 引擎、会话工厂和 ORM 基类。"""
+"""SQLAlchemy engine, session factory and declarative base."""
 
 from sqlalchemy import event
+from sqlalchemy.engine.interfaces import DBAPIConnection
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -8,12 +9,15 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import ConnectionPoolEntry
 
 from oce.shared.config import get_settings
 from oce.shared.config.settings import DatabaseSettings
 
 
-def _configure_sqlite(dbapi_connection, _record) -> None:
+def _configure_sqlite(
+    dbapi_connection: DBAPIConnection, _record: ConnectionPoolEntry
+) -> None:
     """Personal mode serves uploads, retrieval, and metrics from one file.
 
     The default rollback journal lets a long upload transaction lock every

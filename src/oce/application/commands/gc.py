@@ -1,13 +1,12 @@
-"""过期数据回收（GC）：dry-run 优先。
+"""Garbage collection of expired data; dry run by default.
 
-删除口径：
-- 过期 chain：updated_at 早于 now - ttl_days，删除只移除 checkpoint 分组，不动 blob。
-- 过期 blob：last_seen 早于 now - ttl_days、不被任何 chain 引用，且不在
-  queue 的 inflight 集合内，经 DeleteBlobsCommand 连带清 DB/向量/路径。
-  本轮才删除的过期 chain 所引用的 blob 延后到下轮 GC，保证有效 chain 永远不
-  会指向已删索引。inflight 项同样跳过，避免删正在嵌入的 blob。
-
-dry_run=True（默认）只统计不删；dry_run=False 才真正执行删除。
+An expired chain (``updated_at`` older than ``now - ttl_days``) is removed as
+a checkpoint grouping without touching its blobs. An expired blob
+(``last_seen`` older than the TTL, referenced by no chain, not in the queue's
+in-flight set) is removed through ``DeleteBlobsCommand`` together with its
+vectors and path documents. Blobs referenced by a chain deleted in this very
+run wait for the next run, so a live chain never points at a deleted index;
+in-flight blobs are skipped so nothing being embedded disappears.
 """
 
 from __future__ import annotations

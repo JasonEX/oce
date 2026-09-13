@@ -64,12 +64,12 @@ async def run_scoped(
     """Execute ``build(predicate)`` under the scope; rows from batches are concatenated."""
     predicate = relational_predicate(scope, blob_column)
     if predicate is not None:
-        rows = list((await session.execute(build(predicate))).all())
+        relational_rows = list((await session.execute(build(predicate))).all())
         current_version = await session.scalar(
             select(ChainModel.version).where(ChainModel.chain_id == scope.chain_id)
         )
         if current_version == scope.chain_version:
-            return rows
+            return relational_rows
 
     rows: list[Row[Any]] = []
     names: Sequence[str] = sorted(scope.blob_names)

@@ -1,8 +1,4 @@
-"""Milvus 3.0 集成测试
-
-使用 Milvus Lite（本地文件数据库）进行真实测试。
-无需 Docker，数据存储在 ./test_data/milvus.db
-"""
+"""Milvus integration tests over Milvus Lite; no Docker needed."""
 
 import math
 import random
@@ -69,27 +65,27 @@ async def test_local_index_upgrade_preserves_vectors_and_scoped_nearest_neighbor
 
 @pytest.fixture(scope="module")
 def test_db_path(tmp_path_factory):
-    """创建临时测试数据库目录"""
+    """A temporary database directory."""
     db_dir = tmp_path_factory.mktemp("milvus_test")
     db_file = db_dir / "milvus.db"
     yield str(db_file)
 
-    # 测试结束后清理（忽略 Windows 文件锁错误）
+    # Clean up afterwards; Windows file locks are ignored.
     try:
         import time
 
-        time.sleep(0.5)  # 等待 Milvus Lite 释放文件
+        time.sleep(0.5)  # let Milvus Lite release the file
         if db_dir.exists():
             shutil.rmtree(db_dir, ignore_errors=True)
     except Exception:
-        pass  # 忽略清理错误
+        pass
 
 
 @pytest.fixture(scope="module")
 def milvus_settings(test_db_path):
-    """Milvus Lite 配置（本地文件数据库）"""
+    """Milvus Lite settings over a local file."""
     return MilvusSettings(
-        endpoint=test_db_path,  # Milvus Lite：直接传文件路径
+        endpoint=test_db_path,  # a file path selects Milvus Lite
         token=None,
         collection_name="test_oce_chunks",
     )
@@ -97,19 +93,21 @@ def milvus_settings(test_db_path):
 
 @pytest.fixture
 async def milvus_client(milvus_settings):
-    """初始化 Milvus 客户端（每个测试独立）"""
-    client = Milvus3Client(milvus_settings, dense_dim=128)  # 小维度加快测试
+    """A client per test."""
+    client = Milvus3Client(
+        milvus_settings, dense_dim=128
+    )  # small dimension keeps tests fast
 
     await client.initialize()
 
-    # 清空已有数据（确保测试隔离）
+    # clear existing rows for isolation
     try:
         await client._client.delete(
             collection_name=milvus_settings.collection_name,
-            filter="content_hash != ''",  # 删除所有数据
+            filter="content_hash != ''",
         )
     except Exception:
-        pass  # Collection 可能是空的
+        pass  # the collection may be empty
 
     yield client
     await client.close()
@@ -118,11 +116,10 @@ async def milvus_client(milvus_settings):
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestMilvus3Integration:
-    """Milvus 3.0 集成测试（使用 Milvus Lite）"""
+    """Milvus client integration over Milvus Lite."""
 
     async def test_insert_and_search(self, milvus_client):
-        """测试完整的插入和检索流程"""
-        # 插入测试数据
+        """Insert and search."""
         chunks = [
             VectorRecord(
                 chunk_id="1" * 64,
@@ -158,9 +155,8 @@ class TestMilvus3Integration:
 
         assert await milvus_client.insert(chunks) == 3
 
-        # dense 向量检索
         results = await milvus_client.search(
-            [0.15] * 128,  # 接近 hash1
+            [0.15] * 128,  # close to hash1
             blob_filter=["a" * 64],
             top_k=2,
         )
@@ -170,8 +166,7 @@ class TestMilvus3Integration:
         assert results[0].blob_name == "a" * 64
 
     async def test_blob_filter(self, milvus_client):
-        """测试 blob_name 过滤"""
-        # 插入测试数据（两个不同的 blob）
+        """Filtering by blob_name."""
         chunks = [
             VectorRecord(
                 chunk_id="4" * 64,
@@ -196,7 +191,7 @@ class TestMilvus3Integration:
         ]
         await milvus_client.insert(chunks)
 
-        # 只搜索 calculator.py
+        # calculator.py only
         results = await milvus_client.search(
             [0.3] * 128,
             blob_filter=["b" * 64],
@@ -208,8 +203,7 @@ class TestMilvus3Integration:
             assert result.blob_name == "b" * 64
 
     async def test_delete_by_blob(self, milvus_client):
-        """测试按 blob 删除"""
-        # 插入测试数据
+        """Deleting by blob."""
         chunks = [
             VectorRecord(
                 chunk_id="6" * 64,
@@ -224,10 +218,9 @@ class TestMilvus3Integration:
         ]
         await milvus_client.insert(chunks)
 
-        # 删除
         await milvus_client.delete_by_blob_names(["c" * 64])
 
-        # 验证删除后搜索不到
+        # nothing is found afterwards
         results = await milvus_client.search(
             [0.4] * 128,
             blob_filter=["c" * 64],
@@ -240,19 +233,18 @@ class TestMilvus3Integration:
 @pytest.mark.integration
 @pytest.mark.asyncio
 class TestMilvus3SearchStoreIntegration:
-    """Milvus3SearchStore 集成测试"""
+    """Milvus3SearchStore integration."""
 
     @pytest.fixture
     async def search_store(self, milvus_settings):
-        """初始化 SearchStore"""
+        """A SearchStore per test."""
         store = Milvus3SearchStore(milvus_settings, dense_dim=128)
         await store.client.initialize()
         yield store
         await store.close()
 
     async def test_search_store_upsert_and_search(self, search_store):
-        """测试 SearchStore 的 upsert 和 search"""
-        # Upsert 数据
+        """upsert and search."""
         items = [
             VectorRecord(
                 chunk_id="test_hash_1",
@@ -268,7 +260,6 @@ class TestMilvus3SearchStoreIntegration:
 
         await search_store.upsert(items)
 
-        # 搜索
         results = await search_store.search(
             query_vector=[0.5] * 128,
             allowed_blob_names=["d" * 64],

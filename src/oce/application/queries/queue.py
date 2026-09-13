@@ -1,6 +1,7 @@
-"""队列健康查询：主队列长度 / 在飞数 / DB 待办数。
+"""Queue health: main queue length, in-flight count, database pending count.
 
-queue 为 None（个人模式或 worker 关闭）时返回 enabled=False 的零值快照。
+Without a queue (personal mode, or the worker disabled) the snapshot is
+``enabled=False`` with zeros.
 """
 
 from __future__ import annotations

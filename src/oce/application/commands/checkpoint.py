@@ -1,4 +1,4 @@
-"""Checkpoint 工作集命令。"""
+"""Checkpoint (working set) command."""
 
 from __future__ import annotations
 
@@ -37,14 +37,17 @@ class CheckpointCommandHandler:
                 if parsed is None:
                     raise InvalidCheckpointTokenError(command.checkpoint_id)
                 chain_id, expected_version = parsed
-                version = await uow.chains.apply_checkpoint(
+                applied = await uow.chains.apply_checkpoint(
                     chain_id,
                     expected_version,
                     command.added_blobs,
                     command.deleted_blobs,
                 )
-                if version is None:
-                    raise NeedsResetError("checkpoint 链不存在或版本已过期")
+                if applied is None:
+                    raise NeedsResetError(
+                        "checkpoint chain not found or version outdated"
+                    )
+                version = applied
             await uow.chains.touch_members(chain_id)
             await uow.commit()
         return CheckpointResult(Chain.format_checkpoint_token(chain_id, version))

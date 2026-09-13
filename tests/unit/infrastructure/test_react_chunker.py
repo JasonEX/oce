@@ -34,20 +34,20 @@ def assert_aligned(chunk, content: str) -> None:
 
 @pytest.mark.parametrize("path", ["src/App.tsx", "src/App.jsx"])
 def test_top_level_react_components_get_independent_chunks(path):
-    """React 组件被正确识别和切块。小组件可能合并，大文件会切分。"""
+    """React components are recognized; small ones may merge, large files split."""
     chunks = make_chunker().chunk(COMPONENTS, path)
 
-    # 两个组件都应该出现在切块结果中（可能在同一块，也可能分开）
+    # Both components appear, in one chunk or two.
     assert any("function Header" in chunk.content for chunk in chunks)
     assert any("const Footer" in chunk.content for chunk in chunks)
 
-    # 如果分成多块，验证每块对齐
+    # When split, every chunk is aligned.
     for chunk in chunks:
         assert_aligned(chunk, COMPONENTS)
 
 
 def test_pascal_case_component_wrapped_in_memo_is_detected():
-    """React.memo 包裹的 PascalCase 组件被正确识别。"""
+    """A PascalCase component wrapped in React.memo is recognized."""
     content = """const helper = () => <span>helper</span>
 
 export const Dashboard = React.memo(() => {
@@ -57,13 +57,13 @@ export const Dashboard = React.memo(() => {
     chunks = make_chunker().chunk(content, "src/Dashboard.tsx")
 
     dashboard = next(chunk for chunk in chunks if "const Dashboard" in chunk.content)
-    # Dashboard 组件被识别，helper 可能在同一块（如果合并）或不在
+    # Dashboard is recognized; the helper may share its chunk.
     assert "Dashboard" in dashboard.content
     assert_aligned(dashboard, content)
 
 
 def test_class_component_gets_an_independent_chunk():
-    """类组件被正确识别和切块。"""
+    """Class components are recognized."""
     content = """export class Sidebar extends React.Component {
   render() {
     return <aside>Sidebar</aside>
@@ -76,7 +76,7 @@ export function Content() {
 """
     chunks = make_chunker().chunk(content, "src/Layout.tsx")
 
-    # 两个组件都应该出现
+    # both components appear
     assert any("class Sidebar" in chunk.content for chunk in chunks)
     assert any("function Content" in chunk.content for chunk in chunks)
 

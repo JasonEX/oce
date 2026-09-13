@@ -15,7 +15,8 @@ class ChunkRef:
     content_hash: str
     start_line: int
     end_line: int
-    # 封闭作用域签名链；随 blob_chunks 持久化，是 occurrence 级而非内容级属性。
+    # Enclosing scope chain, persisted with blob_chunks: a property of the
+    # occurrence, not of the content.
     context: str | None = None
 
     def __post_init__(self) -> None:
@@ -41,8 +42,9 @@ class Chunk:
     start_line: int
     end_line: int
     chunk_type: str | None = None
-    # 切块器给出的封闭作用域签名链（``class Foo(Base) > def bar(self)``）。
-    # 不参与 content_hash：同一段文本在不同文件里的作用域可以不同。
+    # Enclosing scope chain from the chunker (``class Foo(Base) > def bar(self)``).
+    # Not part of content_hash: the same text may sit in different scopes in
+    # different files.
     context: str | None = None
 
     def __post_init__(self) -> None:

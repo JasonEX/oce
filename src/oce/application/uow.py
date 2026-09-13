@@ -1,7 +1,8 @@
-"""Application 层使用的工作单元协议。"""
+"""The unit-of-work protocol the application layer depends on."""
 
 from __future__ import annotations
 
+from types import TracebackType
 from typing import Protocol
 
 from oce.domain.repositories import BlobRepository, ChainRepository, ChunkRepository
@@ -10,15 +11,31 @@ from oce.domain.services.symbols import SymbolProjection
 
 
 class UnitOfWork(Protocol):
-    blobs: BlobRepository
-    chunks: ChunkRepository
-    chains: ChainRepository
-    symbols: SymbolProjection
-    lexical: LexicalProjection
+    # Read-only views: an implementation binds concrete repositories to its
+    # transaction, and a use case only ever reads them.
+    @property
+    def blobs(self) -> BlobRepository: ...
+
+    @property
+    def chunks(self) -> ChunkRepository: ...
+
+    @property
+    def chains(self) -> ChainRepository: ...
+
+    @property
+    def symbols(self) -> SymbolProjection: ...
+
+    @property
+    def lexical(self) -> LexicalProjection: ...
 
     async def __aenter__(self) -> UnitOfWork: ...
 
-    async def __aexit__(self, exc_type, exc, traceback) -> None: ...
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None: ...
 
     async def commit(self) -> None: ...
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
-from typing import Protocol
+from dataclasses import Field, asdict, dataclass
+from typing import Any, ClassVar, Protocol
 
 # 3: blob_chunks.context + chunk_lexical term index.
 INDEX_SCHEMA_VERSION = 3
@@ -32,6 +32,9 @@ def profile_value_hash(value: str) -> str:
 
 class _CanonicalProfile:
     """Deterministic JSON identity for a frozen profile dataclass."""
+
+    # Every concrete profile is a dataclass; ``asdict`` needs that promise.
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
     def canonical_json(self) -> str:
         return json.dumps(

@@ -1,4 +1,4 @@
-"""检索审计：pipeline 阶段打点填充 audit + handler 按 source 上报（含空回、开关）。"""
+"""Retrieval audit: stage timings fill the audit and the handler reports per source."""
 
 from __future__ import annotations
 
@@ -7,11 +7,12 @@ from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit, RetrievalMetricRecord
-from tests.unit.application.fakes import FakeEmbedder, FakeSearchStore
+from tests.fakes.indexing import ConstantEmbedder
+from tests.fakes.retrieval import FakeExactSearchStore, FakeSearchStore
 
 
 class RecordingSink:
-    """只捕获 retrieval 上报的测试替身。"""
+    """Sink capturing only retrieval records."""
 
     def __init__(self) -> None:
         self.retrieval: list[RetrievalMetricRecord] = []
@@ -33,7 +34,7 @@ def _hit() -> SearchHit:
 
 def _pipeline(hits: list[SearchHit]) -> RetrievalPipeline:
     return RetrievalPipeline(
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(),
         store=FakeSearchStore(hits=hits),
         settings=RetrievalSettings(),
     )
@@ -52,7 +53,7 @@ class TestPipelineAuditFill:
             "main entry", SearchScope(frozenset({"h1", "h2"})), audit=audit
         )
 
-        # 无查询改写器 → 只跑核心阶段；query embedding 与向量召回分开计时
+        # No rewriter: only the core stages run; embedding and dense recall time separately.
         assert "embed" in audit.stages
         assert "dense" in audit.stages
         assert "select" in audit.stages
@@ -64,12 +65,34 @@ class TestPipelineAuditFill:
         assert audit.head_slots == 0
 
     async def test_audit_none_is_zero_overhead(self):
-        # 不传 audit：不打点、不报错，行为与原来一致
+        # Without an audit nothing is timed and nothing fails.
         hits = await _pipeline([_hit()]).search("main entry")
         assert len(hits) == 1
 
 
 class TestHandlerReporting:
+    async def test_failed_lanes_reach_metric_record(self) -> None:
+        sink = RecordingSink()
+        pipeline = RetrievalPipeline(
+            embedder=ConstantEmbedder(),
+            store=FakeSearchStore(hits=[_hit()]),
+            exact_store=FakeExactSearchStore(
+                error=RuntimeError("symbol table unavailable")
+            ),
+            settings=RetrievalSettings(),
+        )
+        handler = SearchQueryHandler(
+            pipeline, metrics=sink, retrieval_audit_enabled=True
+        )
+
+        result = await handler.handle(
+            SearchQuery("Where is `main` defined?", SearchScope(frozenset({"h1"})))
+        )
+
+        assert result.hits
+        assert sink.retrieval[0].lane_failures == {"exact": "RuntimeError"}
+        assert sink.retrieval[0].query_text is None
+
     async def test_reports_source_and_hit_count(self):
         handler, sink = _handler([_hit()], retrieval_audit_enabled=True)
         await handler.handle(
@@ -92,14 +115,14 @@ class TestHandlerReporting:
 
         assert result.hits == []
         assert len(sink.retrieval) == 1
-        assert sink.retrieval[0].hit_count == 0  # 空回
+        assert sink.retrieval[0].hit_count == 0  # an empty answer is reported
 
     async def test_disabled_does_not_report(self):
         handler, sink = _handler([_hit()], retrieval_audit_enabled=False)
         result = await handler.handle(SearchQuery("main entry"))
 
         assert len(result.hits) == 1
-        assert sink.retrieval == []  # 关闭时完全不上报
+        assert sink.retrieval == []  # nothing is reported when auditing is off
 
     async def test_query_text_switch(self):
         on_handler, on_sink = _handler(
@@ -113,4 +136,6 @@ class TestHandlerReporting:
         await off_handler.handle(SearchQuery("secret query", scope))
 
         assert on_sink.retrieval[0].query_text == "secret query"
-        assert off_sink.retrieval[0].query_text is None  # 默认不留存原文
+        assert (
+            off_sink.retrieval[0].query_text is None
+        )  # the query text is not stored by default

@@ -30,7 +30,7 @@ class VueChunker:
         max_chunk_chars: int = DEFAULT_MAX_CHUNK_CHARS,
     ):
         if max_chunk_chars <= 0:
-            raise ValueError("max_chunk_chars 必须 > 0")
+            raise ValueError("max_chunk_chars must be positive")
         self.fallback = fallback
         self.max_chunk_chars = max_chunk_chars
 
@@ -106,9 +106,9 @@ class VueChunker:
     ) -> list[Section]:
         """Treat meaningful root content outside script/style as Svelte markup."""
         excluded: set[int] = set()
-        for tag, start, end in sections:
+        for tag, section_start, section_end in sections:
             if tag in {"script", "style"}:
-                excluded.update(range(start, end + 1))
+                excluded.update(range(section_start, section_end + 1))
 
         markup: list[Section] = []
         start: int | None = None

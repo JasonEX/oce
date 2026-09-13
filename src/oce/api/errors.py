@@ -1,9 +1,12 @@
-"""application 异常到 HTTP 状态码的统一映射。
+"""Map application errors to HTTP status codes in one place.
 
-router 只做 DTO 转换；异常语义（ACE 兼容的 400/404/503）在这里集中登记一次。
+Routers only convert DTOs; the ACE-compatible 400/404/503 semantics live here.
 """
 
 from __future__ import annotations
+
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -33,7 +36,9 @@ def register_error_handlers(app: FastAPI) -> None:
         app.add_exception_handler(error_type, _handler_for(status_code))
 
 
-def _handler_for(status_code: int):
+def _handler_for(
+    status_code: int,
+) -> Callable[[Request, Exception], Coroutine[Any, Any, JSONResponse]]:
     async def handle(_request: Request, exc: Exception) -> JSONResponse:
         headers = {"Retry-After": "0"} if status_code == 503 else None
         return JSONResponse(

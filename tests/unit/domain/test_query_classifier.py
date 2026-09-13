@@ -1,4 +1,4 @@
-"""查询分类器测试 - 验证意图判定优先级"""
+"""Query classifier tests: the intent priority rules."""
 
 from oce.domain.services.query_classifier import (
     QueryIntent,
@@ -32,16 +32,16 @@ def test_extract_code_identifiers_ignores_product_names():
 
 
 class TestQueryIntentClassification:
-    """意图分类核心场景"""
+    """Core classification cases."""
 
     def test_symbol_with_extension_not_path(self):
-        """Q33 回归：符号+扩展名应判为SYMBOL，不能误判为PATH"""
+        """Regression: a symbol plus a file extension is SYMBOL, not PATH."""
         query = "`invoke_handler` 在 lib.rs 中注册了哪些命令？"
         assert classify_query_intent(query) == QueryIntent.SYMBOL
         assert not should_use_path_index(query)
 
     def test_symbol_location_queries(self):
-        """Q31-Q40：符号定位类查询"""
+        """Symbol location requests."""
         queries = [
             "`add_provider` 函数在哪个 Rust 文件定义？",
             "`get_providers` 函数的实现位置？",
@@ -53,7 +53,7 @@ class TestQueryIntentClassification:
             assert not should_use_path_index(q)
 
     def test_call_chain_queries(self):
-        """Q41-Q50：调用链分析（符号+方向动词）"""
+        """Call-chain requests: a symbol plus a directional verb."""
         queries = [
             "前端如何调用后端的 `add_provider` 命令？",
             "`auth_start_login` 的完整调用链：前端 → Tauri → Rust",
@@ -64,7 +64,7 @@ class TestQueryIntentClassification:
             assert classify_query_intent(q) == QueryIntent.CALL_CHAIN
 
     def test_path_queries(self):
-        """Q01-Q07：路径定位类（配置文件）"""
+        """Path requests (configuration files)."""
         queries = [
             "Cargo 依赖配置文件在哪里？",
             "Node.js 的 package.json 在哪里？",
@@ -77,7 +77,7 @@ class TestQueryIntentClassification:
             assert should_use_path_index(q)
 
     def test_feature_queries(self):
-        """Q08-Q12：功能定位（无符号锚点）"""
+        """Feature requests without a symbol anchor."""
         queries = [
             "MCP 服务器配置的管理逻辑在哪里？",
             "Provider 的增删改查操作在哪里实现？",
@@ -86,11 +86,11 @@ class TestQueryIntentClassification:
         ]
         for q in queries:
             intent = classify_query_intent(q)
-            # 这些查询可能判为 FEATURE 或 OVERVIEW，取决于是否含架构关键词
+            # FEATURE or OVERVIEW depending on architecture keywords.
             assert intent in (QueryIntent.FEATURE, QueryIntent.OVERVIEW)
 
     def test_overview_queries(self):
-        """Q24-Q26：架构理解类"""
+        """Architecture requests."""
         queries = [
             "系统托盘的实现和事件处理在哪里？",
             "应用初始化状态管理的实现在哪里？",
@@ -98,11 +98,11 @@ class TestQueryIntentClassification:
         ]
         for q in queries:
             intent = classify_query_intent(q)
-            # 含"实现"+"事件处理"/"状态管理"/"调度"应判为 OVERVIEW
+            # Implementation plus event handling, state management or scheduling is OVERVIEW.
             assert intent == QueryIntent.OVERVIEW
 
     def test_reference_queries(self):
-        """引用/使用类查询（符号+使用动词）"""
+        """Reference requests: a symbol plus a use verb."""
         queries = [
             "`tauri::command` 宏在哪些文件中使用？",
             "`get_providers` 在前端如何使用？",
@@ -110,24 +110,24 @@ class TestQueryIntentClassification:
         ]
         for q in queries:
             intent = classify_query_intent(q)
-            # "如何使用" / "如何被使用" 应判为 REFERENCE
+            # "how is it used" is REFERENCE
             assert intent in (QueryIntent.REFERENCE, QueryIntent.CALL_CHAIN)
 
 
 class TestPathIndexRouting:
-    """路径索引路由验证"""
+    """Path index routing."""
 
     def test_should_use_path_index_delegates_to_intent(self):
-        """should_use_path_index 应基于意图分类"""
-        # PATH 意图 -> True
+        """should_use_path_index follows the intent."""
+        # PATH intent
         assert should_use_path_index("Cargo.toml 在哪里？")
 
-        # SYMBOL 意图 -> False（即使带扩展名）
+        # SYMBOL intent, even with a file extension
         assert not should_use_path_index(
             "`invoke_handler` 在 lib.rs 中注册了哪些命令？"
         )
 
-        # FEATURE 意图 -> False
+        # FEATURE intent
         assert not should_use_path_index("如何实现自动重连功能？")
 
     def test_location_signal_does_not_force_focused_path_intent(self):
@@ -144,28 +144,28 @@ class TestPathIndexRouting:
 
 
 class TestEdgeCases:
-    """边界场景"""
+    """Edge cases."""
 
     def test_no_symbol_with_extension_is_path(self):
-        """无符号锚点 + 扩展名 + 路径关键词 -> PATH"""
+        """No symbol anchor, a file extension and a path word: PATH."""
         query = "主配置文件 config.json 在哪里？"
         assert classify_query_intent(query) == QueryIntent.PATH
 
     def test_symbol_without_extension_is_symbol(self):
-        """符号锚点 + 无扩展名 -> SYMBOL"""
+        """A symbol anchor without a file extension: SYMBOL."""
         query = "`add_provider` 函数在哪里定义？"
         assert classify_query_intent(query) == QueryIntent.SYMBOL
 
     def test_empty_query_defaults_to_feature(self):
-        """空查询或纯问号默认 FEATURE"""
+        """A bare question defaults to FEATURE."""
         assert classify_query_intent("这是什么项目？") == QueryIntent.FEATURE
 
 
 class TestBilingualSymmetry:
-    """中英对称性：英文查询应与中文得到同类意图，不因语言差异而误判"""
+    """English requests get the same intents as their Chinese counterparts."""
 
     def test_english_path_query_with_show_not_misclassified(self):
-        """'show' 含子串 'how'，但按词边界不应触发功能标记，仍应判为 PATH"""
+        """'show' contains 'how' but must not trigger the feature marker; still PATH."""
         query = "show me where the config file is"
         assert classify_query_intent(query) == QueryIntent.PATH
         assert should_use_path_index(query)
@@ -202,7 +202,7 @@ class TestBilingualSymmetry:
         assert classify_query_intent(query) == QueryIntent.SYMBOL
 
     def test_english_feature_query_not_path(self):
-        """英文功能查询应偏向 FEATURE/OVERVIEW，而非找文件的 PATH"""
+        """English feature requests lean to FEATURE/OVERVIEW rather than PATH."""
         query = "where is the retry logic implemented?"
         assert classify_query_intent(query) in (
             QueryIntent.FEATURE,
@@ -242,13 +242,13 @@ class TestBilingualSymmetry:
         assert classify_query_intent(query) == QueryIntent.OVERVIEW
 
     def test_english_type_identifier_extraction(self):
-        """英文类型定位查询也应能抽出类型名做精确召回"""
+        """English type requests yield the type name for exact recall."""
         assert "Provider" in extract_code_identifiers(
             "Where is the Provider type defined?"
         )
 
     def test_english_type_keyword_not_substring_false_positive(self):
-        """英文类型词按词边界匹配，不应从 'structure' 误抽出标识符"""
+        """Type words match at word boundaries; 'structure' yields no identifier."""
         assert extract_code_identifiers("Explain the Data structure here") == ()
 
 

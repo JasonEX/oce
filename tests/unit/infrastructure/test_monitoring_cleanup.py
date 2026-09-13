@@ -1,6 +1,7 @@
-"""MonitoringCleaner 单测：按 retention_days 删过期监控行，保留期内保留，旁路容错。
+"""MonitoringCleaner: expired rows go, recent rows stay, failures are absorbed.
 
-用 StaticPool 内存库让多个 session 共享一条连接（默认 :memory: 每连接独立库）。
+A StaticPool in-memory database lets several sessions share one connection;
+by default every :memory: connection is its own database.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-import oce.infrastructure.persistence.models  # noqa: F401  注册 ORM 表到 Base.metadata
+import oce.infrastructure.persistence.models  # noqa: F401  registers the ORM tables on Base.metadata
 from oce.infrastructure.metrics.cleanup import MonitoringCleaner
 from oce.infrastructure.persistence.models import (
     ApiCallMetricModel,
@@ -90,17 +91,17 @@ async def test_cleanup_deletes_expired_keeps_recent():
         cleaner = MonitoringCleaner(factory, retention_days=30, interval_seconds=999)
         removed = await cleaner._cleanup_once()
 
-        assert removed == 3  # 三条 40 天前的（api/token/resource）
-        assert await _count(factory, ApiCallMetricModel) == 1  # recent 保留
+        assert removed == 3  # three rows from 40 days ago (api, token, resource)
+        assert await _count(factory, ApiCallMetricModel) == 1  # recent rows stay
         assert await _count(factory, TokenUsageMetricModel) == 0
         assert await _count(factory, ResourceSampleModel) == 0
-        assert await _count(factory, RetrievalMetricModel) == 1  # recent 保留
+        assert await _count(factory, RetrievalMetricModel) == 1  # recent rows stay
     finally:
         await engine.dispose()
 
 
 async def test_cleanup_swallows_errors():
-    """session_factory 抛错 → 清理返回 0，不上抛（旁路容错）。"""
+    """A raising session factory makes cleanup return 0 rather than raise."""
 
     def _boom():
         raise RuntimeError("db down")
@@ -110,7 +111,7 @@ async def test_cleanup_swallows_errors():
 
 
 async def test_loop_invokes_cleanup_periodically():
-    """循环按间隔驱动 _cleanup_once；用打桩计数避免 in-memory 库在取消时的连接竞争。"""
+    """The loop drives _cleanup_once on its interval; a stub counter avoids in-memory connection races on cancel."""
     calls = {"n": 0}
 
     async def _fake_cleanup() -> int:

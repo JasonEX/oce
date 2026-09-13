@@ -1,7 +1,4 @@
-"""查询对象与处理器 - 检索读路径
-
-SearchQuery: 一次代码检索（向量召回 + 精确标识符召回 + 重排 + 覆盖度选择）。
-"""
+"""The retrieval read path: ``SearchQuery`` and its handler."""
 
 from __future__ import annotations
 
@@ -21,8 +18,6 @@ from oce.shared.metrics import (
 
 @dataclass(frozen=True)
 class SearchQuery(Query):
-    """检索查询"""
-
     query: str
     scope: SearchScope | None = None
     source: str = "retrieval"
@@ -30,16 +25,14 @@ class SearchQuery(Query):
 
 @dataclass(frozen=True)
 class SearchResult:
-    """检索结果"""
-
     hits: list[SearchHit] = field(default_factory=list)
 
 
 class SearchQueryHandler:
-    """处理 SearchQuery。
+    """Run the pipeline and, when auditing is on, report one retrieval record.
 
-    检索审计开启时，为本次检索创建 RetrievalAudit 传入 pipeline 收集各阶段耗时，
-    检索完成后按 source 上报（hit_count=0 即空回）。审计上报走旁路 sink，不影响主链路。
+    The audit collects stage timings and routing evidence; the record goes to
+    the side-channel sink and never affects the request itself.
     """
 
     def __init__(
@@ -81,6 +74,7 @@ class SearchQueryHandler:
                 relation_chars=audit.relation_chars,
                 query_text=query.query if self.store_query_text else None,
                 stages=dict(audit.stages),
+                lane_failures=dict(audit.lane_failures),
             )
         )
         return SearchResult(hits=hits)

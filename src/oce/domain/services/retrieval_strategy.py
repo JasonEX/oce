@@ -1,7 +1,7 @@
-"""意图驱动的检索策略决策表。
+"""Intent-driven retrieval strategy table.
 
-策略决定确定性的召回开关；两种 reranker 的授权与逐查询路由由
-``plan_rerank`` 统一判断。
+A strategy sets the deterministic recall switches; authorization and
+per-query routing of both rerankers is decided by ``plan_rerank``.
 """
 
 from __future__ import annotations
@@ -15,13 +15,14 @@ from oce.shared.config.settings import RerankPolicy
 
 @dataclass(frozen=True)
 class RetrievalStrategy:
-    """检索策略配置"""
+    """The lanes and selection mode one intent uses."""
 
     enable_path_index: bool = False
     enable_query_rewrite: bool = False
     enable_lexical_recall: bool = False
     expand_related_definitions: bool = False
-    # 关系车道：谁调用、谁实现/继承、哪些测试覆盖、哪个入口文件转出。
+    # Relation lanes: who calls, who implements or inherits, which tests
+    # exercise, which barrel file re-exports.
     expand_callers: bool = False
     expand_implementations: bool = False
     expand_tests: bool = False
@@ -39,12 +40,13 @@ class RetrievalStrategy:
         )
 
 
-# 决策表：意图 → 检索策略
+# intent -> strategy
 STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
-    # S (SYMBOL): 符号定义查询
-    # 符号名应在正文中定位；路径语义会把同名引用、模型和 DAO 提到定义前面。
-    # 定义之后紧跟的问题是谁调用它、谁实现它、哪些测试覆盖它、从哪里导出，以及
-    # 定义正文引用了哪些符号（工厂、基类、被委托的方法）。
+    # SYMBOL: the name is located in the body; path semantics would rank
+    # same-named references, models and DAOs ahead of the declaration. The
+    # questions that follow a definition are who calls it, who implements
+    # it, which tests exercise it, where it is exported, and which symbols
+    # its body refers to (factories, base classes, delegated methods).
     QueryIntent.SYMBOL: RetrievalStrategy(
         enable_path_index=False,
         enable_query_rewrite=True,
@@ -55,18 +57,21 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         expand_reexports=True,
         selection_mode=SelectionMode.FOCUSED,
     ),
-    # C (CALL_CHAIN): 调用链查询
-    # 不改写：原查询中的方向和边界信息是后续重排判断调用关系的依据。词法
-    # occurrence 与二跳定义共同补足 dense 不掌握的结构关系。
+    # CALL_CHAIN: no rewrite, because the direction and endpoints in the
+    # original wording are what the reranker judges call relations by.
+    # Lexical occurrences and second-hop definitions supply the structure
+    # dense recall does not know.
     QueryIntent.CALL_CHAIN: RetrievalStrategy(
         enable_lexical_recall=True,
         expand_related_definitions=True,
         expand_callers=True,
         expand_tests=True,
     ),
-    # R (REFERENCE): 引用/使用位置查询，改写补充同义调用方式。exact 召回已含
-    # 转出与继承行，调用方与测试小节补足窗口外的使用位置；被问符号自身的声明
-    # 若没进主结果（与使用点同文件、被单文件片段上限挤出），以定义摘录附带。
+    # REFERENCE: rewrites add synonymous ways of calling. Exact recall
+    # already includes re-export and inherit rows; the callers and tests
+    # sections add use sites outside the window, and the symbol's own
+    # declaration is appended as an excerpt when the per-file limit pushed
+    # it out of the primary results.
     QueryIntent.REFERENCE: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,
@@ -74,26 +79,27 @@ STRATEGY_TABLE: dict[QueryIntent, RetrievalStrategy] = {
         expand_callers=True,
         expand_tests=True,
     ),
-    # P (PATH): 文件路径查询
-    # 文件语义改写补足中英文差异，路径索引负责召回，高置信结果无需 LLM。
+    # PATH: rewrites bridge Chinese and English file semantics, the path
+    # index recalls, and a confident match needs no LLM.
     QueryIntent.PATH: RetrievalStrategy(
         enable_path_index=True,
         enable_query_rewrite=True,
         selection_mode=SelectionMode.FOCUSED,
     ),
-    # F (FEATURE): 功能实现查询，功能描述需要跨中英文术语召回。
+    # FEATURE: a behaviour description needs cross-language term recall.
     QueryIntent.FEATURE: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,
         expand_related_definitions=True,
         expand_tests=True,
     ),
-    # O (OVERVIEW): 架构/机制概览查询以 dense 为主，词法结果补充模块和文档术语。
+    # OVERVIEW: dense recall leads; lexical hits add module and document terms.
     QueryIntent.OVERVIEW: RetrievalStrategy(
         enable_lexical_recall=True,
         expand_related_definitions=True,
     ),
-    # M (COMPOUND): 复合查询，改写把并列条件拆成可分别召回的角度。
+    # COMPOUND: rewrites split parallel conditions into separately recalled
+    # angles.
     QueryIntent.COMPOUND: RetrievalStrategy(
         enable_query_rewrite=True,
         enable_lexical_recall=True,

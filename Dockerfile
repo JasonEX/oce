@@ -13,7 +13,7 @@ COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --locked --no-dev --no-install-project
 
 COPY alembic.ini ./
-# 迁移脚本位于 src/oce/alembic，随 src 一并拷贝
+# The migration scripts live under src/oce/alembic and ship with src
 COPY src ./src
 
 RUN uv sync --locked --no-dev

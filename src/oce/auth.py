@@ -1,4 +1,4 @@
-"""HTTP Bearer 鉴权。"""
+"""HTTP bearer authentication."""
 
 import hmac
 
@@ -22,7 +22,7 @@ def _unauthorized(message: str) -> HTTPException:
 
 
 def _extract_bearer(authorization: str | None) -> str:
-    """从 ``Authorization: Bearer <key>`` 取出 key，缺失或格式错误抛 401。"""
+    """The key in ``Authorization: Bearer <key>``; missing or malformed is 401."""
     if authorization is None:
         raise _unauthorized("You didn't provide an API key.")
     if not authorization.startswith("Bearer "):
@@ -31,7 +31,7 @@ def _extract_bearer(authorization: str | None) -> str:
 
 
 async def verify_api_key(authorization: str | None = Header(default=None)) -> str:
-    """校验客户端 ``Authorization: Bearer <key>``。"""
+    """Data-plane authentication against ``API_KEY``."""
     api_key = _extract_bearer(authorization)
     if not hmac.compare_digest(api_key, get_settings().api_key):
         raise _unauthorized("Invalid API key provided")
@@ -39,10 +39,11 @@ async def verify_api_key(authorization: str | None = Header(default=None)) -> st
 
 
 async def verify_admin_key(authorization: str | None = Header(default=None)) -> str:
-    """校验 admin ``Authorization: Bearer <key>``。
+    """Admin authentication.
 
-    未配置 ADMIN_API_KEY 时回落到 API_KEY（个人模式零配置仍可访问）；一旦配置了
-    ADMIN_API_KEY，则只认 admin key，普通 API_KEY 不再放行。
+    Without ``ADMIN_API_KEY`` the admin routes accept ``API_KEY`` so personal
+    mode works with no extra configuration; once it is set, only the admin
+    key is accepted.
     """
     settings = get_settings()
     expected = settings.admin_api_key or settings.api_key

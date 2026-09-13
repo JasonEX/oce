@@ -1,1 +1,1 @@
-"""按语言拆分的源码 chunker 实现。"""
+"""Per-language source chunkers."""

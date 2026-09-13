@@ -125,7 +125,13 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
             "embed",
             require_endpoint_and_model=True,
         )
-        if credential is None:
+        # ``require_endpoint_and_model`` filtered null columns in SQL; the
+        # checks below restate that for the type checker.
+        if (
+            credential is None
+            or credential.endpoint is None
+            or credential.model is None
+        ):
             key = fb.api_key.get_secret_value() if fb.api_key is not None else ""
             if not key:
                 raise ServiceNotReadyError(
@@ -147,7 +153,8 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
                 max_query_chars=fb.max_query_chars,
             )
         else:
-            # kind 专属参数列可能为空（如仅填 endpoint/model 的最简嵌入行），逐字段回落。
+            # Kind-specific columns may be NULL (a minimal row with only
+            # endpoint and model); each falls back on its own.
             def pick(value: int | None, default: int) -> int:
                 return value if value is not None else default
 

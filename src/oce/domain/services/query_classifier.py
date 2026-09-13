@@ -1,4 +1,4 @@
-"""查询分类器 - 按意图分类，支持策略派发"""
+"""Query intent classification; the intent picks the retrieval strategy."""
 
 from __future__ import annotations
 
@@ -8,26 +8,20 @@ from enum import StrEnum
 from oce.domain.chunk.lang import detect_language
 from oce.domain.services.query_planner import HeuristicQueryPlanner
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 意图枚举
-# ──────────────────────────────────────────────────────────────────────────────
-
 
 class QueryIntent(StrEnum):
-    """查询意图类型，用于派发检索策略"""
+    """What a request asks for; each intent has its own retrieval strategy."""
 
-    SYMBOL = "symbol"  # 符号定位：某函数/类型在哪里定义
-    CALL_CHAIN = "call_chain"  # 调用链分析：前端如何调用某后端命令
-    REFERENCE = "reference"  # 引用分析：某符号在别处如何被使用
-    PATH = "path"  # 路径定位：某配置文件在哪里
-    FEATURE = "feature"  # 功能定位：某功能的实现在哪里
-    OVERVIEW = "overview"  # 架构理解：某子系统的实现与事件处理
-    COMPOUND = "compound"  # 复合查询：多 facet 或并列条件
+    SYMBOL = "symbol"  # where a function or type is defined
+    CALL_CHAIN = "call_chain"  # how one part of the code reaches another
+    REFERENCE = "reference"  # where a symbol is used
+    PATH = "path"  # where a file lives
+    FEATURE = "feature"  # where a behaviour is implemented
+    OVERVIEW = "overview"  # how a subsystem is put together
+    COMPOUND = "compound"  # several facets or parallel conditions
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 特征模式
-# ──────────────────────────────────────────────────────────────────────────────
+# ── feature patterns ─────────────────────────────────────────────────────
 
 _IDENTIFIER_PATTERN = re.compile(
     r"^[A-Za-z_$][A-Za-z0-9_$]*(?:::[A-Za-z_$][A-Za-z0-9_$]*)*$"
@@ -47,11 +41,12 @@ _TYPE_IDENTIFIER_PATTERN = re.compile(
 )
 _CONSTANT_IDENTIFIER_PATTERN = re.compile(r"\b[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+\b")
 
-# 带扩展名的文件名 token（如 config.json / lib.rs）：定位具体文件的强结构信号。
-# 扩展名首位限定为字母，避免把版本号 3.13 之类误判为文件名。
-# 先找带扩展名的 token，再用已支持语言/常见工程扩展名过滤。仅靠长度
-# 会丢掉 ``build.csproj`` 和 ``application.properties``，而不过滤又会把
-# ``Session.request`` 当文件。
+# A token with a file extension (config.json, lib.rs) is strong evidence of
+# a file request. The extension must start with a letter so a version such
+# as 3.13 is not a file name. Candidates are filtered by the supported
+# languages and common project extensions: length alone would drop
+# ``build.csproj`` and ``application.properties``, and no filter would take
+# ``Session.request`` for a file.
 _FILENAME_TOKEN_PATTERN = re.compile(
     r"[A-Za-z0-9_\-]+\.[A-Za-z][A-Za-z0-9]{0,15}(?![A-Za-z0-9_])"
 )
@@ -98,18 +93,21 @@ def _mask_filenames(text: str) -> str:
     )
 
 
-# 点号限定名（``Context.ShouldBindJSON``、``requests.Session.request``）：末段是
-# CamelCase 或 snake_case 时才是代码符号；``example.com``、``Foo.bar`` 不算。
+# A dotted qualified name (``Context.ShouldBindJSON``,
+# ``requests.Session.request``) is a code symbol only when its last segment
+# is CamelCase or snake_case; ``example.com`` and ``Foo.bar`` are not.
 _DOTTED_IDENTIFIER_PATTERN = re.compile(
     r"\b[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*"
     r"\.((?:[A-Z][a-z0-9]+(?:[A-Z][A-Za-z0-9]*)+)|(?:[a-z]+_[a-z0-9_]+)|(?:[A-Z][A-Z0-9]+[a-z][A-Za-z0-9]*))\b"
 )
-# 完整路径先于 snake_case 标识符解析；否则 ``src/message_definition.py``
-# 会伪造出 ``message_definition`` 符号，``__init__.py`` 也会伪造出 ``init__``。
+# Paths are masked before snake_case identifiers are read; otherwise
+# ``src/message_definition.py`` would yield a ``message_definition`` symbol
+# and ``__init__.py`` an ``init__`` one.
 _PATH_TOKEN_PATTERN = re.compile(r"(?:[A-Za-z0-9_.\-]+[/\\])+[A-Za-z0-9_.\-]+")
 
-# 调用链动词（跨边界/路径导向）。英文只保留真正表达调用关系的动词：
-# to / from / path 在 issue 文本里几乎必然出现，曾让几乎所有英文长查询都判成调用链。
+# Call-chain verbs. Only English verbs that express a call relation are
+# kept: to / from / path appear in almost every issue text and once routed
+# nearly all long English requests to call-chain.
 _CALL_VERBS = {
     "调用",
     "触发",
@@ -146,17 +144,20 @@ _CALL_VERBS = {
     "flows",
 }
 
-# 名词式路径词（file/config/依赖）只在这个长度以内的问句里当作找文件的信号。
+# Noun-like path words (file, config, dependency) only signal a file request
+# in questions up to this length.
 _PATH_KEYWORD_MAX_CHARS = 100
-# 带符号的长句里出现架构词时按概览处理的最小词数。
+# Minimum word count for a symbol-bearing sentence with architecture words
+# to count as an overview.
 _OVERVIEW_MIN_WORDS = 8
 
-# issue 风格的长文本：多个标识符或 planner 能切出多个明确 facet。
-# 它描述的是复合问题，不能因为其中某个动词就按单一符号的调用链或引用来路由。
+# Issue-style text: several identifiers, or a planner that cuts several
+# clear facets. It describes a compound problem and must not be routed to a
+# single symbol's call chain or references because of one verb.
 _COMPOUND_IDENTIFIER_LIMIT = 2
 _COMPOUND_PLANNER = HeuristicQueryPlanner(max_queries=3)
 
-# 引用/使用动词（单向依赖）
+# Reference/use verbs (one-directional dependency).
 _REFERENCE_VERBS = {
     "使用",
     "引用",
@@ -172,7 +173,7 @@ _REFERENCE_VERBS = {
     "receive",
 }
 
-# 概览/架构关键词
+# Overview/architecture keywords.
 _OVERVIEW_KEYWORDS = {
     "架构",
     "实现",
@@ -209,7 +210,7 @@ _EXPLICIT_OVERVIEW_CUES = {
 }
 _TRACE_QUERY = re.compile(r"(?i)^\s*(?:trace|tracing)\b|^\s*(?:追踪|跟踪)")
 
-# 通用路径定位词（指向“文件/配置”实体，对任意仓库成立）
+# Generic file-locating words that hold for any repository.
 _PATH_KEYWORDS = {
     "文件",
     "配置",
@@ -225,8 +226,9 @@ _PATH_KEYWORDS = {
     "dependency",
 }
 
-# 决定 focused PATH 意图的强信号。普通 "where/在哪里" 只说明用户想定位代码，
-# 仍可能是跨文件功能问题；它可以启用 path operator，但不应强制 focused selection。
+# Strong signals for the focused PATH intent. A plain "where" only says the
+# user wants to locate code and may still be a cross-file feature question;
+# it may enable the path operator but must not force focused selection.
 _EXPLICIT_PATH_KEYWORDS = {
     "文件",
     "哪个文件",
@@ -243,7 +245,8 @@ _EXPLICIT_PATH_KEYWORDS = {
     "dependencies",
 }
 
-# 功能/实现类查询标记：出现这些词时，即便含“文件/配置/在哪里”也偏向功能定位而非找文件
+# Feature/implementation markers: with one of these, even a request that
+# says "file", "config" or "where" is about behaviour, not a file.
 _FEATURE_MARKERS = {
     "功能",
     "实现",
@@ -271,11 +274,12 @@ def _terms_pattern(
     *,
     match_ascii_prefix: bool = True,
 ) -> re.Pattern[str]:
-    """把关键词集合编译成判定正则。
+    """Compile a keyword set into one matching pattern.
 
-    英文（ASCII）词用前缀词边界匹配：既避免子串误命中（how 命中 show、file 命中
-    profile），又能覆盖词形变化（implement→implemented、config→configuration）。
-    中文无词边界概念，按子串匹配。目的是让中英查询判定对称，不偏向任一语言。
+    ASCII words match at a word-boundary prefix, which avoids substring hits
+    (how in show, file in profile) while covering inflections (implement to
+    implemented, config to configuration). Chinese has no word boundaries and
+    matches as a substring, so both languages are judged the same way.
     """
     parts = []
     for term in terms:
@@ -288,8 +292,8 @@ def _terms_pattern(
     return re.compile("|".join(parts))
 
 
-# 调用词必须是完整 token；显式列出常见词形，避免 ``call`` 误命中
-# ``callback`` 或 ``execute`` 误命中 ``executor``。
+# Call verbs must be whole tokens; the common inflections are listed so
+# ``call`` does not hit ``callback`` nor ``execute`` hit ``executor``.
 _CALL_VERBS_RE = _terms_pattern(_CALL_VERBS, match_ascii_prefix=False)
 _REFERENCE_VERBS_RE = _terms_pattern(_REFERENCE_VERBS)
 _OVERVIEW_KEYWORDS_RE = _terms_pattern(_OVERVIEW_KEYWORDS)
@@ -344,20 +348,6 @@ _HOW_QUERY = re.compile(r"(?i)\bhow\b|如何|怎样|怎么")
 _QUESTION_MAX_CHARS = 200
 
 
-# A request that asks (how, why, which, explain, trace) rather than states.
-# A docstring-shaped description ("Fetches the securities that match the
-# filters") names one function; a question about how something works names
-# the subsystem whose entry points answer it.
-_ASKS_HOW = re.compile(
-    r"(?i)\b(?:how|why|which|what|where|explain|describe|trace|walk\s+through)\b"
-    r"|如何|怎么|怎样|为什么|解释|说明|哪些|哪个|什么"
-)
-
-
-def asks_how(query: str) -> bool:
-    return _ASKS_HOW.search(query) is not None
-
-
 def asks_for_callers(query: str) -> bool:
     return (
         len(query) <= _QUESTION_MAX_CHARS and _CALLERS_QUERY.search(query) is not None
@@ -384,28 +374,24 @@ def asks_for_implementors(query: str) -> bool:
     return _IMPLEMENTORS_QUERY.search(query) is not None
 
 
-# ──────────────────────────────────────────────────────────────────────────────
-# 主分类函数
-# ──────────────────────────────────────────────────────────────────────────────
+# ── classification ───────────────────────────────────────────────────────
 
 
 def classify_query_intent(query: str) -> QueryIntent:
-    """
-    按意图分类查询，用于派发检索策略。
+    """Classify a request by intent, highest-priority rule first.
 
-    判定优先级（从高到低）：
-    1. 显式询问已命名符号的定义 → SYMBOL
-    2. 标识符超过 2 个或 planner 切出至少 3 个 facet → COMPOUND
-    3. 显式 trace → CALL_CHAIN；显式架构/生命周期 → OVERVIEW
-    4. 单符号调用方问题 → REFERENCE；其他调用类动词 → CALL_CHAIN
-    5. 有符号锚点（反引号/snake_case/::/限定名）：
-       - 引用、测试或实现者问题 → REFERENCE
-       - 两端点 how 问题 → CALL_CHAIN；其他多标识符问题 → COMPOUND
-       - 其余 → SYMBOL
-    6. 无符号锚点：
-       - 概览词 → OVERVIEW
-       - 已知文件名或短问句中的文件/配置词（非功能类）→ PATH
-       - 其余 → FEATURE
+    1. An explicit definition question about a named symbol: SYMBOL.
+    2. More than two identifiers, or at least three planner facets: COMPOUND.
+    3. An explicit trace: CALL_CHAIN; explicit architecture/lifecycle: OVERVIEW.
+    4. A callers question about one symbol: REFERENCE; other call verbs:
+       CALL_CHAIN.
+    5. With a symbol anchor (backticks, snake_case, ``::``, a qualified name):
+       reference, test or implementor questions are REFERENCE; a two-endpoint
+       "how" question is CALL_CHAIN; other multi-identifier questions are
+       COMPOUND; everything else is SYMBOL.
+    6. Without a symbol anchor: overview words give OVERVIEW; a known file
+       name or a file/config word in a short non-feature question gives PATH;
+       everything else is FEATURE.
 
     Examples:
         >>> classify_query_intent("`parse_config` 函数在哪里定义？")
@@ -418,25 +404,29 @@ def classify_query_intent(query: str) -> QueryIntent:
         QueryIntent.PATH
 
         >>> classify_query_intent("`parse_config` 在 server.py 中注册了哪些路由？")
-        QueryIntent.SYMBOL  # 符号优先，不因扩展名改判为 PATH
+        QueryIntent.SYMBOL  # the symbol wins over the file extension
     """
     query_lower = query.lower()
     identifiers = extract_code_identifiers(query)
     has_symbol = bool(identifiers)
 
-    # 提取反引号、路径和文件名之外的文本，避免符号名或路径片段被动词误匹配：
-    # `invoke_handler` 中的 invoke、src/execute.c 中的 execute 都不是调用链动词。
+    # Judge verbs on the text outside backticks, paths and file names: the
+    # invoke in `invoke_handler` and the execute in src/execute.c are not
+    # call-chain verbs.
     text_outside_backticks = re.sub(r"`[^`]+`", "", query_lower)
     text_outside_backticks = _PATH_TOKEN_PATTERN.sub(" ", text_outside_backticks)
     text_outside_backticks = _mask_filenames(text_outside_backticks)
 
-    # 「X 在哪里定义」点名再多参数类型也是一个定义问题：``fromJson`` 的重载靠
-    # ``JsonReader``/``TypeToken`` 消歧，这些名字不是新的 facet。
+    # "Where is X defined" stays a definition question however many
+    # parameter types it names: ``JsonReader``/``TypeToken`` pick the
+    # ``fromJson`` overload, they are not further facets.
     if has_symbol and asks_for_definition(text_outside_backticks):
         return QueryIntent.SYMBOL
 
-    # 多 facet 是查询本身的广度信号，不依赖是否能从自然语言中提取出代码符号。
-    # 放在符号分支外，避免无显式标识符的 issue 被一个 file/config 词缩成 PATH。
+    # Several facets measure the request's breadth independently of whether
+    # a code symbol can be read from the prose. Checked before the symbol
+    # branch so an issue without explicit identifiers is not narrowed to
+    # PATH by one file/config word.
     if (
         len(identifiers) > _COMPOUND_IDENTIFIER_LIMIT
         or len(_COMPOUND_PLANNER.plan(query)) >= 3
@@ -445,27 +435,29 @@ def classify_query_intent(query: str) -> QueryIntent:
 
     word_count = len(query.split())
 
-    # ``Trace ...`` 是最强的调用链证据，即使后文提到 lifecycle 也不改变意图。
+    # ``Trace ...`` is the strongest call-chain evidence; a later mention of
+    # lifecycle does not change the intent.
     if _TRACE_QUERY.search(text_outside_backticks):
         return QueryIntent.CALL_CHAIN
 
-    # 显式架构/生命周期问题可以包含 execute/flow 等过程动词，但仍在问
-    # 系统覆盖面，不是追踪一条调用边。
+    # An explicit architecture/lifecycle question may contain process verbs
+    # such as execute or flow, yet it asks about the system's coverage, not
+    # about one call edge.
     if _EXPLICIT_OVERVIEW_CUES_RE.search(text_outside_backticks):
         return QueryIntent.OVERVIEW
 
-    # 「哪些地方调用了 X」问的是一个符号的使用位置，不是一条调用链。
+    # "Which places call X" asks where one symbol is used, not for a chain.
     if len(identifiers) == 1 and asks_for_callers(text_outside_backticks):
         return QueryIntent.REFERENCE
 
-    # 调用链特征：方向性动词（trace/call/flow…）。``Trace requests.request through
-    # Session.send`` 里的限定名不一定能抽成符号，动词本身已经说明了问题形态。
+    # Call-chain evidence: directional verbs (trace, call, flow). The
+    # qualified names in ``Trace requests.request through Session.send``
+    # may not read as symbols; the verb alone describes the question.
     if _CALL_VERBS_RE.search(text_outside_backticks):
         return QueryIntent.CALL_CHAIN
 
-    # 分支1：有符号锚点
     if has_symbol:
-        # 引用分析：使用/依赖类动词 + 符号（动词在反引号外）
+        # Use/depend verbs (outside the backticks) next to a symbol.
         if _REFERENCE_VERBS_RE.search(text_outside_backticks):
             return QueryIntent.REFERENCE
         # "Which tests cover X" and "which classes implement X" ask for the
@@ -474,7 +466,8 @@ def classify_query_intent(query: str) -> QueryIntent:
         if asks_about_tests(query) or asks_for_implementors(text_outside_backticks):
             return QueryIntent.REFERENCE
 
-        # 「A 如何到达 B」：两个端点之间的路径是一条调用链，不是两个并列问题。
+        # "How does A reach B": the path between two endpoints is one chain,
+        # not two parallel questions.
         if (
             len(identifiers) == 2
             and len(query) <= _QUESTION_MAX_CHARS
@@ -485,26 +478,27 @@ def classify_query_intent(query: str) -> QueryIntent:
         if len(identifiers) > 1:
             return QueryIntent.COMPOUND
 
-        # 长句里的架构描述顺带提到一个符号（``Engine.ServeHTTP``）仍是概览，
-        # 短问句里的符号才是定位目标。
+        # A long architecture description that mentions one symbol
+        # (``Engine.ServeHTTP``) is still an overview; only in a short
+        # question is the symbol the target.
         if word_count >= _OVERVIEW_MIN_WORDS and _OVERVIEW_KEYWORDS_RE.search(
             text_outside_backticks
         ):
             return QueryIntent.OVERVIEW
 
-        # 默认符号定位
         return QueryIntent.SYMBOL
 
-    # 分支2：无符号锚点。用结构信号（文件名 token / 通用路径词）判定，不枚举技术栈。
+    # No symbol anchor: decide by structural signals (file-name tokens,
+    # generic path words) rather than by enumerating technology stacks.
     has_feature_marker = bool(_FEATURE_MARKERS_RE.search(query_lower))
 
-    # 概览类：架构/机制/流程描述。先于路径判定：``Explain the Gson architecture:
-    # ... configuration ...`` 里的 configuration 是名词，不是在找配置文件。
+    # Overview before path: the configuration in ``Explain the Gson
+    # architecture: ... configuration ...`` is a noun, not a file request.
     if _OVERVIEW_KEYWORDS_RE.search(query_lower):
         return QueryIntent.OVERVIEW
 
-    # 显式文件名决定 focused PATH 意图；文件/路径/配置这类名词只在短问句里
-    # 才是找文件的信号，长句里它们只是描述的一部分。
+    # An explicit file name decides the focused PATH intent; nouns such as
+    # file, path or config only signal a file request in a short question.
     if not has_feature_marker and (
         _has_filename(query)
         or (
@@ -514,7 +508,6 @@ def classify_query_intent(query: str) -> QueryIntent:
     ):
         return QueryIntent.PATH
 
-    # 默认功能定位
     return QueryIntent.FEATURE
 
 
@@ -527,10 +520,11 @@ _DOTTED_QUALIFIED_PATTERN = re.compile(
 
 
 def extract_code_identifiers(query: str) -> tuple[str, ...]:
-    """提取适合精确词法召回的代码标识符，保持查询中的出现顺序。
+    """Code identifiers suitable for exact recall, in order of appearance.
 
-    限定名（``Session.get``、``a::b::C``）整体保留一个标识符：限定词是消歧证据，
-    叶子名由检索管线派生，不在这里拆开，否则一个限定名会被算成两个符号。
+    A qualified name (``Session.get``, ``a::b::C``) stays one identifier: the
+    qualifier is disambiguating evidence and the pipeline derives the leaf,
+    otherwise one qualified name would count as two symbols.
     """
     identifiers: list[str] = []
 
@@ -553,8 +547,9 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
     for value in re.findall(r"`([^`]+)`", query):
         add(value)
 
-    # 反引号依旧从原文提取；启发式扫描则排除路径和文件名，避免把文件命名
-    # 误当成 exact-symbol 证据。路径外的 ``load_config`` 等标识符不受影响。
+    # Backticked names are read from the raw text; the heuristic scan masks
+    # paths and file names so a file name is not exact-symbol evidence.
+    # Identifiers outside paths, such as ``load_config``, are unaffected.
     identifier_text = _PATH_TOKEN_PATTERN.sub(" ", query)
     identifier_text = _mask_filenames(identifier_text)
     for pattern in (
@@ -578,10 +573,11 @@ def extract_code_identifiers(query: str) -> tuple[str, ...]:
 
 
 def should_use_path_index(query: str, intent: QueryIntent | None = None) -> bool:
-    """判断是否应该使用路径索引；``intent`` 已知时传入，避免重复分类。
+    """Whether the path index should recall for this request.
 
-    符号查询不路由到 path index：带符号锚点的查询（即便含扩展名）优先判为 SYMBOL，
-    因为它要找的是符号定义而非文件本身。
+    Pass ``intent`` when already known to avoid classifying twice. Symbol
+    requests never use the path index: a request with a symbol anchor is
+    SYMBOL even when it names a file, because it wants the declaration.
 
     Examples:
         >>> should_use_path_index("config.json 在哪里？")

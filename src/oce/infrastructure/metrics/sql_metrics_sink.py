@@ -1,6 +1,7 @@
-"""监控指标的异步落库 sink：内存缓冲 + 后台批量 flush。
+"""Metrics sink that buffers in memory and flushes to SQL in the background.
 
-写库失败只记日志并把样本留在有界缓冲中，绝不把异常传播到主链路。
+A failed flush is logged and the rows stay in the bounded buffer; nothing
+propagates to the request path.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from oce.infrastructure.persistence.models import (
     RetrievalMetricModel,
     TokenUsageMetricModel,
 )
+from oce.shared.database.session import Base
 from oce.shared.metrics import (
     ApiCallRecord,
     ResourceSampleRecord,
@@ -41,9 +43,10 @@ class _MetricBatch:
 
 
 class SqlMetricsSink(PeriodicTask):
-    """采集到的指标先入内存 deque，后台协程按间隔批量写库。
+    """Records queue in bounded deques; a background task writes them in batches.
 
-    ``deque(maxlen)`` 满时自动丢弃最旧样本，防止事件循环阻塞时缓冲无界增长。
+    A full deque drops its oldest record, so a blocked event loop cannot grow
+    the buffer without bound.
     """
 
     def __init__(
@@ -80,7 +83,7 @@ class SqlMetricsSink(PeriodicTask):
         await self._flush_once()
 
     def _drain(self) -> _MetricBatch:
-        """原子取出缓冲；失败时可按原始 record 安全放回。"""
+        """Take every buffered record at once; ``_restore`` puts a failed batch back."""
         batch = _MetricBatch(
             api=list(self._api),
             token=list(self._token),
@@ -95,7 +98,7 @@ class SqlMetricsSink(PeriodicTask):
 
     @staticmethod
     def _restore_queue(queue: deque, drained: list) -> None:
-        """合并失败批次和期间新到样本，超限时保留最新记录。"""
+        """Put a failed batch ahead of what arrived meanwhile; the newest survive overflow."""
         current = list(queue)
         queue.clear()
         queue.extend([*drained, *current])
@@ -107,74 +110,81 @@ class SqlMetricsSink(PeriodicTask):
         self._restore_queue(self._retrieval, batch.retrieval)
 
     @staticmethod
-    def _to_rows(batch: _MetricBatch) -> list:
-        rows: list = []
-        for r in batch.api:
+    def _to_rows(batch: _MetricBatch) -> list[Base]:
+        rows: list[Base] = []
+        for call in batch.api:
             rows.append(
                 ApiCallMetricModel(
-                    ts=r.ts,
-                    endpoint=r.endpoint,
-                    method=r.method,
-                    status_code=r.status_code,
-                    latency_ms=r.latency_ms,
-                    error_type=r.error_type,
+                    ts=call.ts,
+                    endpoint=call.endpoint,
+                    method=call.method,
+                    status_code=call.status_code,
+                    latency_ms=call.latency_ms,
+                    error_type=call.error_type,
                 )
             )
-        for r in batch.token:
+        for usage in batch.token:
             rows.append(
                 TokenUsageMetricModel(
-                    ts=r.ts,
-                    kind=r.kind,
-                    model=r.model,
-                    credential_id=r.credential_id,
-                    prompt_tokens=r.prompt_tokens,
-                    completion_tokens=r.completion_tokens,
-                    total_tokens=r.total_tokens,
+                    ts=usage.ts,
+                    kind=usage.kind,
+                    model=usage.model,
+                    credential_id=usage.credential_id,
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    total_tokens=usage.total_tokens,
                 )
             )
-        for r in batch.resource:
+        for sample in batch.resource:
             rows.append(
                 ResourceSampleModel(
-                    ts=r.ts,
-                    disk_data_bytes=r.disk_data_bytes,
-                    disk_free_bytes=r.disk_free_bytes,
-                    disk_total_bytes=r.disk_total_bytes,
-                    mem_rss_bytes=r.mem_rss_bytes,
-                    mem_percent=r.mem_percent,
-                    cpu_percent=r.cpu_percent,
+                    ts=sample.ts,
+                    disk_data_bytes=sample.disk_data_bytes,
+                    disk_free_bytes=sample.disk_free_bytes,
+                    disk_total_bytes=sample.disk_total_bytes,
+                    mem_rss_bytes=sample.mem_rss_bytes,
+                    mem_percent=sample.mem_percent,
+                    cpu_percent=sample.cpu_percent,
                 )
             )
-        for r in batch.retrieval:
-            s = r.stages
+        for retrieval in batch.retrieval:
+            stages = retrieval.stages
             rows.append(
                 RetrievalMetricModel(
-                    ts=r.ts,
-                    source=r.source,
-                    scope_size=r.scope_size,
-                    hit_count=r.hit_count,
-                    total_ms=r.total_ms,
-                    intent=r.intent,
-                    path_boosted=r.path_boosted,
-                    rerank_route=r.rerank_route,
-                    dense_route=r.dense_route,
-                    head_slots=r.head_slots,
-                    exact_definitions=r.exact_definitions,
-                    definition_sites=r.definition_sites,
-                    relation_hits=r.relation_hits,
-                    relation_chars=r.relation_chars,
-                    query_text=r.query_text,
-                    rewrite_ms=s.get("rewrite"),
-                    embed_ms=s.get("embed"),
-                    dense_ms=s.get("dense"),
-                    exact_ms=s.get("exact"),
-                    path_ms=s.get("path"),
-                    path_lookup_ms=s.get("path_lookup"),
-                    lexical_ms=s.get("lexical"),
-                    fuse_ms=s.get("fuse"),
-                    rerank_ms=s.get("rerank"),
-                    llm_rerank_ms=s.get("llm_rerank"),
-                    select_ms=s.get("select"),
-                    expand_ms=s.get("expand"),
+                    ts=retrieval.ts,
+                    source=retrieval.source,
+                    scope_size=retrieval.scope_size,
+                    hit_count=retrieval.hit_count,
+                    total_ms=retrieval.total_ms,
+                    intent=retrieval.intent,
+                    path_boosted=retrieval.path_boosted,
+                    rerank_route=retrieval.rerank_route,
+                    dense_route=retrieval.dense_route,
+                    head_slots=retrieval.head_slots,
+                    exact_definitions=retrieval.exact_definitions,
+                    definition_sites=retrieval.definition_sites,
+                    relation_hits=retrieval.relation_hits,
+                    relation_chars=retrieval.relation_chars,
+                    lane_failures=(
+                        ",".join(
+                            f"{lane}:{error}"
+                            for lane, error in sorted(retrieval.lane_failures.items())
+                        )
+                        or None
+                    ),
+                    query_text=retrieval.query_text,
+                    rewrite_ms=stages.get("rewrite"),
+                    embed_ms=stages.get("embed"),
+                    dense_ms=stages.get("dense"),
+                    exact_ms=stages.get("exact"),
+                    path_ms=stages.get("path"),
+                    path_lookup_ms=stages.get("path_lookup"),
+                    lexical_ms=stages.get("lexical"),
+                    fuse_ms=stages.get("fuse"),
+                    rerank_ms=stages.get("rerank"),
+                    llm_rerank_ms=stages.get("llm_rerank"),
+                    select_ms=stages.get("select"),
+                    expand_ms=stages.get("expand"),
                 )
             )
         return rows

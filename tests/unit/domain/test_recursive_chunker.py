@@ -1,4 +1,4 @@
-"""RecursiveChunker 测试"""
+"""RecursiveChunker tests."""
 
 import pytest
 
@@ -7,7 +7,7 @@ from oce.domain.chunk.types import Chunk
 
 
 class TestRecursiveChunker:
-    """测试 RecursiveChunker 的基本功能"""
+    """Basic behaviour."""
 
     def test_empty_content(self):
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
@@ -19,13 +19,13 @@ class TestRecursiveChunker:
         assert chunker.chunk(content, "test.py") == []
 
     def test_small_file_single_chunk(self):
-        """小文件应该产生单个 chunk"""
+        """A small file is one chunk."""
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
         content = "def hello():\n    print('world')\n"
         chunks = chunker.chunk(content, "test.py")
 
         assert len(chunks) == 1
-        # RecursiveChunker 可能会去掉尾部空行
+        # trailing blank lines may be dropped
         assert chunks[0].content.strip() == content.strip()
         assert chunks[0].path == "test.py"
         assert chunks[0].chunk_type == "recursive"
@@ -33,13 +33,13 @@ class TestRecursiveChunker:
         assert chunks[0].end_line == 2
 
     def test_chunk_splitting_by_paragraphs(self):
-        """测试按段落分隔（内容足够大时）"""
+        """Large content splits at paragraph boundaries."""
         chunker = RecursiveChunker(chunk_size=50, chunk_overlap=10)
-        # 需要足够长的内容才会触发分割
+        # splitting needs enough content
         content = "Line 1 with more content\nLine 2 with more content\n\nLine 3 with more content\nLine 4 with more content\n\nLine 5 with more content\nLine 6 with more content"
         chunks = chunker.chunk(content, "test.txt")
 
-        # 应该在 \n\n 处优先切分（如果内容够大）
+        # paragraph breaks are preferred split points
         assert len(chunks) >= 1
         for chunk in chunks:
             assert isinstance(chunk, Chunk)
@@ -47,10 +47,10 @@ class TestRecursiveChunker:
             assert chunk.chunk_type == "recursive"
 
     def test_single_line_is_not_split(self):
-        """单行内容不可拆分：一行拆成两块，就没法各自声明正确的行号。
+        """A single line is never split: two pieces could not each claim correct lines.
 
-        切分只在行边界发生，所以超过 chunk_size 的单行整行保留，而不是像旧实现
-        那样按字符切成几片、每片都声明同一行。
+        Splits happen only at line boundaries, so a line longer than chunk_size
+        is kept whole rather than cut into pieces that all claim the same line.
         """
         chunker = RecursiveChunker(chunk_size=100, chunk_overlap=20)
         content = "A" * 200
@@ -61,7 +61,7 @@ class TestRecursiveChunker:
         assert (chunks[0].start_line, chunks[0].end_line) == (1, 1)
 
     def test_chunks_do_not_overlap(self):
-        """带行号的 chunk 之间不能重叠：同样的行索引两遍，占两个检索位。"""
+        """Line-numbered chunks never overlap: the same lines would index twice and take two slots."""
         chunker = RecursiveChunker(chunk_size=60, chunk_overlap=20)
         content = "\n".join(f"line {index} carries some content" for index in range(40))
         chunks = chunker.chunk(content, "notes.txt")
@@ -71,7 +71,7 @@ class TestRecursiveChunker:
             assert current.start_line > previous.end_line
 
     def test_python_language_aware(self):
-        """测试 Python 语言特定的分隔符"""
+        """Python-specific separators."""
         chunker = RecursiveChunker(chunk_size=100, chunk_overlap=10)
         content = """def func1():
     pass
@@ -83,13 +83,13 @@ def func3():
     pass"""
         chunks = chunker.chunk(content, "test.py")
 
-        # Python 分隔符应该优先在函数之间切分
+        # Python separators split between functions first.
         assert len(chunks) >= 1
         for chunk in chunks:
             assert "def " in chunk.content
 
     def test_chunk_hash_uniqueness(self):
-        """测试不同内容产生不同的 hash"""
+        """Different content, different hashes."""
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
         chunks1 = chunker.chunk("content A", "test.txt")
         chunks2 = chunker.chunk("content B", "test.txt")
@@ -97,7 +97,7 @@ def func3():
         assert chunks1[0].content_hash != chunks2[0].content_hash
 
     def test_line_number_accuracy(self):
-        """测试行号计算准确性"""
+        """Line numbers are exact."""
         chunker = RecursiveChunker(chunk_size=1000, chunk_overlap=100)
         content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5"
         chunks = chunker.chunk(content, "test.txt")
@@ -107,7 +107,7 @@ def func3():
         assert chunks[0].end_line == 5
 
     def test_unsupported_language_fallback(self):
-        """测试不支持的语言使用通用分隔符"""
+        """Unsupported languages use the generic separators."""
         chunker = RecursiveChunker(chunk_size=100, chunk_overlap=10)
         content = "Some random content\n\nMore content"
         chunks = chunker.chunk(content, "unknown.xyz")
@@ -116,21 +116,21 @@ def func3():
         assert all(isinstance(c, Chunk) for c in chunks)
 
     def test_large_file_multiple_chunks(self):
-        """测试大文件被正确分割"""
+        """A large file is split."""
         chunker = RecursiveChunker(chunk_size=100, chunk_overlap=20)
         content = "\n".join([f"Line {i}" for i in range(100)])
         chunks = chunker.chunk(content, "large.txt")
 
         assert len(chunks) > 1
-        # 验证所有 chunk 大小在限制内（允许少量超出因为要保持完整性）
+        # Every chunk stays near the limit; whole lines may overshoot a little.
         for chunk in chunks:
-            assert len(chunk.content) <= 200  # 允许一些弹性
+            assert len(chunk.content) <= 200  # some slack
 
     @pytest.mark.parametrize(
         "path,content",
         [
-            # 缩进内容：splitter 会 strip 掉分隔符处的空白，块首缩进曾因此丢失，
-            # 令文本不再等于它声明的那些行。
+            # Indented content: the splitter strips whitespace at separators, and
+            # leading indentation was lost so the text no longer matched its lines.
             (
                 "styles.css",
                 "@media (max-width: 600px) {\n"
@@ -153,7 +153,7 @@ def func3():
         ],
     )
     def test_chunks_match_their_declared_lines(self, path, content):
-        """chunk 文本必须等于它声明的源码行 —— formatter 按 start_line + offset 渲染。"""
+        """Chunk text equals the lines it claims; the formatter renders by start_line plus offset."""
         chunker = RecursiveChunker(chunk_size=300, chunk_overlap=20)
         lines = content.splitlines()
         chunks = chunker.chunk(content, path)
@@ -162,11 +162,11 @@ def func3():
         for chunk in chunks:
             expected = "\n".join(lines[chunk.start_line - 1 : chunk.end_line])
             assert chunk.content == expected, (
-                f"{path}#{chunk.start_line}-{chunk.end_line} 文本与声明的行范围不符"
+                f"{path}#{chunk.start_line}-{chunk.end_line} text differs from the claimed lines"
             )
 
     def test_overlong_single_line_is_dropped(self):
-        """超过硬上限的单行无法在保持行号正确的前提下切分，只能丢弃。"""
+        """A single line over the hard cap cannot be split with correct line numbers; it is dropped."""
         chunker = RecursiveChunker(chunk_size=300, chunk_overlap=0)
         content = "head line\n" + "z" * 7_000 + "\ntail line\n"
         chunks = chunker.chunk(content, "bundle.min.js")
@@ -181,7 +181,7 @@ def func3():
 
 
 class TestIsMeaningful:
-    """测试 is_meaningful 辅助函数"""
+    """is_meaningful."""
 
     def test_meaningful_content(self):
         assert is_meaningful("hello")

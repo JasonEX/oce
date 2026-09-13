@@ -9,13 +9,15 @@ from oce.domain.services.query_evidence import QueryFrame, extract_query_evidenc
 from oce.domain.services.retrieval import (
     RetrievalPipeline,
     RetrievalState,
-    _frame_matches,
-    _signature_text,
     hub_spellings,
     order_by_signature_comentions,
     resolve_qualified_definitions,
     resolve_qualified_hits,
 )
+from oce.domain.services.retrieval.hubs import hub_heads
+from oce.domain.services.retrieval.names import signature_text
+from oce.domain.services.retrieval.rank import test_name_distance as name_distance
+from oce.domain.services.retrieval.recall_exact import frame_matches
 from oce.domain.services.retrieval_strategy import plan_rerank
 from oce.domain.services.search import (
     DefinitionHit,
@@ -95,8 +97,8 @@ def test_signature_window_stops_at_the_parameter_list():
         "    JsonReader jsonReader = newJsonReader(json);",
         "    T object = fromJson(jsonReader, typeOfT);",
     ]
-    assert "JsonReader" not in _signature_text(lines)
-    assert "TypeToken" in _signature_text(lines)
+    assert "JsonReader" not in signature_text(lines)
+    assert "TypeToken" in signature_text(lines)
 
 
 def test_overload_order_uses_the_parameter_list_only():
@@ -181,7 +183,7 @@ def test_node_frames_keep_functions_after_async_and_new_prefixes():
     ],
 )
 def test_frame_path_matching_is_component_aligned(frame, indexed, expected):
-    assert _frame_matches(frame, indexed) is expected
+    assert frame_matches(frame, indexed) is expected
 
 
 def test_deterministic_requests_skip_adaptive_rerankers_but_not_always():
@@ -287,7 +289,9 @@ def test_hub_heads_skip_packages_unreferenced_names_and_tests():
         False,
     )
     state.hubs = [package, router, test_only, unreferenced]
-    heads = pipeline._hub_heads(state)
+    heads = hub_heads(
+        state.hubs, pipeline.priority_factor, pipeline.settings.hub_head_slots
+    )
     assert [(hit.path, hit.start_line) for hit in heads] == [
         ("axum/src/routing/mod.rs", 1)
     ]
@@ -304,8 +308,6 @@ def test_strict_qualified_resolution_yields_nothing_for_unknown_scopes():
 
 
 def test_test_name_distance_prefers_the_test_named_after_the_symbol():
-    from oce.domain.services.retrieval import _test_name_distance
-
     walker = _hit("tree_test.go", "func TestWalker(t *testing.T) {\n\tWalk(r, fn)\n}")
     inline = _hit(
         "tree_test.go",
@@ -314,11 +316,11 @@ def test_test_name_distance_prefers_the_test_named_after_the_symbol():
     )
     header = _hit("tree_test.go", 'import (\n\t"testing"\n)', start=80)
     # ``TestWalker`` keeps only the ``test`` prefix and ``er`` beyond ``walk``.
-    assert _test_name_distance(walker, ("Walk",)) == 6
-    assert _test_name_distance(inline, ("Walk",)) > 6
-    assert _test_name_distance(header, ("Walk",)) is None
+    assert name_distance(walker, ("Walk",)) == 6
+    assert name_distance(inline, ("Walk",)) > 6
+    assert name_distance(header, ("Walk",)) is None
     python = _hit("tests/test_variable.py", "def test_as_compatible_data(self):")
-    assert _test_name_distance(python, ("as_compatible_data",)) == 4
+    assert name_distance(python, ("as_compatible_data",)) == 4
 
 
 @pytest.mark.asyncio
@@ -338,16 +340,8 @@ async def test_test_question_prefers_named_test_over_earlier_file_header():
     state.exact = [header, named_test]
     state.use_sites = [named_test]
 
-    ranked = await pipeline._prefer_source_head(
+    ranked = await pipeline.ranker.prefer_source_head(
         state, [header, named_test], pipeline.priority_factor
     )
 
     assert ranked == [named_test, header]
-
-
-def test_asks_how_separates_questions_from_docstrings():
-    from oce.domain.services.query_classifier import asks_how
-
-    assert asks_how("How does gin match a request path against the routes?")
-    assert asks_how("Explain the request context lifecycle")
-    assert not asks_how("Fetches the securities that match the given filters")

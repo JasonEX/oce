@@ -4,8 +4,9 @@ Revision ID: b2c3d4e5f6a7
 Revises: a1b2c3d4e5f6
 Create Date: 2026-09-02 14:00:00.000000
 
-rerank_ms 无法区分「按策略跳过」和「reranker 未启用」，评测 adaptive 路由需要
-逐次检索的路由标签（dedicated / dedicated+llm / skip:<reason>）。
+rerank_ms cannot tell a policy skip from a disabled reranker; evaluating the
+adaptive routes needs a per-retrieval label (dedicated / dedicated+llm /
+skip:<reason>).
 """
 
 from typing import Sequence, Union

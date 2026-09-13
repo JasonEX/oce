@@ -26,6 +26,7 @@ from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.retrieval import RetrievalPipeline
+from oce.domain.services.retrieval.rank import Ranker
 from oce.domain.services.search import SearchHit, SearchScope, VectorRecord
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
@@ -41,6 +42,7 @@ from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.database.session import Base
 from oce.shared.metrics import RetrievalAudit
+from tests.fakes.indexing import ConstantEmbedder, RecordingVectorIndex
 
 FILES = {
     "src/billing/invoice.py": (
@@ -230,25 +232,6 @@ FILES = {
 }
 
 
-class FakeEmbedder:
-    async def embed_documents(self, texts):
-        return [[1.0, 0.0] for _ in texts]
-
-    async def embed_query(self, text):
-        return [1.0, 0.0]
-
-
-class RecordingVectorIndex:
-    def __init__(self):
-        self.records: list[VectorRecord] = []
-
-    async def upsert(self, records):
-        self.records.extend(records)
-
-    async def delete(self, blob_names):
-        pass
-
-
 class TermFrequencyDense:
     """Deterministic dense stand-in that rewards repetition like a real index.
 
@@ -258,7 +241,7 @@ class TermFrequencyDense:
     four times outranks the definition that names it once.
     """
 
-    def __init__(self, index: RecordingVectorIndex, embedder: QueryCapture):
+    def __init__(self, index: RecordingVectorIndex, embedder: QueryCapture) -> None:
         self.index = index
         self.embedder = embedder
 
@@ -297,7 +280,7 @@ class TermFrequencyDense:
         ]
 
 
-class QueryCapture(FakeEmbedder):
+class QueryCapture(ConstantEmbedder):
     last_query = ""
 
     async def embed_query(self, text):
@@ -324,7 +307,7 @@ async def indexed():
     async with SqlAlchemyUnitOfWork(sessions, provider) as uow:
         pipeline = IndexingPipeline(
             chunker=chunker,
-            embedder=FakeEmbedder(),
+            embedder=ConstantEmbedder(dimensions=2),
             vector_index=vector_index,
             blob_repo=uow.blobs,
             chunk_repo=uow.chunks,
@@ -492,9 +475,7 @@ async def test_corpus_stays_adversarial(indexed, monkeypatch):
     the failure this file exists to catch and needs to be made harder again.
     """
     monkeypatch.setattr(
-        RetrievalPipeline,
-        "_structural_heads",
-        lambda self, state, hits, priority_factor=None: (),
+        Ranker, "structural_heads", lambda self, state, hits, priority_factor: ()
     )
     # The fused path is the one under test: with the exact lane answering
     # alone, dense recall is skipped and there is nothing to be adversarial to.

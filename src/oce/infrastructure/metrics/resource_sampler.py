@@ -1,7 +1,7 @@
-"""资源采样器：后台周期采集磁盘 / 内存 / CPU 到 MetricsSink，落 resource_samples。
+"""Periodic disk, memory and CPU samples into the metrics sink.
 
-psutil 惰性导入：缺失时优雅降级（记一次日志、不采样），绝不拖垮启动。采样与写库都
-走旁路，异常只记日志。collector 为 None（psutil 缺失或监控关闭）时 start() 直接跳过。
+psutil is imported lazily; without it sampling is disabled with one log line
+and startup is unaffected. Sampling is a side channel: a failure is logged.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ ResourceCollector = Callable[[], ResourceSampleRecord]
 
 
 def _dir_size(path: str) -> int:
-    """递归累加目录内文件字节数；单个文件不可读则跳过，整体不可达返回 0。"""
+    """Total file bytes under ``path``; unreadable files are skipped, an unreadable root is 0."""
     total = 0
     try:
         for root, _dirs, files in os.walk(path):
@@ -34,7 +34,7 @@ def _dir_size(path: str) -> int:
 
 
 def build_psutil_collector(data_dir: str | None) -> ResourceCollector | None:
-    """构造基于 psutil 的采集器；psutil 不可用时返回 None（调用方据此禁用采样）。"""
+    """A psutil-backed collector, or None when psutil is unavailable."""
     try:
         import psutil
     except ImportError:
@@ -42,7 +42,7 @@ def build_psutil_collector(data_dir: str | None) -> ResourceCollector | None:
         return None
 
     proc = psutil.Process()
-    proc.cpu_percent(None)  # 预热基线：首个 interval 的 CPU% 才有意义
+    proc.cpu_percent(None)  # prime the baseline; the first reading is meaningless
     target = data_dir or os.getcwd()
 
     def _collect() -> ResourceSampleRecord:
@@ -60,7 +60,7 @@ def build_psutil_collector(data_dir: str | None) -> ResourceCollector | None:
 
 
 class ResourceSampler(PeriodicTask):
-    """后台周期采样。个人 / 服务模式都跑；collector 为 None 时整体禁用。"""
+    """Sample on an interval; a None collector disables the sampler."""
 
     def __init__(
         self,
@@ -83,5 +83,5 @@ class ResourceSampler(PeriodicTask):
             return
         try:
             self._sink.record_resource_sample(self._collector())
-        except Exception as exc:  # 旁路容错：采样失败不影响主进程
+        except Exception as exc:
             logger.warning("resource sample failed: {}", exc)

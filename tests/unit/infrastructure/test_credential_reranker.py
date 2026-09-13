@@ -66,7 +66,7 @@ async def test_missing_rerank_key_uses_noop_delegate():
 
 
 async def test_credential_id_and_usage_callback_wired_through():
-    """DB 凭证的 id 填入 config，并把 credential_id + on_usage 透传给底层 delegate。"""
+    """The credential id lands in the config and passes to the delegate with on_usage."""
     engine, sessions = await _runtime()
     async with sessions() as session:
         credential = ModelCredentialModel(

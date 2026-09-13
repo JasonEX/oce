@@ -1,9 +1,4 @@
-"""验证新表结构在 SQLite 中是否能创建
-
-测试 infrastructure/models.py 的表定义：
-- 无 PG 专有类型（TSVECTOR/HALFVEC/Computed）
-- PostgreSQL/SQLite 兼容
-"""
+"""The ORM tables create on SQLite and PostgreSQL alike (no PG-only column types)."""
 
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -11,7 +6,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 @pytest.mark.asyncio
 async def test_new_models_create_in_sqlite():
-    """验证新表结构在 SQLite 中能创建"""
+    """The tables can be created in SQLite."""
     from sqlalchemy.orm import declarative_base
 
     from oce.infrastructure.persistence.models import (
@@ -22,10 +17,10 @@ async def test_new_models_create_in_sqlite():
         ChunkModel,
     )
 
-    # 创建临时 Base（避免污染全局 Base.metadata）
+    # A temporary Base keeps the global metadata untouched.
     Base = declarative_base()
 
-    # 复制表定义
+    # copy the table definitions
     class TestBlobModel(Base):
         __table__ = BlobModel.__table__.to_metadata(Base.metadata)
 
@@ -41,17 +36,17 @@ async def test_new_models_create_in_sqlite():
     class TestChainMemberModel(Base):
         __table__ = ChainMemberModel.__table__.to_metadata(Base.metadata)
 
-    # 用 SQLite 内存数据库创建表
+    # create the tables in an in-memory SQLite database
     engine = create_async_engine("sqlite+aiosqlite:///:memory:", echo=True)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
-    # 验证表已创建（能执行简单查询）
+    # the tables exist (a simple query works)
     from sqlalchemy import text
 
     async with engine.connect() as conn:
-        # 验证 5 张表都存在
+        # all five tables exist
         result = await conn.execute(
             text("SELECT name FROM sqlite_master WHERE type='table'")
         )
@@ -68,12 +63,12 @@ async def test_new_models_create_in_sqlite():
 
 @pytest.mark.asyncio
 async def test_new_models_create_in_postgresql():
-    """验证新表结构在 PostgreSQL 中也能创建（如果配置了 PG）"""
+    """The tables can be created in PostgreSQL when one is configured."""
     import uuid
 
     from dotenv import dotenv_values
 
-    # 直接读 .env 文件，绕过 pytest 的环境变量覆盖
+    # Read .env directly, bypassing pytest's environment overrides.
     env_config = dotenv_values(".env")
     db_url = env_config.get("DB_URL")
 
@@ -82,7 +77,7 @@ async def test_new_models_create_in_postgresql():
 
     from sqlalchemy import text
 
-    # 导入模型让 Base.metadata 包含表定义。
+    # Importing the models registers the tables on Base.metadata.
     from oce.infrastructure.persistence import models
     from oce.shared.database.session import Base
 

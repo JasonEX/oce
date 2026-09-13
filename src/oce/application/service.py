@@ -1,10 +1,11 @@
-"""对 HTTP、CLI 和评测器提供稳定的 application API。"""
+"""The stable application API used by HTTP, the CLI and the evaluators."""
 
 from __future__ import annotations
 
 import hashlib
 import time
 from dataclasses import dataclass
+from typing import Literal
 
 from oce.application.bus import CommandBus, QueryBus
 from oce.application.commands.checkpoint import CheckpointCommand, CheckpointResult
@@ -51,7 +52,7 @@ from oce.shared.model_credentials import (
 
 
 def compute_blob_name(path: str, content: str) -> str:
-    """生成与 ACE 客户端一致的内容地址：``sha256(path + content)``。"""
+    """The content address the ACE client computes: ``sha256(path + content)``."""
     return hashlib.sha256(f"{path}{content}".encode()).hexdigest()
 
 
@@ -75,7 +76,7 @@ class RetrievalResult:
 
 
 class RetrievalApplication:
-    """跨命令/查询的用例编排；传输层只负责 DTO 映射。"""
+    """Use-case orchestration across commands and queries; transports only map DTOs."""
 
     def __init__(
         self,
@@ -117,8 +118,8 @@ class RetrievalApplication:
             embedded = await self._commands.execute(EmbedPendingCommand(tuple(names)))
             embedded_count = embedded.embedded_count
         if checkpoint_id:
-            # 可选：上传内容索引后，把本次 blob 直接登记进已有 checkpoint 链
-            # （CheckpointCommand 对非空 checkpoint_id 只推进已有链，不会隐式创建）
+            # Register the uploaded blobs in the existing checkpoint chain; a
+            # non-empty checkpoint_id only advances a chain, never creates one.
             await self._commands.execute(
                 CheckpointCommand(checkpoint_id, tuple(names), ())
             )
@@ -152,8 +153,8 @@ class RetrievalApplication:
         added: tuple[str, ...],
         deleted: tuple[str, ...],
     ) -> ResolveScopeResult:
-        # 查询路径对 deleted_blobs 无副作用：只做本次检索范围差集，不删除任何服务端
-        # 数据。物理清理由独立 GC 流程负责。
+        # deleted_blobs only narrows this request's scope; nothing is deleted on
+        # the server. Physical cleanup is the GC command's job.
         if added and not self._background_indexing:
             await self._commands.execute(EmbedPendingCommand(added))
         return await self._queries.ask(ResolveScopeQuery(checkpoint_id, added, deleted))
@@ -193,7 +194,7 @@ class RetrievalApplication:
         return await self._queries.ask(QueueStatusQuery())
 
     async def reset_queue(
-        self, *, mode: str = "sync", requeue: bool = True
+        self, *, mode: Literal["sync", "purge"] = "sync", requeue: bool = True
     ) -> ResetQueueResult:
         return await self._commands.execute(ResetQueueCommand(mode, requeue))
 

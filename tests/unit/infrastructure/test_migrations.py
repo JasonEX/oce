@@ -1,4 +1,4 @@
-"""个人模式的编程式 SQLite schema 初始化测试。"""
+"""Programmatic SQLite schema initialization for personal mode."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ _SCRIPT_LOCATION = Path(oce.__file__).resolve().parent / "alembic"
 
 
 def _head_revision() -> str:
-    """动态读取迁移链 head，避免每新增一个迁移都要改测试硬编码。"""
+    """The migration head, read from the chain so new migrations need no test edit."""
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -26,7 +26,7 @@ def _head_revision() -> str:
 def sqlite_url(
     tmp_path: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
 ) -> str:
-    """临时 SQLite 文件库；让 settings 与环境变量指向它（env.py 从 settings 读 URL）。"""
+    """A temporary SQLite file that settings and the environment point at."""
     url = f"sqlite+aiosqlite:///{(tmp_path / 'oce.db').as_posix()}"
     monkeypatch.setenv("DB_URL", url)
     from oce.shared.config import get_settings
@@ -77,7 +77,7 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "index_profiles",
         "chunk_lexical",
     }.issubset(tables)
-    # 监控迁移链（含检索审计）也应被建出
+    # The monitoring tables (retrieval audit included) exist too.
     assert {
         "api_call_metrics",
         "token_usage_metrics",
@@ -108,6 +108,7 @@ def test_run_migrations_creates_head_schema(sqlite_url: str) -> None:
         "expand_ms",
         "head_slots",
     }.issubset(retrieval_columns)
+    assert "lane_failures" in retrieval_columns
     assert "intent_ms" not in retrieval_columns
     assert "context" in blob_chunk_columns
     assert version == _head_revision()
@@ -117,7 +118,7 @@ def test_run_migrations_is_idempotent(sqlite_url: str) -> None:
     from oce.infrastructure.persistence.migrations import run_migrations
 
     run_migrations()
-    run_migrations()  # 第二次不应抛“表已存在”
+    run_migrations()  # no "table already exists" the second time
 
 
 def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
@@ -152,7 +153,7 @@ def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
 
 
 def test_symbol_occurrences_insert_auto_id_on_sqlite(sqlite_url: str) -> None:
-    """封面回归：迁移里 id 必须走 INTEGER 自增，created_at 必须用 func.now()。"""
+    """Regression: ids must be INTEGER autoincrement and created_at must use func.now()."""
     from oce.infrastructure.persistence.migrations import run_migrations
 
     run_migrations()

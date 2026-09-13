@@ -1,4 +1,4 @@
-"""ACE HTTP 契约测试。"""
+"""ACE HTTP contract tests."""
 
 from __future__ import annotations
 
@@ -141,7 +141,7 @@ class StubApplication:
 
 
 async def mock_verify_api_key(authorization: str | None = Header(default=None)) -> str:
-    """测试用模拟认证：接受任何 Bearer token，无 token 或格式错误则拒绝。"""
+    """Test authentication: any bearer token passes, a missing or malformed one is rejected."""
     if authorization is None:
         raise _unauthorized("You didn't provide an API key.")
     if not authorization.startswith("Bearer "):
@@ -236,7 +236,7 @@ async def test_batch_upload_passes_checkpoint_id():
 async def test_batch_upload_rejects_missing_chain_with_404():
     class MissingChainApplication(StubApplication):
         async def batch_upload(self, blobs, **kwargs):
-            raise NeedsResetError("checkpoint 链不存在（服务端状态丢失）")
+            raise NeedsResetError("checkpoint chain not found (server state lost)")
 
     app.dependency_overrides[get_application] = lambda: MissingChainApplication()
     app.dependency_overrides[verify_api_key] = mock_verify_api_key
@@ -371,7 +371,7 @@ async def test_retrieval_rejects_malformed_checkpoint_with_400():
 async def test_retrieval_reports_missing_chain_with_404():
     class ScopedApplication(StubApplication):
         async def retrieve(self, information_request, **kwargs):
-            raise NeedsResetError("checkpoint 链不存在（服务端状态丢失）")
+            raise NeedsResetError("checkpoint chain not found (server state lost)")
 
     app.dependency_overrides[get_application] = lambda: ScopedApplication()
     app.dependency_overrides[verify_api_key] = mock_verify_api_key

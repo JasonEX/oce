@@ -8,10 +8,11 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from loguru import logger
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.expression import ColumnExpressionArgument
 
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.services.relations import RelatedOccurrence
@@ -37,8 +38,8 @@ from oce.infrastructure.persistence.models import (
 )
 from oce.infrastructure.persistence.scope_filter import run_scoped
 
-# 结构证据的优先级分：endpoint > definition > call/inherit（使用点）> import/reexport
-# （只是点名）；SQL 排序与命中打分共用一份。
+# Priority of structural evidence: endpoint > definition > call/inherit (use
+# sites) > import/reexport (mentions); SQL ordering and hit scores share it.
 _KIND_SCORES = {"endpoint": 1.0, "definition": 0.95, "call": 0.9, "inherit": 0.9}
 _DEFAULT_KIND_SCORE = 0.85
 
@@ -59,10 +60,10 @@ def _occurrence_rows(
     limit: int,
     kinds: Sequence[str] | None,
     path_predicate: ColumnElement[bool] | None = None,
-    partition_by: Sequence[ColumnElement[Any]] = (),
+    partition_by: Sequence[ColumnExpressionArgument[Any]] = (),
     partition_limit: int = 1,
     enclosing: Sequence[str] | None = None,
-):
+) -> Select[Any]:
     """Occurrence rows joined to the chunk occurrence that contains them.
 
     ``blob_chunks`` carries the chunk span and scope context; the line
@@ -162,7 +163,7 @@ def _test_path_predicate() -> ColumnElement[bool]:
 
 
 class SymbolSearchStore:
-    """通过 symbol_occurrences 倒排索引进行精确标识符召回。"""
+    """Exact identifier recall over the ``symbol_occurrences`` index."""
 
     def __init__(
         self,
@@ -180,10 +181,11 @@ class SymbolSearchStore:
         top_k: int = 50,
         kinds: Sequence[str] | None = None,
     ) -> list[SearchHit]:
-        """查询工作集内的标识符，按 endpoint > definition > import 排序。
+        """Occurrences of the identifiers inside the scope, endpoint > definition > import.
 
-        同一标识符在 scope 内出现越多，单条命中的证据越弱：``setup`` 定义 200 次
-        时不应把 200 个 chunk 都推到 dense 结果前面，因此按出现次数对数衰减。
+        The more places declare a name, the weaker each hit: ``setup`` defined
+        two hundred times must not push two hundred chunks ahead of dense
+        recall, so scores decay logarithmically with the declaration count.
         """
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or top_k <= 0 or not scope.blob_names:
@@ -373,7 +375,7 @@ class SymbolSearchStore:
     async def _referencing_files(
         session: AsyncSession, identifiers: Sequence[str], scope: SearchScope
     ) -> dict[str, int]:
-        def build(predicate: ColumnElement[bool]):
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
             return (
                 select(
                     SymbolOccurrenceModel.identifier,
@@ -404,7 +406,7 @@ class SymbolSearchStore:
     ) -> frozenset[str]:
         """Identifiers that are a directory component of a scoped path."""
 
-        def build(predicate: ColumnElement[bool]):
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
             return (
                 select(BlobModel.path)
                 .where(
@@ -553,7 +555,7 @@ class SymbolSearchStore:
         limit: int,
         *,
         path_predicate: ColumnElement[bool] | None = None,
-        partition_by: Sequence[ColumnElement[Any]] = (),
+        partition_by: Sequence[ColumnExpressionArgument[Any]] = (),
         partition_limit: int = 1,
     ) -> list[Row[Any]]:
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
@@ -719,7 +721,7 @@ class SymbolSearchStore:
             )
         )
 
-        def build(predicate: ColumnElement[bool]):
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
             stmt = (
                 select(*columns)
                 .join(BlobModel, SymbolOccurrenceModel.blob_name == BlobModel.blob_name)
@@ -757,7 +759,7 @@ class SymbolSearchStore:
         scope: SearchScope,
         enclosing: Sequence[str] | None = None,
     ) -> dict[str, int]:
-        def build(predicate: ColumnElement[bool]):
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
             stmt = (
                 select(
                     SymbolOccurrenceModel.identifier,

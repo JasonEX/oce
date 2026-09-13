@@ -1,7 +1,4 @@
-"""IndexingPipeline 领域服务测试
-
-用内存 Fake repo 验证：切块入库、懒嵌入、状态转换。
-"""
+"""IndexingPipeline over in-memory repositories: chunking, lazy embedding, state transitions."""
 
 from __future__ import annotations
 
@@ -12,11 +9,16 @@ import pytest
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import Chunk, LocatedChunk, RecursiveChunker
 from oce.domain.services.indexing import IndexingPipeline
-from oce.domain.services.search import VectorRecord
+from tests.fakes.indexing import (
+    ConstantEmbedder,
+    FakeLexicalProjection,
+    FakeSymbolProjection,
+    RecordingVectorIndex,
+)
 
 
 class FakeBlobRepo:
-    """BlobRepository 内存替身（仅实现 pipeline 用到的方法）"""
+    """In-memory BlobRepository with only what the pipeline calls."""
 
     def __init__(self):
         self.blobs: dict[str, object] = {}
@@ -32,8 +34,8 @@ class FakeBlobRepo:
         return self.staging.get(blob_name)
 
     async def save_staging(self, blob_name: str, content: str) -> None:
-        # blob_staging.content 是 Text 列；这里跟着断言类型，防止再退回 bytes。
-        assert isinstance(content, str), "staging 原文必须是 str"
+        # blob_staging.content is a Text column; assert str so bytes never return.
+        assert isinstance(content, str), "staged text must be str"
         self.staging[blob_name] = content
 
     async def delete_staging(self, blob_name: str) -> None:
@@ -50,18 +52,18 @@ class FakeBlobRepo:
 
 
 class FakeChunkRepo:
-    """ChunkRepository 内存替身"""
+    """In-memory ChunkRepository."""
 
     def __init__(self):
         self.chunks: dict[str, object] = {}
         self.pending: list[LocatedChunk] = []
-        self.last_blob_name: str = ""  # 记录最后操作的 blob_name
+        self.last_blob_name: str = ""
 
     async def save_many(self, chunks) -> None:
         for c in chunks:
             self.chunks[c.content_hash] = c
-            # 同时添加到 pending 列表，模拟待嵌入状态
-            # blob_name 从路径派生（简化）
+            # Also pending, as a freshly saved chunk is; blob_name is derived
+            # from the path for simplicity.
             blob_name = hashlib.sha256(c.path.encode()).hexdigest()
             located = LocatedChunk(
                 blob_name=blob_name,
@@ -77,55 +79,15 @@ class FakeChunkRepo:
     async def find_pending_for_blobs(
         self, blob_names, limit=None
     ) -> list[LocatedChunk]:
-        # 返回所有 pending 块（测试简化，实际应该按 blob_names 过滤）
+        # Every pending chunk; the real store filters by blob_names.
         result = list(self.pending)
         if limit:
             result = result[:limit]
         return result
 
     async def mark_embedded(self, content_hashes: list[str]) -> None:
-        # 标记为已嵌入，从 pending 移除
+        # Embedded chunks leave the pending list.
         self.pending = [c for c in self.pending if c.content_hash not in content_hashes]
-
-
-class FakeVectorIndex:
-    def __init__(self):
-        self.items: list[VectorRecord] = []
-
-    async def upsert(self, records) -> None:
-        self.items.extend(records)
-
-    async def delete(self, blob_names: list[str]) -> None:
-        return None
-
-
-class FakeEmbedder:
-    """确定性假 embedder"""
-
-    def __init__(self):
-        self.calls: list[list[str]] = []
-
-    async def embed_documents(self, texts):
-        self.calls.append(texts)
-        return [[1.0] * 4 for _ in texts]
-
-
-class FakeSymbolProjection:
-    def __init__(self) -> None:
-        self.indexed: list[tuple[str, tuple[str, ...]]] = []
-
-    async def index(self, blob, chunks, content: str = "") -> None:
-        self.indexed.append(
-            (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
-        )
-
-
-class FakeLexicalProjection:
-    def __init__(self) -> None:
-        self.indexed: list[tuple[str, ...]] = []
-
-    async def index(self, chunks) -> None:
-        self.indexed.append(tuple(chunk.content_hash for chunk in chunks))
 
 
 class RecordingPathStore:
@@ -148,12 +110,12 @@ def _blob_name(path: str, content: str) -> str:
 def indexing_pipeline():
     blob_repo = FakeBlobRepo()
     chunk_repo = FakeChunkRepo()
-    embedder = FakeEmbedder()
+    embedder = ConstantEmbedder()
 
     return IndexingPipeline(
         chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
         embedder=embedder,
-        vector_index=FakeVectorIndex(),
+        vector_index=RecordingVectorIndex(),
         blob_repo=blob_repo,
         chunk_repo=chunk_repo,
         symbol_projection=FakeSymbolProjection(),
@@ -162,28 +124,26 @@ def indexing_pipeline():
 
 class TestIngest:
     async def test_ingest_saves_blob_and_chunks(self, indexing_pipeline):
-        # 100 行每行约 10 字符 = 1000 字符，需要调整 chunker 以产生多个块
+        # 100 lines of about 10 characters; a small chunker yields several chunks.
         content = "\n".join(f"line{i}" for i in range(100))
         name = _blob_name("src/a.py", content)
 
-        # 设置小块 chunker 以测试分块行为
+        # A small chunker to exercise splitting.
         original_chunker = indexing_pipeline.chunker
         indexing_pipeline.chunker = RecursiveChunker(chunk_size=400, chunk_overlap=50)
 
         count = await indexing_pipeline.ingest(name, "src/a.py", content)
 
-        # 异步模式：ingest 返回 0，实际切块在 embed_pending
+        # ingest returns 0; embed_pending chunks.
         assert count == 0
 
-        # 执行切块
         embedded_count = await indexing_pipeline.embed_pending([name])
-        assert embedded_count >= 2  # 1000 字符 / 400 字符
+        assert embedded_count >= 2  # 1000 characters at 400 per chunk
 
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.READY
         assert len(blob.chunks) == embedded_count
 
-        # 恢复原 chunker
         indexing_pipeline.chunker = original_chunker
 
     async def test_ingest_empty_content_keeps_blob(self, indexing_pipeline):
@@ -192,11 +152,11 @@ class TestIngest:
 
         assert count == 0
 
-        # 异步模式：空文件直接进入 pending，等待 embed_pending 处理
+        # An empty file is pending until embed_pending handles it.
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.PENDING
 
-        # 执行 embed_pending，空内容应该被标记为 ready
+        # embed_pending marks empty content ready.
         await indexing_pipeline.embed_pending([name])
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.READY
@@ -245,17 +205,17 @@ class TestIngest:
 
 class TestEmbedPending:
     async def test_embed_pending_marks_blob_ready(self, indexing_pipeline):
-        # 完全重置 fixture 状态，避免其他测试的干扰
+        # Reset the fixture state completely.
         indexing_pipeline.chunk_repo.pending.clear()
         indexing_pipeline.chunk_repo.chunks.clear()
-        indexing_pipeline.vector_index.items.clear()
+        indexing_pipeline.vector_index.records.clear()
         indexing_pipeline.blob_repo.blobs.clear()
         indexing_pipeline.blob_repo.staging.clear()
 
         content = "print('hello')\n"
         name = _blob_name("src/hello.py", content)
 
-        # 模拟「已入库但未嵌入」的 chunk
+        # A chunk that is stored but not embedded.
         chunk = Chunk(
             content_hash=Chunk.compute_hash(content),
             path="src/hello.py",
@@ -264,21 +224,21 @@ class TestEmbedPending:
             end_line=1,
         )
 
-        # 创建 blob（pending 状态，已有 chunks）
+        # A pending blob that already has chunks.
         from oce.domain.blob.blob import Blob, BlobStatus
 
         blob = Blob(
             blob_name=name,
             path="src/hello.py",
             status=BlobStatus.PENDING,
-            chunks=[chunk.to_ref()],  # 已经切块，只是未嵌入
+            chunks=[chunk.to_ref()],  # chunked, not yet embedded
             content_size=len(content),
             language="python",
             file_type="text",
         )
         await indexing_pipeline.blob_repo.save(blob)
 
-        # 设置 pending 列表，模拟待嵌入状态
+        # Pending, waiting to be embedded.
         indexing_pipeline.chunk_repo.pending = [
             LocatedChunk(name, chunk.content_hash, chunk.path, chunk.content, 1, 1)
         ]
@@ -288,10 +248,10 @@ class TestEmbedPending:
         assert embedded == 1
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.READY
-        # 验证嵌入的 chunk
-        assert len(indexing_pipeline.vector_index.items) == 1
+        # The chunk was embedded.
+        assert len(indexing_pipeline.vector_index.records) == 1
         assert (
-            indexing_pipeline.vector_index.items[0].content_hash == chunk.content_hash
+            indexing_pipeline.vector_index.records[0].content_hash == chunk.content_hash
         )
 
     async def test_path_index_is_written_before_blob_becomes_ready(
@@ -329,18 +289,18 @@ class TestEmbedPending:
     async def test_embed_pending_disabled_keeps_pending_and_staging(
         self, indexing_pipeline
     ):
-        """回归：EMBED_ENABLED=false 时，有 chunk 的 blob 必须停在 pending 且保留
-        staging，绝不 mark_ready。
+        """Regression: with embedding disabled a chunked blob stays pending with its staging.
 
-        复现线上静默失效：切块已落库、Milvus 零向量，若此时点亮 READY，检索恒空，
-        且内容寻址幂等会让客户端重传也无法自愈。修复后 blob 保持 pending、原文保留，
-        待开关恢复重新入队即可无损补嵌。
+        The production failure: chunks stored, no vectors in Milvus, blob
+        marked READY, every retrieval empty, and content addressing made a
+        client re-upload a no-op. Now the blob stays pending with its text
+        and is embedded once re-enqueued with embedding enabled.
         """
         from oce.domain.blob.blob import Blob, BlobStatus
 
         indexing_pipeline.chunk_repo.pending.clear()
         indexing_pipeline.chunk_repo.chunks.clear()
-        indexing_pipeline.vector_index.items.clear()
+        indexing_pipeline.vector_index.records.clear()
         indexing_pipeline.blob_repo.blobs.clear()
         indexing_pipeline.blob_repo.staging.clear()
 
@@ -357,7 +317,7 @@ class TestEmbedPending:
             blob_name=name,
             path="src/hello.py",
             status=BlobStatus.PENDING,
-            chunks=[chunk.to_ref()],  # 已切块，只是尚未嵌入
+            chunks=[chunk.to_ref()],  # chunked, not yet embedded
             content_size=len(content),
             language="python",
             file_type="text",
@@ -381,17 +341,21 @@ class TestEmbedPending:
         embedded = await disabled_pipeline.embed_pending([name])
 
         assert embedded == 0
-        assert indexing_pipeline.vector_index.items == []  # 未写任何向量
+        assert indexing_pipeline.vector_index.records == []  # no vector was written
         blob = indexing_pipeline.blob_repo.blobs[name]
-        assert blob.status == BlobStatus.PENDING  # 核心：不再假 READY
-        assert name in indexing_pipeline.blob_repo.staging  # 原文保留，供恢复后补嵌
-        assert len(indexing_pipeline.chunk_repo.pending) == 1  # chunk 未被消费
+        assert blob.status == BlobStatus.PENDING  # never a false READY
+        assert (
+            name in indexing_pipeline.blob_repo.staging
+        )  # the staged text is kept for later embedding
+        assert (
+            len(indexing_pipeline.chunk_repo.pending) == 1
+        )  # the chunk was not consumed
 
     async def test_embed_pending_no_pending_returns_zero(self, indexing_pipeline):
         name = _blob_name("src/x.py", "print(1)\n")
         await indexing_pipeline.ingest(name, "src/x.py", "print(1)\n")
 
-        # 清空 pending 并标记 blob 为 ready，模拟已完成嵌入的状态
+        # Clear pending and mark the blob ready, as after a completed embedding.
         indexing_pipeline.chunk_repo.pending.clear()
         blob = indexing_pipeline.blob_repo.blobs[name]
         blob.mark_ready()
@@ -431,7 +395,7 @@ class TestProjections:
     async def test_lexical_projection_and_context_reach_the_vector_index(self):
         blob_repo = FakeBlobRepo()
         chunk_repo = FakeChunkRepo()
-        vector_index = FakeVectorIndex()
+        vector_index = RecordingVectorIndex()
         lexical = FakeLexicalProjection()
         symbols = FakeSymbolProjection()
 
@@ -450,7 +414,7 @@ class TestProjections:
 
         pipeline = IndexingPipeline(
             chunker=ContextChunker(),
-            embedder=FakeEmbedder(),
+            embedder=ConstantEmbedder(),
             vector_index=vector_index,
             blob_repo=blob_repo,
             chunk_repo=chunk_repo,
@@ -464,5 +428,5 @@ class TestProjections:
 
         assert lexical.indexed == [(Chunk.compute_hash(content),)]
         assert symbols.indexed[0][0] == name
-        assert [record.context for record in vector_index.items] == ["class Svc:"]
+        assert [record.context for record in vector_index.records] == ["class Svc:"]
         assert blob_repo.blobs[name].chunks[0].context == "class Svc:"

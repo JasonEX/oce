@@ -138,7 +138,8 @@ class IndexLifecycleManager:
         stored = await self._store.read()
         if stored is None:
             return IndexProfileStats("uninitialized")
-        # 存量 JSON 可能来自更旧的 schema；解析不出来时只报告指纹。
+        # A stored profile may predate the current schema; when it no longer
+        # parses, only the fingerprint is reported.
         return self._stats(
             "stored_unverified",
             stored.fingerprint,

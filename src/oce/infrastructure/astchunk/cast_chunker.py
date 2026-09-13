@@ -69,11 +69,11 @@ class CastChunker:
         min_chunk_chars: int = DEFAULT_MIN_CHUNK_CHARS,
     ):
         if max_chunk_size <= 0:
-            raise ValueError("max_chunk_size 必须 > 0")
+            raise ValueError("max_chunk_size must be positive")
         if max_chunk_chars <= 0:
-            raise ValueError("max_chunk_chars 必须 > 0")
+            raise ValueError("max_chunk_chars must be positive")
         if min_chunk_chars < 0 or min_chunk_chars >= max_chunk_chars:
-            raise ValueError("min_chunk_chars 必须 ∈ [0, max_chunk_chars)")
+            raise ValueError("min_chunk_chars must be in [0, max_chunk_chars)")
         self.max_chunk_size = max_chunk_size
         self.fallback = fallback
         self.max_chunk_chars = max_chunk_chars
@@ -109,8 +109,9 @@ class CastChunker:
                 replace(chunk, context=self._context(builder, root, chunk))
                 for chunk in chunks
             ]
-        # 解析成功但所有行都超出字符预算：文件是压缩包或单行生成产物。
-        # 回退到 RecursiveChunker 只会把同样的内容按字符切回来，所以不产出。
+        # Parsed, yet every line exceeds the budget: a minified or generated
+        # one-liner. The recursive fallback would only cut the same content by
+        # characters, so nothing is produced.
         if windows:
             return []
         return self.fallback.chunk(content, path)
@@ -154,15 +155,16 @@ class CastChunker:
         for start, end in sorted(ranges):
             if merged:
                 prev_start, prev_end = merged[-1]
-                # 已被前一个区间覆盖：重复起点或完全内含，不产出新块。
+                # Covered by the previous range (same start or nested).
                 if end <= prev_end:
                     continue
-                # 前一个区间还没达到下限，把当前区间并进去补足它。
+                # The previous range is below the minimum; absorb this one.
                 if self._span_chars(lines, prev_start, prev_end) < self.min_chunk_chars:
                     merged[-1] = (prev_start, end)
                     continue
             if merged and self._span_chars(lines, start, end) < self.min_chunk_chars:
-                # 自身过小且前一个已达标：向前贴，避免留下孤立的收尾括号。
+                # Too small on its own: attach to the previous range rather
+                # than leave a lone closing bracket.
                 merged[-1] = (merged[-1][0], end)
                 continue
             merged.append((start, end))
@@ -190,7 +192,7 @@ class CastChunker:
         line_count = len(lines)
         if start < 1 or end < start or end > line_count:
             raise ValueError(
-                f"astchunk 返回无效行号: {start}-{end}，文件共 {line_count} 行"
+                f"astchunk returned an invalid line range {start}-{end} for {line_count} lines"
             )
         return start, trim_trailing_blank_lines(lines, start, end)
 

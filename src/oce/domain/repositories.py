@@ -1,4 +1,4 @@
-"""领域仓储协议(由 infrastructure/persistence 提供实现)。"""
+"""Repository protocols, implemented by infrastructure/persistence."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ class BlobRepository(Protocol):
     ) -> list[Blob]: ...
 
     async def list_pending_names(self) -> list[str]:
-        """全部 pending blob 的名字。只取标识，不组装聚合。"""
+        """Names of every pending blob; identities only, no aggregates."""
         ...
 
     async def list_ready_names(self, limit: int) -> list[str]:
@@ -39,10 +39,10 @@ class BlobRepository(Protocol):
         ...
 
     async def find_expired(self, ttl_days: int, batch_size: int = 1000) -> list[str]:
-        """返回超过 TTL 且未被任何 checkpoint chain 引用的 blob。"""
+        """Blobs past the TTL that no checkpoint chain references."""
         ...
 
-    # blob_staging 操作（worker 消费用原文缓冲区）
+    # blob_staging: the raw text buffer the worker chunks from
     async def get_staging(self, blob_name: str) -> str | None: ...
     async def save_staging(self, blob_name: str, content: str) -> None: ...
     async def delete_staging(self, blob_name: str) -> None: ...
@@ -52,7 +52,7 @@ class BlobRepository(Protocol):
         stale_hours: int = 24,
         limit: int = 100,
     ) -> list[str]:
-        """查找有 staging 但长时间未处理的 pending blob(用于重新入队或清理)"""
+        """Pending blobs with staging text that have waited too long, for requeueing."""
         ...
 
 

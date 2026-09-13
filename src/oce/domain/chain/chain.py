@@ -1,12 +1,9 @@
-"""Chain 聚合根 - 工作集抽象
+"""The Chain aggregate: a client's working set.
 
-Chain 是客户端工作集的领域抽象：一组 Blob 成员加一个单调递增的 checkpoint
-版本。成员增删与版本推进由 ChainRepository 在同一事务内完成，这里只承载读模型
-和 checkpoint 令牌的编解码。
-
-不变量：
-- chain_id 必须是有效的 UUID
-- version 必须 >= 1
+A chain is a set of blob members plus a monotonically increasing checkpoint
+version. Membership changes and version bumps happen in one transaction in
+the repository; this class holds the read model and the checkpoint token
+encoding. ``chain_id`` must be a UUID and ``version`` at least 1.
 """
 
 from __future__ import annotations
@@ -18,16 +15,13 @@ from datetime import datetime, timezone
 
 @dataclass
 class Chain:
-    """Chain 聚合根 - 工作集"""
-
     chain_id: str  # UUID
-    version: int  # 版本号（从 1 开始）
-    members: set[str] = field(default_factory=set)  # Blob 成员集合
+    version: int  # starts at 1
+    members: set[str] = field(default_factory=set)  # blob names
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
-    def __post_init__(self):
-        """验证不变量"""
+    def __post_init__(self) -> None:
         if not self._is_valid_uuid(self.chain_id):
             raise ValueError(f"Invalid chain_id (not UUID): {self.chain_id}")
         if self.version < 1:
@@ -35,7 +29,6 @@ class Chain:
 
     @staticmethod
     def _is_valid_uuid(s: str) -> bool:
-        """验证 UUID 格式"""
         try:
             uuid.UUID(s, version=4)
             return True
@@ -44,19 +37,16 @@ class Chain:
 
     @staticmethod
     def format_checkpoint_token(chain_id: str, version: int) -> str:
-        """格式：{chain_id}:{version}
+        """``{chain_id}:{version}``, an opaque token the client stores and returns.
 
-        不透明令牌，客户端必须存储并回传最新值。版本不匹配时服务端要求
-        重建工作集，避免旧令牌静默读取或改写新成员集。
+        A version mismatch makes the server demand a rebuilt working set, so
+        a stale token can neither read nor rewrite a newer member set.
         """
         return f"{chain_id}:{version}"
 
     @staticmethod
     def parse_checkpoint_token(token: str) -> tuple[str, int] | None:
-        """解析 Checkpoint 令牌
-
-        返回：(chain_id, version) 或 None（格式非法）
-        """
+        """``(chain_id, version)``, or None when the token is malformed."""
         if not token or ":" not in token:
             return None
 
@@ -64,7 +54,6 @@ class Chain:
         if not chain_id or not version_str.isdigit():
             return None
 
-        # 验证 UUID 格式
         if not Chain._is_valid_uuid(chain_id):
             return None
 

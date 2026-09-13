@@ -1,4 +1,4 @@
-"""ACE 兼容 retrieval 路由。application 异常由 api/errors.py 统一映射。"""
+"""ACE-compatible retrieval routes; application errors are mapped in api/errors.py."""
 
 from __future__ import annotations
 

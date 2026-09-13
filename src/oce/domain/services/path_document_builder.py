@@ -1,8 +1,9 @@
-"""路径文档生成器 - 为路径索引构建可泛化的语义文档。
+"""Build the semantic document the path index embeds for one file.
 
-约束：只使用路径自身的结构信息（目录 / 文件名 / 扩展名分词）加上「扩展名 → 类型」
-这一层对任意仓库都成立的通用语义；不注入具体文件名或单一技术栈的先验知识，避免
-路径索引退化为对某个基准仓库的记忆。
+Only the path's own structure is used (directories, file-name pieces,
+extension tokens) plus the extension-to-kind semantics that hold for any
+repository. No specific file names or single-stack priors are injected, so
+the path index does not degrade into a memory of one benchmark repository.
 """
 
 from __future__ import annotations
@@ -11,12 +12,15 @@ import re
 
 from oce.domain.services.source_filter import is_ignored_source_path
 
-# 目录分隔、点、下划线、连字符，以及 camelCase 边界，用于把路径拆成可匹配 token
+# Directory separators, dots, underscores, hyphens and camelCase boundaries
+# split a path into matchable tokens.
 _TOKEN_SPLIT = re.compile(r"[/\\._\-]+")
 _CAMEL_BOUNDARY = re.compile(r"(?<=[a-z0-9])(?=[A-Z])")
 
-# 扩展名 → 类型语义。扩展名对语言/类型的指示对任意仓库一致、覆盖均匀，属于通用世界
-# 知识而非单仓先验，因此保留；具体文件名与目录名交给下面的 token 分词覆盖。
+# Extension to kind semantics. What an extension says about a file's language
+# or kind is the same in every repository, so it is general knowledge rather
+# than a single-repository prior; file and directory names are covered by the
+# tokenizer below. The Chinese words let Chinese requests match too.
 EXTENSION_SEMANTICS = {
     ".rs": "Rust source code 源码",
     ".py": "Python source code 源码",
@@ -46,7 +50,7 @@ EXTENSION_SEMANTICS = {
 
 
 def _tokenize(path: str) -> list[str]:
-    """把路径拆成小写 token（目录、文件名片段、camelCase 边界），保序去重。"""
+    """Lower-case path tokens (directories, name pieces, camelCase parts), deduplicated in order."""
     tokens: list[str] = []
     for part in _TOKEN_SPLIT.split(path):
         if not part:
@@ -59,11 +63,7 @@ def _tokenize(path: str) -> list[str]:
 
 
 def build_path_document(path: str) -> str:
-    """构建路径索引的 embedding 文本。
-
-    组成：完整路径 + 文件名 + 文件名主干 + 结构化 token + 扩展名类型语义。全部来自
-    路径本身，不含具体文件名 / 技术栈的外部先验，从而跨仓库可泛化。
-    """
+    """The embedding text: full path, file name, stem, tokens and extension semantics."""
     normalized = path.replace("\\", "/")
     filename = normalized.rsplit("/", 1)[-1]
     stem = filename.split(".", 1)[0]
@@ -88,5 +88,5 @@ def build_path_document(path: str) -> str:
 
 
 def is_indexable_path(path: str) -> bool:
-    """路径索引与源码准入共用一份排除规则：依赖/构建目录、二进制与敏感文件。"""
+    """The path index shares the source admission rules: no dependency, build, binary or secret paths."""
     return not is_ignored_source_path(path)

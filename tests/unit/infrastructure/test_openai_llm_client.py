@@ -1,7 +1,8 @@
-"""OpenAICompatibleLLMClient.chat 用量上报测试。
+"""OpenAICompatibleLLMClient.chat usage reporting over a mocked httpx.
 
-mock httpx，验证 chat 成功后按响应真实 usage 旁路上报；缺 usage 字段不臆造、
-无回调时零开销。LLM 无 DB 凭证，credential_id 恒为 0。
+A successful chat reports the response's real usage; a missing usage field
+reports nothing; no callback costs nothing. Without a credential row the
+credential_id is 0.
 """
 
 from __future__ import annotations
@@ -23,7 +24,7 @@ def _fake_response(payload: dict):
 
 
 class _FakeAsyncClient:
-    """够 chat() 用的长连接 httpx.AsyncClient 替身。"""
+    """Just enough of httpx.AsyncClient for chat()."""
 
     def __init__(self, payload: dict, **_: object) -> None:
         self._payload = payload
@@ -63,7 +64,7 @@ async def test_chat_reports_usage_on_success(monkeypatch):
     content = await client.chat([{"role": "user", "content": "hi"}], model="test-llm")
 
     assert content == "hello"
-    # LLM 无凭证：credential_id 恒 0；prompt/completion 按响应真实值
+    # No credential: credential_id is 0; prompt/completion come from the response.
     assert captured == [(0, "llm", "test-llm", 12, 5)]
 
 
@@ -79,7 +80,7 @@ async def test_chat_without_usage_does_not_report(monkeypatch):
 
     await client.chat([{"role": "user", "content": "hi"}], model="test-llm")
 
-    assert captured == []  # 缺 usage 字段：不臆造、不上报
+    assert captured == []  # no usage field: nothing is invented or reported
 
 
 @pytest.mark.asyncio

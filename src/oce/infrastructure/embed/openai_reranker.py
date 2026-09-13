@@ -1,4 +1,4 @@
-"""SiliconFlow/Cohere 风格的异步 rerank 客户端。"""
+"""Asynchronous rerank client in the SiliconFlow/Cohere style."""
 
 from __future__ import annotations
 
@@ -82,6 +82,8 @@ class OpenAIReranker:
                 continue
             index = item.get("index")
             raw_score = item.get("relevance_score", item.get("score", 0.0))
+            if raw_score is None:
+                continue
             try:
                 score = float(raw_score)
             except (TypeError, ValueError):
@@ -107,7 +109,7 @@ class OpenAIReranker:
                 coerce_token_count(token_meta.get(key, 0))
                 for key in ("input_tokens", "output_tokens", "image_tokens")
             )
-            # rerank 无 prompt/completion 之分：总量记入 prompt，completion=0
+            # Reranking has no prompt/completion split: the total is prompt.
             try:
                 await self._on_usage(
                     self._credential_id,

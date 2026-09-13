@@ -1,4 +1,4 @@
-"""索引命令处理器测试。"""
+"""Indexing command handler tests."""
 
 from __future__ import annotations
 
@@ -16,9 +16,9 @@ from oce.application.commands.ingest import (
 )
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import RecursiveChunker
+from tests.fakes.indexing import ConstantEmbedder
+from tests.fakes.retrieval import FakeSearchStore
 from tests.unit.application.fakes import (
-    FakeEmbedder,
-    FakeSearchStore,
     FakeUnitOfWorkFactory,
     blob_name,
 )
@@ -30,7 +30,7 @@ def dependencies():
     index = FakeSearchStore()
     pipelines = build_pipeline_factory(
         chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(),
         vector_index=index,
     )
     return factory, pipelines, index
@@ -54,7 +54,7 @@ async def _ingest(factory, pipelines, name, path, content, queue=None):
 
 
 async def test_ingest_stages_pending_blob(dependencies):
-    """异步模式：ingest 只写元数据和 staging，切块留给 embed_pending"""
+    """Ingest stores metadata and staging only; chunking waits for embed_pending."""
     factory, pipelines, _ = dependencies
     content = "\n".join(f"line{i}" for i in range(100))
     name = blob_name("src/a.py", content)
@@ -92,7 +92,7 @@ async def test_ingest_does_not_stage_or_enqueue_ignored_blob(dependencies):
 
 
 async def test_ingest_blank_content_is_ready(dependencies):
-    """空内容在 embed_pending 后直接标记 READY"""
+    """Empty content is marked READY by embed_pending."""
     factory, pipelines, _ = dependencies
     content = "\n\n   \n"
     name = blob_name("src/blank.py", content)
@@ -107,7 +107,7 @@ async def test_ingest_blank_content_is_ready(dependencies):
 
 
 async def test_embed_pending_writes_vector_and_marks_ready(dependencies):
-    """embed_pending 完成切块、嵌入，并标记 blob 为 ready"""
+    """embed_pending chunks, embeds and marks the blob ready."""
     factory, pipelines, index = dependencies
     content = "print('hello')"
     path = "src/hello.py"
@@ -132,7 +132,7 @@ async def test_embed_handler_propagates_disabled_runtime_state(dependencies):
     await _ingest(factory, pipelines, name, path, content)
     disabled = build_pipeline_factory(
         chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(),
         vector_index=index,
         embedding_enabled=False,
     )
@@ -148,10 +148,10 @@ async def test_embed_handler_propagates_disabled_runtime_state(dependencies):
 
 
 async def test_embed_pending_limits_vector_batches(dependencies):
-    """embed_pending 成功处理多块内容"""
+    """embed_pending handles content that splits into several chunks."""
     factory, pipelines, _ = dependencies
     path = "src/large.py"
-    # 每行约 10 字符，1000 行 > 6000 chunk_size，确保切成多块
+    # About 10 characters per line; 1000 lines exceed the 6000 chunk size.
     content = "\n".join(f"line{i}" for i in range(1000))
     name = blob_name(path, content)
 
@@ -165,7 +165,7 @@ async def test_embed_pending_limits_vector_batches(dependencies):
 
 
 async def test_embed_failure_commits_error_state(dependencies):
-    """嵌入失败时，blob 状态标记为 ERROR 并提交"""
+    """A failed embedding marks the blob ERROR and commits."""
 
     class FailingEmbedder:
         async def embed_documents(self, _texts):

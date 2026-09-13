@@ -1,6 +1,7 @@
-"""SqlMetricsSink 异步落库测试。
+"""SqlMetricsSink flush tests.
 
-用 StaticPool 的内存库让多个 session 共享同一连接（默认 :memory: 每连接独立库）。
+A StaticPool in-memory database lets several sessions share one connection;
+by default every :memory: connection is its own database.
 """
 
 from __future__ import annotations
@@ -9,7 +10,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-import oce.infrastructure.persistence.models  # noqa: F401  注册 ORM 表到 Base.metadata
+import oce.infrastructure.persistence.models  # noqa: F401  registers the ORM tables on Base.metadata
 from oce.infrastructure.metrics.sql_metrics_sink import SqlMetricsSink
 from oce.infrastructure.persistence.models import (
     ApiCallMetricModel,
@@ -86,7 +87,7 @@ async def test_flush_drains_buffer_no_double_write():
             TokenUsageRecord(kind="rerank", model="m", total_tokens=5)
         )
         await sink._flush_once()
-        await sink._flush_once()  # 第二次缓冲已空，不应重复写
+        await sink._flush_once()  # the buffer is empty; nothing is written twice
         assert await _count(factory, TokenUsageMetricModel) == 1
     finally:
         await engine.dispose()
@@ -173,7 +174,7 @@ async def test_start_stop_flushes_remaining():
                 endpoint="/health", method="GET", status_code=200, latency_ms=1
             )
         )
-        await sink.stop()  # stop 前应 flush 掉剩余
+        await sink.stop()  # stop flushes what remains
         assert await _count(factory, ApiCallMetricModel) == 1
     finally:
         await engine.dispose()
@@ -190,7 +191,9 @@ async def test_buffer_maxlen_drops_oldest():
                 )
             )
         await sink._flush_once()
-        assert await _count(factory, ApiCallMetricModel) == 2  # maxlen=2，仅留最新两条
+        assert (
+            await _count(factory, ApiCallMetricModel) == 2
+        )  # maxlen=2 keeps the newest two
     finally:
         await engine.dispose()
 
@@ -210,6 +213,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
                 rerank_route="dedicated+llm",
                 dense_route="skip:exact_definition",
                 head_slots=2,
+                lane_failures={"lexical": "TimeoutError", "exact": "RuntimeError"},
                 query_text="q",
                 stages={
                     "embed": 7,
@@ -227,7 +231,7 @@ async def test_flush_writes_retrieval_with_stage_columns():
         async with factory() as session:
             row = (await session.execute(select(RetrievalMetricModel))).scalar_one()
         assert row.source == "retrieval"
-        assert row.hit_count == 0  # 空回也落库
+        assert row.hit_count == 0  # an empty answer is stored too
         assert row.total_ms == 42
         assert row.dense_route == "skip:exact_definition"
         assert row.embed_ms == 7
@@ -237,10 +241,11 @@ async def test_flush_writes_retrieval_with_stage_columns():
         assert row.lexical_ms == 4
         assert row.select_ms == 5
         assert row.expand_ms == 6
-        assert row.exact_ms is None  # 未跑的阶段留空，不冒充 0
+        assert row.exact_ms is None  # a stage that never ran stays NULL
         assert row.path_boosted is True
         assert row.rerank_route == "dedicated+llm"
         assert row.head_slots == 2
+        assert row.lane_failures == "exact:RuntimeError,lexical:TimeoutError"
         assert row.query_text == "q"
     finally:
         await engine.dispose()

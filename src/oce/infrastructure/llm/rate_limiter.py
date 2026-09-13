@@ -1,8 +1,10 @@
-"""LLM 调用的 TPM（tokens per minute）限流。
+"""Tokens-per-minute limiting for LLM calls.
 
-这类 OpenAI 兼容网关按 60 秒滚动窗口统计 token，超限返回 429（如 SiliconFlow code=50602）。rerank 单次
-请求可达 16k token，60k TPM 只够 3~4 次调用，必须在客户端排队而非事后重试：
-重试失败会让 reranker 回退到原始顺序，评测结果混入未重排的查询而不易察觉。
+OpenAI-compatible gateways meter tokens over a 60-second sliding window and
+return 429 above it (SiliconFlow code 50602). One rerank call can reach 16k
+tokens, so 60k TPM allows three or four; the client must queue rather than
+retry after the fact, because a failed retry makes the reranker keep the
+input order and quietly mixes unreranked queries into an evaluation.
 """
 
 from __future__ import annotations
@@ -13,10 +15,7 @@ from collections import deque
 
 
 def estimate_tokens(text: str) -> int:
-    """粗估 token 数，宁可高估以免触发 429。
-
-    中日韩字符约 1 token/字，其余（代码、英文、符号）约 3 字符/token。
-    """
+    """Rough token estimate, erring high: one per CJK character, three characters per token otherwise."""
     cjk = 0
     for ch in text:
         if "\u4e00" <= ch <= "\u9fff" or "\u3040" <= ch <= "\u30ff":
@@ -26,7 +25,7 @@ def estimate_tokens(text: str) -> int:
 
 
 class TokenRateLimiter:
-    """滑动窗口 TPM 限流器，跨协程共享。"""
+    """Sliding-window TPM limiter shared across coroutines."""
 
     def __init__(
         self,
@@ -34,12 +33,7 @@ class TokenRateLimiter:
         window_seconds: float = 60.0,
         safety_ratio: float = 0.9,
     ) -> None:
-        """
-        Args:
-            tokens_per_minute: 接口 TPM 上限
-            window_seconds: 统计窗口长度
-            safety_ratio: 预算折扣，留出估算误差余量
-        """
+        """``safety_ratio`` discounts the budget to absorb estimation error."""
         self.budget = max(1, int(tokens_per_minute * safety_ratio))
         self.window = window_seconds
         self._events: deque[tuple[float, int]] = deque()
@@ -47,14 +41,15 @@ class TokenRateLimiter:
         self._lock = asyncio.Lock()
 
     def _evict(self, now: float) -> None:
-        """移出已滑出窗口的记账。"""
+        """Drop bookings that slid out of the window."""
         while self._events and now - self._events[0][0] >= self.window:
             _, tokens = self._events.popleft()
             self._used -= tokens
 
     async def acquire(self, tokens: int) -> float:
-        """申请额度，不足则等待窗口滑动。返回累计等待秒数。"""
-        # 单请求超过整窗预算时按预算记账，否则永远等不到额度
+        """Book ``tokens``, waiting for the window to slide; returns the seconds waited."""
+        # A request larger than the whole budget books the budget, or it
+        # would wait forever.
         need = min(max(tokens, 1), self.budget)
         waited = 0.0
 
@@ -66,7 +61,7 @@ class TokenRateLimiter:
                     self._events.append((now, need))
                     self._used += need
                     return waited
-                # 最早一笔记账滑出窗口后才可能腾出额度
+                # Room appears once the oldest booking leaves the window.
                 sleep_for = self.window - (now - self._events[0][0])
 
             sleep_for = max(sleep_for, 0.05)

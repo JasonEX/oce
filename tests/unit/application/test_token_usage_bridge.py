@@ -1,7 +1,8 @@
-"""容器 token 用量桥接：把 embedder/reranker/llm 的回调映射成 TokenUsageRecord。
+"""The container's usage bridge maps model-client callbacks to TokenUsageRecord.
 
-只验证纯映射逻辑（credential_id=0 归一 None、total=prompt+completion）；容器用
-functools.partial 把 sink 绑定进去，这里直接传 sink。
+Only the mapping is tested (credential_id 0 becomes None, total is prompt
+plus completion); the container binds the sink with functools.partial, here
+it is passed directly.
 """
 
 from __future__ import annotations
@@ -29,18 +30,18 @@ async def test_bridge_maps_usage_and_normalizes_zero_credential():
     assert rec.total_tokens == 17
     assert rec.credential_id is None
 
-    # embed：真实凭证 id 透传，completion=0
+    # embed: the credential id passes through, completion is 0
     await record_token_usage(sink, 7, "embed", "e", 10, 0)
     assert sink.records[1].credential_id == 7
     assert sink.records[1].total_tokens == 10
 
 
 async def test_bridge_swallows_sink_errors():
-    """旁路容错：sink 抛错也不冒泡回主链路。"""
+    """A raising sink never propagates to the caller."""
 
     class _BoomSink:
         def record_token_usage(self, record: TokenUsageRecord) -> None:
             raise RuntimeError("boom")
 
-    # 不抛异常即通过
+    # passing means no exception
     await record_token_usage(_BoomSink(), 1, "rerank", "m", 3, 0)

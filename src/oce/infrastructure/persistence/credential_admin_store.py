@@ -1,4 +1,4 @@
-"""凭据 admin CRUD 的 SQL 实现（CredentialAdminStore 端口）。"""
+"""SQL implementation of the credential administration port."""
 
 from __future__ import annotations
 
@@ -19,7 +19,8 @@ from oce.shared.model_credentials import (
     CredentialRecord,
 )
 
-# 可直接透传到模型的标量列；api_key 单独处理以同步 hash。
+# Scalar columns copied to the model as they are; api_key is handled apart
+# so its hash stays in sync.
 _SCALAR_FIELDS = tuple(
     field.name for field in fields(CredentialPatch) if field.name != "api_key"
 )
@@ -107,13 +108,15 @@ class SqlCredentialAdminStore:
             src = await session.get(ModelCredentialModel, credential_id)
             if src is None:
                 return None
-            # 先继承源行全部标量字段，再用非 None 的覆盖字段替换（name 也走覆盖）。
+            # Inherit every scalar from the source row, then apply the non-None
+            # overrides (name included).
             values = {field: getattr(src, field) for field in _SCALAR_FIELDS}
             for field in _SCALAR_FIELDS:
                 override = getattr(changes, field)
                 if override is not None:
                     values[field] = override
-            # api_key 省略即复用源 key，这正是“同一把 key 换用途”复制的关键。
+            # An omitted api_key reuses the source key: that is what lets one
+            # key be duplicated for another use.
             api_key = changes.api_key if changes.api_key is not None else src.api_key
             clone = ModelCredentialModel(
                 api_key=api_key,

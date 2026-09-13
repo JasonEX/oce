@@ -1,4 +1,4 @@
-"""索引写路径命令。"""
+"""Indexing write-path commands."""
 
 from __future__ import annotations
 
@@ -17,7 +17,8 @@ from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.search import VectorIndex
 
-# 每个用例在自己的 UoW 内构造 pipeline，仓储绑定当前事务，协程间不共享可变状态。
+# Each use case builds its pipeline inside its own unit of work, so the
+# repositories are bound to that transaction and coroutines share no state.
 PipelineFactory = Callable[[UnitOfWork], IndexingPipeline]
 
 
@@ -128,7 +129,8 @@ class EmbedPendingCommandHandler:
         for group in groups:
             async with self._uow_factory() as uow:
                 pipeline = self._pipeline_factory(uow)
-                # 失败时 pipeline 已把 blob 置 error，提交后再抛出，错误状态才可见。
+                # On failure the pipeline has marked the blob as errored; commit
+                # before re-raising so that state is visible.
                 try:
                     embedded += await pipeline.embed_pending(group)
                 finally:
@@ -163,7 +165,7 @@ class DeleteBlobsCommandHandler:
             try:
                 await self._path_store.delete_by_blob_names(list(command.blob_names))
             except Exception as exc:
-                # 路径索引删除失败不阻塞删除主流程，仅记日志
+                # A failed path-index delete never blocks the deletion itself.
                 logger.warning(
                     "path index delete failed for {} blobs: {}",
                     len(command.blob_names),

@@ -1,4 +1,4 @@
-"""日志配置单元测试。"""
+"""Logging configuration tests."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from oce.shared.logging import configure_logging
 
 
 def _restore_default_handler() -> None:
-    """恢复 loguru 默认 stderr handler，避免污染其他测试。"""
+    """Restore loguru's default stderr handler so other tests are unaffected."""
     logger.remove()
     logger.add(sys.stderr)
 

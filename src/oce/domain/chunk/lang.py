@@ -1,14 +1,14 @@
-"""文件路径到切块语言标识的映射。
+"""Map a file path to the chunking language identifier.
 
-标识由 LanguageChunkerRouter 分发给 AST 或文档专用切块器；未命中者走
-RecursiveChunker 兜底。
+``LanguageChunkerRouter`` dispatches the identifier to an AST or document
+chunker; unknown files fall back to ``RecursiveChunker``.
 """
 
 from __future__ import annotations
 
 import os
 
-# 扩展名（小写，含点）到规范化语言标识。
+# Lower-case extension (with the dot) to the normalized language identifier.
 _EXT_TO_LANG: dict[str, str] = {
     # Python
     ".py": "python",
@@ -120,18 +120,18 @@ _EXT_TO_LANG: dict[str, str] = {
     ".svelte": "svelte",
 }
 
-# 路由器可接受的已知语言集合。
+# Every identifier the router accepts.
 SUPPORTED_LANGUAGES: frozenset[str] = frozenset(_EXT_TO_LANG.values())
 
 
 def detect_language(path: str) -> str | None:
-    """按扩展名推断 astchunk 语言标识；不支持返回 None。
+    """The language identifier for ``path``, or None when unsupported.
 
-    优先匹配扩展名，其次匹配文件名（Dockerfile / Makefile 等无扩展名文件）。
+    The extension decides first; files without one (Dockerfile, Makefile)
+    match by base name.
     """
     _, ext = os.path.splitext(path.lower())
     if ext and ext in _EXT_TO_LANG:
         return _EXT_TO_LANG[ext]
-    # 无扩展名时按文件名匹配（Dockerfile, Makefile 等）
     basename = os.path.basename(path)
     return _EXT_TO_LANG.get(basename)

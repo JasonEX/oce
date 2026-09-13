@@ -1,4 +1,4 @@
-"""/admin/queue 运维接口契约测试。"""
+"""Contract tests of the /admin/queue routes."""
 
 from __future__ import annotations
 

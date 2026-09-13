@@ -7,12 +7,12 @@ on:
     branches: [master]
   workflow_dispatch:
 
-# 同一分支/PR 的新提交取消仍在跑的旧运行，省额度。
+# A new push to the same branch or PR cancels the run still in progress.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# 最小权限：CI 只需读代码。
+# Least privilege: CI only reads the code.
 permissions:
   contents: read
 
@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 = pyproject 声明的下限（StrEnum）；3.13 = 实际开发版本。两端各测一次。
+        # 3.11 is the floor pyproject declares (StrEnum); 3.13 is the development version.
         python-version: ["3.11", "3.13"]
     steps:
       - uses: actions/checkout@v4
@@ -34,11 +34,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
 
-      # --locked：锁文件与 pyproject 不一致时直接失败，强制贡献者同步 uv.lock。
+      # --locked fails when uv.lock and pyproject disagree, so contributors keep the lock in sync.
       - name: Install dependencies (locked)
         run: uv sync --extra dev --locked
 
-      # 导入期不连库（engine 惰性），显式用 SQLite 双保险，纯粹校验模块可加载。
+      # Importing never connects (the engine is lazy); SQLite is set anyway. This only checks the modules load.
       - name: Smoke import
         env:
           DB_URL: "sqlite+aiosqlite:///:memory:"
@@ -50,9 +50,15 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-      # 关键约束：每个测试文件独立进程运行。tree-sitter 语言包 + Milvus Lite
-      # 在同一进程累积会吃掉 10GB+ 内存，禁止一次性跑整个 tests/unit/infrastructure。
-      # 循环内不用 set -e，让所有文件都跑完再统一以非零码退出，便于一次看到全部失败。
+      # Type errors are the class of refactor mistake the lane-degrading
+      # retrieval code would otherwise absorb at runtime.
+      - name: Run mypy
+        if: matrix.python-version == '3.13'
+        run: uv run mypy
+
+      # One process per test file: the tree-sitter grammars and Milvus Lite
+      # accumulate past 10 GB in a single process. No set -e inside the loop,
+      # so every file runs and all failures are visible at once.
       - name: Run unit tests (one process per file)
         shell: bash
         run: |
@@ -80,7 +86,7 @@ jobs:
           python-version: "3.13"
           enable-cache: true
 
-      # 校验 setuptools 打包配置能产出 sdist + wheel。
+      # Check that the packaging configuration produces an sdist and a wheel.
       - name: Build sdist + wheel
         run: uv build
 

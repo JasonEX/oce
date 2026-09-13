@@ -64,7 +64,13 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
             "rerank",
             require_endpoint_and_model=True,
         )
-        if credential is not None:
+        # ``require_endpoint_and_model`` filtered null columns in SQL; the
+        # checks below restate that for the type checker.
+        if (
+            credential is not None
+            and credential.endpoint is not None
+            and credential.model is not None
+        ):
             return RerankRuntimeConfig(
                 endpoint=credential.endpoint,
                 api_key=credential.api_key,

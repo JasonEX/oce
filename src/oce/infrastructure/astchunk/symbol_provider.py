@@ -9,6 +9,7 @@ languages without a loadable grammar.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 from loguru import logger
 from tree_sitter_language_pack import get_parser
@@ -27,6 +28,9 @@ from oce.infrastructure.astchunk.declarations import (
     require_alias_names,
 )
 from oce.infrastructure.regex_symbol_provider import LineIndex, find_endpoints
+
+if TYPE_CHECKING:
+    from tree_sitter import Parser
 
 # Files above this size fall back to regex evidence: a full node walk of a
 # generated megabyte would dominate indexing time for one low-value file.
@@ -95,7 +99,7 @@ def is_prose_language(language: str | None) -> bool:
 class TreeSitterSymbolProvider:
     def __init__(self, fallback: SymbolProvider) -> None:
         self._fallback = fallback
-        self._parsers: dict[str, object | None] = {}
+        self._parsers: dict[str, Parser | None] = {}
         self._failures: dict[str, int] = {}
 
     def extract(
@@ -194,18 +198,20 @@ class TreeSitterSymbolProvider:
                 )
                 child_enclosing = enclosing
                 if is_definition_type(child_type) or child_type in _ASSIGNMENT_TYPES:
-                    name = declared_name(child)
+                    declared = declared_name(child)
                     is_local = inside_function and (
                         child_type.endswith("_declarator")
                         or child_type in _ASSIGNMENT_TYPES
                         or child_type in ("property_declaration", "let_declaration")
                     )
-                    if name is not None and not is_local:
-                        kind = "endpoint" if name in endpoints else "definition"
-                        add(name, kind, start, end, enclosing)
-                        child_enclosing = name
+                    if declared is not None and not is_local:
+                        kind: SymbolKind = (
+                            "endpoint" if declared in endpoints else "definition"
+                        )
+                        add(declared, kind, start, end, enclosing)
+                        child_enclosing = declared
                         for base in heritage_names(child):
-                            add(base, "inherit", start, end, name)
+                            add(base, "inherit", start, end, declared)
                 if child_type == "impl_item":
                     # ``impl Trait for Type`` declares nothing new, but its
                     # methods belong to ``Type`` and it implements ``Trait``.
@@ -232,7 +238,7 @@ class TreeSitterSymbolProvider:
                 add(identifier, "endpoint", line, line, "")
         return tuple(occurrences.values())
 
-    def _parser(self, language: str):
+    def _parser(self, language: str) -> Parser | None:
         key = language.lower()
         if key in self._parsers:
             return self._parsers[key]

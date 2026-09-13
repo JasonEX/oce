@@ -1,12 +1,13 @@
-"""SQLAlchemy checkpoint chain 仓储。"""
+"""SQLAlchemy repository of checkpoint chains."""
 
 from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
+from typing import Any, cast
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import CursorResult, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.chain.chain import Chain
@@ -83,16 +84,21 @@ class SqlChainRepository(ChainRepository):
         deleted: Sequence[str],
     ) -> int | None:
         new_version = expected_version + 1
-        claimed = await self.session.execute(
-            update(ChainModel)
-            .where(
-                ChainModel.chain_id == chain_id,
-                ChainModel.version == expected_version,
-            )
-            .values(
-                version=new_version,
-                updated_at=datetime.now(timezone.utc),
-            )
+        # DML statements return a cursor result; the session API is typed
+        # against the generic ``Result``.
+        claimed = cast(
+            CursorResult[Any],
+            await self.session.execute(
+                update(ChainModel)
+                .where(
+                    ChainModel.chain_id == chain_id,
+                    ChainModel.version == expected_version,
+                )
+                .values(
+                    version=new_version,
+                    updated_at=datetime.now(timezone.utc),
+                )
+            ),
         )
         if claimed.rowcount != 1:
             return None

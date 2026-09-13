@@ -4,11 +4,12 @@ Revision ID: e2f4a6c8d0b1
 Revises: b7c9e1f2a3d4
 Create Date: 2026-09-01 09:45:00.000000
 
-一把 key 服务多个用途/模型是常态：唯一约束从 (kind, api_key_hash) 放宽到
-(kind, model, api_key_hash)，允许同 key 跨 kind、同 kind 下同 key 挂不同 model，
-只挡住 kind+model+key 三者全同的纯重复行。放宽是原约束的超集，存量数据不会冲突。
-
-SQLite 无法 ALTER 具名约束，走 batch 重建表；PostgreSQL 直接 DROP/ADD 约束。
+One key serving several kinds and models is the norm: the unique constraint
+widens from (kind, api_key_hash) to (kind, model, api_key_hash), so the same
+key may be used across kinds and with different models under one kind, and
+only an exact duplicate is rejected. The new constraint is a superset of the
+old one, so existing rows cannot conflict. SQLite cannot alter a named
+constraint and rebuilds the table in batch mode; PostgreSQL drops and adds.
 """
 from typing import Sequence, Union
 
@@ -29,7 +30,7 @@ _NEW_COLS = ["kind", "model", "api_key_hash"]
 
 
 def _swap_unique(drop_name: str, create_name: str, create_cols: list[str]) -> None:
-    """把 model_credentials 的唯一约束从 drop_name 换成 create_name(create_cols)。"""
+    """Replace the unique constraint ``drop_name`` with ``create_name`` over ``create_cols``."""
     if op.get_bind().dialect.name == "sqlite":
         with op.batch_alter_table("model_credentials") as batch_op:
             batch_op.drop_constraint(drop_name, type_="unique")

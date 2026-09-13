@@ -1,6 +1,6 @@
-"""Admin 运维路由：独立鉴权（verify_admin_key），与 agent 数据面分离。
+"""Admin routes, authenticated by ``verify_admin_key`` apart from the data plane.
 
-application 异常（凭据冲突 409、队列忙 409 等）由 api/errors.py 统一映射。
+Application errors (credential conflict, busy queue) are mapped in api/errors.py.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ admin_router = APIRouter(
 
 
 def _credential_response(record: CredentialRecord) -> CredentialResponse:
-    # CredentialResponse 字段与 CredentialRecord 同名（不含明文 api_key），按属性直接映射。
+    # The response fields mirror CredentialRecord without the plaintext key.
     return CredentialResponse.model_validate(record, from_attributes=True)
 
 
@@ -51,7 +51,7 @@ _ResponseT = TypeVar("_ResponseT", bound=BaseModel)
 
 
 def _response(model: type[_ResponseT], result: object) -> _ResponseT:
-    """application 结果 dataclass 与响应 DTO 同名字段，按属性映射。"""
+    """Map an application result dataclass onto the response DTO of the same shape."""
     return model.model_validate(result, from_attributes=True)
 
 

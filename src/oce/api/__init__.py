@@ -1,1 +1,1 @@
-"""HTTP 接口层。"""
+"""The HTTP layer."""

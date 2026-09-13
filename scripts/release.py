@@ -1,17 +1,13 @@
-"""发布编排脚本：版本号 → CHANGELOG → 构建 → 提交 → 打 tag。
+"""Release orchestration: bump, changelog, build, commit, tag.
 
-用法:
-    python scripts/release.py <major|minor|patch|版本号> [--dry-run]
+Usage:
+    python scripts/release.py <major|minor|patch|version> [--dry-run]
 
-流程:
-  1. 校验工作区干净（有未提交变更则中止）
-  2. bump_version 同步版本号
-  3. generate_changelog 生成新版本段并写入 CHANGELOG.md
-  4. uv build 构建 dist/
-  5. git commit + annotated tag
-
---dry-run 只打印计划，不做任何修改。push tag 后由 GitHub Actions 发布 fork GHCR 镜像；
-首次发布后需在 GitHub Package settings 中确认可见性。
+The working tree must be clean. The version is bumped, the changelog
+section generated and prepended, dist/ built, and one commit plus an
+annotated tag created. ``--dry-run`` prints the plan and changes nothing.
+Pushing the tag makes GitHub Actions publish the GHCR image; the package
+visibility must be confirmed after the first release.
 """
 
 from __future__ import annotations
@@ -52,7 +48,9 @@ def ensure_clean() -> None:
     dirty = [line for line in out.stdout.splitlines() if line.strip()]
     if dirty:
         details = "\n".join(dirty)
-        raise SystemExit(f"ERROR: 工作区有未提交变更，请先提交/暂存：\n{details}")
+        raise SystemExit(
+            f"ERROR: uncommitted changes; commit or stash first:\n{details}"
+        )
 
 
 def run(cmd: list[str]) -> None:
@@ -62,11 +60,15 @@ def run(cmd: list[str]) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="发布新版本（bump + changelog + build + tag）"
+        description="Release a new version (bump, changelog, build, tag)"
     )
-    parser.add_argument("version_or_part", help="major|minor|patch 或具体版本号")
     parser.add_argument(
-        "--dry-run", action="store_true", help="只打印计划，不做任何修改"
+        "version_or_part", help="major, minor, patch, or an explicit version"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the plan without changing anything",
     )
     args = parser.parse_args(argv)
 
@@ -74,36 +76,37 @@ def main(argv: list[str] | None = None) -> int:
     current = bump_version.read_current_version()
     target = bump_version.resolve_version(args.version_or_part, current)
     if current == target:
-        raise SystemExit(f"版本已是 {current}，无需发布")
+        raise SystemExit(f"already at {current}; nothing to release")
 
-    print(f"==> 发布 {target}（当前 {current}）")
-    print("计划:")
-    print(f"  1. 更新版本号 pyproject.toml + __init__.py -> {target}")
-    print("  2. uv lock 同步锁文件")
-    print("  3. 生成并写入 CHANGELOG 段")
+    print(f"==> releasing {target} (current {current})")
+    print("plan:")
+    print(f"  1. bump pyproject.toml + __init__.py -> {target}")
+    print("  2. uv lock")
+    print("  3. generate and prepend the CHANGELOG section")
     print("  4. uv build")
     print(f"  5. git commit 'chore(release): v{target}' + git tag v{target}")
     if args.dry_run:
-        print("[dry-run] 结束，未做任何修改")
+        print("[dry-run] done; nothing changed")
         return 0
 
     bump_version.update_pyproject(target)
     bump_version.update_init(target)
     bump_version.verify_sync()
-    print(f"版本已更新: {current} -> {target}")
+    print(f"version updated: {current} -> {target}")
 
-    # bump 只改 pyproject/__init__，uv.lock 记录的根包版本会滞后；不同步会让 CI/Release
-    # 的 `uv sync --locked` 失败，故发布时强制重锁并把 uv.lock 纳入发布提交。
+    # The bump touches pyproject and __init__ only; uv.lock still records the
+    # old root version and `uv sync --locked` in CI would fail, so the lock is
+    # refreshed and committed with the release.
     run(["uv", "lock"])
-    print("uv.lock 已同步")
+    print("uv.lock refreshed")
 
     section = generate_changelog.build_section(
         target, since=generate_changelog.latest_tag()
     )
     if "### " not in section:
-        raise SystemExit("ERROR: 从最近 tag 到 HEAD 没有可发布的变更提交")
+        raise SystemExit("ERROR: no releasable commits since the latest tag")
     generate_changelog.prepend(section)
-    print(f"CHANGELOG 已更新: {generate_changelog.CHANGELOG}")
+    print(f"CHANGELOG updated: {generate_changelog.CHANGELOG}")
 
     run(["uv", "build"])
     run(["git", "add", *BUNDLED_FILES])
@@ -119,11 +122,11 @@ def main(argv: list[str] | None = None) -> int:
         ]
     )
 
-    print(f"\n发布完成: v{target}")
-    print("后续手动步骤:")
+    print(f"\nreleased v{target}")
+    print("next steps:")
     print("  git push && git push --tags")
-    print("  等待 GitHub Actions 发布 ghcr.io/jasonex/oce")
-    print("  首次公开发布：在 Package settings 中将 visibility 设为 Public")
+    print("  wait for GitHub Actions to publish ghcr.io/jasonex/oce")
+    print("  first public release: set the package visibility to Public")
     return 0
 
 

@@ -1,7 +1,7 @@
-"""Reranker 领域服务 - 召回精排
+"""Candidate-preserving reranking.
 
-解决「单篇多相关」：对 store 召回的结果做二次精排（跨文档比较）。
-NoopReranker 用于关闭重排（起步阶段退化为纯召回排序）。
+A reranker compares recalled chunks against each other and reorders them;
+``NoopReranker`` keeps the recall order.
 """
 
 from __future__ import annotations
@@ -12,23 +12,22 @@ from oce.domain.services.search import SearchHit
 
 
 class Reranker(Protocol):
-    """候选保真的重排器协议。
+    """Reorder candidates without adding or dropping any.
 
-    实现可替换顺序或更新分数，但必须保留每个输入候选且不得引入新候选；
-    去重、覆盖度与上下文预算属于后续 Selector。
+    An implementation may change the order or the scores but must return
+    exactly the input candidates; deduplication, coverage and the context
+    budget belong to the selector. Runtime resources (HTTP clients, ONNX
+    sessions) are owned and closed by the composition root, not by this
+    protocol.
     """
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
-        """对召回结果精排，返回包含同一候选集的新顺序。"""
-        ...
-
-    async def close(self) -> None:
-        """释放重排器持有的运行时资源。"""
+        """The same candidates in a new order."""
         ...
 
 
 class NoopReranker:
-    """不重排（原样返回）"""
+    """Keeps the recall order."""
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
         return hits

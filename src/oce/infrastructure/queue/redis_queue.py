@@ -1,23 +1,19 @@
-"""RedisQueue — 可靠的异步任务队列（精简版，无死信）
+"""Reliable Redis task queue without a dead-letter list.
 
-键布局
-------
-- {name}            主队列（LIST，LPUSH 入 / BRPOPLPUSH 出）
-- {name}:processing 处理中队列（worker 取走暂存，ack 后删；崩溃残留可恢复）
-- {name}:pending    在飞哨兵 SET（主队列 ∪ 处理中 的去重索引，O(1) 入队判重）
+Keys: ``{name}`` is the main list (LPUSH in, BRPOPLPUSH out);
+``{name}:processing`` holds messages a worker took until it acks them, so a
+crash leaves them recoverable; ``{name}:pending`` is the in-flight sentinel
+set over both lists, giving O(1) deduplication on enqueue.
 
-可靠性
-------
-BRPOPLPUSH 原子地「主队列出 → 处理中入」，worker 崩在处理中途时消息不丢；
-ack 才从处理中删。失败时 fail 清理当前在飞状态，worker 更新 DB retry_count 后
-按重试上限决定是否重新 enqueue。
+BRPOPLPUSH moves a message from the main list to processing atomically, so a
+worker crash loses nothing; only an ack removes it. On failure ``fail``
+clears the in-flight state and the worker decides from the database retry
+count whether to enqueue again.
 
-幽灵消息防御
-------------
-batch_upload 客户端反复上传同一文件会反复 enqueue —— 旧实现无脑 LPUSH 累加，
-曾酿成「149K 队列消息 vs 5K 真实未就绪」事故。新实现 enqueue 走 Lua 原子脚本
-``SADD pending → 新加才 LPUSH``，保证 (主队列 ∪ 处理中) 内同一 blob_name 至多
-一份。ack / fail 时 SREM；未达重试上限时 worker 再次 enqueue。
+A client re-uploading one file enqueues it every time; a plain LPUSH once
+grew to 149K messages for 5K unready blobs. Enqueue runs a Lua script that
+adds to the sentinel set first and pushes only when the add was new, so a
+blob is in flight at most once.
 """
 
 from __future__ import annotations
@@ -27,7 +23,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
-# Lua 脚本：SADD pending 新加成功才 LPUSH 主队列；返回 1=新加，0=已在飞。
+# SADD the sentinel first; LPUSH only when it was new. Returns 1 when
+# enqueued, 0 when already in flight.
 _ENQUEUE_DEDUP_LUA = """
 local added = redis.call('SADD', KEYS[1], ARGV[1])
 if added == 1 then
@@ -38,24 +35,20 @@ return added
 
 
 class RedisQueue:
-    """注入 redis client（decode_responses=True），不依赖宿主模块。"""
+    """Queue over an injected redis client built with ``decode_responses=True``."""
 
     def __init__(self, redis: Redis, name: str) -> None:
         self._redis = redis
         self._name = name
         self._processing = f"{name}:processing"
-        self._pending = f"{name}:pending"  # 在飞哨兵 SET（去重防幽灵消息）
+        self._pending = f"{name}:pending"  # in-flight sentinel set
 
     async def close(self) -> None:
         """Release the Redis connection pool owned by this queue."""
         await self._redis.aclose()
 
     async def enqueue(self, blob_name: str) -> None:
-        """投递待处理 blob：在飞 SET 去重，幽灵消息防御。
-
-        客户端反复 batch_upload 同一文件不会累积主队列消息。
-        Lua 脚本原子地：SADD pending 成功 → LPUSH 主队列；已在 pending → 跳过。
-        """
+        """Enqueue a blob unless it is already in flight."""
         await self._redis.eval(
             _ENQUEUE_DEDUP_LUA,
             2,
@@ -69,11 +62,11 @@ class RedisQueue:
         max_items: int,
         timeout: int = 5,
     ) -> list[str]:
-        """阻塞等待首条消息，并非阻塞地补齐当前积压中的有界批次。"""
+        """Block for the first message, then fill a bounded batch without blocking."""
         if max_items < 1:
             raise ValueError("max_items must be positive")
 
-        # pending SET 不动：从主队列转到 processing 后仍属于在飞状态。
+        # The sentinel set is untouched: a message in processing is still in flight.
         first = await self._redis.brpoplpush(
             self._name,
             self._processing,
@@ -82,35 +75,34 @@ class RedisQueue:
         if first is None:
             return []
 
-        items = [first]
+        # The client is built with ``decode_responses=True``; ``str`` only
+        # narrows the driver's ``bytes | str`` return type.
+        items = [str(first)]
         while len(items) < max_items:
             blob_name = await self._redis.rpoplpush(self._name, self._processing)
             if blob_name is None:
                 break
-            items.append(blob_name)
+            items.append(str(blob_name))
         return items
 
     async def ack(self, blob_name: str) -> None:
-        """确认完成：从处理中队列移除 + 摘 pending"""
+        """Drop the blob from processing and from the sentinel set."""
         await self._redis.lrem(self._processing, 1, blob_name)
         await self._redis.srem(self._pending, blob_name)
 
     async def fail(self, blob_name: str) -> None:
-        """失败与完成对 Redis 是同一件事：清掉本次在飞状态。
-
-        重试由 worker 更新 DB retry_count 后再次 enqueue 决定。
-        """
+        """Failure clears the in-flight state exactly like completion; the worker decides on a retry."""
         await self.ack(blob_name)
 
     async def size(self) -> int:
-        """主队列待处理条数。"""
+        """Messages waiting in the main list."""
         return await self._redis.llen(self._name)
 
     async def recover_processing(self) -> int:
-        """启动时把处理中队列残留（上次崩溃遗留）重新入主队列。返回恢复条数。
+        """Move what a crashed run left in processing back to the main list.
 
-        顺带重建 pending 哨兵 SET：旧版数据迁移 + 处理中残留回流后保证 pending
-        覆盖到当前所有「在飞」的 blob，去重判断不漏。
+        The sentinel set is rebuilt from both lists afterwards so it covers
+        every blob in flight, including data written by older versions.
         """
         n = 0
         while True:
@@ -119,15 +111,15 @@ class RedisQueue:
                 break
             n += 1
 
-        # 重建 pending：以 (主队列 ∪ 处理中) 为权威，老数据 / 异常残留都能修正
-        # （处理中此时应该已空，但 LRANGE 一次保险）。
+        # Rebuild the sentinel from both lists (processing should be empty by
+        # now; reading it costs one LRANGE).
         pipe = self._redis.pipeline()
         pipe.lrange(self._name, 0, -1)
         pipe.lrange(self._processing, 0, -1)
         main, processing = await pipe.execute()
         all_inflight = set(main) | set(processing)
         if all_inflight:
-            # SET 直接覆盖：DELETE + SADD 多个；用 pipeline 减 RTT。
+            # Replace the set in one pipeline: DELETE then SADD.
             pipe = self._redis.pipeline()
             pipe.delete(self._pending)
             pipe.sadd(self._pending, *all_inflight)
@@ -137,16 +129,13 @@ class RedisQueue:
         return n
 
     async def inflight_set(self) -> set[str]:
-        """已在飞的 blob_name 集合（主队列 + 处理中）。
-
-        新版直接读 pending 哨兵 SET（O(1) SMEMBERS），给 requeue 自愈做去重。
-        """
-        return set(await self._redis.smembers(self._pending))
+        """Blob names in flight, read from the sentinel set."""
+        return {str(item) for item in await self._redis.smembers(self._pending)}
 
     async def purge(self) -> int:
-        """删除三个键，返回清除前主队列 + 处理中的条数。
+        """Delete all three keys; returns how many messages were in the two lists.
 
-        pending 哨兵一并删除：留着它会让这些 blob_name 永远无法重新入队。
+        The sentinel set goes too, or those blobs could never be enqueued again.
         """
         pipe = self._redis.pipeline()
         pipe.llen(self._name)
@@ -161,19 +150,19 @@ class RedisQueue:
         return int(main_len) + int(processing_len)
 
     async def retain(self, blob_names: set[str]) -> int:
-        """按 blob_names 重建主队列与哨兵，返回剔除条数。
+        """Rebuild the lists and the sentinel keeping only ``blob_names``; returns the removed count.
 
-        逐条 LREM 在数万条队列上是 O(n·m)，所以整表读出后在内存里过滤再重写。
-        DELETE + RPUSH 之间队列短暂为空，因此要求调用时 worker 已停：否则
-        worker 可能在空窗期取空、或读到重写前的旧序列。
+        LREM per entry is O(n*m) on tens of thousands of messages, so both
+        lists are read, filtered in memory and rewritten. The queue is empty
+        between DELETE and RPUSH, which is why the worker must be stopped.
         """
         pipe = self._redis.pipeline()
         pipe.lrange(self._name, 0, -1)
         pipe.lrange(self._processing, 0, -1)
         main_items, processing_items = await pipe.execute()
 
-        # 主队列 RPUSH 回填时保持原顺序：BRPOPLPUSH 从尾部取，
-        # LRANGE 的头部就是最后被消费的一端。
+        # RPUSH keeps the original order: BRPOPLPUSH pops from the tail, so
+        # the head of LRANGE is the end consumed last.
         kept_main = [item for item in main_items if item in blob_names]
         kept_processing = [item for item in processing_items if item in blob_names]
         removed = (len(main_items) - len(kept_main)) + (

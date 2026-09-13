@@ -1,4 +1,4 @@
-"""队列重置命令的行为测试（用内存假件，不连 Redis）。"""
+"""Queue reset command behaviour over an in-memory queue."""
 
 import pytest
 
@@ -10,7 +10,7 @@ from oce.shared.errors import QueueBusyError
 
 
 class FakeQueue:
-    """按 RedisQueue 的语义建模：主队列 + 处理中 + 在飞哨兵。"""
+    """Models RedisQueue: main list, processing list, in-flight sentinel set."""
 
     def __init__(self, main: list[str], processing: list[str] | None = None) -> None:
         self.main = list(main)
@@ -84,7 +84,7 @@ async def test_sync_drops_entries_missing_from_db():
     assert result.requeued == 0
     assert result.queue_size == 2
     assert set(queue.main) == {"live1", "live2"}
-    # 哨兵必须跟着收缩，否则被剔除的名字再也无法入队
+    # The sentinel must shrink too, or removed names could never be enqueued again.
     assert queue.pending == {"live1", "live2"}
 
 
@@ -103,7 +103,7 @@ async def test_sync_requeues_pending_blobs_absent_from_queue():
 
 @pytest.mark.asyncio
 async def test_sync_clears_stale_sentinel_so_blob_can_requeue():
-    """哨兵有残留但队列没有该条目时，同步后该 blob 必须能重新入队。"""
+    """A sentinel leftover without a queue entry must be enqueueable again after a sync."""
     queue = FakeQueue(["live1"])
     queue.pending.add("orphan-sentinel")
     handler = make_handler(queue, ["live1", "orphan-sentinel"])

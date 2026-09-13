@@ -1,4 +1,4 @@
-"""SqlCredentialAdminStore CRUD / duplicate 测试。"""
+"""SqlCredentialAdminStore CRUD and duplicate tests."""
 
 from __future__ import annotations
 
@@ -102,7 +102,7 @@ async def test_duplicate_copies_channel_config():
 
 
 async def test_duplicate_overrides_kind_and_reuses_source_key():
-    """复制时覆盖 kind/model、省略 api_key：继承源 key，因 kind 不同不撞唯一约束。"""
+    """Duplicating with a new kind and no api_key inherits the key without a conflict."""
     engine, store = await _store()
     src = await store.create(_create(api_key="sk-shared-1234"))
     clone = await store.duplicate(
@@ -117,13 +117,13 @@ async def test_duplicate_overrides_kind_and_reuses_source_key():
     assert clone is not None
     assert clone.kind == "rerank"
     assert clone.model == "reranker-model"
-    # api_key 省略 → 复用源 key。
+    # An omitted api_key reuses the source key.
     assert clone.api_key_last4 == "1234"
     await engine.dispose()
 
 
 async def test_duplicate_pure_copy_conflicts():
-    """不覆盖任何区分字段的纯复制会撞 (kind, model, api_key_hash)。"""
+    """A duplicate that changes nothing collides on (kind, model, api_key_hash)."""
     engine, store = await _store()
     src = await store.create(_create())
     with pytest.raises(CredentialConflictError):
@@ -134,7 +134,7 @@ async def test_duplicate_pure_copy_conflicts():
 async def test_same_key_allowed_across_kinds():
     engine, store = await _store()
     await store.create(_create(kind="embed", api_key="sk-shared"))
-    # 唯一约束是 (kind, model, api_key_hash)：同一把 key 换 kind 不冲突。
+    # The constraint is (kind, model, api_key_hash): another kind is no conflict.
     record = await store.create(
         _create(
             kind="llm_rerank",
@@ -150,7 +150,7 @@ async def test_same_key_allowed_across_kinds():
 
 
 async def test_same_key_same_kind_allowed_across_models():
-    """放宽后：同 kind + 同 key + 不同 model 允许并存（主/备模型）。"""
+    """Same kind and key with different models may coexist (primary and backup)."""
     engine, store = await _store()
     await store.create(_create(kind="embed", model="model-a", api_key="sk-one"))
     record = await store.create(
@@ -169,7 +169,7 @@ async def test_duplicate_missing_source_returns_none():
 async def test_create_duplicate_key_conflicts():
     engine, store = await _store()
     await store.create(_create(api_key="sk-same"))
-    # 同 kind + 同 model + 同 key 三者全同才算重复行。
+    # Only an exact (kind, model, key) triple is a duplicate.
     with pytest.raises(CredentialConflictError):
         await store.create(_create(name="other", api_key="sk-same"))
     await engine.dispose()

@@ -21,7 +21,7 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.create_table(
         'symbol_occurrences',
-        # SQLite 下用 INTEGER 主键才能自增（rowid alias），与 models.py 保持一致
+        # SQLite only autoincrements an INTEGER primary key (rowid alias); matches models.py.
         sa.Column('id', sa.BigInteger().with_variant(sa.Integer(), 'sqlite'), autoincrement=True, nullable=False),
         sa.Column('identifier', sa.String(length=256), nullable=False),
         sa.Column('blob_name', sa.String(length=64), nullable=False),
@@ -29,7 +29,7 @@ def upgrade() -> None:
         sa.Column('kind', sa.String(length=16), nullable=False),
         sa.Column('start_line', sa.Integer(), nullable=False),
         sa.Column('end_line', sa.Integer(), nullable=False),
-        # func.now() 在 SQLite 方言下编译为 CURRENT_TIMESTAMP，text('now()') 会直接照搬到 SQL 导致插入失败
+        # func.now() compiles to CURRENT_TIMESTAMP on SQLite; text('now()') would be copied verbatim and fail.
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.ForeignKeyConstraint(['blob_name'], ['blobs.blob_name'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['content_hash'], ['chunks.content_hash'], ondelete='CASCADE'),

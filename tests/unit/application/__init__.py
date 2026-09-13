@@ -1,1 +1,1 @@
-"""应用层单元测试"""
+"""Application-layer unit tests."""

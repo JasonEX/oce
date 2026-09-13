@@ -1,14 +1,8 @@
-"""Blob 聚合根 - 文件抽象
+"""The Blob aggregate: one uploaded file.
 
-Blob 是文件的领域抽象，职责：
-- 管理文件元数据（path/status/last_seen）
-- 管理关联的 Chunk 列表
-- 状态转换（pending -> ready/error）
-
-不变量：
-- blob_name 必须是有效的 SHA256
-- status 状态机：pending -> ready/error
-- 空文本或二进制文件可以没有 chunk 并直接标记 ready
+A blob carries the file's metadata (path, status, last_seen), its chunk
+references and the pending -> ready/error state machine. ``blob_name`` must
+be a SHA256; an empty or binary file may have no chunks and still be ready.
 """
 
 from __future__ import annotations
@@ -25,46 +19,40 @@ if TYPE_CHECKING:
 
 
 class BlobStatus(str, Enum):
-    """Blob 状态枚举"""
-
-    PENDING = "pending"  # 等待嵌入
-    READY = "ready"  # 已就绪
-    ERROR = "error"  # 嵌入失败
+    PENDING = "pending"  # waiting to be embedded
+    READY = "ready"  # retrievable
+    ERROR = "error"  # embedding failed
 
 
 @dataclass
 class Blob:
-    """Blob 聚合根"""
-
-    blob_name: str  # PK - SHA256(path + content)
-    path: str  # 文件相对路径
+    blob_name: str  # primary key: SHA256(path + content)
+    path: str  # repository-relative path
     status: BlobStatus = BlobStatus.PENDING
     chunks: list[ChunkRef] = field(default_factory=list)
     content_size: int = 0
     language: str | None = None
     file_type: str = "text"
-    retry_count: int = 0  # 失败重试次数
+    retry_count: int = 0
     last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    error_message: str | None = None  # 失败原因
+    error_message: str | None = None
 
-    def __post_init__(self):
-        """验证不变量"""
+    def __post_init__(self) -> None:
         if not is_sha256_hex(self.blob_name):
             raise ValueError(f"Invalid blob_name (not SHA256): {self.blob_name}")
 
     def mark_ready(self) -> None:
-        """标记为就绪；空文本文件也可以完成索引。"""
+        """Mark the blob retrievable; an empty text file completes indexing too."""
         self.status = BlobStatus.READY
         self.error_message = None
 
     def mark_error(self, error_message: str) -> None:
-        """标记为错误状态"""
         self.status = BlobStatus.ERROR
         self.error_message = error_message
 
     def increment_retry(self, max_retries: int = 3) -> bool:
-        """增加重试计数，超限自动 mark_error。返回是否已超限。"""
+        """Count one retry; past the limit the blob is marked failed. Returns whether it was."""
         self.retry_count += 1
         if self.retry_count >= max_retries:
             self.mark_error(f"Failed after {self.retry_count} retries")
@@ -72,7 +60,6 @@ class Blob:
         return False
 
     def touch(self) -> None:
-        """更新最后访问时间"""
         self.last_seen = datetime.now(timezone.utc)
 
     def is_ready(self) -> bool:

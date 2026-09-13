@@ -1,4 +1,4 @@
-"""ACE 兼容 HTTP DTO。"""
+"""ACE-compatible HTTP DTOs."""
 
 from __future__ import annotations
 
@@ -212,15 +212,16 @@ class IndexStatsResponse(BaseModel):
     profile: IndexProfileStatsResponse
 
 
-# 凭据用途：embed/rerank 走 REST；llm_rerank/query_rewrite 走 chat。
+# Credential kinds: embed/rerank use REST endpoints, llm_rerank/query_rewrite chat.
 CredentialKind = Literal["embed", "rerank", "llm_rerank", "query_rewrite"]
 
 
 class CredentialResponse(BaseModel):
-    """凭据视图：脱敏，只暴露 api_key 尾 4 位。kind 专属参数对其它 kind 为 None。"""
+    """A credential without its key: only the last four characters are exposed."""
 
     id: int
-    # 历史数据库中可能仍有已停用的 kind；列表响应保持可读，写入 DTO 只接受当前 kind。
+    # Older databases may hold retired kinds; listing stays readable while the
+    # write DTOs accept only the current kinds.
     kind: str
     provider: str | None = None
     name: str
@@ -248,10 +249,11 @@ class CredentialListResponse(BaseModel):
 
 
 class CredentialPatchRequest(BaseModel):
-    """字段覆盖：省略即不改（更新）或继承源行（复制）；api_key 提供则同步刷新 hash。
+    """Field overrides: omitted fields keep their value (update) or inherit the source (duplicate).
 
-    复制时省略 api_key 即复用源 key，配合覆盖 kind/model 可把某把 key 的通道复制成
-    别的用途（如复制 embed 行改成 rerank），不再撞唯一约束。
+    A supplied api_key refreshes its hash. Duplicating without an api_key
+    reuses the source key, so overriding kind or model turns one key's embed
+    row into a rerank row without hitting the unique constraint.
     """
 
     kind: CredentialKind | None = None

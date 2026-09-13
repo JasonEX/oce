@@ -97,8 +97,9 @@ class MilvusCollectionClient:
                 schema=self._build_schema(),
             )
         await self._ensure_vector_index()
-        # Milvus Lite 的 load 状态不跨进程持久，重启后 collection 回到 released，
-        # 必须重新 load 才能 search（load_collection 幂等）。
+        # Milvus Lite does not persist the load state across processes; after
+        # a restart the collection is released and must be loaded before a
+        # search (load_collection is idempotent).
         state = await self._call("get_load_state", self.collection_name)
         load_state = state.get("state") if isinstance(state, dict) else state
         if load_state != LoadState.Loaded:
@@ -156,7 +157,7 @@ class MilvusCollectionClient:
             )
         return str(found).upper() == self.settings.dense_index_type.upper()
 
-    def _build_index_params(self):
+    def _build_index_params(self) -> Any:
         index_params = self._client.prepare_index_params()
         index_type = self.settings.dense_index_type
         params: dict[str, Any] = {}
@@ -266,7 +267,7 @@ class MilvusCollectionClient:
             else:
                 entity = hit.entity
                 score = hit.distance
-            parsed.append((entity, float(score)))
+            parsed.append((entity, float(score or 0.0)))
         return parsed
 
     async def _delete_by_blob_names(self, blob_names: list[str]) -> None:

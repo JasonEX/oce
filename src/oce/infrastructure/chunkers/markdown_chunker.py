@@ -56,9 +56,9 @@ class MarkdownChunker:
         min_chunk_chars: int = DEFAULT_MIN_CHUNK_CHARS,
     ):
         if max_chunk_chars <= 0:
-            raise ValueError("max_chunk_chars 必须 > 0")
+            raise ValueError("max_chunk_chars must be positive")
         if min_chunk_chars < 0 or min_chunk_chars >= max_chunk_chars:
-            raise ValueError("min_chunk_chars 必须 ∈ [0, max_chunk_chars)")
+            raise ValueError("min_chunk_chars must be in [0, max_chunk_chars)")
         self.fallback = fallback
         self.max_chunk_chars = max_chunk_chars
         self.min_chunk_chars = min_chunk_chars
@@ -72,7 +72,11 @@ class MarkdownChunker:
         try:
             spans = self._section_spans(content, lines)
         except Exception as exc:
-            logger.warning("markdown 结构切块失败，退回行窗口: {}: {}", path, exc)
+            logger.warning(
+                "Markdown structural chunking failed; using line windows: {}: {}",
+                path,
+                exc,
+            )
             return self.fallback.chunk(content, path)
         if not spans:
             return self.fallback.chunk(content, path)

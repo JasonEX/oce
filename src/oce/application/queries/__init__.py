@@ -1,1 +1,1 @@
-"""查询对象与处理器"""
+"""Query messages and their handlers."""

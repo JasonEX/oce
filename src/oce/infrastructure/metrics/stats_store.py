@@ -1,12 +1,12 @@
-"""监控只读聚合的 SQL 实现（跨 SQLite / PostgreSQL 可移植）。
+"""SQL aggregation for the monitoring read model, portable across SQLite and PostgreSQL.
 
-避免依赖方言专有的 percentile 函数：延迟分位在 Python 侧对窗口内延迟排序后计算。
-监控是旁路，本读路径只读不写，不影响主链路。
+Latency percentiles are computed in Python over the window's sorted
+latencies rather than with dialect-specific functions.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import case, func, select
@@ -35,7 +35,7 @@ def _percentile(sorted_vals: list[int], p: int) -> int:
     return sorted_vals[idx]
 
 
-def _api_stats(rows: list[tuple[int, int]]) -> ApiCallStats:
+def _api_stats(rows: Sequence[Sequence[int]]) -> ApiCallStats:
     if not rows:
         return ApiCallStats()
     latencies = sorted(int(latency) for latency, _status in rows)
@@ -51,7 +51,7 @@ def _api_stats(rows: list[tuple[int, int]]) -> ApiCallStats:
     )
 
 
-def _snapshot(row) -> ResourceSnapshot | None:
+def _snapshot(row: ResourceSampleModel | None) -> ResourceSnapshot | None:
     if row is None:
         return None
     return ResourceSnapshot(
@@ -66,7 +66,7 @@ def _snapshot(row) -> ResourceSnapshot | None:
 
 
 class SqlMonitoringStatsReader:
-    """按时间窗口聚合监控四表；延迟分位在 Python 侧算，跨方言可移植。"""
+    """Aggregate the four monitoring tables over a time window."""
 
     def __init__(self, session_factory: Callable[[], AsyncSession]) -> None:
         self._session_factory = session_factory

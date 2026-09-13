@@ -1,10 +1,12 @@
-"""CastChunker 块边界质量的契约测试。
+"""Contract tests of CastChunker chunk boundaries.
 
-两组不变量：
-- 最小块合并：astchunk 会把同一个构造拆成起点相同的两个 window（第一个只含
-  分割列之前的内容），合并要同时处理「被包含」和「过小」，且不能丢行。
-- 声明保全：略微超出窗口的声明必须整块保留，否则递归会交回它的语句列表，
-  贪心装箱再从中间切断，得到「有名字没实现」和「以 return { 开头」的两半。
+Minimum-size merging: astchunk may emit two windows with the same start for
+one construct (the first holding only the text before the split column);
+merging must handle both the nested and the too-small case without losing
+lines. Declaration preservation: a declaration slightly over the window must
+stay whole, otherwise recursion hands back its statements, greedy packing
+cuts through them, and the result is a named half without a body and a half
+that opens with ``return {``.
 """
 
 from __future__ import annotations
@@ -27,7 +29,7 @@ def lines_of(count: int, width: int = 40) -> list[str]:
 
 class TestMergeSmall:
     def test_range_sharing_a_start_line_is_absorbed(self):
-        """astchunk 对同一构造给出的前缀 window 不应单独成块。"""
+        """The prefix window astchunk emits for one construct is not its own chunk."""
         lines = lines_of(40)
         ranges = [(1, 1), (1, 20), (21, 40)]
         merged = make_chunker()._merge_small(ranges, lines)
@@ -41,14 +43,14 @@ class TestMergeSmall:
         assert merged == [(1, 30), (31, 40)]
 
     def test_trailing_fragment_attaches_to_previous_range(self):
-        """孤立的收尾括号并入前一块，而不是自成一块。"""
+        """A lone closing bracket joins the previous chunk."""
         lines = lines_of(41)
         ranges = [(1, 40), (41, 41)]
         merged = make_chunker()._merge_small(ranges, lines)
         assert merged == [(1, 41)]
 
     def test_leading_fragment_absorbs_the_next_range(self):
-        """首块过小时向后吞并，保证第一块也带够上下文。"""
+        """A tiny first chunk absorbs the next so it carries enough context."""
         lines = lines_of(40)
         ranges = [(1, 2), (3, 30), (31, 40)]
         merged = make_chunker()._merge_small(ranges, lines)
@@ -77,7 +79,7 @@ class TestMergeSmall:
 
 class TestMergeThroughPublicApi:
     def test_signature_only_chunk_does_not_survive(self):
-        """声明头和函数体被拆成两个 window 时，不应留下只有签名的块。"""
+        """A header split from its body must not leave a signature-only chunk."""
         content = (
             "export type UiState = {\n"
             + "\n".join(f"  field{index}: string;" for index in range(80))
@@ -123,7 +125,7 @@ class TestMergeThroughPublicApi:
 
 
 class TestIntactDeclarations:
-    """略微超窗的声明不应被拆成「签名」和「孤立主体」两半。"""
+    """A declaration slightly over the window is not split into signature and orphaned body."""
 
     @staticmethod
     def _oversized_case(name: str, statements: int = 40) -> str:
@@ -148,14 +150,15 @@ class TestIntactDeclarations:
         bodies = [chunk.content for chunk in chunks if "it(" in chunk.content]
         assert bodies, [chunk.content[:60] for chunk in chunks]
         for body in bodies:
-            # 带 it( 的块必须自带主体和收尾，而不是只剩一行签名
+            # a chunk with it( carries its body and close, not one signature line
             assert body.count("expect(") > 1, body[:120]
 
     def test_declaration_without_field_names_stays_whole(self):
-        """Kotlin 语法不给任何子节点命名字段，只能按子节点类型识别 body。
+        """Kotlin names no child fields, so the body is found by child type.
 
-        按节点类型名列白名单时这里会退化：Kotlin 的声明类型不在 TypeScript
-        推导出的那张表里，超窗后被静默拆开。
+        A whitelist of node type names regressed here: Kotlin's declaration
+        types were missing from the table derived from TypeScript, and an
+        oversized declaration was silently split.
         """
         members = "\n".join(
             f'    fun member{index}(): String = "value{index}"' for index in range(40)
@@ -171,7 +174,7 @@ class TestIntactDeclarations:
         assert chunks[0].content.rstrip().endswith("}")
 
     def test_character_budget_bounds_what_is_kept_whole(self):
-        """保全上限跟着字符预算走，否则保住的块又被 cap_span 切回两半。"""
+        """The keep-whole limit follows the character budget, or cap_span splits the kept chunk again."""
         content = (
             'describe("suite", () => {\n'
             + self._oversized_case("single case")
@@ -189,7 +192,7 @@ class TestIntactDeclarations:
         assert len(tight) > len(roomy)
 
     def test_runaway_wrapper_is_still_split(self):
-        """整个文件包在一个 describe 里时，上限必须让它继续拆。"""
+        """A file wrapped in one describe must still be split."""
         content = (
             'describe("giant", () => {\n'
             + "".join(self._oversized_case(f"case {index}") for index in range(12))

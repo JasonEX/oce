@@ -1,4 +1,4 @@
-"""Blob 状态和检索范围查询。"""
+"""Blob status and retrieval scope queries."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from oce.application.messages import Query
 from oce.application.uow import UnitOfWorkFactory
 from oce.domain.chain.chain import Chain
+from oce.domain.repositories import BlobRepository
 from oce.domain.services.search import SearchScope
 from oce.shared.errors import (
     InvalidCheckpointTokenError,
@@ -26,7 +27,9 @@ class FindMissingResult:
     nonindexed: tuple[str, ...] = ()
 
 
-async def _classify(blob_repo, blob_names: tuple[str, ...]) -> FindMissingResult:
+async def _classify(
+    blob_repo: BlobRepository, blob_names: tuple[str, ...]
+) -> FindMissingResult:
     if not blob_names:
         return FindMissingResult()
     exists = await blob_repo.exists_many(blob_names)
@@ -96,12 +99,14 @@ class ResolveScopeQueryHandler:
         self._uow_factory = uow_factory
 
     async def handle(self, query: ResolveScopeQuery) -> ResolveScopeResult:
-        """把 (checkpoint 成员 ∪ added) − deleted 解析为检索范围。
+        """Resolve ``(checkpoint members | added) - deleted`` into the retrieval scope.
 
-        全库检索已禁用：客户端必须正面声明工作集。checkpoint_id 或 added_blobs 任一
-        有效即可；deleted_blobs 只是减法，不构成声明。checkpoint 无效（格式非法、链
-        不存在或版本已过期）直接报错，避免范围静默变更。结果恒为非 None
-        frozenset（可为空集），空集表示工作集为空，检索返回空结果而非全库。
+        Whole-index retrieval is disabled: the client must declare a working
+        set through ``checkpoint_id`` or ``added_blobs``; ``deleted_blobs``
+        only subtracts and declares nothing. An invalid checkpoint (malformed,
+        unknown chain, stale version) is an error rather than a silently
+        changed scope. The result is always a frozenset; an empty one means an
+        empty working set and an empty answer, never the whole index.
         """
         base: set[str] = set()
         chain_id: str | None = None
@@ -114,11 +119,13 @@ class ResolveScopeQueryHandler:
             async with self._uow_factory() as uow:
                 chain = await uow.chains.get(chain_id)
                 if chain is None or chain.version != expected_version:
-                    raise NeedsResetError("checkpoint 链不存在或版本已过期")
+                    raise NeedsResetError(
+                        "checkpoint chain not found or version outdated"
+                    )
                 base = set(chain.members)
                 chain_version = chain.version
         elif not query.added_blobs:
-            # 无 checkpoint 也无 added_blobs（deleted 不足以构成声明）→ 拒绝全库检索
+            # Neither a checkpoint nor added_blobs: refuse whole-index retrieval.
             raise ScopeRequiredError()
         added = frozenset(query.added_blobs)
         deleted = frozenset(query.deleted_blobs)

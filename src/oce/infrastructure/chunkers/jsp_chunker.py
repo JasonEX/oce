@@ -37,7 +37,7 @@ class JspChunker:
         max_chunk_chars: int = DEFAULT_MAX_CHUNK_CHARS,
     ):
         if max_chunk_chars <= 0:
-            raise ValueError("max_chunk_chars 必须 > 0")
+            raise ValueError("max_chunk_chars must be positive")
         self.fallback = fallback
         self.max_chunk_chars = max_chunk_chars
         self._parser = get_parser("html")
@@ -54,7 +54,9 @@ class JspChunker:
             root = compat_parse(self._parser, masked).root_node
             boundaries = self._content_boundaries(root)
         except Exception as exc:
-            logger.warning("JSP 结构切块失败，退回行窗口: {}: {}", path, exc)
+            logger.warning(
+                "JSP structural chunking failed; using line windows: {}: {}", path, exc
+            )
             return self.fallback.chunk(content, path)
         if not boundaries:
             return self.fallback.chunk(content, path)

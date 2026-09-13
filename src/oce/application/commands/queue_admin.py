@@ -1,14 +1,14 @@
-"""队列运维命令：对齐队列与 DB 待办，或整体清空。
+"""Queue administration: realign the queue with the database, or purge it.
 
-队列是 DB 待办的投影，不是权威。两者会漂移：blob 被删除或重建后旧消息仍在飞，
-worker 取到只能白跑；更糟的是 pending 哨兵里的残留会让同名 blob 再也无法入队。
-
-`ResetQueueCommand` 提供两档处置：
-- mode="sync"（默认）：以 DB 的 pending blob 为准剔除队列里的无效项，并补投漏投项
-- mode="purge"：清空队列再按 DB 全量重投
-
-两者都要求 worker 已停；handler 不会替调用方停 worker，因为 worker 生命周期
-由 composition root 持有。
+The queue is a projection of the database's pending blobs, not the
+authority, and the two drift: after a blob is deleted or rebuilt its old
+message is still in flight and a worker pops it for nothing, and worse, a
+leftover in the pending sentinel set keeps that blob from ever being
+enqueued again. ``mode="sync"`` (default) drops queue entries the database
+does not list as pending and enqueues the ones it misses; ``mode="purge"``
+empties the queue and re-enqueues everything pending. Both require a stopped
+worker; the handler never stops it, because the composition root owns the
+worker's lifecycle.
 """
 
 from __future__ import annotations
@@ -25,10 +25,7 @@ from oce.shared.errors import QueueBusyError
 
 @dataclass(frozen=True)
 class ResetQueueCommand(Command):
-    """重置队列，使其与 DB 的 pending blob 一致。
-
-    requeue=False 时只做清理不投递，用于「先停下来看看」的场景。
-    """
+    """Reset the queue to the database's pending blobs; ``requeue=False`` only cleans."""
 
     mode: Literal["sync", "purge"] = "sync"
     requeue: bool = True
@@ -36,7 +33,7 @@ class ResetQueueCommand(Command):
 
 @dataclass(frozen=True)
 class ResetQueueResult:
-    """removed 为剔除条数，requeued 为本次投递条数，queue_size 为结束时主队列长度。"""
+    """Entries removed, entries enqueued, and the final main queue length."""
 
     removed: int
     requeued: int

@@ -1,4 +1,4 @@
-"""SQLAlchemy Blob 聚合仓储。"""
+"""SQLAlchemy repository of the Blob aggregate."""
 
 from __future__ import annotations
 
@@ -173,10 +173,10 @@ class SqlBlobRepository(BlobRepository):
         )
         return list(rows.scalars())
 
-    # ── blob_staging 操作 ────────────────────────────────────────────────
+    # ── blob_staging ─────────────────────────────────────────────────────
 
     async def get_staging(self, blob_name: str) -> str | None:
-        """读取 staging 原文；空文件存的是空串，只有缺行才返回 None。"""
+        """The staged text; an empty file stores an empty string, only a missing row is None."""
         result = await self.session.execute(
             select(BlobStagingModel.content).where(
                 BlobStagingModel.blob_name == blob_name
@@ -185,7 +185,7 @@ class SqlBlobRepository(BlobRepository):
         return result.scalar_one_or_none()
 
     async def save_staging(self, blob_name: str, content: str) -> None:
-        """保存 staging 原文，已存在则跳过（UPSERT 幂等）"""
+        """Store the staged text; an existing row is kept."""
         stmt = (
             upsert_insert(self.session)(BlobStagingModel)
             .values(blob_name=blob_name, content=content)
@@ -194,7 +194,7 @@ class SqlBlobRepository(BlobRepository):
         await self.session.execute(stmt)
 
     async def delete_staging(self, blob_name: str) -> None:
-        """删除 staging 原文（worker 消费完后调用）"""
+        """Drop the staged text once the blob is indexed."""
         await self.session.execute(
             delete(BlobStagingModel).where(BlobStagingModel.blob_name == blob_name)
         )
@@ -249,7 +249,7 @@ class SqlBlobRepository(BlobRepository):
         await self.session.execute(stmt)
 
     async def list_pending_names(self) -> list[str]:
-        """全部 pending blob 名。队列对账要全集，且只需要标识不需要聚合。"""
+        """Every pending blob name; queue reconciliation needs the whole set."""
         result = await self.session.execute(
             select(BlobModel.blob_name).where(
                 BlobModel.status == BlobStatus.PENDING.value
@@ -262,7 +262,7 @@ class SqlBlobRepository(BlobRepository):
         stale_hours: int = 24,
         limit: int = 100,
     ) -> list[str]:
-        """查找有 staging 但长时间未处理的 pending blob(用于重新入队或清理)"""
+        """Pending blobs with staged text older than ``stale_hours``."""
         cutoff = datetime.now(timezone.utc) - timedelta(hours=stale_hours)
         result = await self.session.execute(
             select(BlobModel.blob_name)

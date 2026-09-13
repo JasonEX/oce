@@ -1,4 +1,4 @@
-"""SqlMonitoringStatsReader 单测：窗口内聚合 + 分位/空回率/最新资源快照，窗口外排除。"""
+"""SqlMonitoringStatsReader: in-window aggregates, percentiles, empty rate, latest sample; out-of-window rows excluded."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-import oce.infrastructure.persistence.models  # noqa: F401  注册 ORM 表到 Base.metadata
+import oce.infrastructure.persistence.models  # noqa: F401  registers the ORM tables on Base.metadata
 from oce.infrastructure.metrics.stats_store import SqlMonitoringStatsReader
 from oce.infrastructure.persistence.models import (
     ApiCallMetricModel,
@@ -123,7 +123,7 @@ async def test_reader_aggregates_within_window():
         await _seed(factory)
         stats = await SqlMonitoringStatsReader(factory).read(window_hours=1)
 
-        # api：窗口外 999 被排除；[10,20,30] → avg20/p50=20/p95=30/max30，1 个 5xx
+        # api: 999 is outside the window; [10,20,30] gives avg 20, p50 20, p95 30, max 30, one 5xx
         assert stats.api_calls.count == 3
         assert stats.api_calls.error_count == 1
         assert stats.api_calls.avg_latency_ms == 20.0
@@ -131,7 +131,7 @@ async def test_reader_aggregates_within_window():
         assert stats.api_calls.p95_latency_ms == 30
         assert stats.api_calls.max_latency_ms == 30
 
-        # token：按 kind 聚合，窗口外 777 被排除
+        # token: aggregated by kind; 777 is outside the window
         by_kind = {t.kind: t for t in stats.tokens}
         assert by_kind["embed"].calls == 2
         assert by_kind["embed"].prompt_tokens == 150
@@ -139,12 +139,12 @@ async def test_reader_aggregates_within_window():
         assert by_kind["rerank"].total_tokens == 20
         assert stats.tokens_total == 170
 
-        # retrieval：窗口内 3 条，1 条空回
+        # retrieval: three in the window, one empty
         assert stats.retrieval.count == 3
         assert stats.retrieval.empty_count == 1
         assert stats.retrieval.empty_rate == round(1 / 3, 4)
 
-        # resource：返回最新快照
+        # resource: the latest sample
         assert stats.resource is not None
         assert stats.resource.disk_total_bytes == 33
         assert stats.resource.cpu_percent == 6.6

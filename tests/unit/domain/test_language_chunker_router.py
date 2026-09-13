@@ -58,7 +58,7 @@ def test_registry_is_immutable_after_validation():
 
 
 def test_unknown_language_uses_the_fallback():
-    # 50 行每行约 10 字符 = 500 字符，用小块测试分块行为
+    # 50 lines of about 10 characters; small chunks exercise splitting.
     fallback = RecursiveChunker(chunk_size=200, chunk_overlap=20)
     router = LanguageChunkerRouter(language_chunkers=(), fallback=fallback)
     content = "\n".join(f"line {index}" for index in range(50))
@@ -70,7 +70,7 @@ def test_unknown_language_uses_the_fallback():
 
 
 def test_duplicate_language_registration_is_rejected():
-    with pytest.raises(ValueError, match="语言重复注册: vue"):
+    with pytest.raises(ValueError, match="registered twice: vue"):
         LanguageChunkerRouter(
             language_chunkers=(
                 RecordingChunker(frozenset({"vue"})),
@@ -83,10 +83,10 @@ def test_duplicate_language_registration_is_rejected():
 @pytest.mark.parametrize(
     "languages,error_type,error_message",
     [
-        (frozenset(), ValueError, "languages 不能为空"),
-        ({"vue"}, TypeError, "languages 必须是 frozenset"),
-        (frozenset({"Vue"}), ValueError, "规范化字符串"),
-        (frozenset({"pascal"}), ValueError, "未知语言: pascal"),
+        (frozenset(), ValueError, "languages must not be empty"),
+        ({"vue"}, TypeError, "languages must be a frozenset"),
+        (frozenset({"Vue"}), ValueError, "normalized string"),
+        (frozenset({"pascal"}), ValueError, "unknown language: pascal"),
     ],
 )
 def test_invalid_language_declarations_are_rejected(
@@ -106,7 +106,7 @@ def test_plain_chunker_cannot_be_registered_as_language_aware():
         def chunk(self, content, path):
             return []
 
-    with pytest.raises(TypeError, match="实现 LanguageChunker 协议"):
+    with pytest.raises(TypeError, match="must implement LanguageChunker"):
         LanguageChunkerRouter(
             language_chunkers=(PlainChunker(),),
             fallback=RecursiveChunker(),

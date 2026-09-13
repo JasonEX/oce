@@ -1,4 +1,4 @@
-"""OpenContextEngine 包元信息。"""
+"""OpenContextEngine package metadata."""
 
-# 版本号需要与 pyproject.toml 的 [project].version 保持一致。
+# Kept in sync with [project].version in pyproject.toml by scripts/bump_version.py.
 __version__ = "0.3.0"

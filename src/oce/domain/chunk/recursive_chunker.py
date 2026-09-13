@@ -1,6 +1,6 @@
-"""RecursiveChunker — 基于 LangChain RecursiveCharacterTextSplitter 的兜底切块器。
+"""RecursiveChunker: the fallback over LangChain's RecursiveCharacterTextSplitter.
 
-用于无法识别语言的文件，以及各专用 chunker 解析失败时的 fallback。
+Used for files whose language is unknown and when a dedicated chunker fails.
 
 The splitter decides where boundaries fall; the text of a chunk is always cut
 from the source lines, the same contract ``CastChunker`` and ``MarkdownChunker``
@@ -35,22 +35,22 @@ DEFAULT_CHUNK_OVERLAP = 200
 
 
 class RecursiveChunker:
-    """基于 LangChain RecursiveCharacterTextSplitter 的通用 Chunker。"""
+    """Generic chunker over ``RecursiveCharacterTextSplitter``."""
 
     def __init__(
         self,
         chunk_size: int = DEFAULT_MAX_CHUNK_CHARS,
         chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
     ):
-        """``chunk_overlap`` 只影响 splitter 在何处切分，不产生块间重叠。
+        """``chunk_overlap`` only moves the split points; chunks never overlap.
 
-        重复的文本对带行号的 chunk 是有害的：两个块声明同样的行，就会把同一段
-        源码索引两遍，并占掉两个检索位。
+        Repeated text harms line-numbered chunks: two chunks claiming the same
+        lines index one piece of source twice and occupy two result slots.
         """
         if chunk_size <= 0:
-            raise ValueError("chunk_size 必须 > 0")
+            raise ValueError("chunk_size must be positive")
         if chunk_overlap < 0 or chunk_overlap >= chunk_size:
-            raise ValueError("chunk_overlap 必须 ∈ [0, chunk_size)")
+            raise ValueError("chunk_overlap must be in [0, chunk_size)")
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
@@ -62,9 +62,10 @@ class RecursiveChunker:
             return []
 
         splitter = self._create_splitter(detect_language(path))
-        # create_documents 而不是 split_text：只有它会带上 start_index，而起始
-        # 偏移是把切点映射回行号的唯一可靠依据。用 find() 反查文本会在 splitter
-        # strip 掉空白后落到错误的行上。
+        # create_documents, not split_text: only it carries start_index, the
+        # one reliable way to map a split back to a line. Searching the text
+        # with find() lands on the wrong line once the splitter has stripped
+        # whitespace.
         try:
             pieces = splitter.create_documents([content])
         except Exception as error:
@@ -129,8 +130,9 @@ class RecursiveChunker:
         starts: list[int] = []
         for piece in pieces:
             position = piece.metadata.get("start_index")
-            # start_index 来自 splitter 内部的 str.find，找不到时是 -1。缺失或
-            # 找不到都意味着无从确定行号，此时宁可少切一刀，也不能报错的位置。
+            # start_index comes from the splitter's own str.find and is -1 when
+            # not found. Either way the line is unknown, and one cut fewer is
+            # better than a wrong position.
             if position is None or position < 0:
                 continue
             starts.append(line_of(offsets, min(position, len(content))))

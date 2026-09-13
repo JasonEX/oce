@@ -1,4 +1,4 @@
-"""ResourceSampler 单测：注入假采集器验证 tick/启停/禁用/容错，不依赖 psutil。"""
+"""ResourceSampler: tick, start/stop, disabled and failure paths over a fake collector."""
 
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ async def test_start_stop_runs_loop():
 async def test_none_collector_disables_sampling():
     sink = _RecordingSink()
     sampler = ResourceSampler(sink, interval_seconds=0.01, collector=None)
-    await sampler.start()  # 无采集器：直接跳过，不建 task
+    await sampler.start()  # no collector: nothing starts
     await asyncio.sleep(0.02)
     await sampler.stop()
     assert sink.samples == []
@@ -63,15 +63,15 @@ async def test_tick_swallows_collector_error():
         raise RuntimeError("x")
 
     sampler = ResourceSampler(sink, interval_seconds=999, collector=_boom)
-    await sampler._tick()  # 旁路容错：不抛即通过
+    await sampler._tick()  # passing means no exception
     assert sink.samples == []
 
 
 def test_build_psutil_collector_shape(tmp_path):
-    """psutil 可用则采出真实快照；不可用则优雅降级为 None。"""
+    """With psutil a real sample is taken; without it the collector is None."""
     collector = build_psutil_collector(str(tmp_path))
     if collector is None:
-        return  # psutil 未安装：降级路径已生效
+        return  # psutil missing: the degraded path is in effect
     record = collector()
     assert record.disk_total_bytes > 0
     assert record.mem_rss_bytes > 0

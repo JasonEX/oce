@@ -62,8 +62,8 @@ class PathIndexClient(MilvusCollectionClient):
         )
         hits = [
             PathSearchResult(
-                path=entity.get("path"),
-                blob_name=entity.get("blob_name"),
+                path=entity.get("path") or "",
+                blob_name=entity.get("blob_name") or "",
                 score=score,
             )
             for entity, score in pairs

@@ -25,7 +25,7 @@ def _blob_repository(session):
 
 @pytest.fixture
 async def sqlite_session():
-    """创建 SQLite 内存数据库 session"""
+    """An in-memory SQLite session."""
     from sqlalchemy.ext.asyncio import (
         AsyncSession,
         async_sessionmaker,
@@ -44,7 +44,7 @@ async def sqlite_session():
 
     Base = declarative_base()
 
-    # 复制新表定义
+    # copy the table definitions
     class TestBlob(Base):
         __table__ = BlobModel.__table__.to_metadata(Base.metadata)
 
@@ -82,10 +82,10 @@ async def sqlite_session():
 
 @pytest.mark.asyncio
 async def test_blob_repository_crud(sqlite_session):
-    """测试 BlobRepository CRUD 操作"""
+    """BlobRepository CRUD."""
     repo = _blob_repository(sqlite_session)
 
-    # 创建 Blob
+    # create
     blob = Blob(
         blob_name=make_sha256("test1"),
         path="src/test.py",
@@ -96,11 +96,11 @@ async def test_blob_repository_crud(sqlite_session):
         ],
     )
 
-    # 保存
+    # save
     await repo.save(blob)
     await sqlite_session.commit()
 
-    # 读取
+    # read
     loaded = await repo.get(blob.blob_name)
     assert loaded is not None
     assert loaded.blob_name == blob.blob_name
@@ -108,10 +108,10 @@ async def test_blob_repository_crud(sqlite_session):
     assert loaded.status == BlobStatus.PENDING
     assert len(loaded.chunks) == 2
 
-    # 判断存在
+    # existence
     assert await repo.exists_many([blob.blob_name]) == {blob.blob_name: True}
 
-    # 更新状态
+    # update the status
     loaded.mark_ready()
     await repo.save(loaded)
     await sqlite_session.commit()
@@ -119,7 +119,7 @@ async def test_blob_repository_crud(sqlite_session):
     reloaded = await repo.get(blob.blob_name)
     assert reloaded.status == BlobStatus.READY
 
-    # 删除
+    # delete
     await repo.delete(blob.blob_name)
     await sqlite_session.commit()
 
@@ -176,10 +176,10 @@ async def test_expired_blob_remains_while_referenced_by_chain(sqlite_session):
 
 @pytest.mark.asyncio
 async def test_chunk_repository_crud(sqlite_session):
-    """测试 ChunkRepository CRUD 操作"""
+    """ChunkRepository CRUD."""
     repo = SqlChunkRepository(sqlite_session)
 
-    # 创建 Chunk
+    # create
     chunk = Chunk(
         content_hash=make_sha256("content1"),
         path="src/test.py",
@@ -188,12 +188,12 @@ async def test_chunk_repository_crud(sqlite_session):
         end_line=1,
     )
 
-    # 保存（内容寻址，重复写入幂等）
+    # save (content-addressed, so repeated writes are idempotent)
     await repo.save_many([chunk])
     await repo.save_many([chunk])
     await sqlite_session.commit()
 
-    # 读取
+    # read
     loaded = await sqlite_session.get(ChunkModel, chunk.content_hash)
     assert loaded is not None
     assert loaded.content == "print('hello')"
@@ -403,10 +403,10 @@ async def test_symbol_search_batches_large_added_only_scope(sqlite_session):
 
 @pytest.mark.asyncio
 async def test_chain_repository_checkpoint(sqlite_session):
-    """测试 ChainRepository checkpoint 操作"""
+    """ChainRepository checkpoints."""
     repo = SqlChainRepository(sqlite_session)
 
-    # 创建 Chain
+    # create
     members = [make_sha256("blob1"), make_sha256("blob2")]
     chain = await repo.create(members)
     await sqlite_session.commit()
@@ -415,12 +415,12 @@ async def test_chain_repository_checkpoint(sqlite_session):
     assert chain.version == 1
     assert len(chain.members) == 2
 
-    # 获取成员
+    # members
     loaded_members = await repo.get_members(chain.chain_id)
     assert len(loaded_members) == 2
     assert set(members) == loaded_members
 
-    # 应用 checkpoint
+    # apply a checkpoint
     new_version = await repo.apply_checkpoint(
         chain.chain_id,
         chain.version,
@@ -431,7 +431,7 @@ async def test_chain_repository_checkpoint(sqlite_session):
 
     assert new_version == 2
 
-    # 验证成员变更
+    # the members changed
     updated_members = await repo.get_members(chain.chain_id)
     assert len(updated_members) == 2
     assert make_sha256("blob2") in updated_members
@@ -481,11 +481,11 @@ async def test_chain_repository_batches_large_member_sets(sqlite_session):
 
 @pytest.mark.asyncio
 async def test_batch_operations(sqlite_session):
-    """测试批量操作"""
+    """Batch operations."""
     blob_repo = _blob_repository(sqlite_session)
     chunk_repo = SqlChunkRepository(sqlite_session)
 
-    # 批量保存 Chunk
+    # save chunks in bulk
     chunks = [
         Chunk(
             content_hash=make_sha256(f"chunk{i}"),
@@ -498,7 +498,7 @@ async def test_batch_operations(sqlite_session):
     ]
     await chunk_repo.save_many(chunks)
 
-    # 批量保存 Blob
+    # save blobs in bulk
     blobs = [
         Blob(
             blob_name=make_sha256(f"blob{i}"),
@@ -515,12 +515,12 @@ async def test_batch_operations(sqlite_session):
     await blob_repo.save_many(blobs)
     await sqlite_session.commit()
 
-    # 批量读取
+    # read in bulk
     blob_names = [make_sha256(f"blob{i}") for i in range(1, 4)]
     loaded_blobs = await blob_repo.get_many(blob_names)
     assert len(loaded_blobs) == 3
 
-    # 批量判断存在
+    # existence in bulk
     exists_map = await blob_repo.exists_many(blob_names)
     assert all(exists_map.values())
 

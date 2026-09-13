@@ -445,8 +445,10 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval.py`）是 `RetrievalState` 上的一条固定
-状态转移序列：每个阶段只读写属于自己的字段，任何可选算子关闭后都退化为恒等变换。
+`RetrievalPipeline.search`（`domain/services/retrieval/`，每阶段一个模块）是 `RetrievalState`
+上的一条固定状态转移序列：每个阶段只读写属于自己的字段，任何可选算子关闭后都退化为恒等变换。
+失败的车道会被跳过并记入 `retrieval_metrics.lane_failures`，因此从更少车道作答的请求可以离线
+识别。各阶段的设计理由与调优历史见 [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md)。
 
 | 阶段 | 职责 |
 | --- | --- |
@@ -488,9 +490,14 @@ flowchart TB
 uv run pytest tests/unit/application/test_service.py -q
 uv run pytest tests/unit/domain/test_retrieval.py -q
 uv run pytest tests/unit/infrastructure/test_milvus3.py -q
+uv run pytest tests/unit/test_smoke_personal_mode.py -q   # 真实 Container、迁移、Milvus Lite、HTTP
+uv run mypy
 ```
 
-在内存受限的开发机上，不要在一个进程里运行整个 `tests/unit/infrastructure` 目录。
+在内存受限的开发机上，不要在一个进程里运行整个 `tests/unit/infrastructure` 目录。冒烟测试
+用临时 SQLite 文件、嵌入式 Milvus Lite 和进程内 OpenAI 兼容 embedding 端点装配生产组合根，
+再经 FastAPI 路由完成上传、checkpoint 与检索。检索管线的纯结构重构用
+`benchmarks.internal.retrieval_equivalence` 证明行为不变（见设计文档）。
 
 ## 许可
 

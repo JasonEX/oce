@@ -99,7 +99,7 @@ def test_invalid_input_budget_is_rejected():
 
 @pytest.mark.asyncio
 async def test_embed_reports_usage_with_model_and_credential_id():
-    """embed 成功后按新签名回调 on_usage(credential_id, 'embed', model, total_tokens, 0)。"""
+    """A successful embed reports on_usage(credential_id, 'embed', model, total_tokens, 0)."""
     captured: list[tuple] = []
 
     async def _on_usage(cid, kind, model, prompt, completion):
@@ -117,7 +117,7 @@ async def test_embed_reports_usage_with_model_and_credential_id():
 
     await embedder.embed_query("abc")
 
-    # 假 client 的 usage.total_tokens = len("abc") = 3；embed 无 completion，记 0
+    # The fake client reports total_tokens = len("abc") = 3; embed has no completion.
     assert captured == [(9, "embed", "test-model", 3, 0)]
 
 

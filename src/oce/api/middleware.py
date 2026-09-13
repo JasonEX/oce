@@ -1,10 +1,10 @@
-"""HTTP 调用监控中间件。
+"""HTTP call monitoring middleware.
 
-每次请求上报 endpoint（路由模板）/ method / status_code / latency_ms 到 MetricsSink，
-落 api_call_metrics。exempt_paths（默认 /health）不记账。
-
-监控是旁路：采集失败只记日志、绝不影响请求本身；``sink_provider`` 返回 None 时
-（如应用尚未完成装配）直接跳过，避免误触发容器构建。
+Every request reports its route template, method, status code and latency to
+the metrics sink; ``exempt_paths`` (``/health`` by default) are not recorded.
+Collection is a side channel: a failure is logged and never touches the
+request, and a ``sink_provider`` that returns None (the container is not
+assembled yet) skips recording rather than building the container.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
+from starlette.types import ASGIApp
 
 from oce.shared.metrics import ApiCallRecord, MetricsSink
 
@@ -25,11 +26,11 @@ SinkProvider = Callable[[], MetricsSink | None]
 
 
 class ApiCallMetricsMiddleware(BaseHTTPMiddleware):
-    """采集每次 HTTP 请求的耗时与状态码，旁路上报，不改变请求语义。"""
+    """Record each request's latency and status without changing the response."""
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         *,
         sink_provider: SinkProvider,
         exempt_paths: frozenset[str] = frozenset({"/health"}),
@@ -47,13 +48,13 @@ class ApiCallMetricsMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         started = perf_counter()
-        status_code = 500  # 未捕获异常时的兜底状态
+        status_code = 500  # what an uncaught exception becomes
         error_type: str | None = None
         try:
             response = await call_next(request)
             status_code = response.status_code
             return response
-        except Exception as exc:  # 记录后照常上抛，异常处理仍交给上层
+        except Exception as exc:  # recorded, then re-raised for the error handlers
             error_type = type(exc).__name__
             raise
         finally:
@@ -81,5 +82,5 @@ class ApiCallMetricsMiddleware(BaseHTTPMiddleware):
                     error_type=error_type,
                 )
             )
-        except Exception as exc:  # 旁路容错：监控绝不影响请求
+        except Exception as exc:  # monitoring never affects the request
             logger.warning("record api call failed: {}", exc)

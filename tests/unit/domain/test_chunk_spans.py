@@ -39,7 +39,7 @@ class TestSpans:
             assert text == "\n".join(lines[start - 1 : end])
 
     def test_overlong_single_line_is_dropped(self):
-        """切片会让每一片都错报自己的行范围，所以整行不产出。"""
+        """Slicing would make every piece misreport its lines, so the line is dropped whole."""
         assert cap_span(["x" * 250], 1, 1, 100) == []
 
     def test_overlong_line_does_not_merge_the_lines_around_it(self):
@@ -74,7 +74,7 @@ class TestFixedChunkerAlignment:
 
     def test_windows_stay_aligned_across_a_large_file(self):
         content = "\n".join(f"row {index}" for index in range(1, 201))
-        # 使用小块以测试分块行为（200 行每行约 10 字符 = 2000 字符，分成多块）
+        # Small chunks: 200 lines of about 10 characters split into several.
         chunks = RecursiveChunker(chunk_size=800, chunk_overlap=100).chunk(
             content, "big.md"
         )
@@ -162,7 +162,7 @@ class TestCastChunkerAlignment:
             )
 
     def test_generated_single_line_payload_yields_nothing(self):
-        """单行生成产物解析得动，但每行都超预算，不能退回按字符切。"""
+        """A generated one-liner parses, yet every line exceeds the budget; no character-level fallback."""
         content = (
             "const RAW = [\n"
             + "  '"

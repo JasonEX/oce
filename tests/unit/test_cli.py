@@ -1,4 +1,4 @@
-"""CLI 参数解析与基础行为测试。"""
+"""CLI argument parsing and basic behaviour."""
 
 from __future__ import annotations
 

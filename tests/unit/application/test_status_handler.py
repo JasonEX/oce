@@ -1,4 +1,4 @@
-"""FindMissing / BlobStatus 对账查询处理器测试"""
+"""FindMissing and BlobStatus reconciliation query tests."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ def repos():
 
 
 async def _save_ready_blob(blob_repo, path: str, content: str) -> str:
-    """存一个 ready 的 blob"""
+    """Store one ready blob."""
     name = blob_name(path, content)
     blob = Blob(blob_name=name, path=path, status=BlobStatus.READY)
     blob_repo.blobs[name] = blob
@@ -128,7 +128,7 @@ class TestBlobStatusQueryHandler:
 
 
 class TestResolveScopeQueryHandler:
-    """检索范围解析：全库检索已禁用，必须正面声明工作集。"""
+    """Scope resolution: whole-index retrieval is disabled; a working set must be declared."""
 
     async def test_without_client_scope_raises(self, repos):
         factory, _, _ = repos
@@ -136,7 +136,7 @@ class TestResolveScopeQueryHandler:
             await ResolveScopeQueryHandler(factory).handle(ResolveScopeQuery())
 
     async def test_deleted_without_positive_scope_raises(self, repos):
-        # deleted_blobs 只是减法，不构成工作集声明
+        # deleted_blobs only subtracts; it declares no working set
         factory, _, _ = repos
         with pytest.raises(ScopeRequiredError):
             await ResolveScopeQueryHandler(factory).handle(
@@ -196,7 +196,7 @@ class TestResolveScopeQueryHandler:
         assert result.scope.deleted_blob_names == frozenset({"b"})
 
     async def test_empty_chain_is_empty_scope_not_error(self, repos):
-        # 有效但成员为空的 checkpoint → 空工作集（空结果），不算全库检索
+        # A valid checkpoint without members is an empty working set, not the whole index.
         factory, _, chain_repo = repos
         chain = await chain_repo.create([])
         result = await ResolveScopeQueryHandler(factory).handle(

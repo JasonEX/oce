@@ -731,7 +731,7 @@ async def test_qualified_endpoints_survive_scope_wide_homonyms(sessions):
         exact_store=store,
         settings=RetrievalSettings(),
     )
-    endpoints = await pipeline._resolve_endpoints(
+    endpoints = await pipeline.exact.resolve_endpoints(
         RetrievalState(
             query="Trace Gate.enter_request to Sink.handle_request",
             scope=scope,

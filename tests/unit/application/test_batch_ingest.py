@@ -9,22 +9,22 @@ from oce.application.commands.ingest import (
     build_pipeline_factory,
 )
 from oce.domain.chunk import RecursiveChunker
+from tests.fakes.indexing import ConstantEmbedder
+from tests.fakes.retrieval import FakeSearchStore
 from tests.unit.application.fakes import (
-    FakeEmbedder,
-    FakeSearchStore,
     FakeUnitOfWorkFactory,
     blob_name,
 )
 
 
 async def test_ingest_blobs_commits_one_transaction_for_the_batch():
-    """批量 ingest 在一个事务内提交"""
+    """A batch ingest commits in one transaction."""
     factory = FakeUnitOfWorkFactory()
     handler = IngestBlobsCommandHandler(
         factory,
         build_pipeline_factory(
             chunker=RecursiveChunker(chunk_size=6000, chunk_overlap=200),
-            embedder=FakeEmbedder(),
+            embedder=ConstantEmbedder(),
             vector_index=FakeSearchStore(),
         ),
     )
@@ -40,6 +40,6 @@ async def test_ingest_blobs_commits_one_transaction_for_the_batch():
     await handler.handle(IngestBlobsCommand(blobs))
 
     assert factory.uow.commits == 1
-    # 验证 staging 已保存
+    # The staged text was stored.
     for blob in blobs:
         assert factory.uow.blobs.staging.get(blob.blob_name) == blob.content

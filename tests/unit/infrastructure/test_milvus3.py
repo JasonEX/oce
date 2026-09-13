@@ -1,4 +1,4 @@
-"""Milvus 3.0 内容 collection：客户端、Schema 与 SearchStore。"""
+"""The Milvus content collection: client, schema and SearchStore."""
 
 import asyncio
 from unittest.mock import AsyncMock, Mock, patch

@@ -1,4 +1,4 @@
-"""CommandBus / QueryBus 测试"""
+"""CommandBus and QueryBus tests."""
 
 from __future__ import annotations
 

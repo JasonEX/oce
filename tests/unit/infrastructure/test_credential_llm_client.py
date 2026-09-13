@@ -1,4 +1,4 @@
-"""按 kind 解析的 chat-LLM 凭证客户端测试。"""
+"""Per-kind chat-LLM credential client tests."""
 
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ async def test_resolves_active_credential_for_kind():
             timeout_seconds=30,
         )
         session.add(cred)
-        # 不同 kind 的行即使优先级更高也不应被 llm_rerank 选中
+        # A row of another kind is never chosen, whatever its priority.
         session.add(
             ModelCredentialModel(
                 kind="query_rewrite",
@@ -132,7 +132,7 @@ async def test_build_delegate_wires_credential_id_and_usage():
 
 
 async def test_chat_model_precedence():
-    """凭证 model > 调用方 model > fallback_model。"""
+    """Credential model, then the caller's, then fallback_model."""
     engine, sessions = await _runtime()
     async with sessions() as session:
         session.add(
@@ -166,7 +166,7 @@ async def test_chat_model_precedence():
     )
     client._build_delegate = lambda config: _FakeDelegate()
 
-    # 凭证 model 存在 → 覆盖调用方传入的 model
+    # The credential's model overrides the caller's.
     await client.chat([{"role": "user", "content": "x"}], model="call-model")
     assert captured["model"] == "db-model"
     await client.close()

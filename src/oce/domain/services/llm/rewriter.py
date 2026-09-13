@@ -1,7 +1,4 @@
-"""Query rewriter using LLM for improving recall.
-
-将用户查询改写为多个不同角度的查询，特别是解决中文查询 vs 英文文件名的问题。
-"""
+"""LLM query rewriting: several angles on one request, above all Chinese to English file names."""
 
 from __future__ import annotations
 
@@ -10,8 +7,9 @@ from loguru import logger
 from oce.domain.services.llm.client import LLMClient
 from oce.domain.services.llm.prompts import REWRITE_PROMPT_TEMPLATE
 
-# prompt 脚手架片段。小参数模型会把指令原样回显，这些文本一旦被当成
-# 查询送进检索会污染召回，必须在解析阶段拦掉。
+# Prompt scaffolding a small model echoes back verbatim. Sent as a query it
+# would pollute recall, so the parser drops any line containing it. The
+# markers are Chinese because the prompt once was.
 _PROMPT_ECHO_MARKERS = (
     "改写策略",
     "用户查询",
@@ -27,12 +25,12 @@ _PROMPT_ECHO_MARKERS = (
     "要求:",
 )
 
-# 改写结果是搜索关键词，超长说明模型在输出解释或指令
+# A rewrite is a search phrase; a long line is the model explaining itself.
 _MAX_REWRITE_CHARS = 80
 
 
 class QueryRewriter:
-    """基于 LLM 的查询改写器，生成多角度查询提升召回率。"""
+    """Rewrite a request into several search variants."""
 
     def __init__(
         self,
@@ -42,24 +40,16 @@ class QueryRewriter:
     ):
         """
         Args:
-            client: LLM 客户端
-            model: 模型名称；None 时由客户端按凭证/配置决定
-            num_rewrites: 生成的改写查询数量
+            client: chat client
+            model: model name; None lets the client decide from its credential
+            num_rewrites: rewritten queries to generate
         """
         self.client = client
         self.model = model
         self.num_rewrites = num_rewrites
 
     async def rewrite(self, query: str) -> list[str]:
-        """
-        将查询改写为多个版本。
-
-        Args:
-            query: 原始查询
-
-        Returns:
-            改写后的查询列表（包含原查询）
-        """
+        """The original query plus its rewrites; the original alone on failure."""
         if not query or not query.strip():
             return [query]
 
@@ -80,11 +70,7 @@ class QueryRewriter:
             return [query]
 
     def _is_valid_rewrite(self, candidate: str) -> bool:
-        """判断一行输出是否为可用的改写查询。
-
-        小参数模型会把 prompt 指令原样回显，这些文本若混进检索会污染召回，
-        因此按长度和脚手架关键词双重拦截。
-        """
+        """Whether an output line is a usable rewrite: short and free of prompt scaffolding."""
         if len(candidate) > _MAX_REWRITE_CHARS:
             return False
         if len(candidate) < 3:
@@ -92,12 +78,7 @@ class QueryRewriter:
         return not any(marker in candidate for marker in _PROMPT_ECHO_MARKERS)
 
     async def _llm_rewrite(self, query: str) -> list[str]:
-        """
-        调用 LLM 进行查询改写。
-
-        Returns:
-            改写后的查询列表
-        """
+        """The model's rewrites, one per output line."""
         prompt = REWRITE_PROMPT_TEMPLATE.format(
             num_rewrites=self.num_rewrites, query=query
         )
@@ -110,14 +91,12 @@ class QueryRewriter:
             temperature=0.2,
         )
 
-        # 解析行分隔响应
         rewritten_queries: list[str] = []
         rejected: list[str] = []
 
         for line in response.strip().split("\n"):
-            # 清理：去除编号、markdown、多余空格
+            # Strip numbering, list markers and whitespace.
             cleaned = line.strip()
-            # 移除可能的编号前缀（1. 或 - 或 * 等）
             cleaned = cleaned.lstrip("0123456789.-*• \t")
             if not cleaned:
                 continue
@@ -127,7 +106,6 @@ class QueryRewriter:
             else:
                 rejected.append(cleaned)
 
-        # 限制数量
         rewritten_queries = rewritten_queries[: self.num_rewrites]
 
         if rejected:

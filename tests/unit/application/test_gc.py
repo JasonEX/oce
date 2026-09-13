@@ -1,4 +1,4 @@
-"""GcCommandHandler 单元测试：dry-run 计数 / 真删 / inflight 守卫。"""
+"""GcCommandHandler: dry-run counts, real deletion, the in-flight guard."""
 
 from __future__ import annotations
 
@@ -75,7 +75,7 @@ async def test_gc_dry_run_counts_without_deleting():
     assert result.dry_run is True
     assert result.expired_chains == 2
     assert result.expired_blobs == 3
-    assert result.deletable_blobs == 2  # b3 在飞被跳过
+    assert result.deletable_blobs == 2  # b3 is in flight and skipped
     assert result.skipped_inflight == 1
     assert result.deleted_chains == 0
     assert result.deleted_blobs == 0

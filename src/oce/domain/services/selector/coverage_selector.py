@@ -67,11 +67,12 @@ class CoverageSelector:
             # it can never raise it above the configured hard limit.
             char_budget = max(1, min(char_budget, max_chars))
 
-        # Coverage 先让不同文件各有代表，再补同文件片段；focused 严格保留
-        # relevance 顺序。两种模式共用重叠抑制和字符预算。
+        # Coverage gives every file one chunk before any file gets a second;
+        # focused keeps strict relevance order. Both share the overlap
+        # suppression and the character budget.
         for prefer_new_path in passes:
             for hit in hits:
-                # 达到数量上限：继续尝试（可能有更小的片段能塞进预算）
+                # Past the count limit; a smaller chunk may still fit the budget.
                 if len(selected) >= top_k:
                     continue
 
@@ -85,7 +86,7 @@ class CoverageSelector:
                 if key in seen or self._overlaps_selected(hit, selected):
                     continue
 
-                # 字符预算检查：放不下就跳过，继续尝试后面的小片段
+                # Over budget: skip and try the smaller chunks that follow.
                 hit_chars = len(hit.content)
                 if selected and used_chars + hit_chars > char_budget:
                     continue

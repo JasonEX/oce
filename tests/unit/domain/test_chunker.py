@@ -1,4 +1,4 @@
-"""Chunker 领域服务测试"""
+"""Chunker composition tests."""
 
 from __future__ import annotations
 
@@ -7,10 +7,10 @@ from oce.infrastructure.astchunk.cast_chunker import CastChunker
 
 
 class TestCASTChunker:
-    """cAST 语义切块"""
+    """cAST semantic chunking."""
 
     def test_document_formats_should_not_be_in_cast_chunker_languages(self):
-        """文档格式（markdown/jsp/vue/svelte）不应该在 CastChunker 的 languages 中"""
+        """Document formats (markdown, jsp, vue, svelte) are not CastChunker languages."""
         cast_chunker = CastChunker(
             max_chunk_size=500,
             fallback=RecursiveChunker(),
@@ -20,13 +20,13 @@ class TestCASTChunker:
         assert document_formats.isdisjoint(cast_chunker.languages)
 
     def test_programming_languages_are_in_cast_chunker(self):
-        """编程语言（python/java/ts等）应该在 CastChunker 的 languages 中"""
+        """Programming languages (python, java, ts) are CastChunker languages."""
         cast_chunker = CastChunker(
             max_chunk_size=500,
             fallback=RecursiveChunker(),
         )
 
-        # 有 tree-sitter parser 的编程语言
+        # languages with a tree-sitter grammar
         programming_languages = {
             "python",
             "java",
@@ -44,7 +44,7 @@ class TestCASTChunker:
         fallback = RecursiveChunker(chunk_size=6000, chunk_overlap=200)
         chunker = CastChunker(max_chunk_size=1500, fallback=fallback)
         chunks = chunker.chunk(content, "notes.unknown_ext")
-        # 回退 recursive：应该被切分
+        # the recursive fallback still splits it
         assert len(chunks) >= 1
 
     def test_python_file_chunks_with_ast(self):
@@ -53,7 +53,7 @@ class TestCASTChunker:
         chunker = CastChunker(max_chunk_size=500, fallback=fallback)
         chunks = chunker.chunk(content, "src/demo.py")
         assert len(chunks) >= 1
-        # 行号 1-based
+        # line numbers are 1-based
         assert all(c.start_line >= 1 for c in chunks)
         assert all(c.end_line >= c.start_line for c in chunks)
 

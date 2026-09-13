@@ -1,20 +1,16 @@
-"""Formatter — 拼装 formatted_retrieval。
+"""Render ``formatted_retrieval``, the text the ACE contract returns.
 
-目标输出形态（来自接口约定）
-----------------------------
     The following code sections were retrieved:
     Path: main.py
     Lines: 1-3
          1\txxx
          2\t...
 
-职责
-----
-- chunk 原文直接取自 SearchHit.content（已随检索从存储 JOIN 出来）。
-- 加行号、按 Path + 行号区间标注，每个 hit 独立片段，保留 score 排序。
-- 带封闭作用域的片段多一行 ``Context:``，让读者知道方法属于哪个类。
-- 非 primary 角色的摘录按关系车道分节（调用路径、定义、调用方、实现、测试、
-  转出），放在主结果之后，明确标注只是签名级摘录。
+Each hit is one section with its path, line range and numbered lines, in
+result order; a chunk with an enclosing scope adds a ``Context:`` line so the
+reader knows which class a method belongs to. Non-primary excerpts follow the
+primary results in fixed sections by relation lane (call path, definitions,
+callers, implementations, tests, re-exports), labelled as excerpts.
 """
 
 from __future__ import annotations
@@ -59,11 +55,7 @@ def _section(hit: SearchHit) -> str:
 
 
 def format_retrieval(hits: list[SearchHit]) -> str:
-    """拼装带行号的检索结果文本。
-
-    每个 hit 独立渲染为一个片段（不合并同文件的多个 chunk），保留 score 排序顺序。
-    行号从 hit.start_line 起，逐行配 SearchHit.content 的内容。
-    """
+    """Primary sections in result order, then each relation section that has content."""
     primary = [_section(hit) for hit in hits if hit.role == "primary"]
     text = HEADER
     if primary:

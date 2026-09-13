@@ -1,4 +1,4 @@
-"""ApiCallMetricsMiddleware 单测：记账 endpoint/method/status/latency，豁免 /health，旁路容错。"""
+"""ApiCallMetricsMiddleware: records endpoint, method, status and latency; exempts /health; never fails a request."""
 
 from __future__ import annotations
 
@@ -55,7 +55,9 @@ async def test_records_route_template_method_status_latency():
     rec = sink.calls[0]
     assert rec.method == "GET"
     assert rec.status_code == 200
-    assert rec.endpoint == "/items/{item_id}"  # 路由模板，非具体 id，聚合才不炸维度
+    assert (
+        rec.endpoint == "/items/{item_id}"
+    )  # the route template, not the id, or aggregation explodes
     assert rec.latency_ms >= 0
     assert rec.error_type is None
 
@@ -93,4 +95,4 @@ async def test_none_sink_provider_skips_silently():
     async with _client(_build_app(lambda: None)) as client:
         resp = await client.get("/items/1")
 
-    assert resp.status_code == 200  # provider 返回 None：不记账也不报错
+    assert resp.status_code == 200  # a None provider skips recording without failing

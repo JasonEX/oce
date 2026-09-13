@@ -4,9 +4,10 @@ Revision ID: b7c9e1f2a3d4
 Revises: a2d4f6b8c1e3
 Create Date: 2026-08-29 11:00:00.000000
 
-把 embed/rerank 专用的 embedding_credentials（+embedding_providers）重构为多用途
-model_credentials：一行 = 一个 (kind, 账号) 通道，kind ∈ embed/rerank/llm_rerank/
-query_rewrite/intent。无存量数据保留：直接 drop 旧表后重建。
+Replace the embed/rerank-only embedding_credentials (+embedding_providers)
+with the multi-kind model_credentials table: one row per (kind, account)
+channel, kind in embed/rerank/llm_rerank/query_rewrite/intent. No data is
+migrated: the old tables are dropped and the new one created.
 """
 from typing import Sequence, Union
 
@@ -22,9 +23,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # 兼容两种前置状态：正常迁移链（两表 embedding_credentials + embedding_providers）
-    # 与已应用过（未发布的）flatten 的历史开发库（仅剩扁平 embedding_credentials）。
-    # 凭据无存量数据，直接 IF EXISTS 丢弃后重建；先删子表再删父表避免 FK 阻塞。
+    # Two prior states exist: the released chain (embedding_credentials plus
+    # embedding_providers) and development databases that applied an
+    # unreleased flatten (embedding_credentials alone). Credentials carry no
+    # data worth keeping, so both are dropped IF EXISTS, child before parent.
     op.execute("DROP TABLE IF EXISTS embedding_credentials")
     op.execute("DROP TABLE IF EXISTS embedding_providers")
 

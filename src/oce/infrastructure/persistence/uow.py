@@ -1,6 +1,8 @@
-"""SQLAlchemy 工作单元。"""
+"""SQLAlchemy unit of work."""
 
 from __future__ import annotations
+
+from types import TracebackType
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -13,7 +15,7 @@ from oce.infrastructure.persistence.sql_symbol_projection import SqlSymbolProjec
 
 
 class SqlAlchemyUnitOfWork:
-    """为一个 application 用例提供同一事务内的仓储。"""
+    """Repositories bound to one transaction for one use case."""
 
     def __init__(
         self,
@@ -33,7 +35,12 @@ class SqlAlchemyUnitOfWork:
         self.lexical = SqlLexicalProjection(self.session)
         return self
 
-    async def __aexit__(self, exc_type, exc, traceback) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
         if self.session is None:
             return
         if exc_type is not None:

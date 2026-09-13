@@ -462,6 +462,16 @@ sections; it is the shadow log the adaptive thresholds are calibrated from:
 uv run python -m benchmarks.internal.rerank_evidence ~/.oce/data/oce.db --since-hours 24
 ```
 
+A third tool proves that a structural refactor of the retrieval pipeline changed no
+answer: it indexes a frozen directory into memory, replaces the embedding with a
+deterministic term vector, runs a fixed query list under several settings profiles and
+writes every hit and audit field; two dumps must be identical.
+
+```bash
+uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus src/oce --out before.json
+uv run python -m benchmarks.internal.retrieval_equivalence compare before.json after.json
+```
+
 A
 dated host-specific sample is retained in
 [`results/milvus-lite-scope-2026-09-01.json`](results/milvus-lite-scope-2026-09-01.json).

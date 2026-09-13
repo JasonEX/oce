@@ -15,10 +15,12 @@ from oce.domain.services.retrieval import (
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
-from tests.unit.domain.test_retrieval import (
+from tests.fakes.retrieval import (
     FakeEmbedder,
     FakeExactSearchStore,
+    FakeLexicalStore,
     FakePathContentStore,
+    FakePathLookupStore,
     FakeSearchStore,
 )
 
@@ -37,28 +39,6 @@ def _hit(path, score, *, blob=BLOB_A, content="code", start=1, end=1, hash_=""):
         start_line=start,
         end_line=end,
     )
-
-
-class FakeLexicalStore:
-    def __init__(self, hits=None):
-        self.hits = hits or []
-        self.calls: list[dict] = []
-
-    async def search_lexical(self, *, terms, phrases, scope, top_k=30, required=()):
-        self.calls.append(
-            {"terms": terms, "phrases": phrases, "top_k": top_k, "required": required}
-        )
-        return list(self.hits)
-
-
-class FakePathLookupStore:
-    def __init__(self, scores=None):
-        self.scores = scores or {}
-        self.calls: list[dict] = []
-
-    async def match_paths(self, *, filenames, paths, scope, limit=20):
-        self.calls.append({"filenames": filenames, "paths": paths})
-        return dict(self.scores)
 
 
 class DefinitionStore(FakeExactSearchStore):

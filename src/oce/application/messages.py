@@ -1,18 +1,15 @@
-"""应用层 Command / Query 标记基类。
+"""Marker base classes for commands (writes) and queries (reads).
 
-CQRS 约定：
-- Command（命令）：写操作，改变系统状态，经 CommandBus.execute 分发
-- Query（查询）：读操作，不改变状态，经 QueryBus.ask 分发
-
-具体消息一律用 frozen dataclass 定义，由 composition root 注册处理器。
+Concrete messages are frozen dataclasses; the composition root registers
+their handlers on the buses.
 """
 
 from __future__ import annotations
 
 
 class Command:
-    """命令标记基类（写操作）"""
+    """A write operation dispatched through ``CommandBus.execute``."""
 
 
 class Query:
-    """查询标记基类（读操作）"""
+    """A read operation dispatched through ``QueryBus.ask``."""

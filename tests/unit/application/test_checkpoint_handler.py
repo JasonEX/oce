@@ -1,4 +1,4 @@
-"""CheckpointCommand 处理器测试"""
+"""CheckpointCommand handler tests."""
 
 from __future__ import annotations
 
@@ -54,7 +54,7 @@ class TestCheckpointCommandHandler:
         assert members == {"b"}
 
     async def test_chain_missing_raises_needs_reset(self, handler):
-        token = f"{uuid.uuid4().hex}:1"  # 链不在 repo 里
+        token = f"{uuid.uuid4().hex}:1"  # a chain the repository does not know
 
         with pytest.raises(NeedsResetError):
             await handler.handle(

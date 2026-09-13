@@ -1,4 +1,4 @@
-"""/admin/credentials CRUD + duplicate 契约测试。"""
+"""Contract tests of the /admin/credentials CRUD and duplicate routes."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from oce.shared.model_credentials import CredentialRecord
 
 
 async def _mock_admin_auth(authorization: str | None = Header(default=None)) -> str:
-    """测试用 admin 鉴权：接受任意 Bearer，无 token 则 401。"""
+    """Test admin authentication: any bearer passes, a missing one is 401."""
     if authorization is None or not authorization.startswith("Bearer "):
         raise _unauthorized("missing admin key")
     return authorization.removeprefix("Bearer ")
@@ -67,7 +67,7 @@ class StubCredentialApp:
     async def duplicate_credential(self, credential_id, changes):
         if credential_id == 999:
             return None
-        # 省略 api_key 表示继承源 key，这里用尾 4 位 1234 代表继承结果。
+        # An omitted api_key inherits the source key; last4 1234 stands for it.
         last4 = changes.api_key[-4:] if changes.api_key else "1234"
         return _record(3, changes.name or "primary", last4=last4)
 
@@ -130,7 +130,7 @@ async def test_duplicate_credential_201():
 
 
 async def test_duplicate_credential_inherits_key_and_overrides_kind():
-    """省略 api_key + 覆盖 kind：接口应接受可选字段并成功复制。"""
+    """Omitting api_key while overriding kind is accepted and duplicates."""
     async with _client(StubCredentialApp()) as client:
         response = await client.post(
             "/admin/credentials/1/duplicate",

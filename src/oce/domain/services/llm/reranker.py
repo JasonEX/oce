@@ -1,7 +1,7 @@
-"""LLM-based reranker using flash models for semantic understanding.
+"""Chat-LLM reranker.
 
-使用轻量级 LLM 对检索结果重新排序，弥补 embedding 模型的语义理解不足，
-特别是中文查询 vs 英文文件名的跨语言匹配问题。
+A small model reorders the candidates where the embedding falls short,
+above all for Chinese requests against English identifiers and file names.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from oce.domain.services.search import SearchHit
 
 
 class LLMReranker:
-    """基于 LLM 的语义重排序器。"""
+    """Semantic reranker backed by a chat model."""
 
     def __init__(
         self,
@@ -30,13 +30,14 @@ class LLMReranker:
     ):
         """
         Args:
-            client: LLM 客户端
-            model: 模型名称；None 时由客户端按凭证/配置决定
-            max_candidates: 最多重排序的候选数量（控制成本）
-            output_top_k: 由 LLM 提升到队首的最大候选数
-            snippet_chars: 每个候选送入 LLM 的代码字符上限。只给路径会让重排
-                退化成文件名匹配，符号定义和调用链查询无从判断。
-            timeout_seconds: 语义重排端到端时限，超时保留原候选顺序。
+            client: chat client
+            model: model name; None lets the client decide from its credential
+            max_candidates: most candidates sent to the model (cost bound)
+            output_top_k: most candidates the model may move to the head
+            snippet_chars: code characters per candidate. Paths alone reduce
+                reranking to file-name matching; symbol and call-chain
+                requests cannot be judged without the body.
+            timeout_seconds: end-to-end limit; a timeout keeps the input order
         """
         if max_candidates < 1:
             raise ValueError("max_candidates must be positive")
@@ -58,16 +59,7 @@ class LLMReranker:
         query: str,
         candidates: list[SearchHit],
     ) -> list[SearchHit]:
-        """
-        使用 LLM 重新排序候选结果。
-
-        Args:
-            query: 用户查询
-            candidates: 候选代码片段。
-
-        Returns:
-            候选数量不变：LLM 选中的条目在前，其余保留原顺序。
-        """
+        """The same candidates with the model's picks first and the rest in input order."""
         if not candidates:
             return []
 
@@ -84,8 +76,9 @@ class LLMReranker:
         )
 
         try:
-            # 按下标而非路径回收顺序：同一文件可能贡献多个片段，
-            # 用路径做键会把它们折叠成一条，符号级查询正需要区分片段。
+            # The order comes back by index, not by path: one file may
+            # contribute several chunks, and keying by path would fold them
+            # into one exactly when a symbol request needs them apart.
             async with asyncio.timeout(self.timeout_seconds):
                 order = await self._llm_rerank(
                     query,
@@ -94,8 +87,9 @@ class LLMReranker:
                 )
             reranked_results = [candidates_subset[i] for i in order]
 
-            # Reranker 只改变优先级，不拥有裁剪权。未选中的窗口内候选与
-            # 窗口外候选均按原顺序追加，交给最终 selector 处理覆盖度和预算。
+            # The reranker reorders but never prunes: unpicked candidates
+            # inside the window and everything outside it follow in input
+            # order, and the selector decides coverage and budget.
             chosen = set(order)
             reranked_results.extend(
                 candidate
@@ -119,11 +113,11 @@ class LLMReranker:
             return candidates
 
     def _format_candidate(self, index: int, candidate: SearchHit) -> str:
-        """把候选渲染成带路径、行号和代码的 <candidate> 元素。
+        """Render one candidate as a ``<candidate>`` element with path, lines and code.
 
-        只给路径时 LLM 无法判断符号定义或调用关系，必须附带片段正文。
-        用闭合标签而非 markdown 围栏：候选可能是 .md 文件，其正文自带 ```，
-        围栏方案会让 30 个候选的边界互相撕裂。
+        The body is required: paths alone cannot show a declaration or a call.
+        Closing tags instead of markdown fences, because a .md candidate
+        carries its own ``` and fences would tear thirty candidates apart.
         """
         path = candidate.path.replace('"', "&quot;")
         start = candidate.start_line
@@ -138,7 +132,7 @@ class LLMReranker:
         snippet = candidate.content.strip()
         if len(snippet) > self.snippet_chars:
             snippet = snippet[: self.snippet_chars] + "\n…"
-        # 正文里出现闭合标签会提前终止候选，必须中和
+        # A closing tag inside the body would end the candidate early.
         snippet = snippet.replace("</candidate", "<\\/candidate")
 
         open_tag = f'<candidate id="{index}" path="{path}"{lines_attr}>'
@@ -149,12 +143,7 @@ class LLMReranker:
     async def _llm_rerank(
         self, query: str, candidates: list[SearchHit], top_k: int
     ) -> list[int]:
-        """
-        调用 LLM API 进行重排序。
-
-        Returns:
-            重排后的候选下标列表（0-based，已去重且落在候选范围内）
-        """
+        """Zero-based candidate indices in the model's order, deduplicated and in range."""
         candidates_text = "\n".join(
             self._format_candidate(i + 1, c) for i, c in enumerate(candidates)
         )
@@ -183,7 +172,7 @@ class LLMReranker:
         seen: set[int] = set()
 
         for line in response.strip().splitlines():
-            # 容忍 "1"、"1."、"- 1"、"[1] path" 等多种回复变体，只取首个整数
+            # Accept "1", "1.", "- 1", "[1] path" and similar: the first integer.
             match = re.search(r"\d+", line)
             if match is None:
                 continue

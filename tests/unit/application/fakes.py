@@ -1,6 +1,6 @@
-"""应用层测试共享 Fakes - 内存替身
+"""In-memory doubles shared by the application-layer tests.
 
-与 domain 层测试的 Fake 同款风格：只实现被测代码用到的接口方法。
+Each implements only the protocol methods the code under test calls.
 """
 
 from __future__ import annotations
@@ -11,16 +11,16 @@ import uuid
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chain.chain import Chain
 from oce.domain.chunk import LocatedChunk
-from oce.domain.services.search import SearchHit
+from tests.fakes.indexing import FakeLexicalProjection, FakeSymbolProjection
 
 
 def blob_name(path: str, content: str) -> str:
-    """与生产一致的内容寻址 blob_name（SHA256）"""
+    """The production content address: SHA256(path + content)."""
     return hashlib.sha256(f"{path}{content}".encode()).hexdigest()
 
 
 class FakeBlobRepo:
-    """BlobRepository 内存替身"""
+    """In-memory BlobRepository."""
 
     def __init__(self) -> None:
         self.blobs: dict[str, Blob] = {}
@@ -60,20 +60,20 @@ class FakeBlobRepo:
             self.blobs.pop(name, None)
 
     async def save_staging(self, blob_name: str, content: str) -> None:
-        """保存 staging 原文（测试替身）"""
+        """Store the staged text."""
         self.staging[blob_name] = content
 
     async def get_staging(self, blob_name: str) -> str | None:
-        """读取 staging 原文（测试替身）"""
+        """Read the staged text."""
         return self.staging.get(blob_name)
 
     async def delete_staging(self, blob_name: str) -> None:
-        """删除 staging 原文（测试替身）"""
+        """Drop the staged text."""
         self.staging.pop(blob_name, None)
 
 
 class FakeChainRepo:
-    """ChainRepository 内存替身"""
+    """In-memory ChainRepository."""
 
     def __init__(self) -> None:
         self.chains: dict[str, Chain] = {}
@@ -109,7 +109,7 @@ class FakeChainRepo:
 
 
 class FakeChunkRepo:
-    """ChunkRepository 内存替身"""
+    """In-memory ChunkRepository."""
 
     def __init__(self, blob_repo: FakeBlobRepo) -> None:
         self.blob_repo = blob_repo
@@ -119,7 +119,7 @@ class FakeChunkRepo:
     async def save_many(self, chunks) -> None:
         for c in chunks:
             self.chunks[c.content_hash] = c
-            # 新保存的块默认是 pending 状态，加入 pending 列表
+            # A newly saved chunk is pending until marked embedded.
             if c not in self.pending:
                 self.pending.append(c)
 
@@ -147,59 +147,9 @@ class FakeChunkRepo:
         return result if limit is None else result[:limit]
 
     async def mark_embedded(self, content_hashes: list[str]) -> None:
-        """标记块已嵌入，从 pending 移除（测试替身）"""
+        """Drop the chunks from the pending list."""
         hashes = set(content_hashes)
         self.pending = [c for c in self.pending if c.content_hash not in hashes]
-
-
-class FakeSymbolProjection:
-    def __init__(self) -> None:
-        self.indexed: list[tuple[str, tuple[str, ...]]] = []
-
-    async def index(self, blob: Blob, chunks, content: str = "") -> None:
-        self.indexed.append(
-            (blob.blob_name, tuple(chunk.content_hash for chunk in chunks))
-        )
-
-
-class FakeLexicalProjection:
-    def __init__(self) -> None:
-        self.indexed: list[tuple[str, ...]] = []
-
-    async def index(self, chunks) -> None:
-        self.indexed.append(tuple(chunk.content_hash for chunk in chunks))
-
-
-class FakeEmbedder:
-    """确定性假 embedder"""
-
-    async def embed_documents(self, texts) -> list[list[float]]:
-        return [[1.0] * 4 for _ in texts]
-
-    async def embed_query(self, text) -> list[float]:
-        return [1.0] * 4
-
-
-class FakeSearchStore:
-    """SearchStore 内存替身（hits 可预置）"""
-
-    def __init__(self, hits: list[SearchHit] | None = None) -> None:
-        self.hits: list[SearchHit] = hits or []
-        self.last_kwargs: dict = {}
-        self.upserted: list[dict] = []
-        self.upsert_batch_sizes: list[int] = []
-        self.deleted: list[str] = []
-
-    async def search(self, **kwargs) -> list[SearchHit]:
-        self.last_kwargs = kwargs
-        return list(self.hits)
-
-    async def upsert(self, items: list[dict]) -> None:
-        self.upsert_batch_sizes.append(len(items))
-        self.upserted.extend(items)
-
-    async def delete(self, blob_names: list[str]) -> None:
-        self.deleted.extend(blob_names)
 
 
 class FakeUnitOfWork:

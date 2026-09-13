@@ -1,4 +1,4 @@
-"""OpenAI 兼容的异步 embedding 客户端。"""
+"""Asynchronous OpenAI-compatible embedding client."""
 
 from __future__ import annotations
 
@@ -123,7 +123,6 @@ class OpenAIEmbedder:
     async def embed_query(self, text: str) -> list[float]:
         if self._max_query_chars and len(text) > self._max_query_chars:
             text = text[: self._max_query_chars]
-        # 添加 query instruction（如果配置了）
         if self._query_instruction:
             text = self._query_instruction + text
         return (await self.embed_documents([text]))[0]
@@ -222,7 +221,7 @@ class OpenAIEmbedder:
             raise RuntimeError("Embedding response dimension mismatch")
         if self._on_usage is not None:
             tokens = coerce_token_count(getattr(response.usage, "total_tokens", 0))
-            # embed 无 prompt/completion 之分：总量记入 prompt，completion=0
+            # Embeddings have no prompt/completion split: the total is prompt.
             await self._on_usage(self._credential_id, "embed", self._model, tokens, 0)
         return vectors
 

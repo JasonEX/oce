@@ -1,4 +1,4 @@
-"""SQLAlchemy chunk 元数据仓储。向量只写入 Milvus。"""
+"""SQLAlchemy repository of chunk metadata; vectors go to Milvus only."""
 
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ class SqlChunkRepository(ChunkRepository):
                 "content": chunk.content,
                 "content_size": len(chunk.content.encode("utf-8")),
                 "chunk_type": chunk.chunk_type,
-                "embedded": False,  # 新切的 chunk 默认未嵌入
+                "embedded": False,
             }
             for chunk in chunks
         ]
@@ -36,7 +36,7 @@ class SqlChunkRepository(ChunkRepository):
         await self.session.execute(stmt)
 
     async def mark_embedded(self, content_hashes: Sequence[str]) -> None:
-        """标记 chunks 已嵌入到 Milvus"""
+        """Mark chunks whose vectors reached Milvus."""
         if not content_hashes:
             return
         stmt = (

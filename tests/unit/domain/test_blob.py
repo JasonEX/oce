@@ -1,4 +1,4 @@
-"""Blob 聚合根单元测试"""
+"""Blob aggregate tests."""
 
 import pytest
 
@@ -7,10 +7,10 @@ from tests.conftest import make_blob, make_chunk_ref, make_sha256
 
 
 class TestBlobCreation:
-    """测试 Blob 创建"""
+    """Construction."""
 
     def test_create_blob_with_valid_data(self):
-        """创建合法 Blob"""
+        """A valid blob."""
         blob = make_blob(
             blob_name=make_sha256("test"),
             path="src/test.py",
@@ -22,7 +22,7 @@ class TestBlobCreation:
         assert len(blob.chunks) == 0
 
     def test_create_blob_with_invalid_blob_name(self):
-        """创建 Blob 时 blob_name 格式非法应抛异常"""
+        """An invalid blob_name is rejected."""
         with pytest.raises(ValueError, match="Invalid blob_name"):
             Blob(
                 blob_name="not-a-sha256",
@@ -31,7 +31,7 @@ class TestBlobCreation:
 
 
 class TestBlobChunkManagement:
-    """测试 Chunk 管理"""
+    """Chunk references."""
 
     def test_chunks_default_to_empty_list_per_instance(self):
         first = make_blob()
@@ -44,10 +44,10 @@ class TestBlobChunkManagement:
 
 
 class TestBlobStatusTransition:
-    """测试状态转换"""
+    """State transitions."""
 
     def test_mark_ready_with_chunks(self):
-        """有 chunks 时可以标记为 ready"""
+        """A blob with chunks can be marked ready."""
         blob = make_blob()
         blob.chunks.append(make_chunk_ref())
 
@@ -64,7 +64,7 @@ class TestBlobStatusTransition:
         assert blob.status == BlobStatus.READY
 
     def test_mark_error(self):
-        """标记为错误状态"""
+        """Marking an error."""
         blob = make_blob()
         error_msg = "Embedding failed"
 
@@ -75,10 +75,10 @@ class TestBlobStatusTransition:
 
 
 class TestBlobTouch:
-    """测试 touch 操作"""
+    """touch."""
 
     def test_touch_updates_last_seen(self, freezed_time):
-        """touch 更新 last_seen"""
+        """touch updates last_seen."""
         from datetime import timedelta
 
         blob = make_blob()

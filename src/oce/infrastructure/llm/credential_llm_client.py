@@ -1,17 +1,17 @@
-"""按 kind 从 model_credentials 解析的懒加载 chat-LLM 客户端。
+"""Lazy chat-LLM client resolved from ``model_credentials`` by kind.
 
-llm_rerank / query_rewrite 各持一个实例（kind 不同），从凭证表解析自己的
-active 凭证；取不到回落 LLMSettings（env）。实现 LLMClient.chat 协议，交给
-domain 层的 reranker / rewriter 复用。
-
-两个 kind 各自独立限流：若共用同一把 key，TPM 预算不共享（可接受的取舍，换取
-按用途独立管理/轮换）。
+``llm_rerank`` and ``query_rewrite`` each hold one instance that resolves its
+own active credential and falls back to the LLM_* settings. Both implement
+``LLMClient.chat`` for the domain reranker and rewriter. The two kinds rate
+limit independently: sharing one key does not share the TPM budget, an
+accepted trade for managing and rotating each use on its own.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -46,7 +46,7 @@ class _ActiveLLM:
 
 
 class CredentialConfiguredLLMClient(SwappableDelegate[_ActiveLLM]):
-    """解析某个 kind 的 active 凭证并复用其 chat client。"""
+    """Resolve one kind's active credential and reuse its chat client."""
 
     def __init__(
         self,
@@ -68,11 +68,11 @@ class CredentialConfiguredLLMClient(SwappableDelegate[_ActiveLLM]):
         self,
         messages: list[dict[str, str]],
         model: str | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> str:
         active = await self._acquire()
         try:
-            # 凭证 model 优先；其次调用方传入的 model；最后回落 env 默认模型。
+            # The credential's model wins, then the caller's, then the default.
             resolved = active.config.model or model or self._fallback_model
             return await active.client.chat(messages, model=resolved, **kwargs)
         finally:

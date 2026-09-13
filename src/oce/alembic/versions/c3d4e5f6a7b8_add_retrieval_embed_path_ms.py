@@ -4,10 +4,11 @@ Revision ID: c3d4e5f6a7b8
 Revises: b2c3d4e5f6a7
 Create Date: 2026-09-02 16:00:00.000000
 
-dense_ms 曾把 query embedding 与向量召回合在一起；path、path lookup、
-lexical 和 expand 阶段虽有计时却没有列可落，路由效用无法从服务端审计解释。
-head_slots 记录确定性结构证据实际占用的头部槽位。intent_ms 属于已移除的
-LLM 意图分类阶段，一并清掉。
+dense_ms used to include the query embedding round trip; the path, path
+lookup, lexical and expand stages were timed but had no column, so routing
+decisions could not be explained from the server audit. head_slots records
+the head slots deterministic evidence actually took. intent_ms belonged to
+the removed LLM intent stage and goes with it.
 """
 
 from collections.abc import Sequence

@@ -55,11 +55,12 @@ class NeedsResetError(ApplicationError):
 
 
 class CredentialConflictError(ApplicationError):
-    """新增/复制凭据命中唯一约束 (kind, model, api_key_hash)：同 kind+model 下该 key 已存在。"""
+    """A created or duplicated credential collides on (kind, model, api_key_hash)."""
 
     def __init__(self, reason: str | None = None) -> None:
         super().__init__(
-            reason or "该 kind + model 下已存在相同 api_key 的凭据",
+            reason
+            or "a credential with this api_key already exists for this kind and model",
             code="CREDENTIAL_CONFLICT",
         )
 
@@ -73,13 +74,15 @@ class QueueBusyError(ApplicationError):
 
 
 class ScopeRequiredError(ApplicationError):
-    """检索请求未声明工作集：必须提供 checkpoint_id 或 added_blobs。
+    """The retrieval request declared no working set.
 
-    全库检索被禁用（安全边界 + 防止跨工作集数据污染）。
+    Whole-index retrieval is disabled as a security boundary and to keep
+    working sets from leaking into each other.
     """
 
     def __init__(self, reason: str | None = None) -> None:
         super().__init__(
-            reason or "检索必须声明工作集：提供 checkpoint_id 或 added_blobs",
+            reason
+            or "retrieval requires a working set: provide checkpoint_id or added_blobs",
             code="SCOPE_REQUIRED",
         )

@@ -1,4 +1,4 @@
-"""代码切块协议、值对象和纯领域实现。"""
+"""Chunking protocols, value objects and the pure-domain chunker."""
 
 from oce.domain.chunk.protocols import Chunker as Chunker
 from oce.domain.chunk.protocols import LanguageChunker as LanguageChunker

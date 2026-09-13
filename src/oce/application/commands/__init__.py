@@ -1,1 +1,1 @@
-"""命令对象与处理器"""
+"""Command messages and their handlers."""

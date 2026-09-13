@@ -1,4 +1,4 @@
-"""verify_api_key / verify_admin_key 鉴权语义测试。"""
+"""Authentication semantics of verify_api_key and verify_admin_key."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ async def test_api_key_accepts_matching_and_rejects_wrong(monkeypatch):
 
 
 async def test_admin_key_falls_back_to_api_key_when_unset(monkeypatch):
-    # 未配置 ADMIN_API_KEY：admin 接口回落 API_KEY
+    # Without ADMIN_API_KEY the admin routes accept API_KEY.
     monkeypatch.setattr(
         auth, "get_settings", lambda: _settings(api_key="sk-main", admin_api_key="")
     )
@@ -32,7 +32,7 @@ async def test_admin_key_falls_back_to_api_key_when_unset(monkeypatch):
 
 
 async def test_admin_key_is_exclusive_once_configured(monkeypatch):
-    # 配置 ADMIN_API_KEY 后：只认 admin key，普通 API_KEY 不再放行
+    # With ADMIN_API_KEY set only the admin key is accepted.
     monkeypatch.setattr(
         auth,
         "get_settings",

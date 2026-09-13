@@ -24,7 +24,7 @@ class LanguageChunkerRouter:
 
     def chunk(self, content: str, path: str) -> list[Chunk]:
         language = detect_language(path)
-        chunker = self.language_chunkers.get(language)
+        chunker = self.language_chunkers.get(language) if language is not None else None
         if chunker is None:
             return self.fallback.chunk(content, path)
         return chunker.chunk(content, path)
@@ -36,22 +36,26 @@ class LanguageChunkerRouter:
         registered: dict[str, LanguageChunker] = {}
         for chunker in chunkers:
             if not isinstance(chunker, LanguageChunker):
-                raise TypeError("language_chunkers 必须实现 LanguageChunker 协议")
+                raise TypeError("language_chunkers must implement LanguageChunker")
             if not isinstance(chunker.languages, frozenset):
-                raise TypeError("LanguageChunker.languages 必须是 frozenset")
+                raise TypeError("LanguageChunker.languages must be a frozenset")
             if not chunker.languages:
-                raise ValueError("LanguageChunker.languages 不能为空")
+                raise ValueError("LanguageChunker.languages must not be empty")
             for language in chunker.languages:
                 if (
                     not isinstance(language, str)
                     or language != language.strip().lower()
                 ):
                     raise ValueError(
-                        f"LanguageChunker 语言标识必须是规范化字符串: {language!r}"
+                        f"LanguageChunker language must be a normalized string: {language!r}"
                     )
                 if language not in SUPPORTED_LANGUAGES:
-                    raise ValueError(f"LanguageChunker 声明了未知语言: {language}")
+                    raise ValueError(
+                        f"LanguageChunker declares an unknown language: {language}"
+                    )
                 if language in registered:
-                    raise ValueError(f"LanguageChunker 语言重复注册: {language}")
+                    raise ValueError(
+                        f"LanguageChunker language registered twice: {language}"
+                    )
                 registered[language] = chunker
         return MappingProxyType(registered)

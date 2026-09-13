@@ -1,1 +1,1 @@
-"""任务队列实现（Redis）"""
+"""The Redis task queue."""

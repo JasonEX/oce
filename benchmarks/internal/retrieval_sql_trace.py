@@ -12,7 +12,7 @@ from contextvars import ContextVar
 from pathlib import Path
 from time import perf_counter
 
-import oce.domain.services.retrieval as retrieval
+import oce.domain.services.retrieval.pipeline as retrieval
 
 OUTPUT = Path(os.environ["OCE_TIMEOUT_CAPTURE"])
 QUERY = ContextVar("timeout_query_hash", default=None)

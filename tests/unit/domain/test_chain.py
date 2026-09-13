@@ -1,4 +1,4 @@
-"""Chain 聚合根单元测试"""
+"""Chain aggregate tests."""
 
 import pytest
 
@@ -25,10 +25,10 @@ class TestChainInvariants:
 
 
 class TestCheckpointToken:
-    """测试 Checkpoint 令牌"""
+    """Checkpoint tokens."""
 
     def test_get_checkpoint_token(self):
-        """获取 Checkpoint 令牌"""
+        """Formatting a token."""
         chain = make_chain()
 
         token = Chain.format_checkpoint_token(chain.chain_id, chain.version)
@@ -38,7 +38,7 @@ class TestCheckpointToken:
         assert token.endswith(str(chain.version))
 
     def test_parse_valid_checkpoint_token(self):
-        """解析合法 Checkpoint 令牌"""
+        """Parsing a valid token."""
         chain = make_chain()
         token = Chain.format_checkpoint_token(chain.chain_id, chain.version)
 
@@ -50,7 +50,7 @@ class TestCheckpointToken:
         assert version == chain.version
 
     def test_parse_invalid_checkpoint_token(self):
-        """解析非法 Checkpoint 令牌"""
+        """Parsing invalid tokens."""
         invalid_tokens = [
             "",
             "no-colon",

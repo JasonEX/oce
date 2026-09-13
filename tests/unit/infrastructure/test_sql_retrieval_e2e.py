@@ -14,7 +14,7 @@ from oce.application.service import compute_blob_name
 from oce.domain.services.formatter import RELATED_HEADER, format_retrieval
 from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.retrieval import RetrievalPipeline
-from oce.domain.services.search import SearchScope, VectorRecord
+from oce.domain.services.search import SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.chunkers.factory import build_chunker
 from oce.infrastructure.persistence.lexical_index import (
@@ -27,6 +27,7 @@ from oce.infrastructure.persistence.uow import SqlAlchemyUnitOfWork
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.database.session import Base
+from tests.fakes.indexing import ConstantEmbedder, RecordingVectorIndex
 
 FILES = {
     "src/app/service.py": (
@@ -53,25 +54,6 @@ FILES = {
     "src/app/errors.py": "class PoolExhausted(RuntimeError):\n    pass\n",
     "src/app/unrelated.py": "def add(a, b):\n    return a + b\n",
 }
-
-
-class FakeEmbedder:
-    async def embed_documents(self, texts):
-        return [[1.0, 0.0] for _ in texts]
-
-    async def embed_query(self, text):
-        return [1.0, 0.0]
-
-
-class RecordingVectorIndex:
-    def __init__(self):
-        self.records: list[VectorRecord] = []
-
-    async def upsert(self, records):
-        self.records.extend(records)
-
-    async def delete(self, blob_names):
-        pass
 
 
 class DenseFromRecords:
@@ -124,7 +106,7 @@ async def indexed():
     async with SqlAlchemyUnitOfWork(sessions, provider) as uow:
         pipeline = IndexingPipeline(
             chunker=chunker,
-            embedder=FakeEmbedder(),
+            embedder=ConstantEmbedder(dimensions=2),
             vector_index=vector_index,
             blob_repo=uow.blobs,
             chunk_repo=uow.chunks,
@@ -146,7 +128,7 @@ def _pipeline(sessions, vector_index, **overrides):
     # budget would select the whole repository and leave nothing to pull in.
     settings = RetrievalSettings(confidence_floor=0.0, final_select_k=2, **overrides)
     return RetrievalPipeline(
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(dimensions=2),
         store=DenseFromRecords(vector_index),
         exact_store=SymbolSearchStore(sessions),
         lexical_store=SqlLexicalSearchStore(sessions),

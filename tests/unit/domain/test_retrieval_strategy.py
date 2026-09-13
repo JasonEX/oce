@@ -1,4 +1,4 @@
-"""plan_rerank：授权与路由分离，两种 reranker 共用确定性证据。"""
+"""plan_rerank: authorization apart from routing, one set of evidence for both rerankers."""
 
 import pytest
 

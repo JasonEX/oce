@@ -1,4 +1,4 @@
-"""应用配置。每个配置组使用独立环境变量前缀。"""
+"""Application settings; each group reads its own environment-variable prefix."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from typing import Literal
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# 所有配置组读同一组文件：.env.local 覆盖 .env，避免某些组读不到本地覆盖值。
+# Every group reads the same files, .env.local overriding .env, so no group
+# misses a local override.
 _ENV_FILES = (".env", ".env.local")
 
-# reranker 逐查询路由策略；authorization 由各自的 *_ENABLED 开关单独控制。
+# Per-query routing policy of a reranker; authorization is the *_ENABLED switch.
 RerankPolicy = Literal["adaptive", "always"]
 
 
@@ -25,176 +26,204 @@ def _settings_config(env_prefix: str = "") -> SettingsConfigDict:
 
 
 class DatabaseSettings(BaseSettings):
-    """数据库配置（PostgreSQL / SQLite 元数据存储）"""
+    """Metadata database (PostgreSQL, or SQLite in personal mode)."""
 
     model_config = _settings_config("DB_")
 
     url: str = Field(
         default="postgresql+asyncpg://oce:oce@localhost:5432/oce",
-        description="数据库连接 URL",
+        description="Database connection URL",
     )
-    pool_size: int = Field(default=5, ge=1, le=100, description="连接池大小")
-    max_overflow: int = Field(default=5, ge=0, le=100, description="连接池溢出上限")
-    echo: bool = Field(default=False, description="是否打印 SQL 日志")
+    pool_size: int = Field(default=5, ge=1, le=100, description="Connection pool size")
+    max_overflow: int = Field(
+        default=5, ge=0, le=100, description="Connection pool overflow limit"
+    )
+    echo: bool = Field(default=False, description="Log every SQL statement")
 
     @property
     def is_sqlite(self) -> bool:
-        """是否是 SQLite"""
         return self.url.startswith("sqlite")
 
 
 class MilvusSettings(BaseSettings):
-    """Milvus 3.0 配置（dense 向量存储）。向量维度取自 EmbeddingSettings.dimensions。"""
+    """Milvus 3.0 dense vector store; the dimension comes from EmbeddingSettings."""
 
     model_config = _settings_config("MILVUS_")
 
-    # 连接
     endpoint: str = Field(
         default="http://localhost:19530",
-        description="Milvus 端点：HTTP 服务地址，或本地 Milvus Lite 文件路径",
+        description="Milvus endpoint: an HTTP address, or a local Milvus Lite file path",
     )
-    token: str | None = Field(default=None, description="认证 token（Zilliz Cloud）")
+    token: str | None = Field(
+        default=None, description="Authentication token (Zilliz Cloud)"
+    )
 
-    # Collection
-    collection_name: str = Field(default="oce_chunks", description="Collection 名称")
+    collection_name: str = Field(default="oce_chunks", description="Collection name")
     path_collection_name: str = Field(
         default="oce_paths_v1",
-        description="路径索引 Collection 名称",
+        description="Collection name of the path index",
     )
 
-    # 索引
-    dense_index_type: str = Field(default="HNSW", description="密集向量索引类型")
-    dense_metric_type: str = Field(default="COSINE", description="密集向量距离度量")
+    dense_index_type: str = Field(default="HNSW", description="Dense vector index type")
+    dense_metric_type: str = Field(default="COSINE", description="Dense vector metric")
 
-    # HNSW 参数
-    hnsw_m: int = Field(default=16, ge=4, le=64, description="HNSW M 参数")
+    hnsw_m: int = Field(default=16, ge=4, le=64, description="HNSW M parameter")
     hnsw_ef_construction: int = Field(
         default=256, ge=8, le=512, description="HNSW efConstruction"
     )
     hnsw_ef_search: int = Field(
-        default=64, ge=8, le=2048, description="HNSW ef（搜索时）"
+        default=64, ge=8, le=2048, description="HNSW ef at search time"
     )
 
 
 class EmbeddingSettings(BaseSettings):
-    """嵌入模型配置"""
+    """Embedding model settings."""
 
     model_config = _settings_config("EMBED_")
 
-    enabled: bool = Field(default=True, description="是否启用嵌入(关闭时只切块不嵌入)")
+    enabled: bool = Field(
+        default=True, description="Embed chunks; when off, files are only chunked"
+    )
     endpoint: str = Field(
         default="https://api.siliconflow.cn/v1/embeddings",
-        description="OpenAI 兼容的 embedding 端点",
+        description="OpenAI-compatible embedding endpoint",
     )
-    api_key: SecretStr | None = Field(default=None, description="Embedding API 密钥")
-    model: str = Field(default="Qwen/Qwen3-Embedding-4B", description="嵌入模型")
+    api_key: SecretStr | None = Field(default=None, description="Embedding API key")
+    model: str = Field(default="Qwen/Qwen3-Embedding-4B", description="Embedding model")
     dimensions: int = Field(
         default=1024,
         ge=1,
-        description="向量维度；同时是 Milvus collection 的向量维度",
+        description="Vector dimension, also the dimension of both Milvus collections",
     )
-    max_batch_size: int = Field(default=32, ge=1, le=256, description="单请求文本数")
+    max_batch_size: int = Field(
+        default=32, ge=1, le=256, description="Texts per request"
+    )
     max_batch_chars: int = Field(
         default=32_000,
         ge=1,
-        description="单请求 input 数组总字符预算",
+        description="Character budget of one request's input array",
     )
     max_input_chars: int = Field(
-        default=8_000, ge=1, description="单条模型输入字符上限"
+        default=8_000, ge=1, description="Character limit of one model input"
     )
     input_overlap_chars: int = Field(
-        default=400, ge=0, description="长输入分段重叠字符数"
+        default=400, ge=0, description="Overlap between the segments of a long input"
     )
-    max_concurrency: int = Field(default=4, ge=1, le=32, description="最大请求并发")
-    timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
-    proxy: str | None = Field(default=None, description="可选 HTTP 代理")
+    max_concurrency: int = Field(
+        default=4, ge=1, le=32, description="Maximum concurrent requests"
+    )
+    timeout_seconds: float = Field(
+        default=60.0, gt=0, description="Request timeout in seconds"
+    )
+    proxy: str | None = Field(default=None, description="Optional HTTP proxy")
     query_instruction: str = Field(
         default="",
-        description="Query-side instruction（添加到 query 前，为空则不添加）",
+        description="Instruction prepended to every query; empty sends none",
     )
-    # 长 issue 文本整段送去做 query embedding 既慢又会稀释向量；标题和描述通常
-    # 位于前部。具体消融数据留在 benchmarks/results，避免配置代码固化实验快照。
+    # Embedding a whole issue text is slow and dilutes the vector; the title
+    # and description come first. The ablation data lives in
+    # benchmarks/results rather than in configuration code.
     max_query_chars: int = Field(
-        default=3_000, ge=0, description="query embedding 输入字符上限；0 不限制"
+        default=3_000,
+        ge=0,
+        description="Character limit of the query embedding input; 0 for unlimited",
     )
     query_cache_max_entries: int = Field(
         default=256,
         ge=0,
         le=10_000,
-        description="进程内 query vector LRU 容量；0 禁用",
+        description="In-process query vector LRU capacity; 0 disables it",
     )
     query_cache_ttl_seconds: float = Field(
         default=600.0,
         ge=0,
-        description="query vector 缓存 TTL 秒数；0 禁用",
+        description="Query vector cache TTL in seconds; 0 disables it",
     )
 
 
 class RerankSettings(BaseSettings):
-    """重排模型配置。"""
+    """Dedicated reranker settings."""
 
     model_config = _settings_config("RERANK_")
 
     enabled: bool = Field(
         default=False,
-        description="是否启用专用 reranker",
+        description="Authorize the dedicated rerank stage",
     )
-    # api：远端交叉编码器（外发 query 与候选源码）；local：进程内 ONNX 交叉编码器，
-    # 不外发，需要 `uv sync --extra local-rerank` 与本地模型目录。
+    # api: a remote cross-encoder (the query and candidate source leave the
+    # process); local: an in-process ONNX cross-encoder that needs
+    # `uv sync --extra local-rerank` and a local model directory.
     provider: Literal["api", "local"] = Field(
-        default="api", description="专用 reranker 的提供方式"
+        default="api", description="How the dedicated reranker is provided"
     )
     endpoint: str = Field(
         default="https://api.siliconflow.cn/v1/rerank",
-        description="Rerank 端点",
+        description="Rerank endpoint",
     )
     api_key: SecretStr | None = Field(
-        default=None, description="空值时复用 embedding key"
+        default=None, description="Falls back to the embedding key when empty"
     )
-    model: str = Field(default="Qwen/Qwen3-Reranker-0.6B", description="重排模型")
+    model: str = Field(default="Qwen/Qwen3-Reranker-0.6B", description="Rerank model")
     top_n: int = Field(
         default=50,
         ge=1,
         le=100,
-        description="专用 reranker 提升到候选队首的最大条数",
+        description="Most candidates the dedicated reranker may move to the head",
     )
-    min_score: float = Field(default=0.05, ge=0.0, le=1.0, description="最低重排分")
-    timeout_seconds: float = Field(default=60.0, gt=0, description="请求超时秒数")
-    # 交叉编码器对每个候选都要重读一遍 query；本项目的 0.6B 基准中，一段 25K
-    # 字符的 issue 曾让单次调用接近 15 秒。截断保留开头的问题描述。
+    min_score: float = Field(
+        default=0.05, ge=0.0, le=1.0, description="Minimum rerank score"
+    )
+    timeout_seconds: float = Field(
+        default=60.0, gt=0, description="Request timeout in seconds"
+    )
+    # A cross-encoder rereads the query for every candidate; on the 0.6B
+    # benchmark a 25K-character issue took one call close to 15 s. Truncation
+    # keeps the problem statement at the top.
     max_query_chars: int = Field(
-        default=2_400, ge=200, description="送入 reranker 的 query 字符上限"
+        default=2_400,
+        ge=200,
+        description="Character limit of the query sent to the reranker",
     )
-    # 本地 ONNX 交叉编码器窗口刻意小于远端默认值，限制 CPU 延迟。
+    # The local ONNX window is deliberately smaller than the remote default to
+    # bound CPU latency.
     local_model_dir: str = Field(
         default="~/.cache/oce/models/jina-reranker-v2-base-multilingual",
-        description="本地 reranker 模型目录（含 model_int8.onnx 与 tokenizer.json）",
+        description="Local reranker model directory (model_int8.onnx and tokenizer.json)",
     )
     local_model_file: str = Field(
-        default="model_int8.onnx", description="模型目录内的 ONNX 文件名"
+        default="model_int8.onnx",
+        description="ONNX file name inside the model directory",
     )
     local_candidates: int = Field(
-        default=16, ge=1, le=100, description="本地 reranker 打分的候选数"
+        default=16, ge=1, le=100, description="Candidates the local reranker scores"
     )
     local_max_doc_chars: int = Field(
-        default=800, ge=100, description="每个候选送入本地 reranker 的字符上限"
+        default=800,
+        ge=100,
+        description="Character limit per candidate sent to the local reranker",
     )
     local_max_tokens: int = Field(
-        default=512, ge=64, le=8192, description="query+候选的 token 上限"
+        default=512, ge=64, le=8192, description="Token limit of query plus candidate"
     )
-    local_batch_size: int = Field(default=4, ge=1, le=64, description="推理批大小")
-    # 混合大小核 CPU 上 onnxruntime 开满逻辑核可能反而更慢。
+    local_batch_size: int = Field(
+        default=4, ge=1, le=64, description="Inference batch size"
+    )
+    # On hybrid big/little CPUs onnxruntime is slower with every logical core.
     local_threads: int = Field(
-        default=0, ge=0, le=128, description="推理线程数；0 取物理核数的一半（上限 8）"
+        default=0,
+        ge=0,
+        le=128,
+        description="Inference threads; 0 uses half the cores, at most 8",
     )
-    # Qwen3-Reranker 模型卡报告：instruction-aware 任务中常见 1%~5% 提升，
-    # 且多语言场景建议用英文；其他 provider 不支持时可置空。
+    # The Qwen3-Reranker model card reports 1%-5% gains from task
+    # instructions and recommends English for multilingual use; clear it for
+    # providers that do not support one.
     instruction: str = Field(
         default=(
             "Given a code search query, judge whether the code snippet implements, "
             "defines, or directly answers what the query asks for"
         ),
-        description="随每次请求发送的任务说明；置空则不发送",
+        description="Task instruction sent with every request; empty sends none",
     )
 
 
@@ -205,447 +234,561 @@ class ChunkingSettings(BaseSettings):
 
     semantic_enabled: bool = Field(
         default=True,
-        description="启用 cAST 与专用结构化 chunker；关闭时统一使用 recursive chunker",
+        description="Use cAST and the structured chunkers; off routes everything to the recursive chunker",
     )
     semantic_max_chunk_chars: int = Field(
         default=1500,
         gt=0,
-        description="cAST semantic chunk 的 non-whitespace 字符预算",
+        description="Non-whitespace character budget of a cAST semantic chunk",
     )
     recursive_chunk_size: int = Field(
         default=6000,
         gt=0,
-        description="recursive fallback 目标字符数",
+        description="Target size of a recursive fallback chunk in characters",
     )
     recursive_chunk_overlap: int = Field(
         default=200,
         ge=0,
-        description="recursive splitter 的边界搜索重叠字符数",
+        description="Boundary search overlap of the recursive splitter in characters",
     )
 
 
 class LLMSettings(BaseSettings):
-    """LLM 功能共享的环境变量 fallback 配置。
+    """Environment fallback shared by the chat-LLM features.
 
-    LLM 语义重排和查询改写分别按 kind 构造客户端；未配置对应
-    model_credentials 行时，共同回落到这里的 LLM_* 设置。
+    LLM reranking and query rewriting build one client per kind; without a
+    matching ``model_credentials`` row both fall back to these LLM_* values.
     """
 
     model_config = _settings_config("LLM_")
 
     rerank_enabled: bool = Field(
         default=False,
-        description="是否允许 chat LLM 参与语义重排",
+        description="Authorize the chat-LLM rerank stage",
     )
-    model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="LLM 模型")
+    model: str = Field(default="Qwen/Qwen2.5-7B-Instruct", description="LLM model")
     api_key: SecretStr | None = Field(default=None, description="LLM API Key")
     base_url: str = Field(
         default="https://api.siliconflow.cn/v1",
         description="LLM API Base URL",
     )
-    proxy: str | None = Field(default=None, description="LLM API HTTP 代理")
+    proxy: str | None = Field(default=None, description="HTTP proxy for the LLM API")
     timeout_seconds: float = Field(
         default=30.0,
         gt=0,
-        description="单次 LLM HTTP 请求超时秒数",
+        description="Timeout of one LLM HTTP request in seconds",
     )
     rerank_timeout_seconds: float = Field(
         default=15.0,
         gt=0,
-        description="chat LLM 重排的端到端延迟上限；超时保留原排序",
+        description="End-to-end limit of chat-LLM reranking; a timeout keeps the original order",
     )
     max_candidates: int = Field(
-        default=50, ge=10, le=100, description="LLM 重排最大候选数"
+        default=50,
+        ge=10,
+        le=100,
+        description="Most candidates sent to the LLM reranker",
     )
     output_top_k: int = Field(
         default=10,
         ge=1,
         le=50,
-        description="LLM 提升到候选队首的最大条数",
+        description="Most candidates the LLM may move to the head",
     )
-    # 实测 chunk 中位长度约 1560 字符，99% 超过 400；截断过短会让 LLM 只看到片段开头
+    # The median chunk is about 1,560 characters and 99% exceed 400; a shorter
+    # cut shows the LLM only the opening of each snippet.
     snippet_chars: int = Field(
-        default=1600, ge=200, le=4000, description="每个候选送入 LLM 的代码字符上限"
+        default=1600,
+        ge=200,
+        le=4000,
+        description="Character limit per candidate sent to the LLM",
     )
-    # 单次 rerank 可达 16k token，不限流会在十几个查询后连续 429 并静默退回原始顺序
+    # One rerank call may reach 16k tokens; without a limiter a dozen queries
+    # produce consecutive 429s and a silent fallback to the original order.
     tpm_limit: int = Field(
         default=60_000,
         ge=1_000,
-        description="LLM 接口 TPM 上限，客户端按滑动窗口排队",
+        description="TPM limit of the LLM API; the client queues on a sliding window",
     )
 
 
 class RetrievalSettings(BaseSettings):
-    """检索配置"""
+    """Retrieval pipeline settings."""
 
     model_config = _settings_config("RETRIEVAL_")
 
-    # 向量检索
-    default_top_k: int = Field(default=50, ge=1, le=200, description="向量召回条数")
+    default_top_k: int = Field(
+        default=50, ge=1, le=200, description="Dense recall size"
+    )
     vector_threshold: float = Field(
         default=0.0,
         ge=0.0,
         le=1.0,
-        description="Milvus dense 相似度过滤阈值；默认不预过滤",
+        description="Milvus dense similarity threshold; no prefilter by default",
     )
-    final_select_k: int = Field(default=10, ge=1, le=50, description="最终返回条数")
+    final_select_k: int = Field(
+        default=10, ge=1, le=50, description="Final result count"
+    )
 
-    # 多查询融合
-    rrf_k: int = Field(default=60, ge=1, description="多查询结果融合平滑常数")
+    rrf_k: int = Field(
+        default=60, ge=1, description="Reciprocal rank fusion smoothing constant"
+    )
 
-    # 置信度门槛
     confidence_floor: float = Field(
         default=0.0,
         ge=0.0,
         le=1.0,
-        description="进入模型重排前的召回置信度门槛",
+        description="Recall confidence floor applied before any model reranking",
     )
 
-    # 两种 reranker 只处理排序，不参与候选裁剪。RERANK_ENABLED / LLM_RERANK_ENABLED
-    # 授权对应阶段（api/chat 会外发，local 不外发）；这里的策略只决定已启用的模型对哪些查询调用：adaptive 在
-    # exact/path 等确定性证据已经回答问题时跳过，always 用于质量优先或可复现对照。
+    # Both rerankers only reorder; neither prunes candidates. RERANK_ENABLED and
+    # LLM_RERANK_ENABLED authorize the stages (api/chat send data out, local
+    # does not); these policies only decide which queries an enabled model
+    # sees: adaptive skips when exact/path evidence already answered, always
+    # is for quality-first runs and reproducible comparisons.
     rerank_policy: RerankPolicy = Field(
         default="adaptive",
-        description="专用 reranker 调用策略",
+        description="Routing policy of the dedicated reranker",
     )
     llm_rerank_policy: RerankPolicy = Field(
         default="adaptive",
-        description="chat LLM 重排调用策略",
+        description="Routing policy of the chat-LLM reranker",
     )
 
-    # 精确标识符召回
     exact_timeout_seconds: float = Field(
         default=2.0,
         gt=0.0,
-        description="SQL 精确标识符召回超时；超时后回退向量检索",
+        description="SQL exact identifier recall timeout; vector recall answers after it",
     )
     exact_enabled: bool = Field(
         default=True,
-        description="是否启用 SQL exact identifier recall",
+        description="Enable SQL exact identifier recall",
     )
 
     source_priority_enabled: bool = Field(
         default=True,
-        description="是否对文档、测试和 barrel 文件应用 source priority",
+        description="Demote documentation, tests and barrel files by the source prior",
     )
     coverage_selection_enabled: bool = Field(
         default=True,
-        description="是否使用 focused/coverage selector；关闭时使用纯 Top-K",
+        description="Use the focused/coverage selector; off selects plain Top-K",
     )
 
-    # 仓库级多意图召回
     query_decomposition_enabled: bool = Field(
-        default=True, description="是否分解多句检索请求"
+        default=True, description="Decompose multi-sentence requests into facets"
     )
     query_max_queries: int = Field(
-        default=4, ge=1, le=8, description="原查询和子查询总数上限"
+        default=4, ge=1, le=8, description="Total of the original query and its facets"
     )
-    query_min_facet_chars: int = Field(default=8, ge=1, description="子查询最少字符数")
+    query_min_facet_chars: int = Field(
+        default=8, ge=1, description="Minimum facet length in characters"
+    )
     query_facet_weight: float = Field(
-        default=0.75, gt=0.0, le=1.0, description="子查询融合权重"
+        default=0.75, gt=0.0, le=1.0, description="Fusion weight of a facet"
     )
     per_query_top_k: int = Field(
-        default=20, ge=1, le=100, description="多子查询融合时每个子查询的召回条数"
+        default=20,
+        ge=1,
+        le=100,
+        description="Recall size per facet when several are fused",
     )
 
-    # 上下文剪枝与覆盖度（字符预算为硬限制，final_select_k 为软上限）
+    # Selection and coverage: the character budget is a hard limit,
+    # final_select_k a soft one.
     max_chunks_per_path: int = Field(
-        default=2, ge=1, le=20, description="单文件最多返回片段数"
+        default=2, ge=1, le=20, description="Most chunks returned per file"
     )
     focused_max_chunks_per_path: int = Field(
         default=4,
         ge=1,
         le=20,
-        description="focused 模式单文件最多返回片段数",
+        description="Most chunks returned per file in focused mode",
     )
     max_context_chars: int = Field(
-        default=32_000, ge=1, description="返回代码总字符预算（硬限制）"
+        default=32_000, ge=1, description="Hard character budget of the returned code"
     )
     focused_max_context_chars: int = Field(
         default=12_000,
         ge=1,
-        description="symbol/path focused 查询的字符预算（硬限制）",
+        description="Hard character budget of focused symbol/path requests",
     )
     overlap_threshold: float = Field(
-        default=0.6, ge=0.0, le=1.0, description="同文件片段重叠抑制阈值"
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Overlap threshold for suppressing same-file chunks",
     )
 
     # Query rewrite (LLM-based query expansion for better recall)
-    # 默认关闭：仅跨语言文件名等特殊场景有明显增益，通用检索收益有限
+    # Off by default: it only helps special cases such as cross-language file
+    # names and does little for ordinary retrieval.
     query_rewrite_enabled: bool = Field(
-        default=False, description="是否启用 LLM 查询改写"
+        default=False, description="Rewrite queries with the LLM"
     )
     query_rewrite_model: str = Field(
-        default="Qwen/Qwen2.5-7B-Instruct", description="查询改写使用的 LLM 模型"
+        default="Qwen/Qwen2.5-7B-Instruct",
+        description="LLM model used for query rewriting",
     )
     query_rewrite_num: int = Field(
-        default=3, ge=1, le=5, description="生成改写查询的数量"
+        default=3, ge=1, le=5, description="Number of rewritten queries"
     )
 
-    # Path index (独立路径索引用于文件名查询)
+    # Path index: a separate collection for file-name requests.
     path_index_enabled: bool = Field(
-        default=True, description="是否启用路径索引（文件名查询增强）"
+        default=True, description="Enable the path index for file-name requests"
     )
     path_top_k: int = Field(
-        default=20, ge=1, le=100, description="每个查询变体从路径索引召回的文件数"
+        default=20,
+        ge=1,
+        le=100,
+        description="Files recalled from the path index per query variant",
     )
-    # 路径证据只作为有界 boost 加到已融合候选上，不替换内容命中，避免挤掉正确 chunk。
+    # Path evidence is a bounded boost on fused candidates, never a
+    # replacement for content hits, so the right chunk is not displaced.
     path_boost_weight: float = Field(
-        default=0.5, ge=0.0, le=2.0, description="路径证据对同文件 chunk 的加权系数"
+        default=0.5,
+        ge=0.0,
+        le=2.0,
+        description="Boost weight of path evidence on same-file chunks",
     )
-    # 精确路径查找：请求里出现的文件名/路径（含 traceback 帧）在 scope 内做后缀匹配，
-    # 不经 embedding；命中与路径索引共用同一 boost 权重。
+    # Exact path lookup: file names and paths in the request (traceback
+    # frames included) are suffix-matched inside the scope without an
+    # embedding; hits share the path boost weight.
     path_lookup_enabled: bool = Field(
-        default=True, description="是否启用 SQL 精确路径/文件名后缀匹配"
+        default=True, description="Enable SQL exact path/file-name suffix matching"
     )
 
-    # 词法召回：chunk 词元的 FTS 索引，覆盖报错文案、调用点等 dense 不敏感的线索。
-    # 这是能力开关；symbol/path 仅在结构化证据缺失时补跑，
-    # 语义类查询直接启用。
+    # Lexical recall: a full-text index over chunk tokens that reaches error
+    # text and call sites dense recall is blind to. This is the capability
+    # switch; symbol/path requests only run it when structural evidence is
+    # missing, semantic requests always.
     lexical_enabled: bool = Field(
-        default=True, description="是否允许按查询启用词法召回"
+        default=True, description="Allow lexical recall per query"
     )
-    lexical_top_k: int = Field(default=30, ge=1, le=200, description="词法召回条数")
+    lexical_top_k: int = Field(
+        default=30, ge=1, le=200, description="Lexical recall size"
+    )
     lexical_weight: float = Field(
-        default=1.0, gt=0.0, le=2.0, description="词法结果在 RRF 融合中的权重"
+        default=1.0,
+        gt=0.0,
+        le=2.0,
+        description="Weight of lexical hits in reciprocal rank fusion",
     )
     lexical_timeout_seconds: float = Field(
-        default=2.0, gt=0.0, description="词法召回超时；超时后只用其他召回"
+        default=2.0,
+        gt=0.0,
+        description="Lexical recall timeout; the other lanes answer after it",
     )
 
-    # 确定性答案不等 embedding：symbol 的 exact 定义、path 的 SQL 路径命中、reference
-    # 的调用/继承使用点都来自 SQL 车道，dense 只会再补一段没有证据的语义尾部，而
-    # 远端 embedding 的往返是最慢的阶段且有长尾。门控是二值结构事实（SQL 车道是否
-    # 给出了确定结构），不看任何分数；只有 import 证据不算。
+    # Deterministic answers do not wait for the embedding: a symbol's exact
+    # definition, a path request's SQL path hit and a reference request's
+    # call/inherit sites all come from SQL lanes, dense recall would only
+    # append an evidence-free semantic tail, and the remote embedding round
+    # trip is the slowest stage with a long tail. The gate is a binary
+    # structural fact, never a score; import-only evidence does not count.
     decisive_skips_dense: bool = Field(
-        default=True, description="SQL 车道已给出确定答案时是否跳过 dense 召回"
+        default=True, description="Skip dense recall once the SQL lanes have answered"
     )
 
-    # 源码头部槽位：语义类查询的前 N 个结果优先给未被先验降权的源码文件。乘性
-    # 先验在归一化 RRF 上过弱（同时进入 dense 和 lexical 的测试片段仍居首），
-    # 而重排器又不一定启用；显式提到 test/测试 的查询不适用。0 关闭。
+    # Source head slots: the first N results of a semantic request go to
+    # source files the prior did not demote. A multiplicative prior is too weak
+    # on normalized RRF (a test chunk in both the dense and lexical list stays
+    # first) and a reranker is not always enabled; requests that ask about
+    # tests are exempt. 0 disables.
     source_head_slots: int = Field(
-        default=3, ge=0, le=10, description="语义查询保留给源码文件的头部槽位数"
+        default=3,
+        ge=0,
+        le=10,
+        description="Head slots reserved for source files on semantic requests",
     )
-    # 只含 import 证据的片段是文件头（use/import 行、license 注释、模块 docstring）：
-    # 它点名了文件接触的所有模块，所以在向量空间里离"架构/流程"措辞很近，却不
-    # 实现其中任何一个。这类片段让出头部槽位；没有任何符号证据的片段不受影响。
-    # 2026-09-04 在旧三套 bench 上净效果为零；2026-09-08 在 project_cases 主裁判上
-    # 配对复测：唯一的头部干扰项（call-chain 查询头部的 import 文件头）消失，其余
-    # 四套逐 case 不变。默认开启。
+    # A chunk whose only symbol evidence is imports is a file header (use/import
+    # lines, a license comment, a module docstring): it names every module the
+    # file touches, so it sits close to "architecture/flow" wording in vector
+    # space while implementing none of it. Such chunks yield the head slots;
+    # chunks with no symbol evidence at all are untouched. Net zero on the
+    # three older benches (2026-09-04); on the project_cases judge
+    # (2026-09-08) the one distracting head (an import header on a call-chain
+    # query) disappeared and the other four suites did not move. On by default.
     head_skips_import_headers: bool = Field(
-        default=True, description="源码头部槽位是否跳过只含 import 证据的文件头片段"
+        default=True,
+        description="Let import-only file headers yield the source head slots",
     )
-    # reference 查询：有 exact/lexical 使用证据的片段按先验分级填充头部槽位；
-    # 使用点全在测试/示例/__init__ 里时，仍胜过没有证据的文档。
+    # Reference requests: chunks with exact/lexical use evidence fill the head
+    # slots by prior tier; use sites that live only in tests, examples or
+    # __init__ files still beat documentation without evidence.
     reference_head_fallback: bool = Field(
-        default=True, description="reference 头部槽位在源码层为空时是否按先验分级回退"
+        default=True,
+        description="Fill reference head slots by prior tier when no source use site exists",
     )
-    # compound（issue 文本）查询：traceback 帧（函数 + 声明它的文件）和标题点名的
-    # 标识符（定义不超过 3 处）的定义片段占据受保护的头部槽位；只在正文出现的
-    # 名字（最小复现里的 helper、fixture）不算。0 关闭。早先按「任何点名标识符」
-    # 锚定曾因锁定 MVCE 里的 setup 调用而回退，因此锚点只取这两类结构事实。
+    # Compound (issue-text) requests: the declarations of traceback frames
+    # (function plus the file declaring it) and of the title's identifiers
+    # (declared in at most three places) take protected head slots; names
+    # that only appear in the body (a minimal example's helpers, fixtures)
+    # anchor nothing. 0 disables. Anchoring on any named identifier once
+    # regressed by locking onto a setup call in a reproduction, so only
+    # these two structural facts count.
     compound_anchor_slots: int = Field(
-        default=3, ge=0, le=5, description="compound 查询保留给帧/标题锚点定义的槽位数"
+        default=3,
+        ge=0,
+        le=5,
+        description="Head slots reserved for frame/title anchors on compound requests",
     )
 
-    # 入口车道：overview / 无符号 call_chain 查询的词能拼出的已声明名字（``Router``、
-    # ``register_checker``、``createSlice``）按被引用文件数排序，最大的声明占据
-    # 受保护的头部槽位；包名（同时是目录）不领头。声明处超过 hub_max_definitions
-    # 的名字视为过于常见。2026-09-09 配对复测：精选 overview nDCG@10 67.8→74.3，
-    # 但封存的 held-out 语义集 overview 66.4→54.1、call-chain 85.6→78.2，收益没有
-    # 泛化，默认关闭（0），保留为可测量的开关。
+    # Hub lane: declared names the words of an overview or symbol-free
+    # call-chain request spell (``Router``, ``register_checker``,
+    # ``createSlice``) ranked by referencing files; the largest declaration
+    # takes a protected head slot, package names (also directories) never
+    # lead, and names declared in more than hub_max_definitions places are
+    # too common. Paired rerun 2026-09-09: curated overview nDCG@10 67.8 to
+    # 74.3 but the sealed held-out semantic set fell (overview 66.4 to 54.1,
+    # call-chain 85.6 to 78.2), so it ships off (0) as a measurable switch.
     hub_head_slots: int = Field(
-        default=0, ge=0, le=5, description="语义查询保留给入口定义的头部槽位数；0 关闭"
+        default=0,
+        ge=0,
+        le=5,
+        description="Head slots reserved for hub declarations on semantic requests; 0 disables",
     )
     hub_max_definitions: int = Field(
-        default=3, ge=1, le=20, description="入口名字在 scope 内的声明数上限"
-    )
-    # feature 问句（「X 如何实现」）上配对复测：入口定义把实现函数从头部挤开，
-    # semantic feature nDCG@10 73.5→68.8、CSN Region Top-1 62.5→60.0，默认关闭。
-    hub_feature_enabled: bool = Field(
-        default=False, description="feature 问句是否也启用入口车道"
+        default=3,
+        ge=1,
+        le=20,
+        description="Most declarations a hub name may have inside the scope",
     )
 
-    # 工作集增量先验：请求 added_blobs 里的文件就是用户正在改的文件。增量过大
-    # （首次全量同步）时先验没有区分度，直接跳过。
+    # Working-set prior: the files in a request's added_blobs are the ones the
+    # user is editing. A large delta (a first full sync) carries no
+    # information and skips the prior.
     working_set_boost: float = Field(
-        default=1.15, ge=1.0, le=2.0, description="added_blobs 命中的乘性 boost"
+        default=1.15,
+        ge=1.0,
+        le=2.0,
+        description="Multiplicative boost of hits inside added_blobs",
     )
     working_set_boost_max_blobs: int = Field(
-        default=50, ge=0, description="added_blobs 超过此数量时不应用 boost；0 关闭"
+        default=50,
+        ge=0,
+        description="Skip the boost above this many added_blobs; 0 disables",
     )
 
-    # 结果整形：同文件相邻片段合并成一段；二跳拉取被引用符号的定义摘要。
+    # Result shaping: touching same-file chunks merge; a second hop pulls
+    # definition excerpts of referenced symbols.
     merge_adjacent_enabled: bool = Field(
-        default=True, description="是否合并同文件相邻/重叠片段"
+        default=True, description="Merge adjacent or overlapping same-file chunks"
     )
     related_definitions_enabled: bool = Field(
-        default=True, description="是否允许语义关系查询附带相关定义摘要"
+        default=True,
+        description="Append related definition excerpts to relation-oriented requests",
     )
     related_source_hits: int = Field(
-        default=5, ge=1, le=50, description="从前多少条主结果里抽取被引用标识符"
+        default=5,
+        ge=1,
+        le=50,
+        description="Leading primary hits mined for referenced identifiers",
     )
     related_max_symbols: int = Field(
-        default=8, ge=1, le=50, description="最多附带多少个符号的定义"
+        default=8,
+        ge=1,
+        le=50,
+        description="Most symbols whose definitions are appended",
     )
     related_max_definitions_per_symbol: int = Field(
-        default=3, ge=1, le=20, description="scope 内定义数超过此值的符号视为过于常见"
+        default=3,
+        ge=1,
+        le=20,
+        description="Symbols declared in more places than this are too common",
     )
     related_snippet_lines: int = Field(
-        default=12, ge=1, le=200, description="每个定义摘要最多多少行"
+        default=12, ge=1, le=200, description="Most lines per definition excerpt"
     )
     related_max_chars: int = Field(
         default=4_000,
         ge=1,
-        description="定义摘要字符上限（同时受主结果剩余预算约束）",
+        description="Character cap of definition excerpts, also bounded by the remaining budget",
     )
 
-    # 关系车道：调用方 / 实现与子类 / 测试 / 转出，各自独立槽位与字符上限，作为
-    # 主结果之后的独立小节返回。relation_reserve_chars 是有新关系证据时的上限，
-    # 不会在关系查询前从主结果预算中无条件扣除。
+    # Relation lanes (callers, implementations and subclasses, tests,
+    # re-exports) each have their own slots and character cap and are returned
+    # as sections after the primary results. relation_reserve_chars is an
+    # upper bound once novel relation evidence exists, never an unconditional
+    # deduction from the primary budget.
     relation_reserve_chars: int = Field(
-        default=6_000, ge=0, description="关系小节可使用的字符上限"
+        default=6_000, ge=0, description="Character cap of the relation sections"
     )
     relation_snippet_lines: int = Field(
-        default=10, ge=1, le=200, description="每条关系摘录最多多少行"
+        default=10, ge=1, le=200, description="Most lines per relation excerpt"
     )
-    callers_enabled: bool = Field(default=True, description="是否附带调用方小节")
-    callers_max: int = Field(default=4, ge=1, le=20, description="最多附带多少个调用方")
+    callers_enabled: bool = Field(
+        default=True, description="Append the callers section"
+    )
+    callers_max: int = Field(
+        default=4, ge=1, le=20, description="Most callers appended"
+    )
     callers_max_chars: int = Field(
-        default=2_400, ge=1, description="调用方小节字符上限"
+        default=2_400, ge=1, description="Character cap of the callers section"
     )
     call_chain_max_hops: int = Field(
-        default=1, ge=1, le=3, description="调用链最多沿唯一封闭定义向上扩展多少跳"
+        default=1,
+        ge=1,
+        le=3,
+        description="Most upstream hops through unique enclosing definitions",
     )
-    # 两端点调用链（「A 如何到达 B」）：从 A 的定义沿被调用符号向下做有界搜索，
-    # 每一跳只沿 scope 内唯一可解析（或与调用方同文件）的定义前进，找到 B 即停。
-    # 深度、每个定义考察的调用数和展开的定义总数都是常量上限，不是可调阈值。
+    # Two-endpoint chains ("how does A reach B"): a bounded search downward
+    # from A's declaration along called names, following only definitions
+    # that resolve uniquely in scope (or sit in the caller's file), stopping
+    # at B. Depth, calls examined per definition and definitions expanded are
+    # fixed bounds, not tunable thresholds.
     call_chain_max_depth: int = Field(
-        default=4, ge=1, le=8, description="两端点调用链最多向下搜索多少跳"
+        default=4,
+        ge=1,
+        le=8,
+        description="Most downward hops of a two-endpoint chain search",
     )
-    # 每一跳最多两段摘录（声明头部 + 交接调用处的窗口），四跳约需 3,000 字。
+    # At most two excerpts per hop (declaration header plus the handover
+    # window); four hops need about 3,000 characters.
     call_chain_max_chars: int = Field(
-        default=3_600, ge=1, description="调用路径小节字符上限"
+        default=3_600, ge=1, description="Character cap of the call path section"
     )
     implementations_enabled: bool = Field(
-        default=True, description="是否附带实现/子类小节"
+        default=True, description="Append the implementations section"
     )
     implementations_max: int = Field(
-        default=4, ge=1, le=20, description="最多附带多少个实现或子类"
+        default=4,
+        ge=1,
+        le=20,
+        description="Most implementations or subclasses appended",
     )
     implementations_max_chars: int = Field(
-        default=1_600, ge=1, description="实现小节字符上限"
+        default=1_600, ge=1, description="Character cap of the implementations section"
     )
-    tests_enabled: bool = Field(default=True, description="是否附带测试小节")
-    tests_max: int = Field(default=3, ge=1, le=20, description="最多附带多少个测试摘录")
-    tests_max_chars: int = Field(default=2_400, ge=1, description="测试小节字符上限")
-    reexports_enabled: bool = Field(default=True, description="是否附带转出小节")
-    reexports_max: int = Field(default=2, ge=1, le=10, description="最多附带多少条转出")
-    reexports_max_chars: int = Field(default=600, ge=1, description="转出小节字符上限")
-    # 同名定义数超过头部槽位时，允许 adaptive 路由为 symbol 查询启用专用重排
-    # 对尾部排序。尚无离线标签支持默认启用，作为待校准开关保留。
+    tests_enabled: bool = Field(default=True, description="Append the tests section")
+    tests_max: int = Field(
+        default=3, ge=1, le=20, description="Most test excerpts appended"
+    )
+    tests_max_chars: int = Field(
+        default=2_400, ge=1, description="Character cap of the tests section"
+    )
+    reexports_enabled: bool = Field(
+        default=True, description="Append the re-exports section"
+    )
+    reexports_max: int = Field(
+        default=2, ge=1, le=10, description="Most re-exports appended"
+    )
+    reexports_max_chars: int = Field(
+        default=600, ge=1, description="Character cap of the re-exports section"
+    )
+    # When a symbol is declared in more places than the head holds, let the
+    # adaptive route run the dedicated reranker over the tail. No offline
+    # labels support enabling it yet; it stays as a switch awaiting calibration.
     rerank_ambiguous_definitions: bool = Field(
         default=False,
-        description="symbol 查询同名定义数超过头部槽位时是否启用专用重排",
+        description="Rerank the tail of symbol requests whose name exceeds the head slots",
     )
 
 
 class RedisSettings(BaseSettings):
-    """Redis 配置（任务队列）"""
+    """Redis task queue settings."""
 
     model_config = _settings_config("REDIS_")
 
-    url: str = Field(default="redis://localhost:6379/0", description="Redis 连接 URL")
-    queue_name: str = Field(default="oce:embed_queue", description="嵌入队列名称")
+    url: str = Field(
+        default="redis://localhost:6379/0", description="Redis connection URL"
+    )
+    queue_name: str = Field(
+        default="oce:embed_queue", description="Embedding queue name"
+    )
 
 
 class WorkerSettings(BaseSettings):
-    """Worker 配置（后台嵌入消费者）"""
+    """Background embedding worker settings."""
 
     model_config = _settings_config("WORKER_")
 
-    enabled: bool = Field(default=True, description="是否启用后台 worker")
-    concurrency: int = Field(default=2, ge=1, le=32, description="并发消费协程数")
+    enabled: bool = Field(default=True, description="Run the background worker")
+    concurrency: int = Field(
+        default=2, ge=1, le=32, description="Concurrent consumer coroutines"
+    )
     blob_batch_size: int = Field(
         default=16,
         ge=1,
         le=256,
-        description="单个消费协程一次处理的最大 blob 数",
+        description="Most blobs one consumer handles per batch",
     )
-    max_retries: int = Field(default=3, ge=1, le=10, description="失败重试上限")
+    max_retries: int = Field(default=3, ge=1, le=10, description="Retry limit per blob")
 
 
 class LogSettings(BaseSettings):
-    """日志配置"""
+    """Logging settings."""
 
     model_config = _settings_config("LOG_")
 
-    file_enabled: bool = Field(default=False, description="是否启用日志落盘")
+    file_enabled: bool = Field(default=False, description="Write logs to a file")
     file_path: str | None = Field(
-        default=None, description="日志文件路径（None 时自动推断）"
+        default=None,
+        description="Log file path; derived from the data directory when None",
     )
     rotation: str = Field(
-        default="100 MB", description="轮转策略：'1 day' 按天 / '100 MB' 按大小"
+        default="100 MB", description="Rotation: '1 day' by time or '100 MB' by size"
     )
     retention: str = Field(
-        default="30 days", description="保留时长：'30 days' / '10 files'"
+        default="30 days", description="Retention: '30 days' or '10 files'"
     )
     format_json: bool = Field(
-        default=False, description="是否使用 JSON 格式（便于日志采集）"
+        default=False, description="Serialize log records as JSON"
     )
-    level: str = Field(default="INFO", description="日志级别（WARNING/INFO/DEBUG）")
+    level: str = Field(default="INFO", description="Log level (WARNING/INFO/DEBUG)")
 
 
 class MonitoringSettings(BaseSettings):
-    """监控配置（调用 / token / 资源采集与落库）"""
+    """Monitoring: API call, token and resource collection."""
 
     model_config = _settings_config("MONITORING_")
 
-    enabled: bool = Field(default=True, description="是否启用监控采集与落库")
+    enabled: bool = Field(
+        default=True, description="Collect and persist monitoring metrics"
+    )
     flush_interval_seconds: float = Field(
-        default=5.0, gt=0, description="缓冲区批量写库间隔秒数"
+        default=5.0, gt=0, description="Seconds between buffered batch writes"
     )
     flush_max_buffer: int = Field(
-        default=500, ge=1, description="单类指标缓冲上限，超出立即 flush"
+        default=500, ge=1, description="Buffer limit per metric kind"
     )
     resource_sample_interval_seconds: float = Field(
-        default=60.0, gt=0, description="资源采样间隔秒数"
+        default=60.0, gt=0, description="Seconds between resource samples"
     )
     retention_days: int = Field(
-        default=30, ge=1, description="监控数据保留天数（GC 清理阈值）"
+        default=30, ge=1, description="Days of monitoring data retained"
     )
     cleanup_interval_seconds: float = Field(
-        default=3600.0, gt=0, description="监控数据清理任务运行间隔秒数"
+        default=3600.0, gt=0, description="Seconds between monitoring cleanup runs"
     )
     retrieval_audit_enabled: bool = Field(
-        default=True, description="是否记录检索各阶段耗时与空回审计"
+        default=True, description="Record per-stage retrieval timings and empty results"
     )
     store_query_text: bool = Field(
-        default=False, description="检索审计是否存储 query 原文（默认关，隐私安全）"
+        default=False,
+        description="Store the query text in retrieval audits; off for privacy",
     )
 
 
 class Settings(BaseSettings):
-    """全局配置 - 聚合所有配置组"""
+    """Root settings aggregating every group."""
 
     model_config = _settings_config()
 
     # API
     api_key: str = Field(
         default="sk-opencontextengine",
-        description="API 认证密钥；个人模式用与客户端约定的固定值，服务模式须改为强随机值",
+        description="API key; personal mode uses the value the client expects, service mode needs a strong random one",
     )
     admin_api_key: str = Field(
         default="",
-        description="Admin 接口密钥；空则回落 API_KEY，一旦配置则 admin 接口只认此 key",
+        description="Admin API key; empty falls back to API_KEY, set makes admin routes accept only this key",
     )
     cors_origins: str = Field(
         default="https://oce-ai.github.io",
-        description="允许访问 API 的浏览器来源，多个来源用逗号分隔；默认放行官方 admin 面板，设为空则关闭 CORS",
+        description="Browser origins allowed to call the API, comma separated; the default admits the official admin panel, empty disables CORS",
     )
 
-    # 子配置组
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     milvus: MilvusSettings = Field(default_factory=MilvusSettings)
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)
@@ -661,5 +804,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """获取全局配置单例（缓存）"""
+    """The process-wide settings instance."""
     return Settings()

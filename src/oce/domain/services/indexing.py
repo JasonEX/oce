@@ -1,12 +1,14 @@
-"""IndexingPipeline 领域服务 - 索引编排
+"""IndexingPipeline: the write path.
 
-- ingest:        只写 Blob 元数据与 staging 原文，切块和嵌入留给 embed_pending
-- embed_pending: 切块（如需）→ 符号/词法投影 → 向量化 → 写回 → 路径索引 → Blob 置 ready
+``ingest`` stores blob metadata and the staged text; ``embed_pending`` chunks,
+projects symbols and terms, embeds, writes the vectors and the path index,
+and marks the blob ready.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from loguru import logger
 
@@ -27,8 +29,6 @@ from oce.domain.services.symbols import SymbolProjection
 
 
 class IndexingPipeline:
-    """索引管道：切块入库 + 懒嵌入"""
-
     def __init__(
         self,
         *,
@@ -54,15 +54,14 @@ class IndexingPipeline:
         self.embed_batch_size = embed_batch_size
         self.path_store = path_store
         self._embedding_enabled = embedding_enabled
-        # None 表示词法召回未启用：不写词元索引，检索侧也不会查它。
+        # None means lexical recall is off: no term index is written or read.
         self.lexical_projection = lexical_projection
 
     async def ingest(self, blob_name: str, path: str, content: str) -> int:
-        """轻量入库:只写元数据,切块推给 worker。立刻返回 0。
+        """Store metadata and the staged text only; chunking and embedding come later.
 
-        高吞吐设计:upload 接口只做轻量 IO,chunking+embedding 全部异步。
-        blob_name 由调用方按内容哈希算好传入。
-        客户端用 find_missing 轮询 ready 状态。
+        Uploads stay cheap: the caller computes ``blob_name`` from the content
+        and polls ``find_missing`` for readiness. Always returns 0.
         """
         existing = await self.blob_repo.get(blob_name)
         is_binary = is_binary_source(content)
@@ -87,22 +86,21 @@ class IndexingPipeline:
         ):
             existing.touch()
             await self.blob_repo.save(existing)
-            return 0  # 异步模式:不返回 chunk_count,客户端轮询
+            return 0
 
-        # 只写元数据,不切块
         blob = Blob(
             blob_name=blob_name,
             path=path,
             status=BlobStatus.PENDING,
-            chunks=[],  # 空,worker 负责切块后回填
+            chunks=[],
             content_size=len(content.encode("utf-8")),
             language=detect_language(path),
             file_type="text",
         )
         await self.blob_repo.save(blob)
 
-        # 保存原文到 staging，供后续 embed_pending 切块使用。
-        # blob_staging.content 是 Text 列，编码成 bytes 会被驱动拒绝。
+        # The staged text is what embed_pending chunks; the column is Text, so
+        # bytes would be rejected by the driver.
         await self.blob_repo.save_staging(blob_name, content)
         return 0
 
@@ -112,65 +110,59 @@ class IndexingPipeline:
         *,
         mark_failures: bool = True,
     ) -> int:
-        """处理待嵌入 blob:切块(如需)→ 向量化 → 写回 → 置 ready。
+        """Chunk, embed and mark ready every pending blob; returns the chunks embedded.
 
-        返回嵌入条数。只处理 pending 状态的 Blob。
-        如果 blob.chunks 为空,说明 ingest 只写了元数据,需要先从 staging 取原文切块。
-
-        如果嵌入开关关闭(EMBED_ENABLED=false),则只完成切块、保持 pending 且保留
-        staging(绝不置 ready);待开关恢复、blob 重新入队后再补嵌。
+        A blob without chunks was only ingested and is chunked from its staged
+        text first. With embedding disabled the blobs are chunked, stay
+        pending and keep their staged text, never marked ready; once embedding
+        is enabled again and they are re-enqueued, the vectors are filled in.
         """
         blobs = await self.blob_repo.find_pending(blob_names)
         if not blobs:
             return 0
 
-        # 第一阶段:补切块(针对 ingest 只写元数据的 blob)
+        # Chunk the blobs that were only ingested.
         for blob in blobs:
             if not blob.chunks:
-                # staging 里有原文,需要切块
                 content = await self.blob_repo.get_staging(blob.blob_name)
                 if content is None:
                     if blob.content_size == 0:
-                        # 空文件没有 staging 内容（或为空串），无需切块；路径索引
-                        # 完成后再统一置 ready。
+                        # An empty file has nothing to chunk; it is marked
+                        # ready with the others after the path index.
                         continue
-                    # staging 不存在,可能被清理或异常,跳过
+                    # The staged text is gone; the blob cannot be indexed.
                     blob.mark_error("staging content not found")
                     await self.blob_repo.save(blob)
                     continue
 
-                # RecursiveChunker 已经过滤了无意义的块，无需再次过滤
                 chunks = list(self.chunker.chunk(content, blob.path))
                 if chunks:
-                    # 保存 chunks（包含 chunk_type）
                     await self.chunk_repo.save_many(chunks)
                     blob.chunks = [c.to_ref() for c in chunks]
                     await self.blob_repo.save(blob)
-                    # 符号按整文件解析一次再映射到 chunk；词法索引按内容哈希去重。
+                    # Symbols are extracted once per file and mapped onto the
+                    # chunks; the term index deduplicates by content hash.
                     await self.symbol_projection.index(blob, chunks, content)
                     if self.lexical_projection is not None:
                         await self.lexical_projection.index(chunks)
                 else:
-                    # 无有效内容也可能需要路径召回，统一在路径索引完成后置 ready。
+                    # Nothing meaningful to chunk; still indexed by path below.
                     continue
 
-        # 检查嵌入开关
         if not self._embedding_enabled:
-            # 嵌入关闭：切块已在第一阶段落库，但没有任何向量。此处保持 pending 且保留
-            # staging，绝不 mark_ready —— READY 必须意味着“可被检索”。
-            #
-            # 历史事故：曾在此 mark_ready + delete_staging，使“有 chunk、零向量”的 blob
-            # 被点亮 READY，检索恒空；又因内容寻址幂等（ingest 见 PENDING/READY 只 touch
-            # 返回），客户端重传也无法自愈，形成永久静默失效。
-            #
-            # 保留原文后，待 EMBED_ENABLED 恢复、blob 重新入队即可无损补嵌（chunks 已
-            # 水合，find_pending_for_blobs 按 blob 状态全量重捞）。路径索引依赖 embedder，
-            # 嵌入关闭时无法生成向量，一并跳过。
+            # The chunks are stored but no vector exists. The blobs stay
+            # pending with their staged text and are never marked ready:
+            # READY must mean retrievable. This once marked them ready and
+            # deleted the staging, which lit up blobs with chunks and no
+            # vectors; retrieval returned nothing, and because ingest only
+            # touches an existing pending/ready blob, a client re-upload could
+            # not repair it. The path index needs the embedder too.
             return 0
 
-        # 第二阶段:嵌入。每页交给 embedder 一次，由它按 provider 批大小并发拉取；
-        # 64 一页时同步上传是串行的 4.5 秒一页（约 14 chunk/s），256 一页让
-        # 4 路并发真正用上。
+        # Embed in pages; the embedder splits a page into provider batches and
+        # runs them concurrently. Pages of 64 made synchronous uploads serial
+        # at 4.5 s per page (about 14 chunks/s); 256 lets four-way
+        # concurrency do its work.
         pending = await self.chunk_repo.find_pending_for_blobs(
             [blob.blob_name for blob in blobs]
         )
@@ -203,14 +195,14 @@ class IndexingPipeline:
                         for chunk, vector in zip(chunk_batch, vectors, strict=True)
                     ]
                 )
-                # 标记已嵌入
                 await self.chunk_repo.mark_embedded(
                     [c.content_hash for c in chunk_batch]
                 )
                 embedded += len(vectors)
 
-            # READY 表示当前配置声明的检索产物均已写完。路径索引启用时若写入失败，
-            # 异常必须进入现有失败/重试流程，不能删除 staging 后静默留下永久缺口。
+            # READY means every artifact the configuration declares is
+            # written. A failed path-index write must take the failure/retry
+            # path rather than delete the staging and leave a silent gap.
             ready_blobs = [blob for blob in blobs if blob.status == BlobStatus.PENDING]
             await self._index_paths(ready_blobs)
         except Exception as exc:
@@ -220,7 +212,7 @@ class IndexingPipeline:
                     await self.blob_repo.save(blob)
             raise
 
-        # 第三阶段:所有启用的索引写完后再标记 ready、清理 staging。
+        # Every enabled index is written: mark ready and drop the staging.
         for blob in ready_blobs:
             blob.mark_ready()
             await self.blob_repo.save(blob)
@@ -228,18 +220,18 @@ class IndexingPipeline:
         return embedded
 
     async def _index_paths(self, blobs: Sequence[Blob]) -> None:
-        """在 blob 置 ready 前把路径写入文件名查询索引。
+        """Write the path documents before the blobs are marked ready.
 
-        路径索引只依赖路径文本与扩展名语义，不需要 chunk 内容，因此放在
-        embed_pending 完成后统一批量写入，避免 ingest 阶段多一次 embedding
-        拖慢上传。依赖/构建/二进制路径由 is_indexable_path 排除。
+        The path index needs only the path text, so it is written in one
+        batch here rather than costing ingest an extra embedding call.
+        ``is_indexable_path`` excludes dependency, build and binary paths.
         """
         if self.path_store is None:
             return
         indexable = [blob for blob in blobs if is_indexable_path(blob.path)]
         if not indexable:
             return
-        docs = [
+        docs: list[dict[str, Any]] = [
             {
                 "blob_name": blob.blob_name,
                 "path": blob.path,

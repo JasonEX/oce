@@ -1,4 +1,4 @@
-"""重新入队卡住的 blob,让重试生效。"""
+"""Requeue blobs whose processing stalled so the retry path runs."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from oce.application.uow import UnitOfWorkFactory
 
 @dataclass(frozen=True)
 class RequeueStaleCommand(Command):
-    """重新入队长时间未处理的 pending blob"""
+    """Requeue pending blobs that have waited longer than ``stale_hours``."""
 
     stale_hours: int = 24
     limit: int = 100

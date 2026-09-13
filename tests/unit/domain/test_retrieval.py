@@ -1,8 +1,4 @@
-"""RetrievalPipeline 领域服务测试
-
-用 Fake store / embedder 验证编排流程：
-embed → search → 源码优先/召回过滤 → rerank → select。
-"""
+"""RetrievalPipeline over fake stores: embed, search, priors, rerank, select."""
 
 from __future__ import annotations
 
@@ -17,94 +13,13 @@ from oce.domain.services.retrieval import RetrievalPipeline, source_priority_fac
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
-
-# The store only sees vectors; the fake embedder registers each query text under
-# its vector so the store can still answer per query.
-_TEXT_BY_VECTOR: dict[tuple[float, ...], str] = {}
-
-
-class FakeSearchStore:
-    """SearchStore 内存替身：返回预设命中"""
-
-    def __init__(self, hits=None):
-        self.hits = hits or []
-        self.last_query: str = ""
-        self.last_vector: list[float] = []
-        self.queries: list[str] = []
-        self.hits_by_query: dict[str, list[SearchHit]] = {}
-
-    async def search(
-        self,
-        *,
-        query_vector,
-        allowed_blob_names=None,
-        top_k=50,
-        vector_threshold=0.0,
-    ):
-        query = _TEXT_BY_VECTOR.get(tuple(query_vector), "")
-        self.last_query = query
-        self.last_vector = query_vector
-        self.queries.append(query)
-        return list(self.hits_by_query.get(query, self.hits))
-
-
-class FakeEmbedder:
-    """确定性假 embedder"""
-
-    def __init__(self):
-        self.queries: list[str] = []
-
-    async def embed_query(self, text):
-        self.queries.append(text)
-        vector = [float(len(text)), float(sum(map(ord, text)) % 9973)]
-        _TEXT_BY_VECTOR[tuple(vector)] = text
-        return vector
-
-
-class FakePathStore:
-    def __init__(self, results=None):
-        self.queries = 0
-        self.results = results or []
-
-    async def search_paths(self, query_vector, allowed_blob_names=None, top_k=20):
-        self.queries += 1
-        return list(self.results)
-
-
-class FakePathContentStore:
-    def __init__(self, hits=None, error: Exception | None = None):
-        self.hits = hits or []
-        self.error = error
-        self.blob_names: tuple[str, ...] = ()
-
-    async def get_representative_chunks(self, blob_names):
-        self.blob_names = tuple(blob_names)
-        if self.error is not None:
-            raise self.error
-        return list(self.hits)
-
-
-class FakeExactSearchStore:
-    def __init__(self, hits=None, error: Exception | None = None):
-        self.hits = hits or []
-        self.error = error
-        self.identifiers: tuple[str, ...] = ()
-        self.scope: SearchScope | None = None
-        self.kinds_seen: list[tuple[str, ...] | None] = []
-
-    async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
-        self.identifiers = tuple(identifiers)
-        self.scope = scope
-        self.kinds = kinds
-        self.kinds_seen.append(kinds)
-        if self.error is not None:
-            raise self.error
-        return list(self.hits[:top_k])
-
-    async def find_definitions(
-        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
-    ):
-        return []
+from tests.fakes.retrieval import (
+    FakeEmbedder,
+    FakeExactSearchStore,
+    FakePathContentStore,
+    FakePathStore,
+    FakeSearchStore,
+)
 
 
 def _hit(path: str, score: float) -> SearchHit:
@@ -199,7 +114,7 @@ class TestRetrievalPipeline:
     async def test_search_returns_sorted_results(self, pipe):
         results = await pipe.search("find core")
 
-        # 源码优先：docs/guide.md 的 0.8 被降权到 0.4，排到 0.7 之后
+        # Source priority: docs/guide.md drops from 0.8 to 0.4, below 0.7.
         assert [r.path for r in results] == [
             "src/core.py",
             "src/util.py",
@@ -209,7 +124,7 @@ class TestRetrievalPipeline:
     async def test_main_readme_not_penalized(self):
         hits = [
             _hit("src/core.py", 0.8),
-            _hit("README.md", 0.75),  # 主 README 显式不降权
+            _hit("README.md", 0.75),  # the root README is not demoted
         ]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
@@ -244,7 +159,7 @@ class TestRetrievalPipeline:
     async def test_confidence_floor_filters_weak_hits(self):
         hits = [
             _hit("src/a.py", 0.9),
-            _hit("src/b.py", 0.1),  # 低于 floor
+            _hit("src/b.py", 0.1),  # below the floor
         ]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
@@ -309,7 +224,9 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
         await pipe.search("q", _scope("aaa", "bbb"))
-        assert set(store.last_query == "q" and store.last_vector)  # 触发赋值
+        assert set(
+            store.last_query == "q" and store.last_vector
+        )  # the store saw the query
         assert store.last_query == "q"
 
     async def test_empty_scope_does_not_search_globally(self):
@@ -340,7 +257,7 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
         results = await pipe.search("q")
-        # source prior 在模型之前应用；reranker 返回顺序是最终相关性顺序。
+        # The source prior runs before the model; the reranker's order is final.
         assert results[0].path == "src/a.py"
 
     async def test_llm_rerank_order_is_not_overwritten_by_retrieval_scores(self):
@@ -925,7 +842,7 @@ class TestRetrievalPipeline:
             settings=_settings(confidence_floor=0.0, final_select_k=10),
         )
 
-        merged = pipe._merge_exact_hits(
+        merged = pipe.fusion.merge_exact_hits(
             classify_query_intent("`target_symbol` 的完整调用链？"),
             [duplicate, exact_only],
             semantic,
@@ -1049,7 +966,7 @@ class TestRetrievalPipeline:
 
 
 class TestRerankRouting:
-    """授权与路由分离：RERANK_ENABLED 决定能不能调，policy 决定这次调不调。"""
+    """Authorization and routing are separate: RERANK_ENABLED allows, the policy decides."""
 
     class CountingReranker:
         def __init__(self):

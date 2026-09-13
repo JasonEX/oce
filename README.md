@@ -353,9 +353,9 @@ that call, import or extend each, and the most widely referenced ones that are n
 names take protected head slots, one file each (`RETRIEVAL_HUB_HEAD_SLOTS`, off by default at 0:
 it raised the curated overview nDCG@10 67.8→74.3 but lowered a sealed held-out semantic set's
 overview 66.4→54.1 and call-chain 85.6→78.2, so the gain did not generalize;
-`RETRIEVAL_HUB_MAX_DEFINITIONS` bounds how many places a hub may be declared in;
-`RETRIEVAL_HUB_FEATURE_ENABLED` would extend the lane to feature questions and displaced the
-implementing function there). Issue-style requests are anchored on their
+`RETRIEVAL_HUB_MAX_DEFINITIONS` bounds how many places a hub may be declared in; extending
+the lane to feature questions was measured once, displaced the implementing function, and
+was removed). Issue-style requests are anchored on their
 deterministic facts: each traceback frame (Python, IPython and Node forms) is resolved to the
 declaration of that function in that file at that line, the title's identifiers are resolved with
 their qualifier pinned strictly, and those declarations take protected head slots in trace order
@@ -565,9 +565,12 @@ stores dense vectors and the path index.
 
 ### Retrieval pipeline
 
-`RetrievalPipeline.search` (`domain/services/retrieval.py`) is one fixed sequence of
-state transitions over a `RetrievalState`; every stage reads and writes only its own
-fields, and every optional operator degrades to the identity transform when disabled.
+`RetrievalPipeline.search` (`domain/services/retrieval/`, one module per stage) is one fixed
+sequence of state transitions over a `RetrievalState`; every stage reads and writes only its
+own fields, and every optional operator degrades to the identity transform when disabled. A
+lane that fails is skipped and named in `retrieval_metrics.lane_failures`, so an answer that
+came from fewer lanes than planned is visible offline. The design rationale and tuning history
+per stage are in [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md).
 
 | Stage | What it does |
 | --- | --- |
@@ -609,7 +612,15 @@ Run focused files so Milvus Lite and tree-sitter runtimes are released between p
 uv run pytest tests/unit/application/test_service.py -q
 uv run pytest tests/unit/domain/test_retrieval.py -q
 uv run pytest tests/unit/infrastructure/test_milvus3.py -q
+uv run pytest tests/unit/test_smoke_personal_mode.py -q   # real container, migrations, Milvus Lite, HTTP
+uv run mypy
 ```
+
+The smoke test assembles the production composition root against a temporary SQLite file, an
+embedded Milvus Lite file and an in-process OpenAI-compatible embedding endpoint, then
+uploads, checkpoints and retrieves through the FastAPI router. A pure refactor of the
+retrieval pipeline is proven behaviour-preserving with
+`benchmarks.internal.retrieval_equivalence` (see the design document).
 
 Do not invoke the entire `tests/unit/infrastructure` directory in one process on
 memory-constrained development machines.

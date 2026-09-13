@@ -9,13 +9,14 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - cAST/tree-sitter 语义切块；每个 chunk 带封闭作用域签名链 `context`（占位于 `blob_chunks`，不参与内容哈希），embedding 输入为 `File + Context + 正文`
 - PostgreSQL/SQLite 存储元数据、`symbol_occurrences`（tree-sitter 整文件抽取 definition/endpoint/import/call/reexport/inherit，每行带 `enclosing` 所在定义名，regex 兜底；call/import/reexport/inherit 只供 reference/call-chain 的 exact 使用证据与关系车道，不参与头部判定）和 `chunk_lexical` 词法索引（SQLite FTS5 / PG tsvector，DDL 在 `persistence/lexical_index.py`）
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 不回 Milvus；路径索引独立维护，另有 SQL 精确路径后缀查找
-- 检索是 `RetrievalState` 上的固定状态机：route（intent + `QueryEvidence`；限定名 `Session.get` 整体保留，管线派生叶子并按记录的 enclosing → 同时点名作用域与叶子的声明行 → 片段文本钉住声明（路径证据须整段相等，use-site 批次不用声明行阶段）；「哪些地方调用了 X」是 reference，「A 如何到达 B」两个符号是 call_chain，「X 在哪里定义」不论点名多少参数类型都是 symbol）→ plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup；SQL 车道在 embedding 往返前启动，且 symbol 的首个被问符号定义命中、path 的 SQL 路径命中、reference 的被问符号 call/inherit 使用点一旦出现就不再等 embedding（`RETRIEVAL_DECISIVE_SKIPS_DENSE`，`dense_route` 落 `retrieval_metrics`）；embedding 请求只释放不取消，取消会耗尽 httpx 连接池）→ fuse（RRF）→ prior（source/工作集先验 + 有界头部槽位：确定性 symbol/path 答案按文件分散、语义查询的源码文件（只含 import 证据的文件头让出槽位）、reference 的使用位置先于声明、问测试的查询由测试文件领头且声明名最贴近符号的测试块在前、overview 与无符号 call_chain 的 hub 车道（请求词拼出的已声明名字按被引用文件数排序，包名不领头，`RETRIEVAL_HUB_HEAD_SLOTS`；精选集正向但 held-out 语义集负向，默认 0 关闭；feature 上实测挤开实现函数，`RETRIEVAL_HUB_FEATURE_ENABLED` 默认关）、compound 的锚点（traceback 帧解析到该文件该行的声明 + 标题点名且限定名严格钉住的声明，按帧顺序占 `RETRIEVAL_COMPOUND_ANCHOR_SLOTS`，其余点名定义只按名次进 RRF））→ rerank（专用 → chat-LLM，均保留候选集；adaptive 下，SQL 使用点已决定 reference 时记 `skip:deterministic`，symbol/path 保留 `skip:exact_definition`/`skip:path_evidence`，`always` 仍运行；本地 jina 交叉编码器在结构化头部车道之上复测为净负，默认关闭）→ select（启用关系车道的意图预留 `RETRIEVAL_RELATION_RESERVE_CHARS`）→ expand（相邻合并；`evidence_pack` 按意图组装独立小节：被引用定义（被调用的名字优先，symbol/reference 在具名车道之后填充）、调用方、实现/子类、覆盖测试、转出入口，各自槽位与字符上限，去重后以 role 标注；call_chain 两端点时沿 `symbol_occurrences` 的 call 边做有界 BFS，路径以 `chain` 小节 + `Hop:` 返回，每跳先放声明头部、交接调用离头部远时再补一段止于调用行的窗口，只跟随声明处 ≤ 2 的名字，点名端点的声明在单端/双端追踪中都占受保护头部；被引用定义的限定名与主车道同样按作用域钉住；`formatter` 固定小节顺序渲染）
-- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应重排阶段；只有 `RERANK_PROVIDER=api` 和 chat LLM 会外发数据，`local` 不外发。`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中、同名定义数与头部槽位），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果与证据落 `retrieval_metrics`（`rerank_route`、`exact_definitions`、`definition_sites`、`relation_hits`、`relation_chars`），用于离线校准阈值。`RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` 是尚未被离线标签支持的待校准开关，默认关闭
+- 检索是 `RetrievalState` 上的固定状态机（`domain/services/retrieval/`，每阶段一个模块）：route → plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup）→ fuse（RRF）→ prior（有界头部槽位）→ rerank → select → expand（关系小节、调用链）。各阶段的设计决策、头部规则、车道门控和调优历史见 `docs/retrieval-pipeline.md`，改动检索前先读。硬约束：SQL 车道在 embedding 往返前启动，决定性证据出现即不等 embedding；embedding 请求只释放不取消；任何车道失败通过 `state.lane_failed` 记入 `retrieval_metrics.lane_failures`，不得静默吞掉
+- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应重排阶段；只有 `RERANK_PROVIDER=api` 和 chat LLM 会外发数据，`local` 不外发。`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中、同名定义数与头部槽位），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果与证据落 `retrieval_metrics`（`rerank_route`、`exact_definitions`、`definition_sites`、`relation_hits`、`relation_chars`），用于离线校准阈值
+- 默认关闭的实验开关按 `docs/retrieval-pipeline.md` 的退休规则处置：两轮配对评测未成为默认值即删除，净负变体立即删除，待校准开关必须附带标签计划
 - 新召回证据只能作为独立「车道」进入（固定槽位、必要条件门控或按意图开关），不得把不同标尺的分数直接混排；reference 意图的词法召回以标识符整体代理 token 为必要条件
 - `RERANK_PROVIDER=local` 是不外发的进程内 ONNX 交叉编码器（`uv sync --extra local-rerank`）；模型文件由部署者提供，必须单独核对模型许可证
 - 产品效用评测位于 `benchmarks/blackbox/`，只能通过发布版 `oce-client` 与稳定 HTTP API 驱动服务，禁止 import `oce`、直读数据库或复制服务端路由状态机；`benchmarks/internal/` 仅做实现级微基准，不作为产品效用结论
 - 真实项目关系用例 `benchmarks.blackbox.project_cases` 是关系类改动的主裁判（primary Hit@3、relation/test recall、distractor_head、逐 case 错误分类），公共基准是护栏；`benchmarks.blackbox.csn_queries` 是 CodeSearchNet 函数级语义检索护栏。发布判断看指标向量：目标类别改善、其他套件不超容忍回退、distractor_head 不升、字符数与 p50 单独看，不合成总分
-- 改动默认检索编排前，必须在 `benchmarks.blackbox.short_queries`（Top-1/MRR/p50）、`benchmarks.blackbox.semantic_queries`（分意图/语言 nDCG@10/字符数）、`benchmarks.blackbox.project_cases` 和 `benchmarks.blackbox.swe_explore --profile development`（Top-1/nDCG@100/字符数）上配对复跑，且 `tests/unit/infrastructure/test_retrieval_regression.py` 是头部顺序与关系小节的离线回归护栏
+- 改动默认检索编排前，必须在 `benchmarks.blackbox.short_queries`（Top-1/MRR/p50）、`benchmarks.blackbox.semantic_queries`（分意图/语言 nDCG@10/字符数）、`benchmarks.blackbox.project_cases` 和 `benchmarks.blackbox.swe_explore --profile development`（Top-1/nDCG@100/字符数）上配对复跑，且 `tests/unit/infrastructure/test_retrieval_regression.py` 是头部顺序与关系小节的离线回归护栏；纯结构重构用 `benchmarks.internal.retrieval_equivalence` 在冻结语料上证明 dump 逐条一致
 - 模型凭据集中在 `model_credentials` 单表，按 kind（embed/rerank/llm_rerank/query_rewrite）+ status=active + 最小 priority 解析（`persistence/active_credential.py`），取不到回落各自环境变量
 - 向量维度只有一个来源 `EMBED_DIMENSIONS`：Milvus 两个 collection 与凭据校验都从它取值
 - 所有配置组统一读 `.env` 与 `.env.local`（后者覆盖前者）
@@ -54,6 +55,8 @@ uv run python -c "from oce.main import app; print('OK')"
 ```powershell
 uv run pytest tests/unit/application/test_service.py -q
 uv run pytest tests/unit/infrastructure/test_milvus3.py -q
+uv run pytest tests/unit/test_smoke_personal_mode.py -q
+uv run mypy
 ```
 
 按文件粒度跑，让 Milvus Lite / tree-sitter 运行时在进程间释放；内存受限时勿在单进程里跑整个
@@ -62,7 +65,7 @@ uv run pytest tests/unit/infrastructure/test_milvus3.py -q
 ## 代码约束
 
 - 依赖管理只使用 `uv`；新增依赖先修改 `pyproject.toml`。
-- CI 同时跑 `uv run ruff check .` 与 `uv run ruff format --check .`；提交前先 `uv run ruff format .`。
+- CI 同时跑 `uv run ruff check .`、`uv run ruff format --check .` 与 `uv run mypy`；提交前先 `uv run ruff format .` 并保证 mypy 零报错。新函数必须完整注解（`disallow_untyped_defs`）。
 - 时间戳使用 `datetime.now(timezone.utc)`，禁止 `datetime.utcnow()`。
 - 禁止新增 `__all__`；直接 import 具体符号。
 - 领域模型使用 dataclass，配置和 HTTP DTO 使用 Pydantic。
@@ -74,8 +77,9 @@ uv run pytest tests/unit/infrastructure/test_milvus3.py -q
 - 测试文件的判定只在 `domain/services/test_paths.py` 一处；先验降权与测试关系车道共用。
 - 词法/精确/路径查找三类 SQL store 共用 `persistence/scope_filter.py` 应用 scope；新增 SQL 召回不得自行展开 `IN (...)` 全集。
 - symbol 查询在已连接的 ready blob 上提前应用 scope；词法 deadline 由调用方持有。
-- 不保留未接入 production composition root 的占位实现或阶段性迁移注释。
-- 单文件职责单一；注释解释约束和原因，不复述代码。
+- 不保留未接入 production composition root 的占位实现或阶段性迁移注释。组合根 `application/container.py` 按子系统拆成 `build_*` 构建函数，`Container(settings, session_factory)` 可在测试里对临时数据库装配同一张图。
+- 单文件职责单一；注释解释约束和原因，不复述代码。代码内注释与 docstring 统一英文；中文只出现在 `AGENTS.md`、`docs/`、`README.zh-CN.md`、`.env.example` 和作为数据的查询样本里。
+- 测试替身集中在 `tests/fakes/`（检索、索引、embedding），测试文件不再各自定义同名 Fake；`tests/unit/test_smoke_personal_mode.py` 用真实 Container、迁移、Milvus Lite 和进程内 embedding 端点走完上传、checkpoint、HTTP 检索，是装配错误的护栏。
 - 保持 ACE API 字段与错误语义兼容。
 
 ## 运行环境

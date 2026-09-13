@@ -115,7 +115,7 @@ async def test_batch_upload_does_not_embed_synchronously_with_background_worker(
 
 
 class UploadCommandBus(SpyCommandBus):
-    """完整响应 batch_upload 流程的 command bus（ingest → embed → checkpoint）"""
+    """A command bus answering the whole batch_upload flow (ingest, embed, checkpoint)."""
 
     async def execute(self, command):
         self.commands.append(command)

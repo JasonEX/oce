@@ -1,7 +1,7 @@
-"""监控只读聚合契约：/admin/stats 的读模型 DTO 与 reader 端口。
+"""Read model and reader port of ``/admin/stats``.
 
-采集侧（metrics.py）负责写入；本模块只定义读出聚合的结果结构与 reader Protocol。
-infra 实现 SQL 聚合、application 编排、api 映射 DTO——三层都只依赖这里的纯数据结构。
+``metrics.py`` writes; this module only defines the aggregated result types
+and the reader protocol that infrastructure implements in SQL.
 """
 
 from __future__ import annotations
@@ -59,6 +59,6 @@ class MonitoringStats:
 
 
 class MonitoringStatsReader(Protocol):
-    """监控聚合读端口；infra 用 SQL 实现，按时间窗口聚合监控四表。"""
+    """Aggregate the four monitoring tables over a time window."""
 
     async def read(self, window_hours: int) -> MonitoringStats: ...

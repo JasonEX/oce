@@ -11,9 +11,9 @@ from oce.application.commands.ingest import (
 from oce.application.worker import EmbedWorker
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import RecursiveChunker
+from tests.fakes.indexing import ConstantEmbedder
+from tests.fakes.retrieval import FakeSearchStore
 from tests.unit.application.fakes import (
-    FakeEmbedder,
-    FakeSearchStore,
     FakeUnitOfWorkFactory,
     blob_name,
 )
@@ -24,8 +24,9 @@ class FailingEmbedder:
         raise RuntimeError("provider failed")
 
 
-class RecordingEmbedder(FakeEmbedder):
+class RecordingEmbedder(ConstantEmbedder):
     def __init__(self) -> None:
+        super().__init__()
         self.document_calls: list[list[str]] = []
 
     async def embed_documents(self, texts):
@@ -76,7 +77,7 @@ async def _ingest(
     name = blob_name(path, content)
     pipelines = build_pipeline_factory(
         chunker=RecursiveChunker(),
-        embedder=FakeEmbedder(),
+        embedder=ConstantEmbedder(),
         vector_index=FakeSearchStore(),
     )
     await IngestBlobsCommandHandler(factory, pipelines).handle(

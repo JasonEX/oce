@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 from logging.config import fileConfig
+from typing import Any
 
 from alembic import context
 from sqlalchemy import pool
@@ -29,7 +30,9 @@ VERSION_TABLE = "oce_alembic_version"
 _MANUALLY_MANAGED_TABLES = frozenset({"chunk_lexical"})
 
 
-def include_object(_object, name: str | None, _type: str, _reflected, _compare_to):
+def include_object(
+    _object: Any, name: str | None, _type: str, _reflected: bool, _compare_to: Any
+) -> bool:
     """Dialect-specific FTS DDL is owned by ``lexical_index.py``, not metadata."""
     return name not in _MANUALLY_MANAGED_TABLES
 

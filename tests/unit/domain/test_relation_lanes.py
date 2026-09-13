@@ -9,12 +9,13 @@ from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
 from oce.domain.services.retrieval import (
     RetrievalPipeline,
     RetrievalState,
-    get_strategy,
     order_by_comentions,
     order_by_signature_comentions,
     resolve_qualified_hits,
     split_qualified_identifiers,
 )
+from oce.domain.services.retrieval.fuse import filter_qualified_candidates
+from oce.domain.services.retrieval_strategy import get_strategy
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 
@@ -77,9 +78,6 @@ def test_qualified_resolution_prefers_scope_chain_then_path_then_text():
 
 
 def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
-    pipeline = RetrievalPipeline(
-        embedder=object(), store=object(), settings=RetrievalSettings()
-    )
     state = RetrievalState(
         query="where is Flask.make_response defined?",
         scope=None,
@@ -91,14 +89,14 @@ def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
     )
     helper = _hit("src/flask/helpers.py", "def make_response(*args):")
 
-    assert pipeline._filter_qualified_candidates(state, [helper, method]) == [method]
+    assert filter_qualified_candidates(state, [helper, method]) == [method]
     unknown = RetrievalState(
         query="where is Unknown.make_response defined?",
         scope=None,
         intent=QueryIntent.SYMBOL,
         qualifiers={"make_response": ("Unknown",)},
     )
-    assert pipeline._filter_qualified_candidates(unknown, [helper, method]) == [
+    assert filter_qualified_candidates(unknown, [helper, method]) == [
         helper,
         method,
     ]
@@ -286,8 +284,8 @@ async def test_call_chain_expands_only_through_unique_definitions():
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
-    occurrences = await pipeline._call_chain_callers(
-        state, ("target",), state.scope, pipeline.relation_store
+    occurrences = await pipeline.chain.callers(
+        ("target",), state.scope, pipeline.expander.relation_store
     )
     assert [(item.hit.path, item.hop) for item in occurrences] == [
         ("src/dispatch.py", 1),
@@ -377,7 +375,7 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
         endpoints=[("main", [main]), ("target", [target])],
     )
 
-    chain = await pipeline._call_chain_path(state)
+    chain = await pipeline.chain.path(state)
 
     assert [(hit.hop, hit.path, hit.start_line, hit.end_line) for hit in chain] == [
         (0, "src/main.py", 1, 10),
@@ -389,11 +387,16 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
     assert all(hit.role == "chain" for hit in chain)
 
     # A tight chain budget keeps every hop's header and drops the window.
-    pipeline.settings = RetrievalSettings(
-        related_snippet_lines=10,
-        call_chain_max_chars=len(chain[0].content) + len(chain[2].content),
+    tight = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        exact_store=ExactStore(),
+        settings=RetrievalSettings(
+            related_snippet_lines=10,
+            call_chain_max_chars=len(chain[0].content) + len(chain[2].content),
+        ),
     )
-    chain = await pipeline._call_chain_path(state)
+    chain = await tight.chain.path(state)
     assert [(hit.hop, hit.start_line) for hit in chain] == [(0, 1), (1, 1)]
 
 
@@ -420,7 +423,9 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
         strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
-    endpoints = await pipeline._resolve_endpoints(state, ("missing_start", "target"))
+    endpoints = await pipeline.exact.resolve_endpoints(
+        state, ("missing_start", "target")
+    )
 
     assert endpoints == []
 
@@ -446,12 +451,7 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
         async def find_callers(self, *, identifiers, scope, limit=8):
             return [caller]
 
-    class Pipeline(RetrievalPipeline):
-        async def _call_chain_callees(self, state, *, max_chars=None):
-            assert max_chars is not None and len(chain_hit.content) <= max_chars
-            return [chain_hit]
-
-    pipeline = Pipeline(
+    pipeline = RetrievalPipeline(
         embedder=object(),
         store=object(),
         exact_store=ExactStore(),
@@ -474,7 +474,12 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
         selected=primary,
     )
 
-    await pipeline._expand(state)
+    async def callees(state, *, max_chars=None):
+        assert max_chars is not None and len(chain_hit.content) <= max_chars
+        return [chain_hit]
+
+    pipeline.chain.callees = callees
+    await pipeline.expander.expand(state)
 
     hits = [*state.selected, *state.related]
     assert sum(len(hit.content) for hit in hits) <= 2_500

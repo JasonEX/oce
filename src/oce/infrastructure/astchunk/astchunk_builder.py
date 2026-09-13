@@ -279,7 +279,7 @@ class ASTChunkBuilder:
             return
 
         # Initialize the current window
-        current_window = []
+        current_window: list[ASTNode] = []
         current_window_size = 0
 
         for node in nodes:

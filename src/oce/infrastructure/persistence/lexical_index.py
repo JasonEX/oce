@@ -13,6 +13,7 @@ from dataclasses import replace
 from typing import Any
 
 from sqlalchemy import (
+    Select,
     bindparam,
     column,
     func,
@@ -23,7 +24,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.elements import ColumnElement, Label
 
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import Chunk
@@ -200,7 +201,7 @@ class SqlLexicalSearchStore:
         scope: SearchScope,
         limit: int,
     ) -> dict[str, float]:
-        def build(scope_predicate: ColumnElement[bool]):
+        def build(scope_predicate: ColumnElement[bool]) -> Select[Any]:
             # Materialize scoped hashes once. Correlating both this lookup and
             # checkpoint membership repeats B-tree probes for global FTS hits.
             member = _LEXICAL.c.content_hash.in_(
@@ -212,6 +213,7 @@ class SqlLexicalSearchStore:
                     scope_predicate,
                 )
             )
+            score: Label[Any]
             if dialect == "sqlite":
                 score = literal_column(f"-bm25({TABLE_NAME})").label("score")
                 matches = _LEXICAL.c.terms.match(query)
@@ -246,7 +248,7 @@ class SqlLexicalSearchStore:
             return []
         hashes = list(ranked)
 
-        def build(predicate: ColumnElement[bool]):
+        def build(predicate: ColumnElement[bool]) -> Select[Any]:
             return (
                 select(
                     BlobChunkModel.blob_name,
