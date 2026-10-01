@@ -31,13 +31,13 @@ Milvus Lite, background worker disabled) for a single machine, and a **service m
 The project is fully open source, with the server and client maintained separately:
 
 - Server: <https://github.com/JasonEX/oce>
-- Client: <https://github.com/oce-ai/oce-client>
+- Client: <https://github.com/JasonEX/oce-client>
 
 This is the refactored successor to the earlier ACE service. See the original
 [linux.do discussion](https://linux.do/t/topic/2308140/125) for background.
 
 Use personal mode when an AI coding tool only needs code context from your local machine.
-Deploy service mode, together with `opencontextengine-client`, when multiple users or
+Deploy service mode, together with `oce-client`, when multiple users or
 machines need to share one index.
 
 ## Features
@@ -401,12 +401,14 @@ Project manifests and test fixtures have explicit exemptions.
 ## Client and MCP
 
 The client scans a local workspace, uploads changes, maintains checkpoints, and retrieves
-current code context from the service. It is released as a separate package; see
-<https://github.com/oce-ai/oce-client>:
+current code context from the service. It is a standalone Rust binary maintained at
+<https://github.com/JasonEX/oce-client>; download the archive for Windows, Linux, or macOS
+from its [releases](https://github.com/JasonEX/oce-client/releases) and put `oce-client` on
+`PATH`, or build it with Rust 1.88 or newer
+(`cargo install --git https://github.com/JasonEX/oce-client --locked`). The Python package
+`opencontextengine-client` on PyPI is the superseded 0.1 client.
 
 ```powershell
-uv tool install opencontextengine-client
-
 $env:OCE_API_URL = "http://127.0.0.1:8986"
 $env:OCE_API_KEY = "sk-opencontextengine"  # use the server API_KEY in service mode
 $env:OCE_WORKSPACE = (Get-Location).Path
@@ -415,15 +417,13 @@ oce-client sync
 oce-client retrieve "Where is request authentication implemented?"
 ```
 
-To connect an AI coding tool that supports MCP, install the optional MCP extra and start
-the stdio server:
+To connect an AI coding tool that supports MCP, run the same binary as a stdio server:
 
 ```powershell
-uv tool install "opencontextengine-client[mcp]"
-oce-client-mcp --workspace C:\path\to\workspace
+oce-client mcp --workspace C:\path\to\workspace
 ```
 
-`oce-client-mcp` builds the initial index in the background, watches the workspace, and
+`oce-client mcp` builds the initial index in the background, watches the workspace, and
 exposes `codebase-retrieval` as an MCP tool. Pass `--workspace` more than once for
 multiple workspaces; tool calls must then include the matching `workspace_folder`.
 `OCE_API_URL`, `OCE_API_KEY`, and `OCE_WORKSPACE`/`OCE_WORKSPACES` provide environment

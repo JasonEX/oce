@@ -29,13 +29,13 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 项目完全开源，服务端和客户端分别维护：
 
 - 服务端：<https://github.com/JasonEX/oce>
-- 客户端：<https://github.com/oce-ai/oce-client>
+- 客户端：<https://github.com/JasonEX/oce-client>
 
 这是此前 ACE 服务的重构版本，相关背景和早期实现见
 [linux.do 讨论](https://linux.do/t/topic/2308140/125)。
 
 如果你只想在本机给 AI 编码工具提供代码上下文，直接使用个人模式即可；如果需要让多台
-机器或多个用户共享同一套索引，再部署服务模式并配合 `opencontextengine-client`。
+机器或多个用户共享同一套索引，再部署服务模式并配合 `oce-client`。
 
 ## 特性
 
@@ -297,11 +297,13 @@ compound 查询不会对已选片段里的所有标识符扇出。请求刚加�
 ## 客户端与 MCP
 
 客户端负责扫描本地工作区、上传变更、维护 checkpoint，并调用服务端检索当前代码。它是
-独立发布的包，详见 <https://github.com/oce-ai/oce-client>：
+独立维护的 Rust 二进制，仓库见 <https://github.com/JasonEX/oce-client>：从
+[Releases](https://github.com/JasonEX/oce-client/releases) 下载对应 Windows、Linux 或 macOS 的
+压缩包并把 `oce-client` 放进 `PATH`，或用 Rust 1.88 及以上版本从源码构建
+（`cargo install --git https://github.com/JasonEX/oce-client --locked`）。PyPI 上的 Python 包
+`opencontextengine-client` 是已被取代的 0.1 版客户端。
 
 ```powershell
-uv tool install opencontextengine-client
-
 $env:OCE_API_URL = "http://127.0.0.1:8986"
 $env:OCE_API_KEY = "sk-opencontextengine"  # 服务模式请改为服务端 API_KEY
 $env:OCE_WORKSPACE = (Get-Location).Path
@@ -310,14 +312,13 @@ oce-client sync
 oce-client retrieve "Where is request authentication implemented?"
 ```
 
-需要接入支持 MCP 的 AI 编码工具时，安装 MCP extra 并启动 stdio server：
+需要接入支持 MCP 的 AI 编码工具时，用同一个二进制启动 stdio server：
 
 ```powershell
-uv tool install "opencontextengine-client[mcp]"
-oce-client-mcp --workspace C:\path\to\workspace
+oce-client mcp --workspace C:\path\to\workspace
 ```
 
-`oce-client-mcp` 会在后台建立初始索引、监听工作区变化，并把 `codebase-retrieval` 暴露为
+`oce-client mcp` 会在后台建立初始索引、监听工作区变化，并把 `codebase-retrieval` 暴露为
 MCP 工具。多个工作区可重复传入 `--workspace`；此时工具调用必须指定对应的
 `workspace_folder`。API 地址、密钥和工作区也可以通过 `OCE_API_URL`、`OCE_API_KEY`、
 `OCE_WORKSPACE`/`OCE_WORKSPACES` 配置。请将密钥放在环境变量或 secret manager 中，不要写进
