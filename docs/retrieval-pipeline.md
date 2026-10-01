@@ -37,6 +37,9 @@
 - 「哪些地方调用了 X」是 reference；「A 如何到达 B」两个符号是 call_chain；「X 在哪里定义」
   不论点名多少参数类型都是 symbol（多出的名字用于挑重载，不是新 facet）。
 - 标识符超过 2 个或 planner 切出 ≥ 3 个 facet 的 issue 文本是 compound。
+- 中文调用链信号按构式匹配：「从 A 到 B」（同一分句内两端都在）与「调到 / 到达」；单独的
+  「到 / 路径 / 完整」不算（「在哪里能找到」「配置文件的路径」「完整实现」曾被路由成
+  call_chain），「用到」与「使用」同为 reference 动词。
 
 ## 召回（recall）
 
@@ -57,8 +60,16 @@
 
 ## 融合与先验（fuse, rank）
 
-- 不同标尺的分数不混排：dense cosine、BM25/ts_rank、RRF 只按名次融合；exact/anchors
-  按 key 合并后由头部规则排序。
+- dense cosine、BM25/ts_rank 只按名次（RRF）融合；exact 按意图合并：symbol 的定义拼接在
+  语义候选之前，call_chain 在窗口里给 exact 预留约三分之一，compound 把 exact 当作一路名次
+  列表，其余意图按 key 取较高分。exact 的种类分（0.85–1.0，按同名定义数衰减）因此在窗口里
+  领先大多数语义候选，这是有意的：结构证据必须留在头部规则可选的窗口里。anchors 与
+  call_chain 端点按 key 补入窗口，由头部规则排序。
+- 已评测并否决：所有意图统一按名次融合 exact（2026-10-01，生产同款 Qwen3-Embedding-4B，
+  同一物理索引配对，基线复跑逐条一致）。纯名次融合会把只有 exact 车道命中的使用点挤出
+  50 条窗口：short reference Top-1 92.5→88.8%、project test_mapping Hit@3 85.7→57.1%、
+  distractor_head 0→2.9%。补上「结构列表不被窗口截断」后仍无任何套件改善（project Hit@3
+  −1 例、semantic weighted R@5 −1 点），按发布规则不采用。
 - 头部槽位：symbol 的定义按文件分散（每个声明文件先各占一槽），path 的 SQL 匹配每文件一槽，
   compound 的锚点按帧顺序，call_chain 的两个端点。语义查询保留 `RETRIEVAL_SOURCE_HEAD_SLOTS`
   给未降权的源码文件；只含 import 证据的文件头让出槽位（2026-09-08 在 project_cases 上
@@ -66,6 +77,10 @@
 - reference 头部按结构分层：call/inherit 使用点 → 文本提及 → 仅 import；点名限定符的
   片段优先；同时点名另一个符号的优先；他文件的使用点先于声明文件；以符号命名的文件先；
   离声明包更近的先。问测试的查询由测试文件领头，声明名最贴近符号的测试块在前。
+- 文件命名与包内邻近是结构证据，不是个案拟合：`parser` 这类常见名在脚本里是无关的局部
+  变量，邻近声明包近似了索引没有的名字解析；测试按被测单元命名是通行约定。2026-10-01 删除
+  这三条平局规则的变体回退了 pytest `parser` reference、gin/rtk test_mapping 与 gson
+  multi_impl，已恢复。
 - 模型重排后头部规则复位：`always` 是评测策略，不是抹掉确定性答案的许可。overview 例外，
   允许语义重排把架构文档放回首位。
 - 头部复位复用当前 `RetrievalState` 已取得的实现关系 key；排序仍重新应用，不重复查询 SQL。

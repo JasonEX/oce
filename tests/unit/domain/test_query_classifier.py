@@ -391,3 +391,48 @@ def test_private_and_public_spellings_remain_distinct_identifiers():
 
     assert extract_code_identifiers(query) == ("_start_flow", "start_flow")
     assert classify_query_intent(query) == QueryIntent.CALL_CHAIN
+
+
+def test_chinese_prepositions_and_nouns_are_not_call_verbs():
+    # 到 / 从 / 路径 / 完整 occur in ordinary sentences; like to / from / path
+    # in English they say nothing about a call relation.
+    assert classify_query_intent("配置文件的路径在哪里") == QueryIntent.PATH
+    assert classify_query_intent("在哪里能找到数据库配置") == QueryIntent.PATH
+    assert classify_query_intent("如何得到当前用户") == QueryIntent.FEATURE
+    assert classify_query_intent("从配置文件读取端口的代码") == QueryIntent.FEATURE
+    assert (
+        classify_query_intent("`auth_start_login` 的完整调用链：前端 → Tauri → Rust")
+        == QueryIntent.CALL_CHAIN
+    )
+
+
+def test_chinese_flow_constructions_are_call_chains():
+    # The two ends of a flow in one clause, or a verb of reaching.
+    assert (
+        classify_query_intent(
+            "auth_start_login 从前端登录 API 到 Tauri 注册、再到 Rust 命令分发的路径是什么？"
+        )
+        == QueryIntent.CALL_CHAIN
+    )
+    assert (
+        classify_query_intent(
+            "前端 toggleEnabled 如何经 API 封装和 Tauri 调到 Rust 的 enable_prompt 命令？"
+        )
+        == QueryIntent.CALL_CHAIN
+    )
+    # 从 without a far end is a source, not a flow.
+    assert classify_query_intent("从配置文件读取端口的代码") == QueryIntent.FEATURE
+
+
+def test_chinese_use_verbs_are_references():
+    assert (
+        classify_query_intent("merge_setting 在哪些地方被用到？")
+        == QueryIntent.REFERENCE
+    )
+
+
+def test_type_names_take_any_short_modifier_after_the_possessive():
+    assert extract_code_identifiers("User 的数据结构在哪里？") == ("User",)
+    assert extract_code_identifiers("Config 的所有实现类") == ("Config",)
+    # Without the possessive, a word such as 这类 does not make a type.
+    assert extract_code_identifiers("Python 这类问题怎么处理") == ()

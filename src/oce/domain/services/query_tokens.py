@@ -23,8 +23,12 @@ _SNAKE_IDENTIFIER_PATTERN = re.compile(
 _QUALIFIED_IDENTIFIER_PATTERN = re.compile(
     r"[A-Za-z_$][A-Za-z0-9_$]*(?:::[A-Za-z_$][A-Za-z0-9_$]*)+"
 )
+# A capitalised name followed by a type noun ("Provider 类型", "User class").
+# Chinese may put a short modifier between the possessive and the noun
+# ("Provider 的前后端类型定义"); without the possessive no modifier is
+# allowed, so "这类" in "Python 这类问题" does not make a type of Python.
 _TYPE_IDENTIFIER_PATTERN = re.compile(
-    r"([A-Z][A-Za-z0-9_$]*)\s*(?:的)?(?:前后端)?"
+    r"([A-Z][A-Za-z0-9_$]*)\s*(?:的[\u4e00-\u9fff]{0,4}?)?"
     r"(?:类型|类|接口|结构|定义|"
     r"(?:type|interface|struct|enum|trait|class|definition|defined|implemented)\b)"
 )

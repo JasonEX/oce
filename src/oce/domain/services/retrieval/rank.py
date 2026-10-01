@@ -452,7 +452,10 @@ class Ranker:
             files before uses next to the declaration (the asker knows that
             file); a file named after the symbol before one that is not;
             files closer to the declaring file's package before scripts,
-            examples and far-away consumers.
+            examples and far-away consumers. A common name (``parser``) is
+            also a local variable in unrelated scripts, so package locality
+            and file naming stand in for the name resolution the index does
+            not have.
             """
             key = search_hit_key(hit)
             if key in use_keys:

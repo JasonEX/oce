@@ -26,20 +26,17 @@ class QueryIntent(StrEnum):
     COMPOUND = "compound"  # several facets or parallel conditions
 
 
-# Call-chain verbs. Only English verbs that express a call relation are
-# kept: to / from / path appear in almost every issue text and once routed
-# nearly all long English requests to call-chain.
+# Call-chain verbs: only words that express a call relation, in both
+# languages. Prepositions and nouns such as to / from / path (从 / 到 / 路径)
+# and qualifiers such as 完整 appear in ordinary sentences ("在哪里能找到",
+# "配置文件的路径", "完整实现") and once routed them to call-chain. Chinese
+# matches as a substring, so a single character would match any sentence;
+# the Chinese flow constructions are matched whole by _CHINESE_FLOW below.
 _CALL_VERBS = {
     "调用",
     "触发",
     "执行",
-    "从",
-    "到",
-    "路径",
     "流程",
-    "完整",
-    "如何被",
-    "如何从",
     "追踪",
     "call",
     "called",
@@ -81,6 +78,7 @@ _COMPOUND_PLANNER = HeuristicQueryPlanner(max_queries=3)
 # Reference/use verbs (one-directional dependency).
 _REFERENCE_VERBS = {
     "使用",
+    "用到",
     "引用",
     "导入",
     "依赖",
@@ -225,6 +223,12 @@ _EXPLICIT_PATH_KEYWORDS_RE = _terms_pattern(
     match_ascii_prefix=False,
 )
 _FEATURE_MARKERS_RE = _terms_pattern(_FEATURE_MARKERS)
+
+
+# Chinese states a flow by its two ends within one clause ("从前端 API 到
+# Rust 命令") or by a verb of reaching ("调到", "到达"). A lone 到 or 路径 is
+# an ordinary complement or noun ("找到", "用到", "配置文件的路径").
+_CHINESE_FLOW = re.compile(r"从[^，,。.？?！!；;\n]{1,60}?到|调到|到达")
 
 
 # Only requests that ask *for* tests. "How does bats run a test function" is
@@ -380,7 +384,9 @@ def classify_query_intent(
     # Call-chain evidence: directional verbs (trace, call, flow). The
     # qualified names in ``Trace requests.request through Session.send``
     # may not read as symbols; the verb alone describes the question.
-    if _CALL_VERBS_RE.search(text_outside_backticks):
+    if _CALL_VERBS_RE.search(text_outside_backticks) or _CHINESE_FLOW.search(
+        text_outside_backticks
+    ):
         return QueryIntent.CALL_CHAIN
 
     if has_symbol:
