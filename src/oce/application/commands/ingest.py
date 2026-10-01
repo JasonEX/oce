@@ -126,15 +126,29 @@ class EmbedPendingCommandHandler:
 
         embedded = 0
         for group in groups:
-            async with self._uow_factory() as uow:
-                pipeline = self._pipeline_factory(uow)
-                # On failure the pipeline has marked the blob as errored; commit
-                # before re-raising so that state is visible.
-                try:
-                    embedded += await pipeline.embed_pending(group)
-                finally:
-                    await uow.commit()
+            embedded += await self._index(group)
         return EmbedPendingResult(embedded)
+
+    async def _index(self, group: tuple[str, ...] | None) -> int:
+        """Index one group with the embedding round trip outside any transaction."""
+        async with self._uow_factory() as uow:
+            pipeline = self._pipeline_factory(uow)
+            batch = await pipeline.prepare(group)
+            await uow.commit()
+        if batch is None:
+            return 0
+        try:
+            embedded = await pipeline.write_vectors(batch)
+        except Exception as exc:
+            # Commit the error before re-raising so the failed state is visible.
+            async with self._uow_factory() as uow:
+                await self._pipeline_factory(uow).fail(batch, exc)
+                await uow.commit()
+            raise
+        async with self._uow_factory() as uow:
+            await self._pipeline_factory(uow).complete(batch)
+            await uow.commit()
+        return embedded
 
 
 @dataclass(frozen=True)

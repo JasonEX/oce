@@ -1,6 +1,6 @@
 """EmbedWorker: consume the embedding queue and embed pending blobs.
 
-    dequeue_many(blob_names) -> IndexingPipeline.embed_pending(blob_names)
+    dequeue_many(blob_names) -> prepare -> write_vectors -> complete
     success: ack each blob; batch failure: retry each blob alone and count
     the failure on the ones that still fail
 
@@ -263,14 +263,19 @@ class EmbedWorker:
         )
 
     async def _embed(self, blob_names: list[str]) -> int:
-        # Vector writes are content-addressed and idempotent, so the per-blob
-        # retry after a failed transaction may upsert the same rows again.
+        # The embedding round trip runs between two short transactions. Vector
+        # writes are content-addressed and idempotent, so the per-blob retry
+        # after a failure may upsert the same rows again; the retry state is
+        # the worker's, so a failed batch is not marked errored here.
         async with self._uow_factory() as uow:
             pipeline = self._pipeline_factory(uow)
-            embedded = await pipeline.embed_pending(
-                blob_names,
-                mark_failures=False,
-            )
+            batch = await pipeline.prepare(blob_names)
+            await uow.commit()
+        if batch is None:
+            return 0
+        embedded = await pipeline.write_vectors(batch)
+        async with self._uow_factory() as uow:
+            await self._pipeline_factory(uow).complete(batch)
             await uow.commit()
         return embedded
 

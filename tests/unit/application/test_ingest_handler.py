@@ -188,7 +188,8 @@ async def test_embed_failure_commits_error_state(dependencies):
         )
 
     assert factory.uow.blobs.blobs[name].status == BlobStatus.ERROR
-    assert factory.uow.commits == 2  # ingest + error commit
+    # ingest, the prepared chunks, then the error after the embedding failed
+    assert factory.uow.commits == 3
 
 
 async def test_delete_commits_metadata_before_deleting_vectors(dependencies):

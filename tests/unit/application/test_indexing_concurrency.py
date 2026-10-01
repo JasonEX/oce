@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from oce.application.commands.ingest import (
     BlobIngest,
+    EmbedPendingCommand,
+    EmbedPendingCommandHandler,
     IngestBlobsCommand,
     IngestBlobsCommandHandler,
     build_pipeline_factory,
@@ -139,5 +141,67 @@ async def test_pending_name_pages_preserve_order_and_exclude_ready(tmp_path):
                 collected.extend(page)
                 after = page[-1]
             assert collected == expected
+    finally:
+        await engine.dispose()
+
+
+async def test_metadata_writes_proceed_while_an_upload_waits_on_embedding(tmp_path):
+    """The embedding round trip holds no metadata transaction.
+
+    SQLite has one writer. Indexing used to keep its transaction open across
+    the remote embedding call, so another request's write (an upload, a
+    retrieval indexing its added files, the monitoring flush) waited out the
+    busy timeout and failed with "database is locked".
+    """
+    engine = create_engine(
+        DatabaseSettings(url=f"sqlite+aiosqlite:///{tmp_path / 'metadata.db'}")
+    )
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    sessions = async_sessionmaker(engine, expire_on_commit=False)
+
+    def uow_factory():
+        return SqlAlchemyUnitOfWork(sessions, RegexSymbolProvider())
+
+    other_path, other_content = "src/other.py", "def other(): return 2"
+    other_name = blob_name(other_path, other_content)
+    concurrent_writes: list[str] = []
+
+    class WritingEmbedder(ConstantEmbedder):
+        async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+            # Another request uploads a file while this embedding is in flight.
+            async with uow_factory() as uow:
+                await uow.blobs.save(Blob(other_name, other_path))
+                await uow.commit()
+            concurrent_writes.append(other_name)
+            return await super().embed_documents(texts)
+
+    pipelines = build_pipeline_factory(
+        chunker=RecursiveChunker(),
+        embedder=WritingEmbedder(),
+        vector_index=RecordingVectorIndex(),
+        lexical_enabled=False,
+    )
+    path, content = "src/a.py", "def a(): return 1"
+    name = blob_name(path, content)
+    try:
+        await IngestBlobsCommandHandler(uow_factory, pipelines).handle(
+            IngestBlobsCommand((BlobIngest(name, path, content),))
+        )
+        # Bounded well below the 5 s busy timeout the old code waited out.
+        result = await asyncio.wait_for(
+            EmbedPendingCommandHandler(uow_factory, pipelines).handle(
+                EmbedPendingCommand((name,))
+            ),
+            timeout=2,
+        )
+
+        assert result.embedded_count == 1
+        assert concurrent_writes == [other_name]
+        async with uow_factory() as uow:
+            blob = await uow.blobs.get(name)
+            assert blob is not None and blob.status == BlobStatus.READY
+            assert await uow.blobs.get_staging(name) is None
+            assert await uow.blobs.get(other_name) is not None
     finally:
         await engine.dispose()

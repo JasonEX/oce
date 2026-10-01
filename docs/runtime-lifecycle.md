@@ -26,6 +26,14 @@ stateDiagram-v2
 `ready` 提交后才 ack；失败先提交 retry/error 状态，再释放 processing sentinel，决定是否
 重新入队。向量按内容地址幂等写入；跨存储失败可能重复 upsert，但不能提前宣称 ready。
 
+索引一批 pending blob 分三段，远端 embedding 往返不在任何元数据事务里：`prepare` 切块并写
+符号/词法投影后提交；`write_vectors` 只调用 embedding 并写向量与路径索引；`complete` 在第二
+个短事务里标记 chunk 已嵌入、blob ready 并清除 staging（失败时 `fail` 记录错误）。SQLite
+只有一个写者，事务跨越 embedding 往返时其他请求的写入（并发上传、检索时索引 added 文件、
+监控 flush）会等满 busy timeout 后报 `database is locked`。`complete` / `fail` 在自己的
+事务里重新读取仍为 pending 的 blob，中途被别的请求完成或被 GC 删除的 blob 不会被复活或
+重复标记；两个请求同时处理同一 blob 只会重复一次幂等的向量写入。
+
 每次补偿最多取 4 页，每页 100 个名称，使用 `(status, blob_name)` 索引和 keyset 游标，
 不读取源码或扫描全量待处理任务。游标由 worker 持有，周期续扫，到末尾回绕；一页完全
 入队后才前移。启动只补偿第一批，剩余积压随后处理。普通上传仍立即入队。
