@@ -561,7 +561,7 @@ stores dense vectors and the path index.
 sequence of state transitions: each stage writes one record of `RetrievalState` (`QueryRoute`,
 `QueryPlan`, `RecallEvidence`, then the candidate, selected and related lists) and later stages
 only read it. The request text is parsed once, in route. Every optional operator degrades to the
-identity transform when disabled. A lane that fails is skipped and
+identity transform when disabled. A lane that fails, an SQL timeout included, is skipped and
 named in `retrieval_metrics.lane_failures`, so an answer that came from fewer lanes than planned
 is visible offline. The design rationale and tuning history
 per stage are in [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md).

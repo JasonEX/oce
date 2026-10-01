@@ -449,7 +449,7 @@ flowchart TB
 `RetrievalPipeline.search`（`domain/services/retrieval/`，每阶段一个模块）是一条固定的状态转移
 序列：每个阶段写入 `RetrievalState` 的一条记录（`QueryRoute`、`QueryPlan`、`RecallEvidence`，
 然后是候选、选中与关系列表），之后的阶段只读不改；请求文本只在 route 解析一次。任何可选算子
-关闭后都退化为恒等变换。失败的车道会被跳过并记入
+关闭后都退化为恒等变换。失败的车道（包括 SQL 超时）会被跳过并记入
 `retrieval_metrics.lane_failures`，因此从更少车道作答的请求可以离线识别。各阶段的设计理由与调优历史见 [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md)。
 
 | 阶段 | 职责 |

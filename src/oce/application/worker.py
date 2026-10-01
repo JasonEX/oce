@@ -36,6 +36,7 @@ from loguru import logger
 from oce.application.commands.ingest import PipelineFactory
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
+from oce.shared.aio import wait_released
 
 _REPLAY_PAGE_SIZE = 100
 _REPLAY_MAX_PAGES = 4
@@ -156,7 +157,7 @@ class EmbedWorker:
                     self._enter(WorkerState.DRAINING)
                     drain = asyncio.create_task(self._halt(cancel=False))
                     try:
-                        await asyncio.shield(drain)
+                        await wait_released(drain)
                     except asyncio.CancelledError:
                         # A disconnected maintenance caller cannot cancel a
                         # batch or recover its delivery before its

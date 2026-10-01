@@ -24,9 +24,9 @@
 头部复位复用的实现关系 key，以及关系小节重渲染复用的 call / definition 原始行。
 
 关闭对应开关时每个阶段退化为恒等变换。`lane_failed` 是车道失败的唯一出口：任何车道
-抛出异常时记录 `audit.lane_failures[lane] = ExceptionType`，落到
-`retrieval_metrics.lane_failures`，请求照常从其余车道作答。离线对比时若该列非空，排序
-变化不能归因于代码。
+抛出异常（包括 SQL 超时）时记录 `audit.lane_failures[lane] = ExceptionType`，落到
+`retrieval_metrics.lane_failures`，请求照常从其余车道作答。存储层不吞超时：空结果只表示
+索引里没有匹配，超时一律抛给车道记录。离线对比时若该列非空，排序变化不能归因于代码。
 
 ## 路由（route）
 

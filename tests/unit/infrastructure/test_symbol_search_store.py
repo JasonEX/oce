@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import Chunk
 from oce.domain.services.retrieval import RetrievalPipeline
-from oce.domain.services.search import SearchScope
+from oce.domain.services.search import SearchHit, SearchScope
 from oce.infrastructure.astchunk.symbol_provider import TreeSitterSymbolProvider
 from oce.infrastructure.persistence.models import BlobModel, SymbolOccurrenceModel
 from oce.infrastructure.persistence.sql_blob_repo import SqlBlobRepository
@@ -24,8 +24,9 @@ from oce.infrastructure.persistence.symbol_search_store import SymbolSearchStore
 from oce.infrastructure.regex_symbol_provider import RegexSymbolProvider
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.database.session import Base
+from oce.shared.metrics import RetrievalAudit
 from tests.conftest import make_sha256
-from tests.fakes.retrieval import retrieval_state
+from tests.fakes.retrieval import FakeEmbedder, FakeSearchStore, retrieval_state
 
 
 @pytest.fixture
@@ -141,36 +142,63 @@ async def test_small_scope_definition_lookup_has_bounded_sql_work(sessions, oper
 
 
 @pytest.mark.parametrize(
-    ("operation", "kwargs", "empty"),
+    ("operation", "kwargs"),
     [
-        ("search_exact", {"identifiers": ["work"]}, []),
-        ("find_definitions", {"identifiers": ["work"]}, []),
-        ("find_callers", {"identifiers": ["work"]}, []),
-        ("defined_identifiers", {"occurrences": [("blob", "chunk")]}, {}),
-        ("calls_within", {"blob_name": "blob", "start_line": 1, "end_line": 2}, []),
-        ("chunk_for_line", {"blob_name": "blob", "line": 1}, None),
+        ("search_exact", {"identifiers": ["work"]}),
+        ("find_definitions", {"identifiers": ["work"]}),
+        ("find_callers", {"identifiers": ["work"]}),
+        ("defined_identifiers", {"occurrences": [("blob", "chunk")]}),
+        ("calls_within", {"blob_name": "blob", "start_line": 1, "end_line": 2}),
+        ("chunk_for_line", {"blob_name": "blob", "line": 1}),
     ],
 )
-async def test_symbol_timeout_preserves_fallback_and_reports_missing_evidence(
-    monkeypatch, operation, kwargs, empty
-):
-    from loguru import logger
-
-    messages = []
-    monkeypatch.setattr(logger, "warning", messages.append)
-
+async def test_symbol_timeout_raises_so_the_lane_can_record_it(operation, kwargs):
+    # An empty result would be indistinguishable from "the index holds
+    # nothing"; the calling lane records the timeout in the audit instead.
     @asynccontextmanager
     async def blocked_session():
         await asyncio.Event().wait()
         yield
 
     store = SymbolSearchStore(blocked_session, timeout_seconds=0.001)
-    result = await getattr(store, operation)(
-        scope=SearchScope(frozenset({"blob"})), **kwargs
+    with pytest.raises(TimeoutError):
+        await getattr(store, operation)(
+            scope=SearchScope(frozenset({"blob"})), **kwargs
+        )
+
+
+async def test_a_timed_out_symbol_lane_is_audited_not_mistaken_for_no_match():
+    @asynccontextmanager
+    async def blocked_session():
+        await asyncio.Event().wait()
+        yield
+
+    store = SymbolSearchStore(blocked_session, timeout_seconds=0.001)
+    dense = SearchHit(
+        blob_name="blob",
+        path="src/settings.py",
+        content="def load_settings():\n    return {}",
+        score=0.9,
+        content_hash="chunk",
     )
-    assert result == empty
-    assert len(messages) == 1
-    assert "timed out" in messages[0]
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore([dense]),
+        exact_store=store,
+        relation_store=store,
+        settings=RetrievalSettings(related_definitions_enabled=False),
+    )
+    audit = RetrievalAudit()
+
+    hits = await pipeline.search(
+        "Where is `load_settings` defined?",
+        SearchScope(frozenset({"blob"})),
+        audit=audit,
+    )
+
+    assert [hit.path for hit in hits] == ["src/settings.py"]
+    assert audit.lane_failures["exact"] == "TimeoutError"
+    assert audit.dense_route == "dense"
 
 
 async def test_large_file_projection_obeys_sqlite_bind_limit_and_is_idempotent(

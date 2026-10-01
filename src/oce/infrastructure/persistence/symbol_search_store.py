@@ -7,7 +7,6 @@ import math
 from collections.abc import Callable, Sequence
 from typing import Any
 
-from loguru import logger
 from sqlalchemy import Select, and_, case, func, or_, select
 from sqlalchemy.engine import Row
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -161,7 +160,13 @@ def _test_path_predicate() -> ColumnElement[bool]:
 
 
 class SymbolSearchStore:
-    """Exact identifier recall over the ``symbol_occurrences`` index."""
+    """Exact identifier recall over the ``symbol_occurrences`` index.
+
+    Every lookup is bounded by ``timeout_seconds`` and raises ``TimeoutError``
+    when it runs over. The retrieval lane that called it decides what a
+    missing answer means and records the failure in the audit; an empty
+    result here always means the index holds nothing that matches.
+    """
 
     def __init__(
         self,
@@ -188,20 +193,16 @@ class SymbolSearchStore:
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or top_k <= 0 or not scope.blob_names:
             return []
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    rows = await run_scoped(
-                        session,
-                        scope,
-                        BlobModel.blob_name,
-                        lambda predicate: _occurrence_rows(
-                            identifiers, predicate, max(top_k * 20, top_k), kinds
-                        ),
-                    )
-        except TimeoutError:
-            logger.warning("Exact symbol lookup timed out; returning no exact evidence")
-            return []
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                rows = await run_scoped(
+                    session,
+                    scope,
+                    BlobModel.blob_name,
+                    lambda predicate: _occurrence_rows(
+                        identifiers, predicate, max(top_k * 20, top_k), kinds
+                    ),
+                )
         return self._rows_to_hits(rows, top_k)
 
     async def find_definitions(
@@ -219,36 +220,30 @@ class SymbolSearchStore:
             enclosing = tuple(dict.fromkeys(item for item in enclosing if item))
             if not enclosing:
                 return []
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    counts = await self._definition_counts(
-                        session, identifiers, scope, enclosing=enclosing
-                    )
-                    wanted = tuple(
-                        identifier
-                        for identifier in identifiers
-                        if 0 < counts.get(identifier, 0) <= max_per_identifier
-                    )
-                    if not wanted:
-                        return []
-                    rows = await run_scoped(
-                        session,
-                        scope,
-                        BlobModel.blob_name,
-                        lambda predicate: _occurrence_rows(
-                            wanted,
-                            predicate,
-                            len(wanted) * max_per_identifier * 2,
-                            DEFINITION_KINDS,
-                            enclosing=enclosing,
-                        ),
-                    )
-        except TimeoutError:
-            logger.warning(
-                "Symbol definition lookup timed out; returning no definitions"
-            )
-            return []
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                counts = await self._definition_counts(
+                    session, identifiers, scope, enclosing=enclosing
+                )
+                wanted = tuple(
+                    identifier
+                    for identifier in identifiers
+                    if 0 < counts.get(identifier, 0) <= max_per_identifier
+                )
+                if not wanted:
+                    return []
+                rows = await run_scoped(
+                    session,
+                    scope,
+                    BlobModel.blob_name,
+                    lambda predicate: _occurrence_rows(
+                        wanted,
+                        predicate,
+                        len(wanted) * max_per_identifier * 2,
+                        DEFINITION_KINDS,
+                        enclosing=enclosing,
+                    ),
+                )
 
         order = {identifier: index for index, identifier in enumerate(identifiers)}
         definitions: list[DefinitionHit] = []
@@ -401,28 +396,24 @@ class SymbolSearchStore:
         identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
         if not identifiers or limit <= 0 or not scope.blob_names:
             return []
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    return list(
-                        await run_scoped(
-                            session,
-                            scope,
-                            BlobModel.blob_name,
-                            lambda predicate: _occurrence_rows(
-                                identifiers,
-                                predicate,
-                                max(limit * 25, 200),
-                                kinds,
-                                path_predicate,
-                                partition_by,
-                                partition_limit,
-                            ),
-                        )
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                return list(
+                    await run_scoped(
+                        session,
+                        scope,
+                        BlobModel.blob_name,
+                        lambda predicate: _occurrence_rows(
+                            identifiers,
+                            predicate,
+                            max(limit * 25, 200),
+                            kinds,
+                            path_predicate,
+                            partition_by,
+                            partition_limit,
+                        ),
                     )
-        except TimeoutError:
-            logger.warning("Symbol occurrence lookup timed out; returning no relations")
-            return []
+                )
 
     async def calls_within(
         self,
@@ -448,13 +439,9 @@ class SymbolSearchStore:
             )
             .order_by(SymbolOccurrenceModel.start_line)
         )
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    rows = (await session.execute(stmt)).all()
-        except TimeoutError:
-            logger.warning("Symbol call lookup timed out; returning no calls")
-            return []
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                rows = (await session.execute(stmt)).all()
         calls: list[tuple[str, int, str]] = []
         seen: set[str] = set()
         for identifier, line, enclosing in rows:
@@ -493,13 +480,9 @@ class SymbolSearchStore:
             .order_by(BlobChunkModel.start_line)
             .limit(1)
         )
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    row = (await session.execute(stmt)).first()
-        except TimeoutError:
-            logger.warning("Symbol chunk lookup timed out; returning no chunk")
-            return None
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                row = (await session.execute(stmt)).first()
         if row is None:
             return None
         return SearchHit(
@@ -584,13 +567,9 @@ class SymbolSearchStore:
                 stmt = stmt.where(extra_predicate)
             return stmt
 
-        try:
-            async with asyncio.timeout(self._timeout_seconds):
-                async with self._session_factory() as session:
-                    return await run_scoped(session, scope, BlobModel.blob_name, build)
-        except TimeoutError:
-            logger.warning("Symbol pair lookup timed out; returning no occurrences")
-            return []
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                return await run_scoped(session, scope, BlobModel.blob_name, build)
 
     @staticmethod
     async def _definition_counts(

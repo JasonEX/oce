@@ -20,6 +20,7 @@ from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.retrieval.fuse import fuse_lists
 from oce.domain.services.retrieval.state import RetrievalState, lane_failed
 from oce.domain.services.search import SearchHit, SearchStore
+from oce.shared.aio import wait_released
 from oce.shared.config.settings import RetrievalSettings
 
 
@@ -85,8 +86,9 @@ class VectorLanes:
         if state.embedding is None:
             return {}
         try:
-            # Shielded: cancelling the vector lanes must not cancel the request.
-            vectors, elapsed_ms = await asyncio.shield(state.embedding)
+            # Cancelling the vector lanes releases this wait; it never
+            # cancels the request itself (see ``release_embedding``).
+            vectors, elapsed_ms = await wait_released(state.embedding)
         except Exception as exc:
             if not has_fallback:
                 raise

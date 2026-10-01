@@ -78,7 +78,9 @@ worker 仍可运行，blob 保留 pending 与 staging，不能把关闭 embeddin
 query cache 只保存 query 哈希和向量。相同哈希、相同 generation 的活动请求共用任务；
 活动任务数量沿用 cache 容量上限，满时等待已有任务释放槽位，不创建无界任务。每个调用方
 取得独立的向量副本。检索 SQL 提前给出答案或某个调用方取消时，只释放等待者，provider
-请求继续完成，结果或异常由共享任务收尾。
+请求继续完成，结果或异常由共享任务收尾。「只释放、不取消」统一由 `shared/aio.py` 的
+`wait_released` 实现，不用 `asyncio.shield`：Python 3.14 起 shield 会把等待者离开后任务
+抛出的异常当作未处理错误上报，即使任务的所有者已经消费了它。
 
 清空 cache 同时递增 generation；新查询不能加入旧 generation 的任务，旧结果也不能
 写回新 cache。关闭时排空活动 query 任务，再关闭 delegate。源码向量与检索结果不缓存。

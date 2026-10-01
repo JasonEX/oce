@@ -9,6 +9,7 @@ from collections.abc import Callable
 from time import monotonic
 
 from oce.domain.services.embedder import Embedder
+from oce.shared.aio import wait_released
 from oce.shared.index_stats import QueryCacheStats
 
 
@@ -85,7 +86,8 @@ class QueryCachingEmbedder:
             # Cancelling a waiter never cancels any of these provider calls.
             await asyncio.wait(active, return_when=asyncio.FIRST_COMPLETED)
 
-        return list(await asyncio.shield(task))
+        vector: tuple[float, ...] = await wait_released(task)
+        return list(vector)
 
     async def _embed_and_cache(
         self, text: str, key: bytes, generation: int
