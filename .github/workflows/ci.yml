@@ -23,8 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.11 is the floor pyproject declares (StrEnum); 3.13 is the development version.
-        python-version: ["3.11", "3.13"]
+        # 3.11 is the floor pyproject declares (StrEnum); 3.13 is the Docker
+        # image's runtime; 3.14 is the development version.
+        python-version: ["3.11", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +46,7 @@ jobs:
         run: uv run python -c "from oce.main import app; print('import OK')"
 
       - name: Run Ruff
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14'
         run: |
           uv run ruff check .
           uv run ruff format --check .
@@ -53,7 +54,7 @@ jobs:
       # Type errors are the class of refactor mistake the lane-degrading
       # retrieval code would otherwise absorb at runtime.
       - name: Run mypy
-        if: matrix.python-version == '3.13'
+        if: matrix.python-version == '3.14'
         run: uv run mypy
 
       # One process per test file: the tree-sitter grammars and Milvus Lite

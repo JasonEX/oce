@@ -84,7 +84,7 @@ uv run mypy
 
 ## 运行环境
 
-- Python 3.13.5，虚拟环境为根目录 `.venv`。
+- Python 3.14（开发版本），虚拟环境为根目录 `.venv`；CI 覆盖 3.11（`requires-python` 下限）、3.13（Docker 镜像运行时）与 3.14。
 - tree-sitter 锁定 `0.25.2`；`compat.py` 负责 API 快照和生命周期隔离。
 - `docker-compose.dev.yml` 提供服务模式依赖：PostgreSQL、Redis 和 Milvus 3.0。
 - 临时密钥不得写入仓库、日志或评测报告。
