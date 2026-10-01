@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from oce.application.messages import Command
 from oce.application.uow import UnitOfWorkFactory
 from oce.domain.chain.chain import Chain
 from oce.shared.errors import InvalidCheckpointTokenError, NeedsResetError
 
 
 @dataclass(frozen=True)
-class CheckpointCommand(Command):
+class CheckpointCommand:
     checkpoint_id: str | None = None
     added_blobs: tuple[str, ...] = ()
     deleted_blobs: tuple[str, ...] = ()

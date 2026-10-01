@@ -334,13 +334,6 @@ class RetrievalSettings(BaseSettings):
         default=60, ge=1, description="Reciprocal rank fusion smoothing constant"
     )
 
-    confidence_floor: float = Field(
-        default=0.0,
-        ge=0.0,
-        le=1.0,
-        description="Recall confidence floor applied before any model reranking",
-    )
-
     # Both rerankers only reorder; neither prunes candidates. RERANK_ENABLED and
     # LLM_RERANK_ENABLED authorize the stages (api/chat send data out, local
     # does not); these policies only decide which queries an enabled model
@@ -501,25 +494,6 @@ class RetrievalSettings(BaseSettings):
         le=10,
         description="Head slots reserved for source files on semantic requests",
     )
-    # A chunk whose only symbol evidence is imports is a file header (use/import
-    # lines, a license comment, a module docstring): it names every module the
-    # file touches, so it sits close to "architecture/flow" wording in vector
-    # space while implementing none of it. Such chunks yield the head slots;
-    # chunks with no symbol evidence at all are untouched. Net zero on the
-    # three older benches (2026-09-04); on the project_cases judge
-    # (2026-09-08) the one distracting head (an import header on a call-chain
-    # query) disappeared and the other four suites did not move. On by default.
-    head_skips_import_headers: bool = Field(
-        default=True,
-        description="Let import-only file headers yield the source head slots",
-    )
-    # Reference requests: chunks with exact/lexical use evidence fill the head
-    # slots by prior tier; use sites that live only in tests, examples or
-    # __init__ files still beat documentation without evidence.
-    reference_head_fallback: bool = Field(
-        default=True,
-        description="Fill reference head slots by prior tier when no source use site exists",
-    )
     # Compound (issue-text) requests: the declarations of traceback frames
     # (function plus the file declaring it) and of the title's identifiers
     # (declared in at most three places) take protected head slots; names
@@ -532,27 +506,6 @@ class RetrievalSettings(BaseSettings):
         ge=0,
         le=5,
         description="Head slots reserved for frame/title anchors on compound requests",
-    )
-
-    # Hub lane: declared names the words of an overview or symbol-free
-    # call-chain request spell (``Router``, ``register_checker``,
-    # ``createSlice``) ranked by referencing files; the largest declaration
-    # takes a protected head slot, package names (also directories) never
-    # lead, and names declared in more than hub_max_definitions places are
-    # too common. Paired rerun 2026-09-09: curated overview nDCG@10 67.8 to
-    # 74.3 but the sealed held-out semantic set fell (overview 66.4 to 54.1,
-    # call-chain 85.6 to 78.2), so it ships off (0) as a measurable switch.
-    hub_head_slots: int = Field(
-        default=0,
-        ge=0,
-        le=5,
-        description="Head slots reserved for hub declarations on semantic requests; 0 disables",
-    )
-    hub_max_definitions: int = Field(
-        default=3,
-        ge=1,
-        le=20,
-        description="Most declarations a hub name may have inside the scope",
     )
 
     # Working-set prior: the files in a request's added_blobs are the ones the
@@ -675,13 +628,6 @@ class RetrievalSettings(BaseSettings):
     )
     reexports_max_chars: int = Field(
         default=600, ge=1, description="Character cap of the re-exports section"
-    )
-    # When a symbol is declared in more places than the head holds, let the
-    # adaptive route run the dedicated reranker over the tail. No offline
-    # labels support enabling it yet; it stays as a switch awaiting calibration.
-    rerank_ambiguous_definitions: bool = Field(
-        default=False,
-        description="Rerank the tail of symbol requests whose name exceeds the head slots",
     )
 
 

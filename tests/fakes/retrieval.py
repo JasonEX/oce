@@ -7,16 +7,24 @@ ever hands it a vector.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import replace
+from types import MappingProxyType
+from typing import Any
 
 from oce.domain.services.path_search import PathSearchResult
+from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.relations import RelatedOccurrence
+from oce.domain.services.retrieval.route import route_query
+from oce.domain.services.retrieval.state import RetrievalState
+from oce.domain.services.retrieval_strategy import RetrievalStrategy, get_strategy
 from oce.domain.services.search import (
     DefinitionHit,
     SearchHit,
     SearchScope,
     VectorRecord,
 )
+from oce.shared.metrics import RetrievalAudit
 
 _TEXT_BY_VECTOR: dict[tuple[float, ...], str] = {}
 
@@ -264,3 +272,40 @@ class FakePathLookupStore:
     ) -> dict[str, float]:
         self.calls.append({"filenames": filenames, "paths": paths})
         return dict(self.scores)
+
+
+def retrieval_state(
+    query: str,
+    scope: SearchScope | None = None,
+    *,
+    audit: RetrievalAudit | None = None,
+    intent: QueryIntent | None = None,
+    strategy: RetrievalStrategy | None = None,
+    lookup_identifiers: tuple[str, ...] | None = None,
+    qualifiers: Mapping[str, tuple[str, ...]] | None = None,
+    **fields: Any,
+) -> RetrievalState:
+    """A state routed from ``query`` the way the pipeline routes it.
+
+    Keyword overrides pin the route under test: ``intent`` also selects its
+    strategy unless ``strategy`` is given. ``fields`` are stage records and
+    caches (``recall``, ``selected``, ``candidates``...).
+    """
+    route = route_query(query, path_index_available=False)
+    changes: dict[str, Any] = {}
+    if intent is not None:
+        changes["intent"] = intent
+        changes["strategy"] = get_strategy(intent)
+    if strategy is not None:
+        changes["strategy"] = strategy
+    if lookup_identifiers is not None:
+        changes["lookup_identifiers"] = lookup_identifiers
+    if qualifiers is not None:
+        changes["qualifiers"] = MappingProxyType(dict(qualifiers))
+    return RetrievalState(
+        query=query,
+        scope=scope,
+        route=replace(route, **changes),
+        audit=audit,
+        **fields,
+    )

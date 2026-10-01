@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
-from oce.application.messages import Query
 from oce.shared.index_stats import (
     IndexProfileStatsProvider,
     IndexStats,
@@ -18,7 +17,7 @@ from oce.shared.index_stats import (
 
 
 @dataclass(frozen=True)
-class IndexStatsQuery(Query):
+class IndexStatsQuery:
     pass
 
 

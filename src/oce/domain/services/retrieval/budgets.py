@@ -13,7 +13,7 @@ MIN_RELATED_BUDGET = 1_000
 
 def context_budget(settings: RetrievalSettings, state: RetrievalState) -> int:
     """The hard character budget the request's selection mode allows."""
-    if state.strategy.selection_mode == SelectionMode.FOCUSED:
+    if state.route.strategy.selection_mode == SelectionMode.FOCUSED:
         return settings.focused_max_context_chars
     return settings.max_context_chars
 

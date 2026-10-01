@@ -15,18 +15,16 @@ missing delivery for durable pending blobs.
 from __future__ import annotations
 
 from collections.abc import Callable
-from contextlib import AbstractAsyncContextManager
+from contextlib import AbstractAsyncContextManager, nullcontext
 from dataclasses import dataclass
 from typing import Literal
 
-from oce.application.messages import Command
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
-from oce.shared.errors import QueueBusyError
 
 
 @dataclass(frozen=True)
-class ResetQueueCommand(Command):
+class ResetQueueCommand:
     """Reset the queue to the database's pending blobs; ``requeue=False`` only cleans."""
 
     mode: Literal["sync", "purge"] = "sync"
@@ -48,21 +46,17 @@ class ResetQueueCommandHandler:
         self,
         uow_factory: UnitOfWorkFactory,
         queue: Queue | None = None,
-        worker_running: Callable[[], bool] | None = None,
         maintenance: Callable[[], AbstractAsyncContextManager[None]] | None = None,
     ) -> None:
+        # The queue exists exactly when the worker does; ``maintenance`` is
+        # that worker's context, so a reset never races a consuming batch.
         self._uow_factory = uow_factory
         self._queue = queue
-        self._worker_running = worker_running or (lambda: False)
-        self._maintenance = maintenance
+        self._maintenance = maintenance or nullcontext
 
     async def handle(self, command: ResetQueueCommand) -> ResetQueueResult:
-        if self._maintenance is not None:
-            async with self._maintenance():
-                return await self._reset(command)
-        if self._worker_running():
-            raise QueueBusyError()
-        return await self._reset(command)
+        async with self._maintenance():
+            return await self._reset(command)
 
     async def _reset(self, command: ResetQueueCommand) -> ResetQueueResult:
         if self._queue is None:

@@ -1,4 +1,4 @@
-"""Round-3 lanes: qualified use sites, signature windows, hub spellings, anchors."""
+"""Round-3 lanes: qualified use sites, signature windows, anchors."""
 
 from __future__ import annotations
 
@@ -8,24 +8,22 @@ from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.query_evidence import QueryFrame, extract_query_evidence
 from oce.domain.services.retrieval import (
     RetrievalPipeline,
-    RetrievalState,
-    hub_spellings,
     order_by_signature_comentions,
     resolve_qualified_definitions,
     resolve_qualified_hits,
 )
-from oce.domain.services.retrieval.hubs import hub_heads
 from oce.domain.services.retrieval.names import signature_text
 from oce.domain.services.retrieval.rank import test_name_distance as name_distance
 from oce.domain.services.retrieval.recall_exact import frame_matches
+from oce.domain.services.retrieval.state import ExactEvidence, RecallEvidence
 from oce.domain.services.retrieval_strategy import plan_rerank
 from oce.domain.services.search import (
     DefinitionHit,
-    HubDefinition,
     SearchHit,
     SearchScope,
 )
 from oce.shared.config.settings import RetrievalSettings
+from tests.fakes.retrieval import retrieval_state
 
 
 def _hit(path, content, start=1, context=None, blob=None):
@@ -129,26 +127,6 @@ def test_overload_order_uses_the_parameter_list_only():
     assert ordered[0] is json_reader_chunk
 
 
-def test_hub_spellings_join_content_words_in_every_case():
-    spellings = hub_spellings("How does pylint register a checker's messages?")
-    assert {"register_checker", "registerChecker", "RegisterChecker"} <= set(spellings)
-    assert {"Checker", "checker", "Message", "message"} <= set(spellings)
-    # Stopwords and short words never become spellings.
-    assert "how" not in spellings and "does" not in spellings
-
-
-def test_hub_spellings_keep_mentions_and_identifiers_first():
-    evidence = extract_query_evidence(
-        "Explain the flow from Engine.ServeHTTP to IntoResponse conversion"
-    )
-    # A qualified spelling is a routing identifier; the CamelCase type the
-    # prose mentions is not, so it is recorded as a mention instead.
-    assert evidence.identifiers == ("Engine.ServeHTTP",)
-    assert evidence.mentions == ("IntoResponse",)
-    spellings = hub_spellings("x", evidence.mentions, ("ServeHTTP",))
-    assert spellings[:2] == ("ServeHTTP", "IntoResponse")
-
-
 def test_frames_carry_lines_and_ipython_style_frames_are_read():
     evidence = extract_query_evidence(
         'File "/site-packages/requests/adapters.py", line 292, in send\n'
@@ -225,78 +203,6 @@ def _pipeline(**settings):
     )
 
 
-def test_hub_heads_skip_packages_unreferenced_names_and_tests():
-    pipeline = _pipeline(hub_head_slots=2)
-    state = RetrievalState(query="explain routing", scope=SearchScope(frozenset({"a"})))
-    state.intent = QueryIntent.OVERVIEW
-    package = HubDefinition(
-        "routing",
-        (
-            DefinitionHit(
-                "routing",
-                "definition",
-                _hit("axum/src/lib.rs", "pub mod routing;"),
-                1,
-                1,
-            ),
-        ),
-        130,
-        True,
-    )
-    router = HubDefinition(
-        "Router",
-        (
-            DefinitionHit(
-                "Router",
-                "definition",
-                _hit("axum/src/routing/mod.rs", "pub struct Router<S>"),
-                1,
-                40,
-            ),
-            DefinitionHit(
-                "Router",
-                "definition",
-                _hit("axum/src/routing/mod.rs", "type Router = ()", start=90),
-                90,
-                90,
-            ),
-        ),
-        115,
-        False,
-    )
-    test_only = HubDefinition(
-        "Fixture",
-        (
-            DefinitionHit(
-                "Fixture",
-                "definition",
-                _hit("tests/fixture.rs", "struct Fixture"),
-                1,
-                3,
-            ),
-        ),
-        4,
-        False,
-    )
-    unreferenced = HubDefinition(
-        "Orphan",
-        (
-            DefinitionHit(
-                "Orphan", "definition", _hit("src/orphan.rs", "struct Orphan"), 1, 3
-            ),
-        ),
-        0,
-        False,
-    )
-    state.hubs = [package, router, test_only, unreferenced]
-    heads = hub_heads(
-        state.hubs, pipeline.priority_factor, pipeline.settings.hub_head_slots
-    )
-    assert [(hit.path, hit.start_line) for hit in heads] == [
-        ("axum/src/routing/mod.rs", 1)
-    ]
-
-
 def test_strict_qualified_resolution_yields_nothing_for_unknown_scopes():
     outcomes = _hit(
         "src/_pytest/outcomes.py", "def skip(reason: str = '') -> NoReturn:"
@@ -326,19 +232,21 @@ def test_test_name_distance_prefers_the_test_named_after_the_symbol():
 @pytest.mark.asyncio
 async def test_test_question_prefers_named_test_over_earlier_file_header():
     pipeline = _pipeline(source_head_slots=2)
-    state = RetrievalState(
-        query="Which tests cover Walk?", scope=SearchScope(frozenset({"a", "b"}))
-    )
-    state.intent = QueryIntent.REFERENCE
-    state.lookup_identifiers = ("Walk",)
     header = _hit("a/walk_test.go", 'import "testing"', blob="a")
     named_test = _hit(
         "b/walk_test.go",
         "func TestWalker(t *testing.T) {\n\tWalk(r, fn)\n}",
         blob="b",
     )
-    state.exact = [header, named_test]
-    state.use_sites = [named_test]
+    state = retrieval_state(
+        "Which tests cover Walk?",
+        SearchScope(frozenset({"a", "b"})),
+        intent=QueryIntent.REFERENCE,
+        lookup_identifiers=("Walk",),
+        recall=RecallEvidence(
+            exact=ExactEvidence(hits=(header, named_test), use_sites=(named_test,))
+        ),
+    )
 
     ranked = await pipeline.ranker.prefer_source_head(
         state, [header, named_test], pipeline.priority_factor

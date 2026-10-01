@@ -1,10 +1,12 @@
 import asyncio
+from functools import partial
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 
 from oce import main
+from oce.application.container import Container
 
 
 class _ContainerProvider:
@@ -17,20 +19,23 @@ class _ContainerProvider:
 
 
 def _container(*, metrics_start_side_effect=None):
+    """A stand-in graph whose ``start`` is the real ``Container.start``."""
     worker = SimpleNamespace(start=AsyncMock())
-    metrics = SimpleNamespace(start=AsyncMock(side_effect=metrics_start_side_effect))
-    resource_sampler = SimpleNamespace(start=AsyncMock())
-    monitoring_cleaner = SimpleNamespace(start=AsyncMock())
-    return SimpleNamespace(
+    monitoring = SimpleNamespace(
+        metrics=SimpleNamespace(start=AsyncMock(side_effect=metrics_start_side_effect)),
+        resource_sampler=SimpleNamespace(start=AsyncMock()),
+        cleaner=SimpleNamespace(start=AsyncMock()),
+    )
+    container = SimpleNamespace(
         worker=worker,
-        metrics=metrics,
-        resource_sampler=resource_sampler,
-        monitoring_cleaner=monitoring_cleaner,
+        monitoring=monitoring,
         ensure_index_compatible=AsyncMock(return_value=True),
         start_worker=worker.start,
         warm_up=AsyncMock(),
         close=AsyncMock(),
     )
+    container.start = partial(Container.start, container)
+    return container
 
 
 def _patch_lifespan_dependencies(monkeypatch, container):
@@ -50,9 +55,9 @@ async def test_lifespan_closes_resources_and_clears_cached_container(monkeypatch
     async with main.lifespan(main.app):
         container.ensure_index_compatible.assert_awaited_once_with()
         container.worker.start.assert_awaited_once_with()
-        container.metrics.start.assert_awaited_once_with()
-        container.resource_sampler.start.assert_awaited_once_with()
-        container.monitoring_cleaner.start.assert_awaited_once_with()
+        container.monitoring.metrics.start.assert_awaited_once_with()
+        container.monitoring.resource_sampler.start.assert_awaited_once_with()
+        container.monitoring.cleaner.start.assert_awaited_once_with()
         container.warm_up.assert_awaited_once_with()
 
     container.close.assert_awaited_once_with()
@@ -103,6 +108,6 @@ async def test_deferred_index_readiness_does_not_consume_pending_work(monkeypatc
 
     async with main.lifespan(main.app):
         container.worker.start.assert_not_awaited()
-        container.metrics.start.assert_awaited_once_with()
+        container.monitoring.metrics.start.assert_awaited_once_with()
 
     container.close.assert_awaited_once_with()

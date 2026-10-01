@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from oce.application.messages import Command
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
 
 
 @dataclass(frozen=True)
-class RequeueStaleCommand(Command):
+class RequeueStaleCommand:
     """Requeue pending blobs that have waited longer than ``stale_hours``."""
 
     stale_hours: int = 24

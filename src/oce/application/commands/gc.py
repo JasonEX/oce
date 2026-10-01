@@ -17,13 +17,12 @@ from oce.application.commands.ingest import (
     DeleteBlobsCommand,
     DeleteBlobsCommandHandler,
 )
-from oce.application.messages import Command
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
 
 
 @dataclass(frozen=True)
-class GcCommand(Command):
+class GcCommand:
     ttl_days: int = 30
     dry_run: bool = True
     limit: int = 1000

@@ -2,20 +2,19 @@
 
 Raw scores never mix. Dense cosine, BM25/ts_rank, exact-lane scores and RRF
 do not share a scale, so lists contribute by rank; the structural lanes
-(exact, anchors, hubs) are merged by key, and path evidence is a bounded
+(exact, anchors) are merged by key, and path evidence is a bounded
 boost with a backfill for files the content index never mentions.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 
 from loguru import logger
 
 from oce.domain.services.path_search import PathContentStore
 from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.retrieval.hubs import hub_heads
 from oce.domain.services.retrieval.names import (
     QUALIFIER_SEPARATORS,
     resolve_qualified_hits,
@@ -27,15 +26,14 @@ from oce.shared.config.settings import RetrievalSettings
 
 def fuse_lists(
     settings: RetrievalSettings,
-    dense_lists: list[list[SearchHit]],
-    lexical: list[SearchHit] | None = None,
+    dense_lists: Sequence[Sequence[SearchHit]],
+    lexical: Sequence[SearchHit] = (),
     *,
-    extra: Sequence[list[SearchHit]] = (),
+    extra: Sequence[Sequence[SearchHit]] = (),
 ) -> list[SearchHit]:
     """Weighted reciprocal rank fusion over dense facet lists plus lexical.
 
-    A single dense list with no lexical companion is returned untouched so
-    cosine scores survive for the confidence floor.
+    A single list needs no fusion and is returned in its own order and scale.
     """
     lists = list(dense_lists)
     weights = [1.0] + [settings.query_facet_weight] * (len(lists) - 1) if lists else []
@@ -50,7 +48,7 @@ def fuse_lists(
     if not lists:
         return []
     if len(lists) == 1:
-        return lists[0]
+        return list(lists[0])
 
     rrf_k = settings.rrf_k
     max_score = sum(weight / (rrf_k + 1) for weight in weights)
@@ -84,18 +82,19 @@ def filter_qualified_candidates(
     filter symbol queries, and only when a candidate actually proves the
     requested qualifier; an unknown qualifier keeps the normal fallback.
     """
-    if state.intent != QueryIntent.SYMBOL or not state.qualifiers or not hits:
+    route = state.route
+    if route.intent != QueryIntent.SYMBOL or not route.qualifiers or not hits:
         return hits
     # "Where are ``Session.get`` and ``Cache`` defined": the scope pins
     # ``get`` only; a bare name asked for alongside keeps its candidates.
-    qualified = set(state.qualifiers) | {
+    qualified = set(route.qualifiers) | {
         identifier
-        for identifier in state.lookup_identifiers
+        for identifier in route.lookup_identifiers
         if any(sep in identifier for sep in QUALIFIER_SEPARATORS)
     }
-    if any(identifier not in qualified for identifier in state.lookup_identifiers):
+    if any(identifier not in qualified for identifier in route.lookup_identifiers):
         return hits
-    resolved = resolve_qualified_hits(hits, state.qualifiers)
+    resolved = resolve_qualified_hits(hits, route.qualifiers)
     if len(resolved) < len(hits):
         return resolved
     return hits
@@ -107,12 +106,10 @@ class Fusion:
         *,
         settings: RetrievalSettings,
         path_content_store: PathContentStore | None,
-        priority_factor: Callable[[str], float],
         rerank_window: int | None,
     ) -> None:
         self.settings = settings
         self.path_content_store = path_content_store
-        self.priority_factor = priority_factor
         # The LLM reranker's candidate window; None means unbounded. Exact
         # hits must land inside it to be reranked, otherwise a call-chain
         # request's definitions are crowded out by semantic candidates.
@@ -120,45 +117,49 @@ class Fusion:
 
     async def fuse(self, state: RetrievalState) -> None:
         settings = self.settings
+        recall = state.recall
+        intent = state.route.intent
+        exact = list(recall.exact.hits)
+        endpoints = recall.exact.endpoints
         with state.stage("fuse"):
-            hits = state.dense
-            if not hits and state.dense_route and state.dense_route.startswith("skip:"):
+            hits = list(recall.dense)
+            if not hits and recall.dense_skipped:
                 # Vector recall was not awaited: the exact lane is the primary
                 # list, and lexical evidence joins it by rank so its raw BM25
                 # scores never order the candidates on their own.
-                hits = list(state.exact)
-            if state.intent == QueryIntent.COMPOUND and state.exact and hits:
+                hits = list(exact)
+            if intent == QueryIntent.COMPOUND and exact and hits:
                 # An issue names many identifiers (its example's helpers,
                 # every traceback frame, the types it mentions); their
                 # declarations are one more ranked list, not a score that
                 # outbids the fused order. The deterministic ones become
                 # anchors and take the head below.
-                hits = fuse_lists(settings, [hits], state.lexical, extra=[state.exact])
-            elif state.lexical:
-                hits = fuse_lists(settings, [hits] if hits else [], state.lexical)
-            hits = self.merge_exact_hits(state.intent, state.exact, hits)
-            if state.intent == QueryIntent.CALL_CHAIN and len(state.endpoints) >= 2:
+                hits = fuse_lists(settings, [hits], recall.lexical, extra=[exact])
+            elif recall.lexical:
+                hits = fuse_lists(settings, [hits] if hits else [], recall.lexical)
+            hits = self.merge_exact_hits(intent, exact, hits)
+            if intent == QueryIntent.CALL_CHAIN and len(endpoints) >= 2:
                 present = {search_hit_key(hit) for hit in hits}
-                for _name, definitions in state.endpoints[:2]:
+                for _name, definitions in endpoints[:2]:
                     first = definitions[0].hit
                     if search_hit_key(first) not in present:
                         hits.append(first)
                         present.add(search_hit_key(first))
-            structural = [
-                *state.anchors,
-                *hub_heads(state.hubs, self.priority_factor, settings.hub_head_slots),
-            ]
-            if structural:
-                # Anchored and hub definitions must be in the window the head
-                # rules order; their own recall score is not comparable to
-                # RRF, so they are appended and promoted by key.
+            if recall.anchors:
+                # Anchored definitions must be in the window the head rules
+                # order; their own recall score is not comparable to RRF, so
+                # they are appended and promoted by key.
                 present = {search_hit_key(hit) for hit in hits}
                 hits = [
                     *hits,
-                    *(hit for hit in structural if search_hit_key(hit) not in present),
+                    *(
+                        hit
+                        for hit in recall.anchors
+                        if search_hit_key(hit) not in present
+                    ),
                 ]
-            boosts = dict(state.lookup_scores)
-            for blob_name, score in state.path_scores.items():
+            boosts = dict(recall.lookup_scores)
+            for blob_name, score in recall.path_scores.items():
                 boosts[blob_name] = max(score, boosts.get(blob_name, float("-inf")))
             if boosts:
                 # Embedding path hits are the only answer to a pure filename
@@ -167,23 +168,23 @@ class Fusion:
                 # chunk would be imports, not the failing code. A path request
                 # is the exception: its SQL match is the answer and must own a
                 # chunk even when the content index never mentions the name.
-                backfill = set(state.path_scores)
-                if state.use_path_index or not hits or state.intent == QueryIntent.PATH:
-                    backfill |= set(state.lookup_scores)
+                backfill = set(recall.path_scores)
+                if state.route.use_path_index or not hits or intent == QueryIntent.PATH:
+                    backfill |= set(recall.lookup_scores)
                 hits = await self.merge_path_and_content(state, boosts, hits, backfill)
-            elif state.use_path_index:
+            elif state.route.use_path_index:
                 logger.info("No path results, using content-only")
             hits = filter_qualified_candidates(state, hits)
             # Only when nothing at all was recalled does a failed dense lane
             # become the request's error.
-            if not hits and state.dense_error is not None:
-                raise state.dense_error
+            if not hits and recall.dense_error is not None:
+                raise recall.dense_error
             state.candidates = hits
 
     def merge_exact_hits(
         self,
         intent: QueryIntent,
-        exact_hits: list[SearchHit],
+        exact_hits: Sequence[SearchHit],
         semantic_hits: list[SearchHit],
     ) -> list[SearchHit]:
         settings = self.settings

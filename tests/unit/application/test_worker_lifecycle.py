@@ -16,7 +16,7 @@ from oce.application.commands.queue_admin import (
     ResetQueueCommand,
     ResetQueueCommandHandler,
 )
-from oce.application.worker import EmbedWorker
+from oce.application.worker import EmbedWorker, WorkerState
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import RecursiveChunker
 from tests.fakes.indexing import ConstantEmbedder, RecordingVectorIndex
@@ -231,7 +231,6 @@ async def test_maintenance_finishes_active_batch_and_resumes_after_reset(monkeyp
     handler = ResetQueueCommandHandler(
         factory,
         queue,
-        worker_running=lambda: worker.is_running,
         maintenance=worker.maintenance,
     )
     reset = None
@@ -262,7 +261,6 @@ async def test_maintenance_does_not_undo_immediate_no_requeue_policy(monkeypatch
     handler = ResetQueueCommandHandler(
         factory,
         queue,
-        worker_running=lambda: worker.is_running,
         maintenance=worker.maintenance,
     )
 
@@ -292,7 +290,6 @@ async def test_maintenance_restores_worker_when_reset_fails(monkeypatch):
     handler = ResetQueueCommandHandler(
         factory,
         queue,
-        worker_running=lambda: worker.is_running,
         maintenance=worker.maintenance,
     )
 
@@ -332,7 +329,6 @@ async def test_cancelled_reset_drains_without_cancelling_batch_and_resumes(monke
     handler = ResetQueueCommandHandler(
         factory,
         queue,
-        worker_running=lambda: worker.is_running,
         maintenance=worker.maintenance,
     )
     reset = None
@@ -357,4 +353,51 @@ async def test_cancelled_reset_drains_without_cancelling_batch_and_resumes(monke
         complete_embedding.set()
         if reset is not None:
             await asyncio.gather(reset, return_exceptions=True)
+        await worker.stop()
+
+
+async def test_lifecycle_states_follow_the_documented_transitions():
+    _, _, _, _, worker = _runtime()
+    assert worker.state is WorkerState.STOPPED
+
+    async with worker.maintenance():
+        # Maintenance on a worker that never started holds it idle...
+        assert worker.state is WorkerState.MAINTENANCE
+    # ...and leaves it stopped.
+    assert worker.state is WorkerState.STOPPED
+
+    await worker.start()
+    try:
+        assert worker.state is WorkerState.RUNNING
+        async with worker.maintenance():
+            assert worker.state is WorkerState.MAINTENANCE
+            assert worker._tasks == [] and worker._replay_task is None
+        assert worker.state is WorkerState.RUNNING
+    finally:
+        await worker.stop()
+    assert worker.state is WorkerState.STOPPED
+    # Stopping a stopped worker is a no-op, not an illegal transition.
+    await worker.stop()
+    assert worker.state is WorkerState.STOPPED
+
+
+async def test_failed_resume_after_maintenance_leaves_a_restartable_worker(
+    monkeypatch,
+):
+    _, queue, _, _, worker = _runtime()
+    await worker.start()
+
+    async def unavailable():
+        raise OSError("Redis unavailable")
+
+    with pytest.raises(OSError, match="Redis unavailable"):
+        async with worker.maintenance():
+            monkeypatch.setattr(queue, "recover_processing", unavailable)
+    assert worker.state is WorkerState.STOPPED
+
+    monkeypatch.undo()
+    await worker.start()
+    try:
+        assert worker.state is WorkerState.RUNNING
+    finally:
         await worker.stop()

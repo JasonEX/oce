@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from oce.application.messages import Query
 from oce.application.uow import UnitOfWorkFactory
 from oce.domain.chain.chain import Chain
 from oce.domain.repositories import BlobRepository
@@ -17,7 +16,7 @@ from oce.shared.errors import (
 
 
 @dataclass(frozen=True)
-class FindMissingQuery(Query):
+class FindMissingQuery:
     blob_names: tuple[str, ...] = ()
 
 
@@ -50,7 +49,7 @@ class FindMissingQueryHandler:
 
 
 @dataclass(frozen=True)
-class BlobStatusQuery(Query):
+class BlobStatusQuery:
     blob_names: tuple[str, ...] = ()
     checkpoint_id: str | None = None
 
@@ -83,7 +82,7 @@ class BlobStatusQueryHandler:
 
 
 @dataclass(frozen=True)
-class ResolveScopeQuery(Query):
+class ResolveScopeQuery:
     checkpoint_id: str | None = None
     added_blobs: tuple[str, ...] = ()
     deleted_blobs: tuple[str, ...] = ()

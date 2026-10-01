@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from oce.application.messages import Command
 from oce.shared.errors import ServiceNotReadyError
 
 
@@ -14,7 +13,7 @@ class ReloadableEmbeddingRuntime(Protocol):
 
 
 @dataclass(frozen=True)
-class ReloadEmbeddingCredentialsCommand(Command):
+class ReloadEmbeddingCredentialsCommand:
     """Reload the active model credentials and rebuild their clients."""
 
 

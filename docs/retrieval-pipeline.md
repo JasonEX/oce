@@ -6,20 +6,25 @@
 
 ## 状态机
 
-一次检索是 `RetrievalState` 上的固定状态转移，每个阶段只读写属于它的字段：
+一次检索是固定的状态转移。每个阶段产出一条记录（`state.py`），之后的阶段只读不改：
 
-| 阶段 | 模块 | 职责 |
-| --- | --- | --- |
-| route | `pipeline.py` | 确定性意图 + `QueryEvidence`（标识符、traceback 帧、引号短语、文件名、词元） |
-| plan | `plan.py` | 可选 LLM 改写、句子级 facet 分解、启动（不等待）query embedding |
-| recall | `recall.py` + `recall_*.py` | dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup ∥ anchors ∥ hubs |
-| fuse | `fuse.py` | dense/lexical 按 RRF 融合 → 合并 exact → 路径 boost/回填 |
-| prior + rerank | `rank.py` | 源码/工作集先验 → 有界头部槽位 → 置信度门槛 → 模型重排 → 头部复位 |
-| select | `pipeline.py` | focused/coverage 选择，字符预算为硬限制 |
-| expand | `expand.py` + `chain.py` | 相邻合并；关系小节（被引用定义、调用方、实现、测试、转出、调用链） |
+| 阶段 | 模块 | 产出 | 职责 |
+| --- | --- | --- | --- |
+| route | `route.py` | `QueryRoute`（冻结） | 只解析一次请求文本：`QueryEvidence`（标识符、traceback 帧、引号短语、文件名、词元）、意图、策略、限定名、`asks_tests` / `asks_implementors` |
+| plan | `plan.py` | `QueryPlan`（冻结） | 可选 LLM 改写、句子级 facet 分解、启动（不等待）query embedding |
+| recall | `recall.py` + `recall_*.py` | `RecallEvidence`（冻结） | dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup ∥ anchors |
+| fuse | `fuse.py` | `candidates` | dense/lexical 按 RRF 融合 → 合并 exact → 端点/锚点补入 → 路径 boost/回填 |
+| prior + rerank | `rank.py` | `candidates` | 源码/工作集先验 → 有界头部槽位 → 模型重排 → 头部复位 |
+| select | `pipeline.py` | `selected` | focused/coverage 选择，字符预算为硬限制 |
+| expand | `expand.py` + `chain.py` | `related` | 相邻合并；关系小节（被引用定义、调用方、实现、测试、转出、调用链） |
 
-关闭对应开关时每个阶段退化为恒等变换。`state.py` 持有 `RetrievalState` 与 `lane_failed`：
-任何车道抛出异常时记录 `audit.lane_failures[lane] = ExceptionType`，落到
+后续阶段不再读原始请求文本做判断：问测试、问实现等问法在 route 阶段算出，写进
+`QueryRoute`。车道以返回值交出结果（例如 exact 车道返回 `ExactEvidence`），由 recall
+编排汇总成一条记录，不在共享状态上留副作用。`RetrievalState` 另外只保存两类请求内缓存：
+头部复位复用的实现关系 key，以及关系小节重渲染复用的 call / definition 原始行。
+
+关闭对应开关时每个阶段退化为恒等变换。`lane_failed` 是车道失败的唯一出口：任何车道
+抛出异常时记录 `audit.lane_failures[lane] = ExceptionType`，落到
 `retrieval_metrics.lane_failures`，请求照常从其余车道作答。离线对比时若该列非空，排序
 变化不能归因于代码。
 
@@ -45,14 +50,14 @@
   条件，避免 `get OR json` 被 `json` 密集的片段占满。
 - compound 锚点：traceback 帧解析到该文件该行的声明、标题点名且限定名严格钉住的声明
   （定义 ≤ 3 处）。早先按「任何点名标识符」锚定曾锁定 MVCE 里的 setup 调用而回退。
-- hub 车道（`hubs.py`）：overview / 无符号 call_chain 的请求词拼出的已声明名字按被引用
-  文件数排序，包名不领头。精选 overview nDCG@10 67.8→74.3，但 held-out 语义集 overview
-  66.4→54.1、call-chain 85.6→78.2，收益未泛化，默认 0 关闭。扩展到 feature 问句的变体
-  把实现函数挤开（feature nDCG@10 73.5→68.8、CSN Region Top-1 62.5→60.0），已退休。
+- hub 车道（请求词拼出的已声明名字按被引用文件数排序）已删除：精选 overview nDCG@10
+  67.8→74.3，但 held-out 语义集 overview 66.4→54.1、call-chain 85.6→78.2，两轮评测未成为
+  默认值；扩展到 feature 问句的变体把实现函数挤开（feature nDCG@10 73.5→68.8、CSN Region
+  Top-1 62.5→60.0）。评测记录保留在 `benchmarks/results/`。
 
 ## 融合与先验（fuse, rank）
 
-- 不同标尺的分数不混排：dense cosine、BM25/ts_rank、RRF 只按名次融合；exact/anchors/hubs
+- 不同标尺的分数不混排：dense cosine、BM25/ts_rank、RRF 只按名次融合；exact/anchors
   按 key 合并后由头部规则排序。
 - 头部槽位：symbol 的定义按文件分散（每个声明文件先各占一槽），path 的 SQL 匹配每文件一槽，
   compound 的锚点按帧顺序，call_chain 的两个端点。语义查询保留 `RETRIEVAL_SOURCE_HEAD_SLOTS`
@@ -91,19 +96,23 @@
    在 `benchmarks/results/`。
 2. 已判定净负（所有套件回退）的变体立即删除，不保留为可选项。
 3. "待校准"开关必须附带离线标签的获取计划；没有计划的按第 1 条处理。
+4. 已成为默认值的消融开关，若关闭分支既不在生产也不在评测编排中使用，删除开关、保留行为。
 
 当前状态：
 
 | 开关 | 状态 | 依据 |
 | --- | --- | --- |
-| `RETRIEVAL_HUB_HEAD_SLOTS` | 默认 0，保留 | 精选集正向、held-out 负向；等第二轮 held-out |
-| `RETRIEVAL_HUB_FEATURE_ENABLED` | 已删除 | feature 上净负 |
-| `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` | 默认关，保留 | 需要同名定义的离线标签 |
+| `RETRIEVAL_HUB_HEAD_SLOTS` / `RETRIEVAL_HUB_MAX_DEFINITIONS` | 已删除（规则 1） | 精选集正向、held-out 负向，两轮未成为默认值 |
+| `RETRIEVAL_HUB_FEATURE_ENABLED` | 已删除（规则 2） | feature 上净负 |
+| `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` | 已删除（规则 3） | 无同名定义离线标签的获取计划 |
+| `RETRIEVAL_CONFIDENCE_FLOOR` | 已删除 | 默认 0 为恒等；非 0 时以融合后的混合标尺分数过滤，违反「不混排」 |
+| `RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` | 已删除（规则 4），行为保留 | 2026-09-08 起为默认值 |
+| `RETRIEVAL_REFERENCE_HEAD_FALLBACK` | 已删除（规则 4），行为保留 | 默认开启 |
 
 ## 等价性验证
 
 纯结构重构（不改变默认排序）用 `benchmarks/internal/retrieval_equivalence.py` 证明：
-它把一个目录索引进内存 SQLite，用确定性词频向量替代 embedding，对固定查询集在七种配置档
+它把一个目录索引进内存 SQLite，用确定性词频向量替代 embedding，对固定查询集在五种配置档
 下跑管线并记录每条结果与审计字段。重构前后两份 dump 必须逐条一致：
 
 ```bash

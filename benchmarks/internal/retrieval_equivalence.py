@@ -63,9 +63,7 @@ _TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]{1,}")
 # reorder the list are exercised too.
 PROFILES: dict[str, dict[str, Any]] = {
     "default": {},
-    "hubs": {"hub_head_slots": 2},
     "no_decisive": {"decisive_skips_dense": False},
-    "ambiguous_rerank": {"rerank_ambiguous_definitions": True, "source_head_slots": 5},
     "focused_small": {
         "focused_max_context_chars": 3_000,
         "max_context_chars": 6_000,
@@ -348,7 +346,7 @@ def _pipeline(
         exact_store=symbol_store,
         relation_store=symbol_store,
         lexical_store=SqlLexicalSearchStore(sessions),
-        settings=RetrievalSettings(confidence_floor=0.0, **settings),
+        settings=RetrievalSettings(**settings),
     )
 
 

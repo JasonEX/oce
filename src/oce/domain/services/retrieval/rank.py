@@ -11,16 +11,11 @@ candidate set and the bounded head is restored on top of their order.
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Sequence
 
-from oce.domain.services.query_classifier import (
-    QueryIntent,
-    asks_about_tests,
-    asks_for_implementors,
-)
+from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.relations import RelationStore
 from oce.domain.services.reranker import Reranker
-from oce.domain.services.retrieval.hubs import hub_heads, hub_intent
 from oce.domain.services.retrieval.names import leaf, word_in
 from oce.domain.services.retrieval.priors import (
     is_root_readme,
@@ -147,22 +142,6 @@ def apply_source_priority(
     return sorted(hits, key=effective, reverse=True)
 
 
-def apply_confidence_floor(
-    settings: RetrievalSettings,
-    hits: list[SearchHit],
-    priority_factor: Callable[[str], float],
-    protected: Collection[SearchHitKey] = (),
-) -> list[SearchHit]:
-    """Drop weak matches by effective score; protected heads always stay."""
-    floor = settings.confidence_floor
-    return [
-        hit
-        for hit in hits
-        if search_hit_key(hit) in protected
-        or hit.score * priority_factor(hit.path) >= floor
-    ]
-
-
 class Ranker:
     def __init__(
         self,
@@ -191,8 +170,8 @@ class Ranker:
         the back. Issue text that merely mentions a file name or a failing
         test is still looking for source, so the prior stays on there.
         """
-        if state.strategy.enable_path_index or (
-            state.intent != QueryIntent.COMPOUND and asks_about_tests(state.query)
+        if state.route.strategy.enable_path_index or (
+            state.route.intent != QueryIntent.COMPOUND and state.route.asks_tests
         ):
             return neutral_priority_factor
         return self.priority_factor
@@ -213,29 +192,16 @@ class Ranker:
         structural_heads = self.structural_heads(state, hits, priority_factor)
         if state.audit is not None:
             state.audit.head_slots = len(structural_heads)
-        # This optional floor belongs to recall, before model scores can enter
-        # the list. Dedicated relevance scores, dense cosine, and RRF are not
-        # calibrated to a shared scale; filtering their mixture after
-        # reranking is undefined. A deterministic exact symbol/path answer is
-        # protected for the same reason.
-        hits = apply_confidence_floor(
-            settings, hits, priority_factor, protected=structural_heads
-        )
         hits = promote_heads(hits, structural_heads)
 
         decision = plan_rerank(
-            state.intent,
+            state.route.intent,
             len(hits),
-            has_exact_hits=bool(state.exact),
-            dense_skipped=bool(
-                state.dense_route and state.dense_route.startswith("skip:")
-            ),
+            has_exact_hits=bool(state.recall.exact.hits),
+            dense_skipped=state.recall.dense_skipped,
             # Embedding path similarity is useful recall but not deterministic
             # evidence. Only an exact SQL path/basename match may skip reranking.
-            has_path_hits=bool(state.lookup_scores),
-            definition_sites=len(state.definitions),
-            head_slots=len(structural_heads),
-            rerank_ambiguous_definitions=settings.rerank_ambiguous_definitions,
+            has_path_hits=bool(state.recall.lookup_scores),
             dedicated_enabled=self.reranker is not None,
             llm_enabled=self.llm_reranker is not None,
             dedicated_policy=settings.rerank_policy,
@@ -259,7 +225,7 @@ class Ranker:
         # requests are different: source slots prepare the candidate window,
         # but an enabled semantic reranker may legitimately put architecture
         # documentation back first.
-        if state.intent != QueryIntent.OVERVIEW:
+        if state.route.intent != QueryIntent.OVERVIEW:
             hits = await self.prefer_source_head(state, hits, priority_factor)
         state.candidates = promote_heads(hits, structural_heads)
 
@@ -279,10 +245,9 @@ class Ranker:
             return
         lookup = getattr(self.exact_store, "occurrence_kinds", None)
         if (
-            not self.settings.head_skips_import_headers
-            or lookup is None
+            lookup is None
             or state.scope is None
-            or state.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
+            or state.route.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
         ):
             return
         occurrences = tuple(
@@ -324,8 +289,8 @@ class Ranker:
         slots = self.settings.source_head_slots
         if (
             slots > 0
-            and state.intent == QueryIntent.REFERENCE
-            and asks_about_tests(state.query)
+            and state.route.intent == QueryIntent.REFERENCE
+            and state.route.asks_tests
         ):
             head = self._test_question_head(state, hits, slots)
             if head:
@@ -340,7 +305,7 @@ class Ranker:
         if (
             slots <= 0
             or priority_factor is neutral_priority_factor
-            or state.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
+            or state.route.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
         ):
             return hits
         head = await self._source_head(state, hits, priority_factor, slots)
@@ -362,16 +327,19 @@ class Ranker:
         in the same tier; a test file named after the symbol is the one
         written for it.
         """
-        identifiers = state.lookup_identifiers
-        declaring_paths = tuple(dict.fromkeys(hit.path for hit in state.definitions))
-        evidenced = {search_hit_key(hit) for hit in (*state.exact, *state.lexical)}
+        identifiers = state.route.lookup_identifiers
+        exact = state.recall.exact
+        declaring_paths = tuple(dict.fromkeys(hit.path for hit in exact.definitions))
+        evidenced = {
+            search_hit_key(hit) for hit in (*exact.hits, *state.recall.lexical)
+        }
         head = [
             hit
             for hit in hits
             if search_hit_key(hit) in evidenced and is_test_path(hit.path)
         ]
-        use_keys = {search_hit_key(hit) for hit in state.use_sites}
-        import_only = {search_hit_key(hit) for hit in state.exact} - use_keys
+        use_keys = {search_hit_key(hit) for hit in exact.use_sites}
+        import_only = {search_hit_key(hit) for hit in exact.hits} - use_keys
         first_seen: dict[str, int] = {}
         for hit in head:
             first_seen.setdefault(hit.blob_name, len(first_seen))
@@ -413,23 +381,30 @@ class Ranker:
         then chunks that only mention it textually (uses the extractor
         could not attribute), then chunks that merely import it.
         """
-        identifiers = state.lookup_identifiers
-        declaring_paths = tuple(dict.fromkeys(hit.path for hit in state.definitions))
+        identifiers = state.route.lookup_identifiers
+        declaring_paths = tuple(
+            dict.fromkeys(hit.path for hit in state.recall.exact.definitions)
+        )
         declaring_keys: set[SearchHitKey] = set()
         reference_keys: set[SearchHitKey] | None = None
         use_keys: set[SearchHitKey] = set()
         import_keys: set[SearchHitKey] = set()
-        if state.intent == QueryIntent.REFERENCE:
-            declaring_keys = {search_hit_key(hit) for hit in state.definitions}
-            reference_keys = {
-                search_hit_key(hit) for hit in (*state.exact, *state.lexical)
+        if state.route.intent == QueryIntent.REFERENCE:
+            declaring_keys = {
+                search_hit_key(hit) for hit in state.recall.exact.definitions
             }
-            use_keys = {search_hit_key(hit) for hit in state.use_sites}
+            reference_keys = {
+                search_hit_key(hit)
+                for hit in (*state.recall.exact.hits, *state.recall.lexical)
+            }
+            use_keys = {search_hit_key(hit) for hit in state.recall.exact.use_sites}
             import_keys = (
-                {search_hit_key(hit) for hit in state.exact} - use_keys - declaring_keys
+                {search_hit_key(hit) for hit in state.recall.exact.hits}
+                - use_keys
+                - declaring_keys
             )
 
-        others = list(state.evidence.identifiers[1:] if state.evidence else ())
+        others = list(state.route.evidence.identifiers[1:])
         implementor_keys = await self.implementor_keys(state, others)
 
         def eligible(hit: SearchHit) -> bool:
@@ -455,7 +430,9 @@ class Ranker:
             return sum(word_in(name, text) for name in others)
 
         qualifier_words = tuple(
-            dict.fromkeys(q for scopes in state.qualifiers.values() for q in scopes)
+            dict.fromkeys(
+                q for scopes in state.route.qualifiers.values() for q in scopes
+            )
         )
 
         def names_qualifier(hit: SearchHit) -> bool:
@@ -506,7 +483,7 @@ class Ranker:
         if reference_keys is None:
             head = [hit for hit in source if not is_header(hit)][:slots]
             return head or source[:slots]
-        if source or not self.settings.reference_head_fallback:
+        if source:
             source.sort(key=use_tier)
             return source[:slots]
         # Use sites that exist only in tests, examples or package
@@ -529,10 +506,10 @@ class Ranker:
         if (
             store is None
             or state.scope is None
-            or state.intent != QueryIntent.REFERENCE
+            or state.route.intent != QueryIntent.REFERENCE
             or not others
-            or not asks_for_implementors(state.query)
-            or not state.lookup_identifiers
+            or not state.route.asks_implementors
+            or not state.route.lookup_identifiers
         ):
             return frozenset()
         if state.implementor_keys is not None:
@@ -540,7 +517,9 @@ class Ranker:
         state.implementor_keys = frozenset()
         try:
             implementations = await store.find_implementations(
-                identifiers=state.lookup_identifiers[:1], scope=state.scope, limit=200
+                identifiers=state.route.lookup_identifiers[:1],
+                scope=state.scope,
+                limit=200,
             )
         except Exception as exc:
             lane_failed(state, "implementors", exc)
@@ -569,23 +548,15 @@ class Ranker:
         """
         settings = self.settings
         in_window = {search_hit_key(hit) for hit in hits}
-        if state.intent == QueryIntent.COMPOUND and state.anchors:
+        if state.route.intent == QueryIntent.COMPOUND and state.recall.anchors:
             # Anchors keep their own order: the outermost project frame,
             # then the frames it delegated to, then the title's names.
             return tuple(
                 search_hit_key(hit)
-                for hit in state.anchors
+                for hit in state.recall.anchors
                 if search_hit_key(hit) in in_window and priority_factor(hit.path) >= 1.0
             )[: settings.compound_anchor_slots]
-        if state.hubs and hub_intent(state):
-            return tuple(
-                search_hit_key(hit)
-                for hit in hub_heads(
-                    state.hubs, self.priority_factor, settings.hub_head_slots
-                )
-                if search_hit_key(hit) in in_window
-            )
-        if state.intent == QueryIntent.SYMBOL and state.exact:
+        if state.route.intent == QueryIntent.SYMBOL and state.recall.exact.hits:
             # The exact lane already orders declarations: the symbol asked for
             # first, its overloads by the parameter types the request names.
             # Real source still beats the same signature quoted in a
@@ -593,7 +564,9 @@ class Ranker:
             # before a file gets its second (overloads), so two
             # implementations are both visible.
             exact_hits = [
-                hit for hit in state.exact if search_hit_key(hit) in in_window
+                hit
+                for hit in state.recall.exact.hits
+                if search_hit_key(hit) in in_window
             ]
             ordered = [
                 *(hit for hit in exact_hits if priority_factor(hit.path) >= 1.0),
@@ -616,24 +589,28 @@ class Ranker:
                 if key not in heads:
                     heads.append(key)
             return tuple(heads)
-        if state.intent == QueryIntent.CALL_CHAIN and state.endpoints:
+        if (
+            state.route.intent == QueryIntent.CALL_CHAIN
+            and state.recall.exact.endpoints
+        ):
             # "How does A reach B": A's declaration is where the reader starts
             # and B's is where the path ends; the hops in between come as a
             # chain section. A one-ended trace ("how does A dispatch...")
             # starts at A just the same. The declarations stay ahead of
             # semantic neighbours, which shuffle between identical requests.
             endpoint_heads: list[SearchHitKey] = []
-            for _name, definitions in state.endpoints[:2]:
+            for _name, definitions in state.recall.exact.endpoints[:2]:
                 for definition in definitions:
                     key = search_hit_key(definition.hit)
                     if key in in_window and key not in endpoint_heads:
                         endpoint_heads.append(key)
                         break
             return tuple(endpoint_heads)
-        if state.intent == QueryIntent.PATH and state.lookup_scores:
+        if state.route.intent == QueryIntent.PATH and state.recall.lookup_scores:
             path_heads: list[SearchHitKey] = []
             blob_names = sorted(
-                state.lookup_scores, key=lambda name: -state.lookup_scores[name]
+                state.recall.lookup_scores,
+                key=lambda name: -state.recall.lookup_scores[name],
             )
             for blob_name in blob_names:
                 for hit in hits:

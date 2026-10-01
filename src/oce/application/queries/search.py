@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from time import perf_counter
 
-from oce.application.messages import Query
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope
 from oce.shared.metrics import (
@@ -17,7 +16,7 @@ from oce.shared.metrics import (
 
 
 @dataclass(frozen=True)
-class SearchQuery(Query):
+class SearchQuery:
     query: str
     scope: SearchScope | None = None
     source: str = "retrieval"

@@ -10,7 +10,6 @@ from oce.domain.services.retrieval.excerpts import (
 from oce.domain.services.retrieval.excerpts import (
     merge_adjacent_hits as merge_adjacent_hits,
 )
-from oce.domain.services.retrieval.hubs import hub_spellings as hub_spellings
 from oce.domain.services.retrieval.names import (
     order_by_comentions as order_by_comentions,
 )

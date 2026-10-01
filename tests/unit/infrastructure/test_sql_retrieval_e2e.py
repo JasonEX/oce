@@ -126,7 +126,7 @@ async def indexed():
 def _pipeline(sessions, vector_index, **overrides):
     # Two primary slots: the fake dense store returns every chunk, so a larger
     # budget would select the whole repository and leave nothing to pull in.
-    settings = RetrievalSettings(confidence_floor=0.0, final_select_k=2, **overrides)
+    settings = RetrievalSettings(final_select_k=2, **overrides)
     return RetrievalPipeline(
         embedder=ConstantEmbedder(dimensions=2),
         store=DenseFromRecords(vector_index),

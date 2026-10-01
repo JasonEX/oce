@@ -6,7 +6,6 @@ from oce.application.commands.queue_admin import (
     ResetQueueCommand,
     ResetQueueCommandHandler,
 )
-from oce.shared.errors import QueueBusyError
 from tests.fakes.queue import FakeQueue
 
 
@@ -108,18 +107,3 @@ async def test_missing_queue_is_a_noop():
     result = await handler.handle(ResetQueueCommand())
 
     assert (result.removed, result.requeued, result.queue_size) == (0, 0, 0)
-
-
-@pytest.mark.asyncio
-async def test_running_worker_rejects_reset_before_queue_mutation():
-    queue = FakeQueue(["live1"])
-    handler = ResetQueueCommandHandler(
-        lambda: FakeUow(["live1"]),
-        queue,
-        worker_running=lambda: True,
-    )
-
-    with pytest.raises(QueueBusyError):
-        await handler.handle(ResetQueueCommand(mode="purge"))
-
-    assert queue.main == ["live1"]

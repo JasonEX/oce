@@ -326,7 +326,7 @@ async def indexed():
 
 def _pipeline(sessions, vector_index, **overrides):
     embedder = QueryCapture()
-    settings = RetrievalSettings(confidence_floor=0.0, **overrides)
+    settings = RetrievalSettings(**overrides)
     symbol_store = SymbolSearchStore(sessions)
     return RetrievalPipeline(
         embedder=embedder,

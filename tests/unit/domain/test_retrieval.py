@@ -108,7 +108,7 @@ class TestRetrievalPipeline:
         return RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
     async def test_search_returns_sorted_results(self, pipe):
@@ -129,7 +129,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         results = await pipe.search("q")
         assert [r.path for r in results] == ["src/core.py", "README.md"]
@@ -144,7 +144,6 @@ class TestRetrievalPipeline:
             store=FakeSearchStore(hits),
             settings=_settings(
                 source_priority_enabled=False,
-                confidence_floor=0.0,
                 final_select_k=10,
             ),
         )
@@ -156,42 +155,12 @@ class TestRetrievalPipeline:
             "src/core.py",
         ]
 
-    async def test_confidence_floor_filters_weak_hits(self):
-        hits = [
-            _hit("src/a.py", 0.9),
-            _hit("src/b.py", 0.1),  # below the floor
-        ]
-        pipe = RetrievalPipeline(
-            embedder=FakeEmbedder(),
-            store=FakeSearchStore(hits),
-            settings=_settings(confidence_floor=0.3, final_select_k=10),
-        )
-        results = await pipe.search("q")
-        assert [r.path for r in results] == ["src/a.py"]
-
-    async def test_confidence_floor_does_not_compare_model_scores(self):
-        class RescoringReranker:
-            async def rerank(self, query, hits):
-                return [replace(hit, score=0.1) for hit in hits]
-
-        pipe = RetrievalPipeline(
-            embedder=FakeEmbedder(),
-            store=FakeSearchStore([_hit("src/a.py", 0.9), _hit("src/b.py", 0.8)]),
-            reranker=RescoringReranker(),
-            settings=_settings(confidence_floor=0.5, final_select_k=10),
-        )
-
-        results = await pipe.search("q")
-
-        assert [result.path for result in results] == ["src/a.py", "src/b.py"]
-        assert {result.score for result in results} == {0.1}
-
     async def test_final_select_k_limits_results(self):
         hits = [_hit(f"src/f{i}.py", 1.0 - i * 0.01) for i in range(10)]
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            settings=_settings(confidence_floor=0.0, final_select_k=3),
+            settings=_settings(final_select_k=3),
         )
         results = await pipe.search("q")
         assert len(results) == 3
@@ -221,7 +190,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         await pipe.search("q", _scope("aaa", "bbb"))
         assert set(
@@ -235,7 +204,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=embedder,
             store=store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("q", _scope())
@@ -254,7 +223,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
             reranker=ReorderReranker(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         results = await pipe.search("q")
         # The source prior runs before the model; the reranker's order is final.
@@ -275,7 +244,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
             llm_reranker=llm_reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Explain the system architecture")
@@ -306,7 +275,7 @@ class TestRetrievalPipeline:
             ),
             reranker=DedicatedReranker(),
             llm_reranker=SemanticReranker(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Explain the subsystem architecture")
@@ -333,7 +302,7 @@ class TestRetrievalPipeline:
                 [_hit("src/winner.py", 0.95), _hit("src/other.py", 0.60)]
             ),
             llm_reranker=llm_reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Where is `winner` referenced?")
@@ -350,7 +319,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/commands/provider.rs", 0.9)]),
             path_store=path_store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("`add_provider` 函数在哪里定义？")
@@ -380,7 +349,7 @@ class TestRetrievalPipeline:
             store=FakeSearchStore(),
             path_store=path_store,
             path_content_store=content_store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Where is config.py?")
@@ -403,7 +372,7 @@ class TestRetrievalPipeline:
             path_content_store=FakePathContentStore(
                 error=RuntimeError("database unavailable")
             ),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Where is missing.py?")
@@ -432,7 +401,7 @@ class TestRetrievalPipeline:
             path_store=CoordinatedPathStore(
                 [PathSearchResult("src/config.py", "x" * 64, 0.9)]
             ),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("Where is config.py?")
@@ -450,7 +419,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FailingSearchStore(),
             path_store=FakePathStore(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         with pytest.raises(RuntimeError, match="dense unavailable"):
@@ -467,7 +436,7 @@ class TestRetrievalPipeline:
             path_content_store=FakePathContentStore(
                 error=RuntimeError("metadata unavailable")
             ),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         with pytest.raises(RuntimeError, match="metadata unavailable"):
@@ -488,7 +457,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/proxy/copilot_auth.rs", 0.9)]),
             exact_store=exact_store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search(
@@ -528,7 +497,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([semantic]),
             exact_store=FakeExactSearchStore([exact_doc, exact, second_exact]),
-            settings=_settings(confidence_floor=0.5, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search(
@@ -567,9 +536,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=CoordinatedSearchStore([_hit("src/semantic.py", 0.9)]),
             exact_store=CoordinatedExactStore([_hit("src/exact.py", 1.0)]),
-            settings=_settings(
-                confidence_floor=0.0, final_select_k=10, decisive_skips_dense=False
-            ),
+            settings=_settings(final_select_k=10, decisive_skips_dense=False),
         )
 
         results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
@@ -593,7 +560,7 @@ class TestRetrievalPipeline:
             embedder=embedder,
             store=store,
             exact_store=FakeExactSearchStore([_hit("src/exact.py", 1.0)]),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
         results = await asyncio.wait_for(
@@ -617,7 +584,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=store,
             exact_store=FakeExactSearchStore([]),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
         results = await pipe.search(
@@ -639,7 +606,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=dense,
             exact_store=SecondaryOnlyStore(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
 
@@ -664,7 +631,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=dense,
             exact_store=SecondaryUseStore(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
 
@@ -685,7 +652,7 @@ class TestRetrievalPipeline:
             store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
             path_store=FakePathStore(),
             exact_store=exact_store,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search(
@@ -703,7 +670,7 @@ class TestRetrievalPipeline:
             exact_store=FakeExactSearchStore(
                 error=RuntimeError("database unavailable")
             ),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search("`target_symbol` 在哪里？", _scope("a" * 64))
@@ -718,7 +685,6 @@ class TestRetrievalPipeline:
             exact_store=exact_store,
             settings=_settings(
                 exact_enabled=False,
-                confidence_floor=0.0,
                 final_select_k=10,
             ),
         )
@@ -734,9 +700,7 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/semantic.py", 0.9)]),
             exact_store=exact_store,
-            settings=_settings(
-                confidence_floor=0.0, final_select_k=10, decisive_skips_dense=False
-            ),
+            settings=_settings(final_select_k=10, decisive_skips_dense=False),
         )
 
         unbounded = await pipe.search("`target_symbol` 在哪里？")
@@ -839,7 +803,7 @@ class TestRetrievalPipeline:
             store=FakeSearchStore(),
             exact_store=FakeExactSearchStore(),
             rerank_window=rerank_window,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         merged = pipe.fusion.merge_exact_hits(
@@ -886,7 +850,7 @@ class TestRetrievalPipeline:
             store=FakeSearchStore(),
             exact_store=FakeExactSearchStore([endpoint, helper]),
             llm_reranker=llm_reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         results = await pipe.search(
@@ -910,7 +874,6 @@ class TestRetrievalPipeline:
             embedder=embedder,
             store=store,
             settings=_settings(
-                confidence_floor=0.0,
                 final_select_k=10,
                 query_decomposition_enabled=True,
                 query_max_queries=3,
@@ -941,7 +904,7 @@ class TestRetrievalPipeline:
             embedder=embedder,
             store=store,
             query_planner=DuplicatePlanner(),
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
 
         await pipe.search("same query")
@@ -955,7 +918,6 @@ class TestRetrievalPipeline:
             embedder=FakeEmbedder(),
             store=store,
             settings=_settings(
-                confidence_floor=0.0,
                 query_decomposition_enabled=False,
             ),
         )
@@ -995,7 +957,7 @@ class TestRerankRouting:
             store=FakeSearchStore(),
             exact_store=FakeExactSearchStore([endpoint, helper]),
             reranker=reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10, **overrides),
+            settings=_settings(final_select_k=10, **overrides),
         )
         return pipe, _scope(endpoint.blob_name, helper.blob_name)
 
@@ -1032,7 +994,7 @@ class TestRerankRouting:
                 [PathSearchResult("docs/CHANGES.rst", "a" * 64, 0.9)]
             ),
             reranker=reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
 
@@ -1048,7 +1010,7 @@ class TestRerankRouting:
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
             reranker=reranker,
-            settings=_settings(confidence_floor=0.0, final_select_k=10),
+            settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
 
@@ -1064,9 +1026,7 @@ class TestRerankRouting:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            settings=_settings(
-                confidence_floor=0.0, final_select_k=10, rerank_policy="always"
-            ),
+            settings=_settings(final_select_k=10, rerank_policy="always"),
         )
         audit = RetrievalAudit()
 

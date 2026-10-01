@@ -7,20 +7,25 @@ from dataclasses import replace
 import pytest
 
 from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.query_evidence import extract_query_evidence
 from oce.domain.services.relations import RelatedOccurrence
 from oce.domain.services.reranker import NoopReranker
 from oce.domain.services.retrieval.chain import CallChainTracer
 from oce.domain.services.retrieval.expand import Expander
-from oce.domain.services.retrieval.names import split_qualified_identifiers
 from oce.domain.services.retrieval.priors import source_priority_factor
 from oce.domain.services.retrieval.rank import Ranker
-from oce.domain.services.retrieval.state import RetrievalState
-from oce.domain.services.retrieval_strategy import get_strategy
+from oce.domain.services.retrieval.state import (
+    ExactEvidence,
+    RecallEvidence,
+    RetrievalState,
+)
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
-from tests.fakes.retrieval import FakeEvidenceStore, FakeRelationStore
+from tests.fakes.retrieval import (
+    FakeEvidenceStore,
+    FakeRelationStore,
+    retrieval_state,
+)
 
 
 def _hit(name: str, content: str, *, score: float = 0.8) -> SearchHit:
@@ -37,19 +42,14 @@ def _hit(name: str, content: str, *, score: float = 0.8) -> SearchHit:
 def _state(
     query: str, intent: QueryIntent, hits: list[SearchHit], scope: SearchScope
 ) -> RetrievalState:
-    evidence = extract_query_evidence(query)
-    identifiers, qualifiers = split_qualified_identifiers(evidence.identifiers)
-    return RetrievalState(
-        query=query,
-        scope=scope,
+    return retrieval_state(
+        query,
+        scope,
         audit=RetrievalAudit(),
         intent=intent,
-        evidence=evidence,
-        lookup_identifiers=identifiers,
-        qualifiers=qualifiers,
-        strategy=get_strategy(intent),
-        exact=list(hits),
-        use_sites=list(hits),
+        recall=RecallEvidence(
+            exact=ExactEvidence(hits=tuple(hits), use_sites=tuple(hits))
+        ),
         candidates=list(hits),
         selected=list(hits),
     )
@@ -90,7 +90,7 @@ async def test_restored_reference_head_reuses_implementation_facts(
     assert store.implementation_requests == [(("IntoResponse",), 200)]
     # A new request resolves its own scope; no facts survive in the ranker.
     next_state = _state(
-        state.query, state.intent, [other], SearchScope(frozenset({"other"}))
+        state.query, state.route.intent, [other], SearchScope(frozenset({"other"}))
     )
     await ranker.rank(next_state)
     assert len(store.implementation_requests) == 2
@@ -173,7 +173,7 @@ async def test_expansion_reuses_facts_and_drops_relations_of_trimmed_sources(
         assert state.audit is not None
         assert state.audit.lane_failures == {"related": "RuntimeError"}
     # Raw facts are not a cross-request cache, even on the same expander.
-    next_state = _state(state.query, state.intent, [primary, tail], scope)
+    next_state = _state(state.query, state.route.intent, [primary, tail], scope)
     await expander.expand(next_state)
     assert len(store.definition_requests) == 2
     assert len(store.call_requests) == 4
@@ -240,7 +240,9 @@ async def test_zero_ordinary_relation_cap_preserves_the_separate_chain_budget() 
         [primary],
         SearchScope(frozenset({primary.blob_name, target.blob_name})),
     )
-    state.endpoints = [("entry", [start])]
+    state.recall = RecallEvidence(
+        exact=replace(state.recall.exact, endpoints=(("entry", (start,)),))
+    )
 
     await expander.expand(state)
 

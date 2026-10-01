@@ -118,7 +118,7 @@ class Expander:
     def wants_related(self, state: RetrievalState) -> bool:
         return (
             self.settings.related_definitions_enabled
-            and state.strategy.expand_related_definitions
+            and state.route.strategy.expand_related_definitions
             and self.exact_store is not None
         )
 
@@ -158,7 +158,7 @@ class Expander:
                     state.audit.relation_counts = {"chain": len(chain)}
                     state.audit.relation_chars = sum(len(hit.content) for hit in chain)
                 return
-            identifiers = state.lookup_identifiers
+            identifiers = state.route.lookup_identifiers
             if lanes and not identifiers:
                 # A feature request names no symbol; the symbols its top
                 # results declare are what its tests exercise.
@@ -196,7 +196,7 @@ class Expander:
                 sections.append(
                     SectionInput(lane.role, result, lane.max_items, lane.max_chars)
                 )
-            related_first = state.intent not in (
+            related_first = state.route.intent not in (
                 QueryIntent.SYMBOL,
                 QueryIntent.REFERENCE,
             )
@@ -261,7 +261,10 @@ class Expander:
         one benchmark's chunk sizes.
         """
         active = sum(lane.max_chars for lane in lanes)
-        if state.strategy.expand_related_definitions and self.exact_store is not None:
+        if (
+            state.route.strategy.expand_related_definitions
+            and self.exact_store is not None
+        ):
             active += self.settings.related_max_chars
         if active <= 0:
             return 0
@@ -295,7 +298,7 @@ class Expander:
             return []
         scope = state.scope
         settings = self.settings
-        strategy = state.strategy
+        strategy = state.route.strategy
         lanes: list[RelationLane] = []
         if strategy.expand_reexports and settings.reexports_enabled:
             lanes.append(
@@ -309,7 +312,7 @@ class Expander:
                 )
             )
         if strategy.expand_callers and settings.callers_enabled:
-            if state.intent == QueryIntent.CALL_CHAIN:
+            if state.route.intent == QueryIntent.CALL_CHAIN:
 
                 async def fetch_callers(
                     names: Sequence[str],
@@ -350,7 +353,9 @@ class Expander:
         if strategy.expand_tests and settings.tests_enabled:
             # "Where is X defined" wants the declaration; one test shows how
             # it is exercised. Requests that ask for tests keep the full slot.
-            tests_max = 1 if state.intent == QueryIntent.SYMBOL else settings.tests_max
+            tests_max = (
+                1 if state.route.intent == QueryIntent.SYMBOL else settings.tests_max
+            )
             lanes.append(
                 RelationLane(
                     "test",
@@ -393,7 +398,7 @@ class Expander:
         """The resolved declarations of a reference request's identifiers."""
         assert self.exact_store is not None and state.scope is not None
         rows = await self.definition_rows(state, identifiers, max_per_identifier=40)
-        declared = {search_hit_key(hit) for hit in state.definitions}
+        declared = {search_hit_key(hit) for hit in state.recall.exact.definitions}
         return [item for item in rows if search_hit_key(item.hit) in declared]
 
     async def definition_rows(
@@ -457,7 +462,7 @@ class Expander:
         # they are pulled first.
         called: list[str] = []
         calls_within = getattr(self.exact_store, "calls_within", None)
-        if calls_within is not None and state.intent != QueryIntent.REFERENCE:
+        if calls_within is not None and state.route.intent != QueryIntent.REFERENCE:
             source_keys = [
                 (hit.blob_name, hit.start_line, hit.end_line)
                 for hit in sources
@@ -497,10 +502,10 @@ class Expander:
         # definitions of whatever else those use sites happen to call.
         mined: tuple[str, ...] = (
             ()
-            if state.intent == QueryIntent.REFERENCE
+            if state.route.intent == QueryIntent.REFERENCE
             else (*called, *mine_identifiers(sources))
         )
-        for identifier in (*state.lookup_identifiers, *mined):
+        for identifier in (*state.route.lookup_identifiers, *mined):
             if identifier not in ordered:
                 ordered.append(identifier)
         # Symbols defined by the selected code itself need no pull-in; the
@@ -509,7 +514,10 @@ class Expander:
         if not candidates:
             return []
 
-        if state.intent == QueryIntent.REFERENCE and state.definitions:
+        if (
+            state.route.intent == QueryIntent.REFERENCE
+            and state.recall.exact.definitions
+        ):
             # The exact lane already resolved the declaration, qualifier
             # included; ``render`` declared in five files would otherwise
             # exceed the ambiguity bound and the answer's own declaration
@@ -531,7 +539,7 @@ class Expander:
         # function that happens to share the leaf, as the first thing after
         # the answer. The chunk evidence decides here, not the recorded
         # enclosing name: the exact lane pinned the primary answer the same way.
-        for leaf_name, scopes in state.qualifiers.items():
+        for leaf_name, scopes in state.route.qualifiers.items():
             pinned = [item for item in definitions if item.identifier == leaf_name]
             if not pinned:
                 continue

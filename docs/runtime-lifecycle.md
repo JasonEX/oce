@@ -1,7 +1,9 @@
 # 运行时所有权与状态转移
 
 系统用现有应用用例、事务与 worker 管理生命周期。`application/container.py` 负责装配，
-router 只转换 DTO、鉴权与映射异常；`ApplicationCommands` / `ApplicationQueries` 显式
+并拥有它装配出的全部资源：`Container.start()` 按依赖顺序启动（索引 profile 校验 → worker
+→ 监控采集 → 有界存储预热），`Container.close()` 按相反顺序释放；ASGI lifespan 只调用这
+两个方法。router 只转换 DTO、鉴权与映射异常；`ApplicationCommands` / `ApplicationQueries` 显式
 绑定 handler，保留读写用例边界，缺少依赖或返回类型不匹配由类型检查暴露。
 
 ## 索引任务
@@ -31,6 +33,8 @@ stateDiagram-v2
 ## worker 与维护
 
 worker 的一把生命周期锁串行化启动、停止和队列维护；不依赖 router 操作任务列表。
+状态是代码里的显式枚举 `WorkerState`（`application/worker.py`），非法转移直接报错；
+`/admin/queue` 的 `worker_state` 返回当前状态（无 worker 时为 `disabled`）。
 
 ```mermaid
 stateDiagram-v2
@@ -41,6 +45,8 @@ stateDiagram-v2
     running --> draining: 队列维护，停止接收新批次
     draining --> maintenance: 活动批次完成提交与 ack
     maintenance --> recovering: 重置完成或失败，恢复消费
+    stopped --> maintenance: 对未运行的 worker 做维护
+    maintenance --> stopped: 维护结束后保持停止
     running --> stopped: 关闭，取消自有任务
 ```
 
@@ -49,7 +55,8 @@ dequeue 返回但尚未开始的投递留在 processing，恢复时重新投递�
 批次，processing 留待下一次启动恢复。
 
 enqueue、ack/fail、processing 恢复和 retain 在 Redis 内原子变更列表与 sentinel；维护时
-上传方仍可入队。队列 reset 使用 worker 的维护上下文；`requeue=False` 只表示本次立即
+上传方仍可入队。队列与 worker 同生同灭（只在 `WORKER_ENABLED` 时装配），队列 reset 一律在
+worker 的维护上下文里执行，不存在「worker 运行中拒绝 reset」的分支；`requeue=False` 只表示本次立即
 清理，不暂停持久 pending 的周期补偿。多进程同时消费同一队列的租约不在此生命周期
 协议内，部署时由单个服务进程拥有队列维护。
 

@@ -11,7 +11,6 @@ from oce.application.commands.requeue import RequeueStaleResult
 from oce.application.queries.queue import QueueStatusResult
 from oce.auth import _unauthorized, verify_admin_key
 from oce.main import app
-from oce.shared.errors import QueueBusyError
 
 
 async def _mock_admin_auth(authorization: str | None = Header(default=None)) -> str:
@@ -21,25 +20,24 @@ async def _mock_admin_auth(authorization: str | None = Header(default=None)) -> 
 
 
 class StubQueueApp:
-    def __init__(self, *, worker_running: bool = False) -> None:
-        self.worker_running = worker_running
-
     async def queue_status(self):
-        return QueueStatusResult(enabled=True, main_size=3, inflight=2, db_pending=4)
+        return QueueStatusResult(
+            enabled=True,
+            main_size=3,
+            inflight=2,
+            db_pending=4,
+            worker_state="running",
+        )
 
     async def reset_queue(self, *, mode, requeue):
-        if self.worker_running:
-            raise QueueBusyError()
         return ResetQueueResult(removed=1, requeued=2, queue_size=2, db_pending=2)
 
     async def requeue_stale(self, *, stale_hours, limit):
         return RequeueStaleResult(requeued_count=5)
 
 
-def _client(*, worker_running: bool = False) -> httpx.AsyncClient:
-    app.dependency_overrides[get_application] = lambda: StubQueueApp(
-        worker_running=worker_running
-    )
+def _client() -> httpx.AsyncClient:
+    app.dependency_overrides[get_application] = StubQueueApp
     app.dependency_overrides[verify_admin_key] = _mock_admin_auth
     return httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -58,24 +56,17 @@ async def test_queue_status_contract():
         "main_size": 3,
         "inflight": 2,
         "db_pending": 4,
+        "worker_state": "running",
     }
 
 
-async def test_queue_reset_ok_when_worker_stopped():
-    async with _client(worker_running=False) as client:
+async def test_queue_reset_contract():
+    async with _client() as client:
         response = await client.post(
             "/admin/queue/reset", headers=_AUTH, json={"mode": "sync"}
         )
     assert response.status_code == 200
     assert response.json()["requeued"] == 2
-
-
-async def test_queue_reset_conflict_when_worker_running():
-    async with _client(worker_running=True) as client:
-        response = await client.post(
-            "/admin/queue/reset", headers=_AUTH, json={"mode": "purge"}
-        )
-    assert response.status_code == 409
 
 
 async def test_requeue_stale_contract():

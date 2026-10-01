@@ -172,18 +172,17 @@ async def container(
             model="test-embedding",
             dimensions=DIMENSIONS,
         ),
-        retrieval=RetrievalSettings(
-            confidence_floor=0.0, path_index_enabled=mode is not False
-        ),
+        retrieval=RetrievalSettings(path_index_enabled=mode is not False),
         worker=WorkerSettings(enabled=has_worker),
         monitoring=MonitoringSettings(
             enabled=True, flush_interval_seconds=60.0, store_query_text=True
         ),
     )
     container = Container(settings, sessions)
-    assert await container.ensure_index_compatible() is (mode != "deferred-worker")
-    await container.metrics.start()
-    await container.warm_up()
+    await container.start()
+    assert (container.index_lifecycle.current is not None) is (
+        mode != "deferred-worker"
+    )
     try:
         yield container
     finally:
@@ -280,7 +279,7 @@ async def test_disabled_embedding_still_chunks_service_mode_uploads(
             await asyncio.sleep(0.01)
 
     await asyncio.wait_for(wait_ack(), timeout=5)
-    async with container._uow_factory() as uow:
+    async with container.indexing.uow_factory() as uow:
         blob = await uow.blobs.get(uploaded.blob_names[0])
         assert blob is not None and blob.chunks
         assert blob.status.value == "pending"
@@ -379,7 +378,7 @@ async def test_upload_checkpoint_and_retrieve_through_http(
 
     # Monitoring is a side channel, but a request that silently answered
     # from fewer lanes must be visible to whoever reads the metrics.
-    await container.metrics.stop()
+    await container.monitoring.metrics.stop()
     async with container.session_factory() as session:
         rows = (
             await session.execute(
@@ -409,8 +408,8 @@ async def test_sql_path_retrieval_without_vector_path_index(
     uploaded = await container.application.batch_upload(
         [BlobUpload("src/settings.cfg", "timeout = 42\n")]
     )
-    assert container.path_index is None
-    assert container.path_content_store is not None
+    assert container.stores.path_index is None
+    assert container.stores.path_content_store is not None
 
     app.dependency_overrides[get_application] = lambda: container.application
     try:

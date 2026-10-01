@@ -16,7 +16,11 @@ from loguru import logger
 
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.query_planner import QueryPlanner
-from oce.domain.services.retrieval.state import RetrievalState
+from oce.domain.services.retrieval.state import (
+    EmbeddingResult,
+    QueryPlan,
+    RetrievalState,
+)
 
 if TYPE_CHECKING:
     from oce.domain.services.llm.rewriter import QueryRewriter
@@ -39,7 +43,7 @@ def release_embedding(state: RetrievalState) -> None:
     pool and every later request times out. The request is cheap to let
     complete, it fills the query-vector cache, and nothing waits for it.
     """
-    task = state.embed_task
+    task = state.embedding
     if task is None:
         return
     if task.done():
@@ -48,7 +52,7 @@ def release_embedding(state: RetrievalState) -> None:
     task.add_done_callback(_swallow_task_result)
 
 
-class QueryPlan:
+class Planner:
     """Turn the routed request into the query variants the lanes search with."""
 
     def __init__(
@@ -65,40 +69,42 @@ class QueryPlan:
     async def plan(self, state: RetrievalState) -> None:
         # The rewriter is fault tolerant: on failure it returns the original
         # query rather than raising.
-        state.queries = [state.query]
-        if state.strategy.enable_query_rewrite and self.query_rewriter is not None:
+        queries: tuple[str, ...] = (state.query,)
+        if (
+            state.route.strategy.enable_query_rewrite
+            and self.query_rewriter is not None
+        ):
             with state.stage("rewrite"):
                 rewritten = await self.query_rewriter.rewrite(state.query)
             if rewritten:
-                state.queries = list(rewritten)
+                queries = tuple(rewritten)
 
-        state.planned = self._plan_queries(state.queries)
+        facets = self._plan_queries(queries)
         # The path index searches the original query and every rewrite: a
         # Chinese request embedded directly rarely matches an English path
         # document, while a rewrite that names the file (CHANGES.rst) does.
-        state.path_queries = (
-            tuple(dict.fromkeys((state.query, *state.queries)))
-            if state.use_path_index
+        path_queries = (
+            tuple(dict.fromkeys((state.query, *queries)))
+            if state.route.use_path_index
             else ()
         )
+        state.plan = QueryPlan(
+            queries=queries, facets=facets, path_queries=path_queries
+        )
         # Started, not awaited: recall decides whether the answer needs it.
-        state.embed_task = asyncio.create_task(
-            self._embed_query_vectors(
-                [*state.path_queries, *(item[0] for item in state.planned)]
-            )
+        state.embedding = asyncio.create_task(
+            self._embed_query_vectors([*path_queries, *(item[0] for item in facets)])
         )
 
-    def _plan_queries(self, queries: Sequence[str]) -> list[tuple[str, int]]:
+    def _plan_queries(self, queries: Sequence[str]) -> tuple[tuple[str, int], ...]:
         planned: list[tuple[str, int]] = []
         for query in queries:
             facets = self.query_planner.plan(query)
             count = len(facets)
             planned.extend((facet, count) for facet in facets)
-        return planned
+        return tuple(planned)
 
-    async def _embed_query_vectors(
-        self, queries: Sequence[str]
-    ) -> tuple[dict[str, list[float]], int]:
+    async def _embed_query_vectors(self, queries: Sequence[str]) -> EmbeddingResult:
         """Query vectors plus the wall time of the round trip in milliseconds."""
         started = perf_counter()
         unique_queries = tuple(dict.fromkeys(queries))

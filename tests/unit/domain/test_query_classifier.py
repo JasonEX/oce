@@ -3,9 +3,9 @@
 from oce.domain.services.query_classifier import (
     QueryIntent,
     classify_query_intent,
-    extract_code_identifiers,
     should_use_path_index,
 )
+from oce.domain.services.query_tokens import extract_code_identifiers
 
 
 def test_extract_code_identifiers_preserves_explicit_anchors():

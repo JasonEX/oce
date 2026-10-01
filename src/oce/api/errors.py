@@ -16,7 +16,6 @@ from oce.shared.errors import (
     InvalidCheckpointTokenError,
     NeedsResetError,
     OCEError,
-    QueueBusyError,
     ScopeRequiredError,
     ServiceNotReadyError,
 )
@@ -27,7 +26,6 @@ _STATUS_BY_ERROR: tuple[tuple[type[OCEError], int], ...] = (
     (ScopeRequiredError, 400),
     (NeedsResetError, 404),
     (CredentialConflictError, 409),
-    (QueueBusyError, 409),
 )
 
 

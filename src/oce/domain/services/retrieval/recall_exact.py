@@ -24,7 +24,11 @@ from oce.domain.services.retrieval.names import (
     resolve_qualified_hits,
     word_in,
 )
-from oce.domain.services.retrieval.state import RetrievalState, lane_failed
+from oce.domain.services.retrieval.state import (
+    ExactEvidence,
+    RetrievalState,
+    lane_failed,
+)
 from oce.domain.services.search import (
     DefinitionHit,
     ExactSearchStore,
@@ -80,7 +84,7 @@ class ExactLane:
         self.settings = settings
 
     def available(self, state: RetrievalState) -> bool:
-        evidence = state.evidence
+        evidence = state.route.evidence
         return (
             self.settings.exact_enabled
             and self.store is not None
@@ -88,30 +92,29 @@ class ExactLane:
             and bool(evidence.identifiers)
         )
 
-    async def recall(
-        self, state: RetrievalState
-    ) -> tuple[list[SearchHit], list[SearchHit], list[SearchHit]]:
-        """``(occurrences, definitions, use_sites)`` for the query identifiers.
+    async def recall(self, state: RetrievalState) -> ExactEvidence:
+        """Occurrences, definitions, use sites and endpoints of the query identifiers.
 
         Reference questions want every occurrence kind including imports and
         additionally need to know which of those chunks declare the symbol and
-        which call or extend it; everything else asks for the structural
-        definition only and gets an empty use-site list.
+        which call or extend it; call-chain questions resolve the declaration
+        of each named endpoint; everything else asks for the structural
+        definition only.
         """
-        evidence = state.evidence
+        route = state.route
+        evidence = route.evidence
         store = self.store
         if (
             not self.settings.exact_enabled
             or store is None
             or state.scope is None
             or not state.scope.blob_names
-            or evidence is None
             or not evidence.identifiers
         ):
-            return [], [], []
+            return ExactEvidence()
         scope = state.scope
         top_k = self.settings.default_top_k
-        identifiers = state.lookup_identifiers or evidence.identifiers
+        identifiers = route.lookup_identifiers or evidence.identifiers
 
         async def lookup_one(
             identifier: str, kinds: Sequence[str] | None
@@ -127,7 +130,7 @@ class ExactLane:
             # of use sites or mixed occurrences is pinned by structure or
             # text only.
             declarations = kinds is not None and set(kinds) <= set(DEFINITION_KINDS)
-            for leaf_name, scopes in state.qualifiers.items():
+            for leaf_name, scopes in route.qualifiers.items():
                 if identifier == leaf_name or any(
                     identifier.endswith(f"{separator}{leaf_name}")
                     for separator in QUALIFIER_SEPARATORS
@@ -138,7 +141,7 @@ class ExactLane:
             return hits
 
         async def lookup(kinds: Sequence[str] | None) -> list[SearchHit]:
-            if not state.qualifiers:
+            if not route.qualifiers:
                 return await store.search_exact(
                     identifiers=identifiers, scope=scope, top_k=top_k, kinds=kinds
                 )
@@ -148,21 +151,23 @@ class ExactLane:
             return _dedupe(batches)
 
         use_sites: list[SearchHit] = []
+        endpoints: tuple[tuple[str, tuple[DefinitionHit, ...]], ...] = ()
+        primary_definition_found = False
         try:
             with state.stage("exact"):
-                if state.intent == QueryIntent.REFERENCE:
+                if route.intent == QueryIntent.REFERENCE:
                     occurrences, definitions, use_sites = await asyncio.gather(
                         lookup(None),
                         lookup(DEFINITION_KINDS),
                         lookup_one(leaf(evidence.identifiers[0]), USE_SITE_KINDS),
                     )
-                elif state.intent == QueryIntent.CALL_CHAIN:
-                    occurrences, definitions, state.endpoints = await asyncio.gather(
+                elif route.intent == QueryIntent.CALL_CHAIN:
+                    occurrences, definitions, endpoints = await asyncio.gather(
                         lookup((*DEFINITION_KINDS, CALL_KIND)),
                         lookup(DEFINITION_KINDS),
                         self.resolve_endpoints(state, identifiers),
                     )
-                elif state.intent == QueryIntent.SYMBOL and len(identifiers) > 1:
+                elif route.intent == QueryIntent.SYMBOL and len(identifiers) > 1:
                     # "Where is ``fromJson(JsonReader, TypeToken)`` defined":
                     # the first name is the symbol asked for, the others pick
                     # its overload. Its declarations lead in that order; the
@@ -187,7 +192,7 @@ class ExactLane:
                         *evidence.identifiers[1:],
                         *(
                             scope_name
-                            for scopes in state.qualifiers.values()
+                            for scopes in route.qualifiers.values()
                             for scope_name in scopes
                         ),
                     ]
@@ -195,7 +200,7 @@ class ExactLane:
                         batches[0], overloads, others
                     )
                     primary_leaf = leaf(evidence.identifiers[0])
-                    state.primary_definition_found = any(
+                    primary_definition_found = any(
                         batch
                         for identifier, batch in zip(identifiers, batches, strict=True)
                         if leaf(identifier) == primary_leaf
@@ -205,35 +210,38 @@ class ExactLane:
                 else:
                     definitions = await lookup(DEFINITION_KINDS)
                     occurrences = definitions
-                    if state.intent == QueryIntent.SYMBOL:
-                        state.primary_definition_found = bool(definitions)
+                    if route.intent == QueryIntent.SYMBOL:
+                        primary_definition_found = bool(definitions)
         except Exception as exc:
             lane_failed(state, "exact", exc)
-            return [], [], []
+            return ExactEvidence()
         # A qualified request (``Session.get``) pins the leaf to a scope; the
         # filtering was applied to that identifier's batch above. Among the
         # remaining declarations, the ones that mention the request's other
         # names (parameter types of an overload) come first.
-        if state.intent == QueryIntent.SYMBOL and len(identifiers) == 1:
+        if route.intent == QueryIntent.SYMBOL and len(identifiers) == 1:
             # The request's other names: the scopes of a qualified name. The
             # looked-up name itself is in every hit.
-            others = [scope for scopes in state.qualifiers.values() for scope in scopes]
+            others = [scope for scopes in route.qualifiers.values() for scope in scopes]
             occurrences = order_by_comentions(occurrences, others)
             definitions = order_by_comentions(definitions, others)
-        elif state.intent == QueryIntent.REFERENCE and len(evidence.identifiers) > 1:
+        elif route.intent == QueryIntent.REFERENCE and len(evidence.identifiers) > 1:
             # "Where is ``IntoResponse`` implemented for ``StatusCode``": the
             # use site that names the other symbol too is the one asked for.
             others = list(evidence.identifiers[1:])
             occurrences = order_by_comentions(occurrences, others)
             use_sites = order_by_comentions(use_sites, others)
-        if state.audit is not None:
-            state.audit.exact_definitions = len(definitions)
-            state.audit.definition_sites = len(definitions)
-        return occurrences, definitions, use_sites
+        return ExactEvidence(
+            hits=tuple(occurrences),
+            definitions=tuple(definitions),
+            use_sites=tuple(use_sites),
+            endpoints=endpoints,
+            primary_definition_found=primary_definition_found,
+        )
 
     async def resolve_endpoints(
         self, state: RetrievalState, identifiers: Sequence[str]
-    ) -> list[tuple[str, list[DefinitionHit]]]:
+    ) -> tuple[tuple[str, tuple[DefinitionHit, ...]], ...]:
         """Declarations of each queried name, qualified names pinned to their scope.
 
         Only names that resolve to a bounded number of declarations count as
@@ -242,17 +250,17 @@ class ExactLane:
         """
         store = self.store
         if store is None or state.scope is None:
-            return []
+            return ()
         # Qualified spellings are kept for the symbol table; the leaf is what
         # the declaration rows carry.
         leaves = list(dict.fromkeys(leaf(identifier) for identifier in identifiers))
         if not leaves:
-            return []
+            return ()
         # A qualified name may be declared in many types (``route`` on every
         # router); the qualifier picks one afterwards, so the bound is wide
         # for those and tight for bare names.
-        qualified = [name for name in leaves if name in state.qualifiers]
-        bare = [name for name in leaves if name not in state.qualifiers]
+        qualified = [name for name in leaves if name in state.route.qualifiers]
+        bare = [name for name in leaves if name not in state.route.qualifiers]
         # A qualifier that is the recorded enclosing definition (``Router``
         # for ``Router::route``) pins the leaf in SQL, so ``route`` declared
         # in fifty routers is no obstacle; qualifiers that are only a file or
@@ -263,7 +271,7 @@ class ExactLane:
                     identifiers=(name,),
                     scope=state.scope,
                     max_per_identifier=6,
-                    enclosing=state.qualifiers[name],
+                    enclosing=state.route.qualifiers[name],
                 )
                 for name in qualified
             )
@@ -287,10 +295,10 @@ class ExactLane:
             *(item for batch in pinned.values() for item in batch),
             *(item for batch in batches for item in batch),
         ]
-        endpoints: list[tuple[str, list[DefinitionHit]]] = []
+        endpoints: list[tuple[str, tuple[DefinitionHit, ...]]] = []
         for name in leaves:
             found = [item for item in definitions if item.identifier == name]
-            scopes = state.qualifiers.get(name)
+            scopes = state.route.qualifiers.get(name)
             if scopes and found:
                 found = resolve_qualified_definitions(found, {name: scopes})
             # Endpoints form a prefix of the names in the question. If the
@@ -298,10 +306,10 @@ class ExactLane:
             # start of a reversed one-ended trace.
             if not found:
                 break
-            endpoints.append((name, found))
-        return endpoints
+            endpoints.append((name, tuple(found)))
+        return tuple(endpoints)
 
-    async def recall_anchors(self, state: RetrievalState) -> list[SearchHit]:
+    async def recall_anchors(self, state: RetrievalState) -> tuple[SearchHit, ...]:
         """Definition chunks an issue-style request points at deterministically.
 
         Two facts in a bug report tie a name to a place: a traceback frame
@@ -314,24 +322,23 @@ class ExactLane:
         mentioned only in the body (a minimal example's helpers, fixture
         names, unrelated types) anchor nothing.
         """
-        evidence = state.evidence
+        evidence = state.route.evidence
         store = self.store
         if (
-            state.intent != QueryIntent.COMPOUND
+            state.route.intent != QueryIntent.COMPOUND
             or self.settings.compound_anchor_slots <= 0
             or not self.settings.exact_enabled
             or store is None
             or state.scope is None
             or not state.scope.blob_names
-            or evidence is None
             or not (evidence.frames or evidence.identifiers)
         ):
-            return []
+            return ()
         scope = state.scope
         title = state.query.strip().splitlines()[0] if state.query.strip() else ""
         title_identifiers = [
             identifier
-            for identifier in state.lookup_identifiers
+            for identifier in state.route.lookup_identifiers
             if word_in(leaf(identifier), title)
             and leaf(identifier).lower() not in IDENTIFIER_NOISE
         ]
@@ -356,7 +363,7 @@ class ExactLane:
                 )
         except Exception as exc:
             lane_failed(state, "anchors", exc)
-            return []
+            return ()
         anchors: list[SearchHit] = []
         seen: set[SearchHitKey] = set()
         anchored_files: set[str] = set()
@@ -386,11 +393,11 @@ class ExactLane:
                 seen.add(key)
                 anchors.append(hit)
         title_definitions = pin_definitions_to_qualifiers(
-            title_definitions, state.qualifiers, strict=True
+            title_definitions, state.route.qualifiers, strict=True
         )
         for definition in title_definitions:
             key = search_hit_key(definition.hit)
             if key not in seen:
                 seen.add(key)
                 anchors.append(definition.hit)
-        return anchors
+        return tuple(anchors)

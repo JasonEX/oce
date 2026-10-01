@@ -15,14 +15,18 @@ from dataclasses import replace
 import pytest
 
 from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.retrieval import RetrievalPipeline, RetrievalState
+from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.retrieval.rank import Ranker
-from oce.domain.services.retrieval.state import lane_failed
-from oce.domain.services.retrieval_strategy import get_strategy
+from oce.domain.services.retrieval.state import RetrievalState, lane_failed
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
-from tests.fakes.retrieval import FakeEmbedder, FakeExactSearchStore, FakeSearchStore
+from tests.fakes.retrieval import (
+    FakeEmbedder,
+    FakeExactSearchStore,
+    FakeSearchStore,
+    retrieval_state,
+)
 
 BLOB = "a" * 64
 
@@ -61,7 +65,7 @@ class BrokenPathLookupStore:
 
 def test_lane_failed_records_the_exception_type_only():
     audit = RetrievalAudit()
-    state = RetrievalState(query="q", scope=None, audit=audit)
+    state = retrieval_state("q", audit=audit)
 
     lane_failed(state, "exact", RuntimeError("secret sql text"))
 
@@ -69,7 +73,7 @@ def test_lane_failed_records_the_exception_type_only():
 
 
 def test_lane_failed_without_an_audit_is_silent():
-    state = RetrievalState(query="q", scope=None)
+    state = retrieval_state("q")
 
     lane_failed(state, "exact", RuntimeError("boom"))
 
@@ -84,7 +88,7 @@ async def test_failed_sql_lanes_are_skipped_and_named_in_the_audit():
         exact_store=BrokenExactStore(),
         lexical_store=BrokenLexicalStore(),
         path_lookup_store=BrokenPathLookupStore(),
-        settings=RetrievalSettings(confidence_floor=0.0),
+        settings=RetrievalSettings(),
     )
     audit = RetrievalAudit()
 
@@ -109,7 +113,7 @@ async def test_a_healthy_request_records_no_lane_failures():
     pipeline = RetrievalPipeline(
         embedder=FakeEmbedder(),
         store=FakeSearchStore([dense]),
-        settings=RetrievalSettings(confidence_floor=0.0),
+        settings=RetrievalSettings(),
     )
     audit = RetrievalAudit()
 
@@ -146,12 +150,11 @@ async def test_relation_lane_failure_is_named_by_its_role():
         ),
     )
     audit = RetrievalAudit()
-    state = RetrievalState(
-        query="Where is `build` used?",
-        scope=SearchScope(frozenset({BLOB})),
+    state = retrieval_state(
+        "Where is `build` used?",
+        SearchScope(frozenset({BLOB})),
         audit=audit,
         intent=QueryIntent.REFERENCE,
-        strategy=get_strategy(QueryIntent.REFERENCE),
         lookup_identifiers=("build",),
         selected=[_hit("src/a.py", "def build():\n    pass")],
     )
@@ -166,7 +169,7 @@ async def test_rank_programming_error_propagates(monkeypatch):
     pipeline = RetrievalPipeline(
         embedder=FakeEmbedder(),
         store=FakeSearchStore([dense]),
-        settings=RetrievalSettings(confidence_floor=0.0),
+        settings=RetrievalSettings(),
     )
 
     async def broken(self, state, others):
@@ -231,11 +234,11 @@ async def test_related_refresh_failure_keeps_preview_evidence(
     monkeypatch.setattr(pipeline.expander, "related_definitions", refresh)
     audit = RetrievalAudit()
     head = _hit("src/a.py", "a" * 1_400)
-    state = RetrievalState(
-        query="How does helper work?",
-        scope=SearchScope(frozenset({BLOB, helper.blob_name})),
+    state = retrieval_state(
+        "How does helper work?",
+        SearchScope(frozenset({BLOB, helper.blob_name})),
         audit=audit,
-        strategy=get_strategy(QueryIntent.FEATURE),
+        intent=QueryIntent.FEATURE,
         lookup_identifiers=("helper",),
         selected=[head, _hit("src/b.py", "b" * 1_400)],
     )

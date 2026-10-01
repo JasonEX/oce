@@ -9,7 +9,7 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务：
 - cAST/tree-sitter 语义切块；每个 chunk 带封闭作用域签名链 `context`（占位于 `blob_chunks`，不参与内容哈希），embedding 输入为 `File + Context + 正文`
 - PostgreSQL/SQLite 存储元数据、`symbol_occurrences`（tree-sitter 整文件抽取 definition/endpoint/import/call/reexport/inherit，每行带 `enclosing` 所在定义名，regex 兜底；call/import/reexport/inherit 只供 reference/call-chain 的 exact 使用证据与关系车道，不参与头部判定）和 `chunk_lexical` 词法索引（SQLite FTS5 / PG tsvector，DDL 在 `persistence/lexical_index.py`）
 - Milvus 3.0 仅做 dense 向量检索，BM25/sparse 不回 Milvus；路径索引独立维护，另有 SQL 精确路径后缀查找
-- 检索是 `RetrievalState` 上的固定状态机（`domain/services/retrieval/`，每阶段一个模块）：route → plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup）→ fuse（RRF）→ prior（有界头部槽位）→ rerank → select → expand（关系小节、调用链）。各阶段的设计决策、头部规则、车道门控和调优历史见 `docs/retrieval-pipeline.md`，改动检索前先读。硬约束：SQL 车道在 embedding 往返前启动，决定性证据出现即不等 embedding；embedding 请求只释放不取消；任何车道失败通过 `state.lane_failed` 记入 `retrieval_metrics.lane_failures`，不得静默吞掉
+- 检索是固定状态机（`domain/services/retrieval/`，每阶段一个模块）：route → plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup）→ fuse（RRF）→ prior（有界头部槽位）→ rerank → select → expand（关系小节、调用链）。每个阶段写入 `RetrievalState` 的一条记录（`QueryRoute`、`QueryPlan`、`RecallEvidence` 冻结），之后的阶段只读；请求文本只在 route 解析一次，问法判断（问测试、问实现等）进 `QueryRoute`，后续阶段不得再对原文跑正则；车道以返回值交出结果，不在共享状态上留副作用。各阶段的设计决策、头部规则、车道门控和调优历史见 `docs/retrieval-pipeline.md`，改动检索前先读。硬约束：SQL 车道在 embedding 往返前启动，决定性证据出现即不等 embedding；embedding 请求只释放不取消；任何车道失败通过 `lane_failed` 记入 `retrieval_metrics.lane_failures`，不得静默吞掉
 - `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应重排阶段；只有 `RERANK_PROVIDER=api` 和 chat LLM 会外发数据，`local` 不外发。`RETRIEVAL_RERANK_POLICY` / `RETRIEVAL_LLM_RERANK_POLICY` 只做逐查询路由；两者共用 `retrieval_strategy.plan_rerank` 的确定性证据（intent、候选数、exact/path 命中、同名定义数与头部槽位），禁止用原始召回分数估置信度，也不新增 LLM 分类器；路由结果与证据落 `retrieval_metrics`（`rerank_route`、`exact_definitions`、`definition_sites`、`relation_hits`、`relation_chars`），用于离线校准阈值
 - 默认关闭的实验开关按 `docs/retrieval-pipeline.md` 的退休规则处置：两轮配对评测未成为默认值即删除，净负变体立即删除，待校准开关必须附带标签计划
 - 新召回证据只能作为独立「车道」进入（固定槽位、必要条件门控或按意图开关），不得把不同标尺的分数直接混排；reference 意图的词法召回以标识符整体代理 token 为必要条件
@@ -77,7 +77,7 @@ uv run mypy
 - 测试文件的判定只在 `domain/services/test_paths.py` 一处；先验降权与测试关系车道共用。
 - 词法/精确/路径查找三类 SQL store 共用 `persistence/scope_filter.py` 应用 scope；新增 SQL 召回不得自行展开 `IN (...)` 全集。
 - symbol 查询在已连接的 ready blob 上提前应用 scope；词法 deadline 由调用方持有。
-- 不保留未接入 production composition root 的占位实现或阶段性迁移注释。组合根 `application/container.py` 按子系统拆成 `build_*` 构建函数，`Container(settings, session_factory)` 可在测试里对临时数据库装配同一张图。
+- 不保留未接入 production composition root 的占位实现或阶段性迁移注释。组合根 `application/container.py` 按子系统拆成 `build_*` 构建函数，`Container(settings, session_factory)` 可在测试里对临时数据库装配同一张图；容器拥有它装配的资源，`start()` / `close()` 是唯一的启动与释放顺序，ASGI lifespan 只调用这两个方法。worker 生命周期是显式状态机 `WorkerState`，新增状态或转移须同步 `docs/runtime-lifecycle.md`。
 - 单文件职责单一；注释解释约束和原因，不复述代码。代码内注释与 docstring 统一英文；中文只出现在 `AGENTS.md`、`docs/`、`README.zh-CN.md`、`.env.example` 和作为数据的查询样本里。
 - 测试替身集中在 `tests/fakes/`（检索、索引、embedding），测试文件不再各自定义同名 Fake；`tests/unit/test_smoke_personal_mode.py` 用真实 Container、迁移、Milvus Lite 和进程内 embedding 端点走完上传、checkpoint、HTTP 检索，是装配错误的护栏。
 - 保持 ACE API 字段与错误语义兼容。

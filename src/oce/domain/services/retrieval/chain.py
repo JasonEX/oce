@@ -106,15 +106,15 @@ class CallChainTracer:
 
     def traces(self, state: RetrievalState) -> bool:
         return (
-            state.intent == QueryIntent.CALL_CHAIN
-            and len(state.endpoints) >= 1
+            state.route.intent == QueryIntent.CALL_CHAIN
+            and len(state.recall.exact.endpoints) >= 1
             and self.store is not None
             and getattr(self.store, "calls_within", None) is not None
         )
 
     async def trace(self, state: RetrievalState, *, max_chars: int) -> list[SearchHit]:
         """The chain section: two-ended path, or callees of a lone start."""
-        if len(state.endpoints) >= 2:
+        if len(state.recall.exact.endpoints) >= 2:
             return await self.path(state, max_chars=max_chars)
         return await self.callees(state, max_chars=max_chars)
 
@@ -126,8 +126,8 @@ class CallChainTracer:
         assert store is not None and state.scope is not None
         scope = state.scope
         settings = self.settings
-        target, target_definitions = state.endpoints[1]
-        start = state.endpoints[0][1]
+        target, target_definitions = state.recall.exact.endpoints[1]
+        start = state.recall.exact.endpoints[0][1]
         queue: list[list[_Node]] = [[(definition, None, "")] for definition in start]
         visited: set[tuple[str, int]] = {
             (item.hit.blob_name, item.start_line) for item in start
@@ -291,7 +291,7 @@ class CallChainTracer:
         assert store is not None and state.scope is not None
         scope = state.scope
         settings = self.settings
-        start = state.endpoints[0][1][:1]
+        start = state.recall.exact.endpoints[0][1][:1]
         visited: set[tuple[str, int]] = {
             (item.hit.blob_name, item.start_line) for item in start
         }

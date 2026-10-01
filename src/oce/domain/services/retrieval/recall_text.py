@@ -6,7 +6,11 @@ import asyncio
 
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.query_classifier import QueryIntent
-from oce.domain.services.retrieval.state import RetrievalState, lane_failed
+from oce.domain.services.retrieval.state import (
+    ExactEvidence,
+    RetrievalState,
+    lane_failed,
+)
 from oce.domain.services.search import LexicalSearchStore, PathLookupStore, SearchHit
 from oce.shared.config.settings import RetrievalSettings
 
@@ -25,66 +29,70 @@ class LexicalLane:
         self.settings = settings
 
     def can_recall(self, state: RetrievalState) -> bool:
-        evidence = state.evidence
+        evidence = state.route.evidence
         return bool(
             self.settings.lexical_enabled
             and self.store is not None
             and state.scope is not None
             and state.scope.blob_names
-            and evidence is not None
             and (evidence.terms or evidence.phrases)
         )
 
     def should_recall_eagerly(self, state: RetrievalState) -> bool:
-        evidence = state.evidence
         return self.can_recall(state) and bool(
-            state.strategy.enable_lexical_recall
-            or (evidence is not None and evidence.phrases)
+            state.route.strategy.enable_lexical_recall or state.route.evidence.phrases
         )
 
-    def should_recall_fallback(self, state: RetrievalState) -> bool:
+    def should_recall_fallback(
+        self,
+        state: RetrievalState,
+        exact: ExactEvidence,
+        lookup_scores: dict[str, float],
+    ) -> bool:
+        """Whether a symbol/path request whose structural operator missed runs it now."""
         if self.should_recall_eagerly(state):
             return False
         if not self.can_recall(state):
             return False
-        if state.intent == QueryIntent.SYMBOL:
-            return not state.exact
-        if state.intent == QueryIntent.PATH:
-            return not state.lookup_scores
+        if state.route.intent == QueryIntent.SYMBOL:
+            return not exact.hits
+        if state.route.intent == QueryIntent.PATH:
+            return not lookup_scores
         return False
 
-    async def recall(self, state: RetrievalState, *, routed: bool) -> list[SearchHit]:
-        evidence = state.evidence
+    async def recall(
+        self, state: RetrievalState, *, routed: bool
+    ) -> tuple[SearchHit, ...]:
         store = self.store
         if (
             not routed
             or not self.can_recall(state)
-            or evidence is None
             or store is None
             or state.scope is None
         ):
-            return []
+            return ()
         try:
             with state.stage("lexical"):
                 async with asyncio.timeout(self.settings.lexical_timeout_seconds):
-                    return await store.search_lexical(
-                        terms=self.terms(state),
-                        phrases=evidence.phrases,
-                        scope=state.scope,
-                        top_k=self.settings.lexical_top_k,
-                        required=self.required(state),
+                    return tuple(
+                        await store.search_lexical(
+                            terms=self.terms(state),
+                            phrases=state.route.evidence.phrases,
+                            scope=state.scope,
+                            top_k=self.settings.lexical_top_k,
+                            required=self.required(state),
+                        )
                     )
         except Exception as exc:
             # A timeout is the common failure: the lane is skipped and the
             # other lanes answer, exactly as for any other error.
             lane_failed(state, "lexical", exc)
-            return []
+            return ()
 
     @staticmethod
     def terms(state: RetrievalState) -> tuple[str, ...]:
-        evidence = state.evidence
-        assert evidence is not None
-        if state.intent != QueryIntent.SYMBOL or not evidence.identifiers:
+        evidence = state.route.evidence
+        if state.route.intent != QueryIntent.SYMBOL or not evidence.identifiers:
             return evidence.terms
 
         # Exact lookup already tried the identifier itself. Its lexical fallback
@@ -115,8 +123,8 @@ class LexicalLane:
         Call-chain questions stay ungated: their far end is described in
         words ("its base service") and rarely repeats the named symbol.
         """
-        evidence = state.evidence
-        if state.intent != QueryIntent.REFERENCE or evidence is None:
+        evidence = state.route.evidence
+        if state.route.intent != QueryIntent.REFERENCE:
             return ()
         required: list[str] = []
         for identifier in evidence.identifiers:
@@ -140,14 +148,13 @@ class PathLookupLane:
         self.settings = settings
 
     async def recall(self, state: RetrievalState) -> dict[str, float]:
-        evidence = state.evidence
+        evidence = state.route.evidence
         store = self.store
         if (
             not self.settings.path_lookup_enabled
             or store is None
             or state.scope is None
             or not state.scope.blob_names
-            or evidence is None
             or not evidence.has_path_evidence
         ):
             return {}

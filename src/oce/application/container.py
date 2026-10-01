@@ -556,7 +556,9 @@ class Container:
 
     ``settings`` and ``session_factory`` default to the process configuration
     and the shared engine; a test passes its own to assemble the same graph
-    against a temporary database.
+    against a temporary database. The container owns every resource it
+    builds: ``start`` brings them up in dependency order before the first
+    request and ``close`` releases them in reverse.
     """
 
     def __init__(
@@ -572,52 +574,34 @@ class Container:
         # Exposed for probes that read the metadata store the graph writes to.
         self.session_factory = sessions
 
-        monitoring = build_monitoring(
+        self.monitoring = build_monitoring(
             settings, sessions, data_dir=os.environ.get(DATA_DIR_ENV)
         )
-        self.metrics = monitoring.metrics
-        self.resource_sampler = monitoring.resource_sampler
-        self.monitoring_cleaner = monitoring.cleaner
-
-        stores = build_vector_stores(settings, sessions)
-        self.search_store = stores.search_store
-        self.path_index = stores.path_index
-        self.path_content_store = stores.path_content_store
+        self.stores = build_vector_stores(settings, sessions)
         self.index_lifecycle = IndexLifecycleManager(
-            SqlIndexProfileStore(sessions), settings, stores.artifact_probes
+            SqlIndexProfileStore(sessions), settings, self.stores.artifact_probes
         )
-
-        models = build_model_runtime(
+        self.models = build_model_runtime(
             settings,
             sessions,
-            token_usage=monitoring.token_usage,
+            token_usage=self.monitoring.token_usage,
             index_lifecycle=self.index_lifecycle,
             on_ready=self.start_worker,
         )
-        self._models = models
-        self.embedding_runtime = models.embedding_runtime
-        self.embedder = models.embedder
-        self.reranker = models.reranker
-        self.credential_reranker = models.credential_reranker
-        self.llm_clients = list(models.llm_clients)
-        self.llm_reranker = models.llm_reranker
-        self.query_rewriter = models.query_rewriter
-
-        indexing = build_indexing_runtime(
-            settings, sessions, models=models, stores=stores
+        self.indexing = build_indexing_runtime(
+            settings, sessions, models=self.models, stores=self.stores
         )
-        self.symbol_provider = indexing.symbol_provider
-        self.chunker = indexing.chunker
-        self._uow_factory = indexing.uow_factory
 
+        # The queue and its consumer exist together: Redis delivery without a
+        # worker would only accumulate messages nobody processes.
         self.queue: RedisQueue | None = None
         self.worker: EmbedWorker | None = None
         if settings.worker.enabled:
             self.queue = _build_redis_queue(settings)
             self.worker = EmbedWorker(
                 queue=self.queue,
-                uow_factory=indexing.uow_factory,
-                pipeline_factory=indexing.pipeline_factory,
+                uow_factory=self.indexing.uow_factory,
+                pipeline_factory=self.indexing.pipeline_factory,
                 concurrency=_worker_concurrency(settings),
                 blob_batch_size=settings.worker.blob_batch_size,
                 max_retries=settings.worker.max_retries,
@@ -629,67 +613,57 @@ class Container:
             else None
         )
         self.application = RetrievalApplication(
-            self._build_commands(settings, indexing),
-            self._build_queries(settings, sessions, indexing, models, stores),
+            self._build_commands(settings),
+            self._build_queries(settings, sessions),
             credentials=SqlCredentialAdminStore(sessions),
             background_indexing=self.queue is not None,
             require_index_ready=self.index_lifecycle.require_ready,
         )
 
-    def _build_commands(
-        self, settings: Settings, indexing: IndexingRuntime
-    ) -> ApplicationCommands:
-        uow_factory = indexing.uow_factory
+    def _build_commands(self, settings: Settings) -> ApplicationCommands:
+        uow_factory = self.indexing.uow_factory
         delete_blobs = DeleteBlobsCommandHandler(
-            uow_factory, self.search_store, path_store=self.path_index
+            uow_factory, self.stores.search_store, path_store=self.stores.path_index
         )
         return ApplicationCommands(
             ingest=IngestBlobsCommandHandler(
-                uow_factory, indexing.pipeline_factory, self.queue
+                uow_factory, self.indexing.pipeline_factory, self.queue
             ),
             embed_pending=EmbedPendingCommandHandler(
                 uow_factory,
-                indexing.pipeline_factory,
+                self.indexing.pipeline_factory,
                 blob_batch_size=settings.worker.blob_batch_size,
             ),
             reload_credentials=ReloadEmbeddingCredentialsCommandHandler(
-                self._models.credentials
+                self.models.credentials
             ),
             checkpoint=CheckpointCommandHandler(uow_factory),
             requeue_stale=RequeueStaleCommandHandler(uow_factory, self.queue),
             reset_queue=ResetQueueCommandHandler(
                 uow_factory,
                 self.queue,
-                worker_running=lambda: (
-                    self.worker is not None and self.worker.is_running
+                maintenance=(
+                    self.worker.maintenance if self.worker is not None else None
                 ),
-                maintenance=self.worker.maintenance
-                if self.worker is not None
-                else None,
             ),
             gc=GcCommandHandler(uow_factory, delete_blobs, self.queue),
         )
 
     def _build_queries(
-        self,
-        settings: Settings,
-        sessions: SessionFactory,
-        indexing: IndexingRuntime,
-        models: ModelRuntime,
-        stores: VectorStores,
+        self, settings: Settings, sessions: SessionFactory
     ) -> ApplicationQueries:
-        uow_factory = indexing.uow_factory
+        uow_factory = self.indexing.uow_factory
         monitoring = settings.monitoring
         return ApplicationQueries(
             search=SearchQueryHandler(
                 build_retrieval_pipeline(
                     settings,
                     sessions,
-                    models=models,
-                    stores=stores,
+                    models=self.models,
+                    stores=self.stores,
                     lexical_store=self.lexical_store,
                 ),
-                metrics=self.metrics,
+                metrics=self.monitoring.metrics,
                 retrieval_audit_enabled=(
                     monitoring.enabled and monitoring.retrieval_audit_enabled
                 ),
@@ -703,14 +677,32 @@ class Container:
             ),
             index_stats=IndexStatsQueryHandler(
                 SqlMetadataIndexStatsReader(sessions),
-                self.search_store,
-                self.path_index,
-                self.embedder,
+                self.stores.search_store,
+                self.stores.path_index,
+                self.models.embedder,
                 _runtime_profile(settings),
                 self.index_lifecycle,
             ),
-            queue_status=QueueStatusQueryHandler(uow_factory, self.queue),
+            queue_status=QueueStatusQueryHandler(uow_factory, self.queue, self.worker),
         )
+
+    async def start(self) -> None:
+        """Bring the runtime up before the first request is accepted.
+
+        The index profile is validated before anything consumes pending
+        work; without valid credentials the admin plane still serves and the
+        worker waits for a successful reload. Monitoring collectors start
+        next, and the bounded storage probes finish last so the first request
+        does not pay for a cold start.
+        """
+        if await self.ensure_index_compatible():
+            await self.start_worker()
+        await self.monitoring.metrics.start()
+        if self.monitoring.resource_sampler is not None:
+            await self.monitoring.resource_sampler.start()
+        if self.monitoring.cleaner is not None:
+            await self.monitoring.cleaner.start()
+        await self.warm_up()
 
     async def start_worker(self) -> None:
         """Start consumption after the caller validates index/runtime readiness."""
@@ -719,46 +711,48 @@ class Container:
 
     async def ensure_index_compatible(self) -> bool:
         """Validate persisted artifacts before workers or data-plane traffic start."""
-        if not self.embedding_runtime.enabled:
+        embedding = self.models.embedding_runtime
+        if not embedding.enabled:
             await self.index_lifecycle.ensure_compatible(
-                await self.embedding_runtime.resolve_index_profile()
+                await embedding.resolve_index_profile()
             )
             return True
         try:
-            replacement = await self.embedding_runtime.prepare_reload()
+            replacement = await embedding.prepare_reload()
         except ServiceNotReadyError as exc:
             logger.warning("Index profile check deferred: {}", exc)
             return False
         try:
-            await self.embedding_runtime.validate_prepared(replacement)
+            await embedding.validate_prepared(replacement)
         except Exception:
-            await self.embedding_runtime.discard_prepared(replacement)
+            await embedding.discard_prepared(replacement)
             raise
-        await self.embedding_runtime.activate_prepared(replacement)
+        await embedding.activate_prepared(replacement)
         return True
 
     async def warm_up(self) -> dict[str, int]:
         """Finish bounded storage probes before accepting the first request."""
         return await warm_retrieval_stores(
-            uow_factory=self._uow_factory,
-            search_store=self.search_store,
+            uow_factory=self.indexing.uow_factory,
+            search_store=self.stores.search_store,
             dimensions=self._settings.embedding.dimensions,
-            path_store=self.path_index,
+            path_store=self.stores.path_index,
             lexical_store=self.lexical_store,
         )
 
     async def close(self) -> None:
+        """Release everything ``start`` and the builders acquired, consumers first."""
         if self.worker is not None:
             await self.worker.stop()
-        if self.resource_sampler is not None:
-            await self.resource_sampler.stop()
-        if self.monitoring_cleaner is not None:
-            await self.monitoring_cleaner.stop()
-        await self.metrics.stop()
-        await self.search_store.close()
-        if self.path_index is not None:
-            await self.path_index.close()
-        await self._models.close()
+        if self.monitoring.resource_sampler is not None:
+            await self.monitoring.resource_sampler.stop()
+        if self.monitoring.cleaner is not None:
+            await self.monitoring.cleaner.stop()
+        await self.monitoring.metrics.stop()
+        await self.stores.search_store.close()
+        if self.stores.path_index is not None:
+            await self.stores.path_index.close()
+        await self.models.close()
         if self.queue is not None:
             await self.queue.close()
 

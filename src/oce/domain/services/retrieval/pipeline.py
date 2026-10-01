@@ -1,10 +1,10 @@
 """``RetrievalPipeline``: the fixed sequence of stages one request goes through.
 
-    route   query -> intent / strategy / QueryEvidence
+    route   query -> QueryRoute (evidence, intent, strategy), parsed once
     plan    optional LLM rewrite + facet decomposition + query vectors (started)
-    recall  dense | exact | intent-routed lexical | path lanes, in parallel
+    recall  dense | exact | intent-routed lexical | path lanes -> RecallEvidence
     fuse    RRF over dense/lexical -> exact merge -> path boost/backfill
-    prior   source and working-set priors -> bounded structural heads -> floor
+    prior   source and working-set priors -> bounded structural heads
     rerank  plan_rerank decision -> dedicated reranker -> chat-LLM reranker
     select  focused / coverage selection under a hard character budget
     expand  adjacent merge -> relation sections within the remaining budget
@@ -12,8 +12,8 @@
 Rerank solves "several relevant chunks in one file", select solves "this set
 is complete without redundancy", expand solves "what the returned chunks refer
 to". With its switch off every stage is the identity transform. Each stage
-lives in its own module and owns the fields of ``RetrievalState`` it fills;
-this class wires them and holds the cancellation discipline of ``search``.
+lives in its own module and writes one record of ``RetrievalState``; this
+class wires them and holds the cancellation discipline of ``search``.
 """
 
 from __future__ import annotations
@@ -26,11 +26,6 @@ from loguru import logger
 
 from oce.domain.services.embedder import Embedder
 from oce.domain.services.path_search import PathContentStore, PathSearchStore
-from oce.domain.services.query_classifier import (
-    classify_query_intent,
-    should_use_path_index,
-)
-from oce.domain.services.query_evidence import extract_query_evidence
 from oce.domain.services.query_planner import HeuristicQueryPlanner, QueryPlanner
 from oce.domain.services.relations import RelationStore
 from oce.domain.services.reranker import Reranker
@@ -38,8 +33,7 @@ from oce.domain.services.retrieval.budgets import context_budget
 from oce.domain.services.retrieval.chain import CallChainTracer
 from oce.domain.services.retrieval.expand import Expander
 from oce.domain.services.retrieval.fuse import Fusion
-from oce.domain.services.retrieval.names import split_qualified_identifiers
-from oce.domain.services.retrieval.plan import QueryPlan, release_embedding
+from oce.domain.services.retrieval.plan import Planner, release_embedding
 from oce.domain.services.retrieval.priors import (
     neutral_priority_factor,
     source_priority_factor,
@@ -49,8 +43,8 @@ from oce.domain.services.retrieval.recall import Recall
 from oce.domain.services.retrieval.recall_exact import ExactLane
 from oce.domain.services.retrieval.recall_text import LexicalLane, PathLookupLane
 from oce.domain.services.retrieval.recall_vector import VectorLanes
+from oce.domain.services.retrieval.route import route_query
 from oce.domain.services.retrieval.state import RetrievalState
-from oce.domain.services.retrieval_strategy import get_strategy
 from oce.domain.services.search import (
     ExactSearchStore,
     LexicalSearchStore,
@@ -118,7 +112,7 @@ class RetrievalPipeline:
         else:
             self.selector = TopKSelector()
 
-        self.plan = QueryPlan(
+        self.planner = Planner(
             embedder=embedder, query_planner=planner, query_rewriter=query_rewriter
         )
         self.exact = ExactLane(exact_store, settings)
@@ -127,18 +121,12 @@ class RetrievalPipeline:
             exact=self.exact,
             lexical=LexicalLane(lexical_store, settings),
             path_lookup=PathLookupLane(path_lookup_store, settings),
-            vector=VectorLanes(
-                store=store,
-                path_store=path_store,
-                settings=settings,
-                has_fallback=self._has_fallback_recall,
-            ),
+            vector=VectorLanes(store=store, path_store=path_store, settings=settings),
             path_content_store=path_content_store,
         )
         self.fusion = Fusion(
             settings=settings,
             path_content_store=path_content_store,
-            priority_factor=self.priority_factor,
             rerank_window=rerank_window,
         )
         self.ranker = Ranker(
@@ -157,9 +145,6 @@ class RetrievalPipeline:
             chain=self.chain,
         )
 
-    def _has_fallback_recall(self, state: RetrievalState) -> bool:
-        return self.recall.has_fallback_recall(state)
-
     async def search(
         self,
         query: str,
@@ -173,23 +158,25 @@ class RetrievalPipeline:
         only for tests. ``audit`` collects stage timings when given and costs
         nothing otherwise.
         """
-        state = RetrievalState(query=query, scope=scope, audit=audit)
         if audit is not None:
-            audit.scope_size = (
-                len(state.allowed_blob_names)
-                if state.allowed_blob_names is not None
-                else None
-            )
+            audit.scope_size = len(scope.blob_names) if scope is not None else None
         # None means unfiltered; an empty scope has nothing to search.
-        if state.allowed_blob_names is not None and not state.allowed_blob_names:
+        if scope is not None and not scope.blob_names:
             return []
 
-        self.route(state)
+        route = route_query(query, path_index_available=self.path_store is not None)
+        logger.debug(
+            "Query intent: {}, strategy: {}", route.intent.value, route.strategy
+        )
+        if audit is not None:
+            audit.intent = route.intent.value
+            audit.path_boosted = route.use_path_index
+        state = RetrievalState(query=query, scope=scope, route=route, audit=audit)
         # SQL lanes need only routing, so they overlap the remote query
         # embedding instead of waiting behind it.
         sql_lanes = self.recall.start_sql_lanes(state)
         try:
-            await self.plan.plan(state)
+            await self.planner.plan(state)
             await self.recall.recall(state, sql_lanes)
         except BaseException:
             for task in sql_lanes:
@@ -209,28 +196,6 @@ class RetrievalPipeline:
         await self.expander.expand(state)
         return [*state.selected, *state.related]
 
-    def route(self, state: RetrievalState) -> None:
-        """Routing is deterministic; models only take part in explicit rewrite/rerank."""
-        state.evidence = extract_query_evidence(state.query)
-        state.lookup_identifiers, state.qualifiers = split_qualified_identifiers(
-            state.evidence.identifiers
-        )
-        state.intent = classify_query_intent(state.query)
-        state.strategy = get_strategy(state.intent)
-        logger.debug(
-            "Query intent: {}, strategy: {}", state.intent.value, state.strategy
-        )
-        # The path index answers "which file", the content index "which part
-        # of it"; both recall only for file-locating requests and merge at
-        # chunk granularity.
-        state.use_path_index = self.path_store is not None and (
-            state.strategy.enable_path_index
-            or should_use_path_index(state.query, state.intent)
-        )
-        if state.audit is not None:
-            state.audit.intent = state.intent.value
-            state.audit.path_boosted = state.use_path_index
-
     async def select(self, state: RetrievalState) -> None:
         # Primary selection uses the full budget: relation evidence is
         # optional and only earns room once a lookup returns something new.
@@ -238,6 +203,6 @@ class RetrievalPipeline:
             state.selected = await self.selector.select(
                 state.candidates,
                 self.settings.final_select_k,
-                mode=state.strategy.selection_mode,
+                mode=state.route.strategy.selection_mode,
                 max_chars=context_budget(self.settings, state),
             )

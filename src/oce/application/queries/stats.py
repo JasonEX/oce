@@ -8,12 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from oce.application.messages import Query
 from oce.shared.metrics_read import MonitoringStats, MonitoringStatsReader
 
 
 @dataclass(frozen=True)
-class MonitoringStatsQuery(Query):
+class MonitoringStatsQuery:
     window_hours: int = 24
 
 

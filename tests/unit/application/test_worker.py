@@ -8,7 +8,7 @@ from oce.application.commands.ingest import (
     IngestBlobsCommandHandler,
     build_pipeline_factory,
 )
-from oce.application.worker import EmbedWorker
+from oce.application.worker import EmbedWorker, WorkerState
 from oce.domain.blob.blob import BlobStatus
 from oce.domain.chunk import RecursiveChunker
 from tests.fakes.indexing import ConstantEmbedder
@@ -56,7 +56,7 @@ class RetryQueue:
         self.dequeue_count += 1
         if self.dequeue_count == 1:
             return self.blob_names[:max_items]
-        self.worker._running = False
+        self.worker._state = WorkerState.STOPPED
         return []
 
     async def ack(self, blob_name: str) -> None:
@@ -103,7 +103,7 @@ async def _run_failure(max_retries: int):
         max_retries=max_retries,
     )
     queue.worker = worker
-    worker._running = True
+    worker._state = WorkerState.RUNNING
     await worker._loop(0)
     return factory, queue, name
 
@@ -127,7 +127,7 @@ async def test_worker_embeds_multiple_blobs_in_one_model_batch():
         blob_batch_size=16,
     )
     queue.worker = worker
-    worker._running = True
+    worker._state = WorkerState.RUNNING
 
     await worker._loop(0)
 
@@ -157,7 +157,7 @@ async def test_worker_isolates_failed_batch_without_penalizing_healthy_blob():
         max_retries=2,
     )
     queue.worker = worker
-    worker._running = True
+    worker._state = WorkerState.RUNNING
 
     await worker._loop(0)
 

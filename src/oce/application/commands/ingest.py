@@ -7,7 +7,6 @@ from dataclasses import dataclass
 
 from loguru import logger
 
-from oce.application.messages import Command
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWork, UnitOfWorkFactory
 from oce.domain.blob.blob import BlobStatus
@@ -57,7 +56,7 @@ class BlobIngest:
 
 
 @dataclass(frozen=True)
-class IngestBlobsCommand(Command):
+class IngestBlobsCommand:
     blobs: tuple[BlobIngest, ...]
 
 
@@ -92,7 +91,7 @@ class IngestBlobsCommandHandler:
 
 
 @dataclass(frozen=True)
-class EmbedPendingCommand(Command):
+class EmbedPendingCommand:
     blob_names: tuple[str, ...] | None = None
 
 
@@ -139,7 +138,7 @@ class EmbedPendingCommandHandler:
 
 
 @dataclass(frozen=True)
-class DeleteBlobsCommand(Command):
+class DeleteBlobsCommand:
     blob_names: tuple[str, ...]
 
 

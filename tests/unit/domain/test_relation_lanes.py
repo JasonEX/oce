@@ -8,16 +8,16 @@ from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.relations import RelatedOccurrence, occurrence_excerpt
 from oce.domain.services.retrieval import (
     RetrievalPipeline,
-    RetrievalState,
     order_by_comentions,
     order_by_signature_comentions,
     resolve_qualified_hits,
     split_qualified_identifiers,
 )
 from oce.domain.services.retrieval.fuse import filter_qualified_candidates
-from oce.domain.services.retrieval_strategy import get_strategy
+from oce.domain.services.retrieval.state import ExactEvidence, RecallEvidence
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
+from tests.fakes.retrieval import retrieval_state
 
 
 def _hit(path, content, start=1, context=None, blob="a" * 64):
@@ -78,9 +78,9 @@ def test_qualified_resolution_prefers_scope_chain_then_path_then_text():
 
 
 def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
-    state = RetrievalState(
-        query="where is Flask.make_response defined?",
-        scope=None,
+    state = retrieval_state(
+        "where is Flask.make_response defined?",
+        None,
         intent=QueryIntent.SYMBOL,
         qualifiers={"make_response": ("Flask",)},
     )
@@ -90,9 +90,9 @@ def test_qualified_candidate_filter_drops_unrelated_bare_name_hits():
     helper = _hit("src/flask/helpers.py", "def make_response(*args):")
 
     assert filter_qualified_candidates(state, [helper, method]) == [method]
-    unknown = RetrievalState(
-        query="where is Unknown.make_response defined?",
-        scope=None,
+    unknown = retrieval_state(
+        "where is Unknown.make_response defined?",
+        None,
         intent=QueryIntent.SYMBOL,
         qualifiers={"make_response": ("Unknown",)},
     )
@@ -277,11 +277,10 @@ async def test_call_chain_expands_only_through_unique_definitions():
         relation_store=RelationStore(),
         settings=RetrievalSettings(call_chain_max_hops=2, callers_max=4),
     )
-    state = RetrievalState(
-        query="trace target",
-        scope=SearchScope(frozenset({"a" * 64})),
+    state = retrieval_state(
+        "trace target",
+        SearchScope(frozenset({"a" * 64})),
         intent=QueryIntent.CALL_CHAIN,
-        strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
     occurrences = await pipeline.chain.callers(
@@ -367,12 +366,13 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
         exact_store=ExactStore(),
         settings=RetrievalSettings(related_snippet_lines=10),
     )
-    state = RetrievalState(
-        query="How does `main` reach `target`?",
-        scope=SearchScope(frozenset({"a" * 64, "b" * 64})),
+    state = retrieval_state(
+        "How does `main` reach `target`?",
+        SearchScope(frozenset({"a" * 64, "b" * 64})),
         intent=QueryIntent.CALL_CHAIN,
-        strategy=get_strategy(QueryIntent.CALL_CHAIN),
-        endpoints=[("main", [main]), ("target", [target])],
+        recall=RecallEvidence(
+            exact=ExactEvidence(endpoints=(("main", (main,)), ("target", (target,))))
+        ),
     )
 
     chain = await pipeline.chain.path(state)
@@ -416,18 +416,17 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
         exact_store=ExactStore(),
         settings=RetrievalSettings(),
     )
-    state = RetrievalState(
-        query="How does `missing_start` reach `target`?",
-        scope=SearchScope(frozenset({"b" * 64})),
+    state = retrieval_state(
+        "How does `missing_start` reach `target`?",
+        SearchScope(frozenset({"b" * 64})),
         intent=QueryIntent.CALL_CHAIN,
-        strategy=get_strategy(QueryIntent.CALL_CHAIN),
     )
 
     endpoints = await pipeline.exact.resolve_endpoints(
         state, ("missing_start", "target")
     )
 
-    assert endpoints == []
+    assert endpoints == ()
 
 
 async def test_chain_and_relation_sections_share_the_hard_context_budget():
@@ -464,13 +463,12 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
             merge_adjacent_enabled=False,
         ),
     )
-    state = RetrievalState(
-        query="Trace how `start` dispatches.",
-        scope=SearchScope(frozenset({"a" * 64, "b" * 64, "c" * 64})),
+    state = retrieval_state(
+        "Trace how `start` dispatches.",
+        SearchScope(frozenset({"a" * 64, "b" * 64, "c" * 64})),
         intent=QueryIntent.CALL_CHAIN,
-        strategy=get_strategy(QueryIntent.CALL_CHAIN),
         lookup_identifiers=("start",),
-        endpoints=[("start", [start])],
+        recall=RecallEvidence(exact=ExactEvidence(endpoints=(("start", (start,)),))),
         selected=primary,
     )
 

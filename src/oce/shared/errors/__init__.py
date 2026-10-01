@@ -65,14 +65,6 @@ class CredentialConflictError(ApplicationError):
         )
 
 
-class QueueBusyError(ApplicationError):
-    def __init__(self) -> None:
-        super().__init__(
-            "worker is running; stop it before resetting the queue",
-            code="QUEUE_BUSY",
-        )
-
-
 class ScopeRequiredError(ApplicationError):
     """The retrieval request declared no working set.
 

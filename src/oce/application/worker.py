@@ -7,6 +7,21 @@
 The database owns pending work; Redis is its delivery projection. Startup
 and periodic replay repair work that committed before an enqueue failed.
 Every batch builds its own pipeline inside its own unit of work.
+
+The consumer pool is an explicit state machine (docs/runtime-lifecycle.md):
+
+    stopped     -> recovering   start: recover processing, bounded replay
+    recovering  -> running      consumers and periodic replay started
+    recovering  -> stopped      recovery failed; start may be retried
+    running     -> draining     maintenance: no new batches, active ones finish
+    draining    -> maintenance  every active batch committed and acked
+    maintenance -> recovering   maintenance done; consumption resumes
+    stopped     -> maintenance  maintenance on a worker that was not running
+    maintenance -> stopped      ...which stays stopped afterwards
+    running     -> stopped      shutdown cancels the consumers
+
+One lifecycle lock serializes every transition, so maintenance and shutdown
+never interleave.
 """
 
 from __future__ import annotations
@@ -14,6 +29,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from enum import StrEnum
 
 from loguru import logger
 
@@ -24,6 +40,23 @@ from oce.application.uow import UnitOfWorkFactory
 _REPLAY_PAGE_SIZE = 100
 _REPLAY_MAX_PAGES = 4
 _REPLAY_INTERVAL_SECONDS = 30.0
+
+
+class WorkerState(StrEnum):
+    STOPPED = "stopped"
+    RECOVERING = "recovering"
+    RUNNING = "running"
+    DRAINING = "draining"
+    MAINTENANCE = "maintenance"
+
+
+_TRANSITIONS: dict[WorkerState, frozenset[WorkerState]] = {
+    WorkerState.STOPPED: frozenset({WorkerState.RECOVERING, WorkerState.MAINTENANCE}),
+    WorkerState.RECOVERING: frozenset({WorkerState.RUNNING, WorkerState.STOPPED}),
+    WorkerState.RUNNING: frozenset({WorkerState.DRAINING, WorkerState.STOPPED}),
+    WorkerState.DRAINING: frozenset({WorkerState.MAINTENANCE}),
+    WorkerState.MAINTENANCE: frozenset({WorkerState.RECOVERING, WorkerState.STOPPED}),
+}
 
 
 class EmbedWorker:
@@ -45,30 +78,44 @@ class EmbedWorker:
         self._concurrency = max(1, concurrency)
         self._blob_batch_size = blob_batch_size
         self._max_retries = max_retries
-        self._running = False
+        self._state = WorkerState.STOPPED
         self._tasks: list[asyncio.Task[None]] = []
         self._replay_task: asyncio.Task[None] | None = None
         self._replay_after: str | None = None
         self._lifecycle_lock = asyncio.Lock()
 
     @property
+    def state(self) -> WorkerState:
+        return self._state
+
+    @property
     def is_running(self) -> bool:
-        return self._running
+        return self._state is WorkerState.RUNNING
+
+    def _enter(self, state: WorkerState) -> None:
+        if state not in _TRANSITIONS[self._state]:
+            raise RuntimeError(f"EmbedWorker cannot go from {self._state} to {state}")
+        logger.debug("EmbedWorker {} -> {}", self._state, state)
+        self._state = state
 
     async def start(self) -> None:
         """Recover processing and a bounded pending portion; periodic replay continues."""
         async with self._lifecycle_lock:
-            await self._start_locked(replay_pending=True)
+            if self._state is WorkerState.STOPPED:
+                await self._start_locked(replay_pending=True)
 
     async def _start_locked(self, *, replay_pending: bool) -> None:
-        if self._running:
-            return
-        recovered = await self._queue.recover_processing()
-        if recovered:
-            logger.info("EmbedWorker recovered {} in-flight tasks", recovered)
-        if replay_pending:
-            await self._replay_pending()
-        self._running = True
+        self._enter(WorkerState.RECOVERING)
+        try:
+            recovered = await self._queue.recover_processing()
+            if recovered:
+                logger.info("EmbedWorker recovered {} in-flight tasks", recovered)
+            if replay_pending:
+                await self._replay_pending()
+        except BaseException:
+            self._enter(WorkerState.STOPPED)
+            raise
+        self._enter(WorkerState.RUNNING)
         self._tasks = [
             asyncio.create_task(self._loop(i)) for i in range(self._concurrency)
         ]
@@ -78,41 +125,56 @@ class EmbedWorker:
     async def stop(self) -> None:
         """Cancel owned tasks; processing messages remain recoverable on restart."""
         async with self._lifecycle_lock:
-            await self._stop_locked(drain=False)
+            if self._state is WorkerState.RUNNING:
+                self._enter(WorkerState.STOPPED)
+                await self._halt(cancel=True)
+                logger.info("EmbedWorker stopped")
 
-    async def _stop_locked(self, *, drain: bool) -> None:
-        self._running = False
+    async def _halt(self, *, cancel: bool) -> None:
+        """Wait for the consumers to exit; ``cancel=False`` lets active batches finish.
+
+        The caller has already left ``running``, so no consumer takes a new
+        batch and the replay loop stops publishing.
+        """
         if self._replay_task is not None:
             self._replay_task.cancel()
             await asyncio.gather(self._replay_task, return_exceptions=True)
             self._replay_task = None
-        if not drain:
+        if cancel:
             for task in self._tasks:
                 task.cancel()
         await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
-        logger.info("EmbedWorker stopped")
 
     @asynccontextmanager
     async def maintenance(self) -> AsyncIterator[None]:
         """Pause intake, finish active batches, and resume after queue maintenance."""
         async with self._lifecycle_lock:
-            was_running = self._running
-            drain = asyncio.create_task(self._stop_locked(drain=True))
+            resume = self._state is WorkerState.RUNNING
             try:
-                try:
-                    await asyncio.shield(drain)
-                except asyncio.CancelledError:
-                    # A disconnected maintenance caller cannot cancel a batch
-                    # or recover its delivery before its transaction finishes.
-                    await drain
-                    raise
+                if resume:
+                    self._enter(WorkerState.DRAINING)
+                    drain = asyncio.create_task(self._halt(cancel=False))
+                    try:
+                        await asyncio.shield(drain)
+                    except asyncio.CancelledError:
+                        # A disconnected maintenance caller cannot cancel a
+                        # batch or recover its delivery before its
+                        # transaction finishes.
+                        await drain
+                        raise
+                    finally:
+                        self._enter(WorkerState.MAINTENANCE)
+                else:
+                    self._enter(WorkerState.MAINTENANCE)
                 yield
             finally:
-                if was_running:
+                if resume:
                     # The reset command owns immediate requeue policy. Normal
                     # periodic replay will still repair durable pending work.
                     await self._start_locked(replay_pending=False)
+                else:
+                    self._enter(WorkerState.STOPPED)
 
     async def _replay_pending(self) -> None:
         for _ in range(_REPLAY_MAX_PAGES):
@@ -133,9 +195,9 @@ class EmbedWorker:
                 return
 
     async def _replay_loop(self) -> None:
-        while self._running:
+        while self._state is WorkerState.RUNNING:
             await asyncio.sleep(_REPLAY_INTERVAL_SECONDS)
-            if not self._running:
+            if self._state is not WorkerState.RUNNING:
                 return
             try:
                 await self._replay_pending()
@@ -144,7 +206,7 @@ class EmbedWorker:
 
     async def _loop(self, worker_id: int) -> None:
         """One consumer: dequeue, embed, ack or fail."""
-        while self._running:
+        while self._state is WorkerState.RUNNING:
             try:
                 blob_names = await self._queue.dequeue_many(
                     self._blob_batch_size,
@@ -160,7 +222,7 @@ class EmbedWorker:
             if not blob_names:
                 await asyncio.sleep(0.05)
                 continue
-            if not self._running:
+            if self._state is not WorkerState.RUNNING:
                 # Intake may have been paused while dequeue was blocked. The
                 # delivery remains in processing for recovery after maintenance.
                 return

@@ -10,7 +10,7 @@ order same-named declarations by the other names the request spells.
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from oce.domain.services.search import (
     DefinitionHit,
@@ -100,7 +100,7 @@ def path_components(path: str) -> tuple[str, ...]:
 
 def resolve_qualified_hits(
     hits: list[SearchHit],
-    qualifiers: dict[str, tuple[str, ...]],
+    qualifiers: Mapping[str, tuple[str, ...]],
     *,
     declarations: bool = True,
     strict: bool = False,
@@ -159,7 +159,7 @@ def resolve_qualified_hits(
 
 def resolve_qualified_definitions(
     definitions: list[DefinitionHit],
-    qualifiers: dict[str, tuple[str, ...]],
+    qualifiers: Mapping[str, tuple[str, ...]],
     *,
     strict: bool = False,
 ) -> list[DefinitionHit]:
@@ -186,7 +186,7 @@ def resolve_qualified_definitions(
 
 def pin_definitions_to_qualifiers(
     definitions: list[DefinitionHit],
-    qualifiers: dict[str, tuple[str, ...]],
+    qualifiers: Mapping[str, tuple[str, ...]],
     *,
     strict: bool = False,
 ) -> list[DefinitionHit]:

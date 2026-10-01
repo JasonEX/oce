@@ -290,6 +290,8 @@ class QueueStatusResponse(BaseModel):
     main_size: int = 0
     inflight: int = 0
     db_pending: int = 0
+    # stopped | recovering | running | draining | maintenance | disabled
+    worker_state: str = "disabled"
 
 
 class QueueResetRequest(BaseModel):

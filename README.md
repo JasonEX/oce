@@ -162,7 +162,7 @@ forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an o
 data/latency boundary, not a quality claim. In the current development benchmark, the local
 reranker materially improved long issue-style ranking, preserved short structural Top-1, and
 did not improve the smaller semantic suite; measured again on top of the structural head lanes
-added later (frame anchors, hub lane), it was net-negative on every suite (semantic nDCG@10
+added later (frame anchors and the since-retired hub lane), it was net-negative on every suite (semantic nDCG@10
 74.9→72.9, issue nDCG@100 74.3→62.0, about 1.2 s added per vector-backed request), so it remains
 off. Treat it as a complex-query opt-in until broader
 repeated evaluation supports a wider default. See the
@@ -277,9 +277,8 @@ decomposed into one complete query plus bounded facet queries. Each query recall
 candidates independently; results are fused with weighted rank fusion (configurable via
 `RETRIEVAL_RRF_K`) before reranking. Single-query mode uses `RETRIEVAL_DEFAULT_TOP_K`;
 multi-query mode uses `RETRIEVAL_PER_QUERY_TOP_K` per query to control candidate pool
-size. Static source priors and the optional recall confidence floor run before either model,
-so heterogeneous model and retrieval scores are never mixed for filtering and static order
-cannot overwrite model ordering.
+size. Static source priors run before either model, so static order cannot overwrite model
+ordering.
 Both rerankers conserve candidates: they promote a ranked head and leave the remaining
 retrieval order available to the final selector. With `adaptive` chat-LLM policy, exact symbol
 and path evidence skip the model, reference queries retain occurrence coverage, and semantic
@@ -319,8 +318,7 @@ compound, call-chain, and reference requests reserve a few leading slots for imp
 files the path prior does not demote (the root `README` remains documentation for this rule).
 A test or document chunk that leads both the dense and lexical lists keeps a fused score no
 multiplicative prior can undercut; requests that name tests keep a neutral prior, and chunks whose only symbol evidence is imports
-(file headers) yield those slots to implementing code (`RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS`, on by
-default). Reference
+(file headers) yield those slots to implementing code. Reference
 requests only promote exact or whole-identifier lexical evidence and place the symbol's own
 declaration chunk after its use sites; within that evidence, chunks that call or extend the
 symbol come before textual mentions and before mere imports, a chunk that also names the
@@ -346,16 +344,7 @@ records `dense`, `skip:exact_definition`, `skip:path_evidence`, or `skip:use_sit
 Under the adaptive policies, a reference request whose SQL use sites made dense recall unnecessary
 also skips the dedicated reranker (`rerank_route = skip:deterministic`); symbol and path requests
 retain their existing `skip:exact_definition` and `skip:path_evidence` routes. `always` still runs.
-Overview requests and flow questions that name no symbol get a hub lane: the request's words are
-joined into the identifier spellings a declaration could use (`Router`, `register_checker`,
-`createSlice`), the scope's declarations of those spellings are fetched with the number of files
-that call, import or extend each, and the most widely referenced ones that are not package
-names take protected head slots, one file each (`RETRIEVAL_HUB_HEAD_SLOTS`, off by default at 0:
-it raised the curated overview nDCG@10 67.8→74.3 but lowered a sealed held-out semantic set's
-overview 66.4→54.1 and call-chain 85.6→78.2, so the gain did not generalize;
-`RETRIEVAL_HUB_MAX_DEFINITIONS` bounds how many places a hub may be declared in; extending
-the lane to feature questions was measured once, displaced the implementing function, and
-was removed). Issue-style requests are anchored on their
+Issue-style requests are anchored on their
 deterministic facts: each traceback frame (Python, IPython and Node forms) is resolved to the
 declaration of that function in that file at that line, the title's identifiers are resolved with
 their qualifier pinned strictly, and those declarations take protected head slots in trace order
@@ -569,15 +558,17 @@ stores dense vectors and the path index.
 ### Retrieval pipeline
 
 `RetrievalPipeline.search` (`domain/services/retrieval/`, one module per stage) is one fixed
-sequence of state transitions over a `RetrievalState`; every stage reads and writes only its
-own fields, and every optional operator degrades to the identity transform when disabled. A
-lane that fails is skipped and named in `retrieval_metrics.lane_failures`, so an answer that
-came from fewer lanes than planned is visible offline. The design rationale and tuning history
+sequence of state transitions: each stage writes one record of `RetrievalState` (`QueryRoute`,
+`QueryPlan`, `RecallEvidence`, then the candidate, selected and related lists) and later stages
+only read it. The request text is parsed once, in route. Every optional operator degrades to the
+identity transform when disabled. A lane that fails is skipped and
+named in `retrieval_metrics.lane_failures`, so an answer that came from fewer lanes than planned
+is visible offline. The design rationale and tuning history
 per stage are in [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md).
 
 | Stage | What it does |
 | --- | --- |
-| route | deterministic intent, plus `QueryEvidence`: identifiers, traceback frames, quoted error text, filenames, lexical terms |
+| route | one parse of the request: `QueryEvidence` (identifiers, traceback frames, quoted error text, filenames, lexical terms), deterministic intent and strategy |
 | plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
 | recall | dense (Milvus) ∥ exact symbols (SQL) ∥ intent-routed lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
 | fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |

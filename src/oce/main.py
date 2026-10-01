@@ -36,15 +36,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     container = get_container()
     try:
-        index_ready = await container.ensure_index_compatible()
-        if index_ready:
-            await container.start_worker()
-        await container.metrics.start()
-        if container.resource_sampler is not None:
-            await container.resource_sampler.start()
-        if container.monitoring_cleaner is not None:
-            await container.monitoring_cleaner.start()
-        await container.warm_up()
+        await container.start()
         yield
     finally:
         try:
@@ -87,7 +79,7 @@ def _metrics_sink_provider() -> ManagedMetricsSink | None:
     """The metrics sink once the container exists; None before the lifespan ran."""
     if get_container.cache_info().currsize == 0:
         return None
-    return get_container().metrics
+    return get_container().monitoring.metrics
 
 
 if get_settings().monitoring.enabled:

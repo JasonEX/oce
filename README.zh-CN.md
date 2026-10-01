@@ -145,7 +145,7 @@ ONNX 交叉编码器（`uv sync --extra local-rerank`，`RERANK_LOCAL_MODEL_DIR`
 数据。该评测模型使用 [CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)，部署前必须单独核对模型的使用权，或改用兼容的其他导出。实测的 16 核 CPU 上 20 个候选约 1.2 秒。同时启用两种后端时，管线按专用 reranker
 → chat LLM 级联。默认关闭只是运行成本和数据边界，不代表质量高低。当前 development
 benchmark 中，本地 reranker 曾明显改善长 issue 排序，保持短结构查询 Top-1，但没有改善较小的
-语义集；在后来加入的结构化头部车道（traceback 帧锚点、hub 车道）之上复测，它在所有套件上都是
+语义集；在后来加入的结构化头部车道（traceback 帧锚点、已退休的 hub 车道）之上复测，它在所有套件上都是
 净负（semantic nDCG@10 74.9→72.9、issue nDCG@100 74.3→62.0，向量类请求各多约 1.2 秒），因此
 保持关闭；adaptive 策略下，SQL 使用点已经回答的 reference 请求记为
 `rerank_route = skip:deterministic`，symbol/path 请求仍分别记为 `skip:exact_definition` 与
@@ -243,8 +243,7 @@ SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`ma
 包含多个明确句子或列表项的仓库级请求，会被分解成一个完整查询加若干有界 facet 查询。每个
 查询独立召回候选；结果用加权 rank fusion（`RETRIEVAL_RRF_K` 可调）融合后再重排。单查询
 模式用 `RETRIEVAL_DEFAULT_TOP_K`，多查询模式每个查询用 `RETRIEVAL_PER_QUERY_TOP_K` 控制
-候选池大小。静态 source prior 和可选召回置信度下限都在模型之前应用，避免用不同
-量纲的模型分数和召回分数混合过滤，也不会再覆盖模型顺序。两种 reranker 都只提升
+候选池大小。静态 source prior 在模型之前应用，不会覆盖模型顺序。两种 reranker 都只提升
 队首候选，并保留其余顺序给最终 selector。`adaptive` chat-LLM 策略在 exact symbol/path 证据
 足够时跳过模型，reference 查询保留 occurrence 覆盖，feature/flow/overview/compound 查询则进行
 全局片段语义比较。最终选择对 symbol/path
@@ -447,14 +446,15 @@ flowchart TB
 
 ### 检索管线
 
-`RetrievalPipeline.search`（`domain/services/retrieval/`，每阶段一个模块）是 `RetrievalState`
-上的一条固定状态转移序列：每个阶段只读写属于自己的字段，任何可选算子关闭后都退化为恒等变换。
-失败的车道会被跳过并记入 `retrieval_metrics.lane_failures`，因此从更少车道作答的请求可以离线
-识别。各阶段的设计理由与调优历史见 [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md)。
+`RetrievalPipeline.search`（`domain/services/retrieval/`，每阶段一个模块）是一条固定的状态转移
+序列：每个阶段写入 `RetrievalState` 的一条记录（`QueryRoute`、`QueryPlan`、`RecallEvidence`，
+然后是候选、选中与关系列表），之后的阶段只读不改；请求文本只在 route 解析一次。任何可选算子
+关闭后都退化为恒等变换。失败的车道会被跳过并记入
+`retrieval_metrics.lane_failures`，因此从更少车道作答的请求可以离线识别。各阶段的设计理由与调优历史见 [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md)。
 
 | 阶段 | 职责 |
 | --- | --- |
-| route | 确定性意图，加上 `QueryEvidence`：标识符、traceback 帧、引号内报错文案、文件名、词法词元 |
+| route | 只解析一次请求：`QueryEvidence`（标识符、traceback 帧、引号内报错文案、文件名、词法词元）、确定性意图与策略 |
 | plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
 | recall | dense（Milvus）∥ 精确符号（SQL）∥ 按意图词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
 | fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |

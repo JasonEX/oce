@@ -55,7 +55,7 @@ class DefinitionStore(FakeExactSearchStore):
 
 
 def _settings(**kwargs):
-    return RetrievalSettings(confidence_floor=0.0, final_select_k=10, **kwargs)
+    return RetrievalSettings(final_select_k=10, **kwargs)
 
 
 class TestLexicalRecall:
@@ -1032,9 +1032,7 @@ class TestHeadEvidence:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([header, impl, docs]),
             exact_store=store,
-            settings=_settings(
-                related_definitions_enabled=False, head_skips_import_headers=True
-            ),
+            settings=_settings(related_definitions_enabled=False),
         )
         hits = await pipe.search(
             self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C}))
@@ -1064,14 +1062,12 @@ class TestHeadEvidence:
             embedder=FakeEmbedder(),
             store=FakeSearchStore([header, script]),
             exact_store=self.DefiningStore(defining=set(), headers={"h-header"}),
-            settings=_settings(
-                related_definitions_enabled=False, head_skips_import_headers=True
-            ),
+            settings=_settings(related_definitions_enabled=False),
         )
         hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
         assert [hit.path for hit in hits] == [path, "src/router/mod.rs"]
 
-    async def test_header_rule_is_on_by_default_and_can_be_switched_off(self):
+    async def test_header_rule_yields_the_head_to_implementing_code(self):
         header = _hit("src/router/mod.rs", 0.95, blob=BLOB_A, hash_="h-header")
         impl = _hit("src/router/path.rs", 0.9, blob=BLOB_B, hash_="h-impl")
         store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
@@ -1084,19 +1080,6 @@ class TestHeadEvidence:
         hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
         assert [hit.path for hit in hits] == ["src/router/path.rs", "src/router/mod.rs"]
         assert store.asked
-
-        store = self.DefiningStore(defining={"h-impl"}, headers={"h-header"})
-        pipe = RetrievalPipeline(
-            embedder=FakeEmbedder(),
-            store=FakeSearchStore([header, impl]),
-            exact_store=store,
-            settings=_settings(
-                related_definitions_enabled=False, head_skips_import_headers=False
-            ),
-        )
-        hits = await pipe.search(self.QUERY, SearchScope(frozenset({BLOB_A, BLOB_B})))
-        assert [hit.path for hit in hits] == ["src/router/mod.rs", "src/router/path.rs"]
-        assert store.asked == []
 
     async def test_reference_head_falls_back_to_evidenced_test_use_sites(self):
         readme = _hit("README.md", 0.99, blob=BLOB_C, content="acquire a connection")
@@ -1125,11 +1108,6 @@ class TestHeadEvidence:
         # The only evidenced use site leads even though it is a test; the
         # README has no occurrence evidence and the declaration is not a use.
         assert [hit.path for hit in hits][:2] == ["tests/test_pool.py", "README.md"]
-
-        hits = await pipe(reference_head_fallback=False).search(
-            "Where is `acquire` used?", scope
-        )
-        assert hits[0].path == "README.md"
 
     async def test_compound_request_anchors_the_named_definition(self):
         issue = (
@@ -1182,7 +1160,6 @@ class TestHeadEvidence:
             settings=_settings(
                 related_definitions_enabled=False,
                 compound_anchor_slots=2,
-                head_skips_import_headers=True,
             ),
         )
         scope = SearchScope(frozenset({BLOB_A, BLOB_B, BLOB_C, "d" * 64}))
