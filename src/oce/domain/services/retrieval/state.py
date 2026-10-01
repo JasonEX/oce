@@ -23,6 +23,7 @@ from oce.domain.services.search import (
     DefinitionHit,
     HubDefinition,
     SearchHit,
+    SearchHitKey,
     SearchScope,
 )
 from oce.shared.metrics import RetrievalAudit
@@ -92,12 +93,22 @@ class RetrievalState:
     # Candidate chunks whose only symbol evidence is imports: file headers.
     # None when the exact store cannot tell.
     header_keys: frozenset[tuple[str, str]] | None = None
+    # The reference head is restored after reranking using the same facts.
+    implementor_keys: frozenset[SearchHitKey] | None = None
 
     # fuse / prior / rerank / select / expand
     candidates: list[SearchHit] = field(default_factory=list)
     decision: RerankDecision | None = None
     selected: list[SearchHit] = field(default_factory=list)
     related: list[SearchHit] = field(default_factory=list)
+    # Expansion may render again after trimming the primary tail. Only raw
+    # facts are reused; names, excerpts and source dependencies are recomputed.
+    related_calls: dict[tuple[str, int, int], tuple[tuple[str, int, str], ...]] = field(
+        default_factory=dict
+    )
+    related_definitions: dict[tuple[int, str], tuple[DefinitionHit, ...]] = field(
+        default_factory=dict
+    )
 
     @property
     def allowed_blob_names(self) -> frozenset[str] | None:

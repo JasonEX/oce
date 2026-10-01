@@ -23,10 +23,15 @@ from fastapi import FastAPI, Request
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+import oce.application.container as container_module
 from oce.api.router import get_application
 from oce.application.container import Container
 from oce.application.service import BlobUpload
-from oce.infrastructure.persistence.models import RetrievalMetricModel
+from oce.infrastructure.persistence.models import (
+    BlobModel,
+    ChainModel,
+    RetrievalMetricModel,
+)
 from oce.main import app
 from oce.shared.config.settings import (
     EmbeddingSettings,
@@ -37,7 +42,10 @@ from oce.shared.config.settings import (
     WorkerSettings,
     get_settings,
 )
+from oce.shared.errors import ServiceNotReadyError
+from oce.shared.model_credentials import CredentialCreate
 from tests.fakes.embedding import term_vector
+from tests.fakes.queue import FakeQueue
 
 DIMENSIONS = 16
 EMBED_API_KEY = "test-embed-key"
@@ -127,7 +135,10 @@ async def embedding_server(unused_tcp_port: int) -> AsyncIterator[EmbeddingServe
 
 @pytest.fixture
 async def container(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, embedding_server: EmbeddingServer
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    embedding_server: EmbeddingServer,
+    request: pytest.FixtureRequest,
 ) -> AsyncIterator[Container]:
     db_url = f"sqlite+aiosqlite:///{(tmp_path / 'oce.db').as_posix()}"
     # ``oce serve`` migrates the personal database on every start; the
@@ -140,6 +151,13 @@ async def container(
     await asyncio.to_thread(run_migrations)
     engine = create_async_engine(db_url)
     sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    mode = getattr(request, "param", None)
+    has_worker = mode in ("deferred-worker", "disabled-embedding-worker")
+    if has_worker:
+        queue = FakeQueue()
+        monkeypatch.setattr(
+            container_module, "_build_redis_queue", lambda _settings: queue
+        )
     settings = Settings(
         milvus=MilvusSettings(
             endpoint=str(tmp_path / "milvus.db"),
@@ -148,19 +166,22 @@ async def container(
             dense_index_type="FLAT",
         ),
         embedding=EmbeddingSettings(
+            enabled=mode != "disabled-embedding-worker",
             endpoint=embedding_server.url,
-            api_key=EMBED_API_KEY,
+            api_key=None if mode == "deferred-worker" else EMBED_API_KEY,
             model="test-embedding",
             dimensions=DIMENSIONS,
         ),
-        retrieval=RetrievalSettings(confidence_floor=0.0),
-        worker=WorkerSettings(enabled=False),
+        retrieval=RetrievalSettings(
+            confidence_floor=0.0, path_index_enabled=mode is not False
+        ),
+        worker=WorkerSettings(enabled=has_worker),
         monitoring=MonitoringSettings(
             enabled=True, flush_interval_seconds=60.0, store_query_text=True
         ),
     )
     container = Container(settings, sessions)
-    assert await container.ensure_index_compatible()
+    assert await container.ensure_index_compatible() is (mode != "deferred-worker")
     await container.metrics.start()
     await container.warm_up()
     try:
@@ -169,6 +190,102 @@ async def container(
         await container.close()
         await engine.dispose()
         get_settings.cache_clear()
+
+
+@pytest.mark.parametrize("container", ["deferred-worker"], indirect=True)
+async def test_credentials_reload_starts_deferred_worker_and_allows_queue_reset(
+    container: Container, embedding_server: EmbeddingServer
+) -> None:
+    worker = container.worker
+    assert worker is not None and not worker.is_running
+    application = container.application
+    app.dependency_overrides[get_application] = lambda: application
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://oce"
+        ) as client:
+            response = await client.post(
+                "/batch-upload",
+                headers={"Authorization": f"Bearer {get_settings().api_key}"},
+                json={
+                    "blobs": [
+                        {
+                            "path": "src/config.py",
+                            "content": "def configure(): return 42\n",
+                        }
+                    ]
+                },
+            )
+        assert response.status_code == 503
+        assert "SERVICE_NOT_READY" in response.json()["detail"]
+        assert response.headers["Retry-After"] == "0"
+    finally:
+        app.dependency_overrides.pop(get_application, None)
+    with pytest.raises(ServiceNotReadyError, match="Index profile is not ready"):
+        await application.checkpoint(
+            checkpoint_id=None, added_blobs=[], deleted_blobs=[]
+        )
+    async with container.session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(BlobModel)) == 0
+        assert await session.scalar(select(func.count()).select_from(ChainModel)) == 0
+    assert not embedding_server.requests
+    missing_credentials = await application.reload_embedding_credentials()
+    assert not missing_credentials.reloaded
+    assert not worker.is_running
+
+    await application.create_credential(
+        CredentialCreate(
+            kind="embed",
+            name="local test endpoint",
+            api_key=EMBED_API_KEY,
+            endpoint=embedding_server.url,
+            model="test-embedding",
+            dimensions=DIMENSIONS,
+        )
+    )
+    assert not worker.is_running
+    assert (await application.reload_embedding_credentials()).reloaded
+    assert worker.is_running
+
+    uploaded = await application.batch_upload(
+        [BlobUpload("src/config.py", "def configure(): return 42\n")]
+    )
+    assert uploaded.embedded_count == 0
+
+    async def wait_ready() -> None:
+        while (await application.find_missing(list(uploaded.blob_names))).nonindexed:
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(wait_ready(), timeout=5)
+    assert embedding_server.requests
+    reset = await application.reset_queue()
+    assert reset.db_pending == 0 and reset.queue_size == 0
+    assert worker.is_running
+
+
+@pytest.mark.parametrize("container", ["disabled-embedding-worker"], indirect=True)
+async def test_disabled_embedding_still_chunks_service_mode_uploads(
+    container: Container, embedding_server: EmbeddingServer
+) -> None:
+    await container.start_worker()
+    assert container.worker is not None and container.worker.is_running
+    uploaded = await container.application.batch_upload(
+        [BlobUpload("src/config.py", "def configure(): return 42\n")]
+    )
+    queue = container.queue
+    assert isinstance(queue, FakeQueue)
+
+    async def wait_ack() -> None:
+        while uploaded.blob_names[0] not in queue.acked:
+            await asyncio.sleep(0.01)
+
+    await asyncio.wait_for(wait_ack(), timeout=5)
+    async with container._uow_factory() as uow:
+        blob = await uow.blobs.get(uploaded.blob_names[0])
+        assert blob is not None and blob.chunks
+        assert blob.status.value == "pending"
+        assert await uow.blobs.get_staging(blob.blob_name) is not None
+    assert not embedding_server.requests
 
 
 async def test_upload_checkpoint_and_retrieve_through_http(
@@ -283,3 +400,34 @@ async def test_upload_checkpoint_and_retrieve_through_http(
     assert all(row.hit_count > 0 for row in rows)
     assert rows[0].dense_route == "skip:exact_definition"
     assert rows[2].dense_route == "dense"
+
+
+@pytest.mark.parametrize("container", [False], indirect=True)
+async def test_sql_path_retrieval_without_vector_path_index(
+    container: Container,
+) -> None:
+    uploaded = await container.application.batch_upload(
+        [BlobUpload("src/settings.cfg", "timeout = 42\n")]
+    )
+    assert container.path_index is None
+    assert container.path_content_store is not None
+
+    app.dependency_overrides[get_application] = lambda: container.application
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://oce"
+        ) as client:
+            response = await client.post(
+                "/agents/codebase-retrieval",
+                headers={"Authorization": f"Bearer {get_settings().api_key}"},
+                json={
+                    "information_request": "Where is settings.cfg?",
+                    "blobs": {"added_blobs": list(uploaded.blob_names)},
+                },
+            )
+            assert response.status_code == 200, response.text
+            text = response.json()["formatted_retrieval"]
+            assert "Path: src/settings.cfg" in text
+            assert "timeout = 42" in text
+    finally:
+        app.dependency_overrides.pop(get_application, None)

@@ -11,71 +11,48 @@ database and an embedded vector store without touching process-global state.
 from __future__ import annotations
 
 import os
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from functools import lru_cache, partial
 
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from oce.application.bus import CommandBus, QueryBus
 from oce.application.commands.checkpoint import (
-    CheckpointCommand,
     CheckpointCommandHandler,
 )
 from oce.application.commands.credentials import (
-    ReloadEmbeddingCredentialsCommand,
     ReloadEmbeddingCredentialsCommandHandler,
 )
-from oce.application.commands.gc import GcCommand, GcCommandHandler
+from oce.application.commands.gc import GcCommandHandler
 from oce.application.commands.ingest import (
-    DeleteBlobsCommand,
     DeleteBlobsCommandHandler,
-    EmbedPendingCommand,
     EmbedPendingCommandHandler,
-    IngestBlobsCommand,
     IngestBlobsCommandHandler,
     PipelineFactory,
     build_pipeline_factory,
 )
 from oce.application.commands.queue_admin import (
-    ResetQueueCommand,
     ResetQueueCommandHandler,
 )
 from oce.application.commands.requeue import (
-    RequeueStaleCommand,
     RequeueStaleCommandHandler,
 )
-from oce.application.credential_admin import (
-    CreateCredentialCommand,
-    CreateCredentialCommandHandler,
-    DeleteCredentialCommand,
-    DeleteCredentialCommandHandler,
-    DuplicateCredentialCommand,
-    DuplicateCredentialCommandHandler,
-    ListCredentialsQuery,
-    ListCredentialsQueryHandler,
-    UpdateCredentialCommand,
-    UpdateCredentialCommandHandler,
-)
 from oce.application.index_lifecycle import IndexLifecycleManager
-from oce.application.queries.index_stats import IndexStatsQuery, IndexStatsQueryHandler
-from oce.application.queries.queue import QueueStatusQuery, QueueStatusQueryHandler
-from oce.application.queries.search import SearchQuery, SearchQueryHandler
+from oce.application.queries.index_stats import IndexStatsQueryHandler
+from oce.application.queries.queue import QueueStatusQueryHandler
+from oce.application.queries.search import SearchQueryHandler
 from oce.application.queries.stats import (
-    MonitoringStatsQuery,
     MonitoringStatsQueryHandler,
 )
 from oce.application.queries.status import (
-    BlobStatusQuery,
     BlobStatusQueryHandler,
-    FindMissingQuery,
     FindMissingQueryHandler,
-    ResolveScopeQuery,
     ResolveScopeQueryHandler,
 )
 from oce.application.service import RetrievalApplication
 from oce.application.uow import UnitOfWorkFactory
+from oce.application.use_cases import ApplicationCommands, ApplicationQueries
 from oce.application.warmup import warm_retrieval_stores
 from oce.application.worker import EmbedWorker
 from oce.domain.chunk import Chunker
@@ -167,11 +144,13 @@ class _CredentialRuntime:
         reranker: CredentialConfiguredReranker | None = None,
         llm_clients: Sequence[CredentialConfiguredLLMClient] = (),
         query_cache: QueryCachingEmbedder | None = None,
+        on_ready: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._embedder = embedder
         self._reranker = reranker
         self._llm_clients = tuple(llm_clients)
         self._query_cache = query_cache
+        self._on_ready = on_ready
 
     async def reload(self) -> None:
         embedding_replacement = await self._embedder.prepare_reload()
@@ -211,6 +190,8 @@ class _CredentialRuntime:
                 await client.reload()
             except Exception as exc:
                 logger.warning("LLM client reload failed: {}", exc)
+        if self._on_ready is not None:
+            await self._on_ready()
 
 
 # ── subsystem builders ───────────────────────────────────────────────────
@@ -280,6 +261,7 @@ def build_vector_stores(
     path_content_store = None
     if settings.retrieval.path_index_enabled:
         path_index = PathIndexClient(settings.milvus, dense_dim=dense_dim)
+    if settings.retrieval.path_index_enabled or settings.retrieval.path_lookup_enabled:
         path_content_store = SqlPathContentStore(session_factory)
     return VectorStores(
         search_store=Milvus3SearchStore(settings.milvus, dense_dim=dense_dim),
@@ -318,6 +300,7 @@ def build_model_runtime(
     *,
     token_usage: UsageCallback | None,
     index_lifecycle: IndexLifecycleManager,
+    on_ready: Callable[[], Awaitable[None]] | None = None,
 ) -> ModelRuntime:
     embedding_runtime = CredentialConfiguredEmbedder(
         session_factory,
@@ -408,6 +391,7 @@ def build_model_runtime(
             credential_reranker,
             llm_clients,
             query_cache=embedder,
+            on_ready=on_ready,
         ),
     )
 
@@ -608,6 +592,7 @@ class Container:
             sessions,
             token_usage=monitoring.token_usage,
             index_lifecycle=self.index_lifecycle,
+            on_ready=self.start_worker,
         )
         self._models = models
         self.embedding_runtime = models.embedding_runtime
@@ -644,89 +629,59 @@ class Container:
             else None
         )
         self.application = RetrievalApplication(
-            self._build_command_bus(settings, sessions, indexing),
-            self._build_query_bus(settings, sessions, indexing, models, stores),
+            self._build_commands(settings, indexing),
+            self._build_queries(settings, sessions, indexing, models, stores),
+            credentials=SqlCredentialAdminStore(sessions),
             background_indexing=self.queue is not None,
+            require_index_ready=self.index_lifecycle.require_ready,
         )
 
-    def _build_command_bus(
-        self,
-        settings: Settings,
-        sessions: SessionFactory,
-        indexing: IndexingRuntime,
-    ) -> CommandBus:
+    def _build_commands(
+        self, settings: Settings, indexing: IndexingRuntime
+    ) -> ApplicationCommands:
         uow_factory = indexing.uow_factory
         delete_blobs = DeleteBlobsCommandHandler(
             uow_factory, self.search_store, path_store=self.path_index
         )
-        credential_admin_store = SqlCredentialAdminStore(sessions)
-        bus = CommandBus()
-        bus.register(
-            IngestBlobsCommand,
-            IngestBlobsCommandHandler(
+        return ApplicationCommands(
+            ingest=IngestBlobsCommandHandler(
                 uow_factory, indexing.pipeline_factory, self.queue
             ),
-        )
-        bus.register(
-            EmbedPendingCommand,
-            EmbedPendingCommandHandler(
+            embed_pending=EmbedPendingCommandHandler(
                 uow_factory,
                 indexing.pipeline_factory,
                 blob_batch_size=settings.worker.blob_batch_size,
             ),
-        )
-        bus.register(DeleteBlobsCommand, delete_blobs)
-        bus.register(
-            ReloadEmbeddingCredentialsCommand,
-            ReloadEmbeddingCredentialsCommandHandler(self._models.credentials),
-        )
-        bus.register(CheckpointCommand, CheckpointCommandHandler(uow_factory))
-        bus.register(
-            RequeueStaleCommand, RequeueStaleCommandHandler(uow_factory, self.queue)
-        )
-        bus.register(
-            ResetQueueCommand,
-            ResetQueueCommandHandler(
+            reload_credentials=ReloadEmbeddingCredentialsCommandHandler(
+                self._models.credentials
+            ),
+            checkpoint=CheckpointCommandHandler(uow_factory),
+            requeue_stale=RequeueStaleCommandHandler(uow_factory, self.queue),
+            reset_queue=ResetQueueCommandHandler(
                 uow_factory,
                 self.queue,
                 worker_running=lambda: (
                     self.worker is not None and self.worker.is_running
                 ),
+                maintenance=self.worker.maintenance
+                if self.worker is not None
+                else None,
             ),
+            gc=GcCommandHandler(uow_factory, delete_blobs, self.queue),
         )
-        bus.register(
-            CreateCredentialCommand,
-            CreateCredentialCommandHandler(credential_admin_store),
-        )
-        bus.register(
-            UpdateCredentialCommand,
-            UpdateCredentialCommandHandler(credential_admin_store),
-        )
-        bus.register(
-            DeleteCredentialCommand,
-            DeleteCredentialCommandHandler(credential_admin_store),
-        )
-        bus.register(
-            DuplicateCredentialCommand,
-            DuplicateCredentialCommandHandler(credential_admin_store),
-        )
-        bus.register(GcCommand, GcCommandHandler(uow_factory, delete_blobs, self.queue))
-        return bus
 
-    def _build_query_bus(
+    def _build_queries(
         self,
         settings: Settings,
         sessions: SessionFactory,
         indexing: IndexingRuntime,
         models: ModelRuntime,
         stores: VectorStores,
-    ) -> QueryBus:
+    ) -> ApplicationQueries:
         uow_factory = indexing.uow_factory
         monitoring = settings.monitoring
-        bus = QueryBus()
-        bus.register(
-            SearchQuery,
-            SearchQueryHandler(
+        return ApplicationQueries(
+            search=SearchQueryHandler(
                 build_retrieval_pipeline(
                     settings,
                     sessions,
@@ -740,17 +695,13 @@ class Container:
                 ),
                 store_query_text=monitoring.store_query_text,
             ),
-        )
-        bus.register(FindMissingQuery, FindMissingQueryHandler(uow_factory))
-        bus.register(BlobStatusQuery, BlobStatusQueryHandler(uow_factory))
-        bus.register(ResolveScopeQuery, ResolveScopeQueryHandler(uow_factory))
-        bus.register(
-            MonitoringStatsQuery,
-            MonitoringStatsQueryHandler(SqlMonitoringStatsReader(sessions)),
-        )
-        bus.register(
-            IndexStatsQuery,
-            IndexStatsQueryHandler(
+            find_missing=FindMissingQueryHandler(uow_factory),
+            blob_status=BlobStatusQueryHandler(uow_factory),
+            resolve_scope=ResolveScopeQueryHandler(uow_factory),
+            monitoring_stats=MonitoringStatsQueryHandler(
+                SqlMonitoringStatsReader(sessions)
+            ),
+            index_stats=IndexStatsQueryHandler(
                 SqlMetadataIndexStatsReader(sessions),
                 self.search_store,
                 self.path_index,
@@ -758,13 +709,13 @@ class Container:
                 _runtime_profile(settings),
                 self.index_lifecycle,
             ),
+            queue_status=QueueStatusQueryHandler(uow_factory, self.queue),
         )
-        bus.register(
-            ListCredentialsQuery,
-            ListCredentialsQueryHandler(SqlCredentialAdminStore(sessions)),
-        )
-        bus.register(QueueStatusQuery, QueueStatusQueryHandler(uow_factory, self.queue))
-        return bus
+
+    async def start_worker(self) -> None:
+        """Start consumption after the caller validates index/runtime readiness."""
+        if self.worker is not None:
+            await self.worker.start()
 
     async def ensure_index_compatible(self) -> bool:
         """Validate persisted artifacts before workers or data-plane traffic start."""

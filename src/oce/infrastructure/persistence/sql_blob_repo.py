@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
@@ -65,6 +65,14 @@ class SqlBlobRepository(BlobRepository):
 
     async def save(self, blob: Blob) -> None:
         await self.save_many([blob])
+
+    async def touch(self, blob_name: str) -> None:
+        # Uploads must not replay a stale aggregate over a worker's status.
+        await self.session.execute(
+            update(BlobModel)
+            .where(BlobModel.blob_name == blob_name)
+            .values(last_seen=datetime.now(timezone.utc))
+        )
 
     async def save_many(self, blobs: Sequence[Blob]) -> None:
         if not blobs:
@@ -248,13 +256,21 @@ class SqlBlobRepository(BlobRepository):
         )
         await self.session.execute(stmt)
 
-    async def list_pending_names(self) -> list[str]:
-        """Every pending blob name; queue reconciliation needs the whole set."""
-        result = await self.session.execute(
-            select(BlobModel.blob_name).where(
-                BlobModel.status == BlobStatus.PENDING.value
-            )
+    async def list_pending_names(
+        self, *, limit: int | None = None, after: str | None = None
+    ) -> list[str]:
+        if limit is not None and limit < 1:
+            return []
+        statement = (
+            select(BlobModel.blob_name)
+            .where(BlobModel.status == BlobStatus.PENDING.value)
+            .order_by(BlobModel.blob_name)
         )
+        if after is not None:
+            statement = statement.where(BlobModel.blob_name > after)
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self.session.execute(statement)
         return list(result.scalars())
 
     async def find_stale_with_staging(

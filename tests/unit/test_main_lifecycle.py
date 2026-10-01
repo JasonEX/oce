@@ -26,7 +26,8 @@ def _container(*, metrics_start_side_effect=None):
         metrics=metrics,
         resource_sampler=resource_sampler,
         monitoring_cleaner=monitoring_cleaner,
-        ensure_index_compatible=AsyncMock(),
+        ensure_index_compatible=AsyncMock(return_value=True),
+        start_worker=worker.start,
         warm_up=AsyncMock(),
         close=AsyncMock(),
     )
@@ -93,3 +94,15 @@ async def test_requests_start_only_after_storage_probes_finish(monkeypatch):
     finish.set()
     await task
     assert serving.is_set()
+
+
+async def test_deferred_index_readiness_does_not_consume_pending_work(monkeypatch):
+    container = _container()
+    container.ensure_index_compatible.return_value = False
+    _patch_lifespan_dependencies(monkeypatch, container)
+
+    async with main.lifespan(main.app):
+        container.worker.start.assert_not_awaited()
+        container.metrics.start.assert_awaited_once_with()
+
+    container.close.assert_awaited_once_with()

@@ -29,6 +29,11 @@ class FakeBlobRepo:
     async def save(self, blob: Blob) -> None:
         self.blobs[blob.blob_name] = blob
 
+    async def touch(self, blob_name: str) -> None:
+        blob = self.blobs.get(blob_name)
+        if blob is not None:
+            blob.touch()
+
     async def get(self, blob_name: str) -> Blob | None:
         return self.blobs.get(blob_name)
 
@@ -51,6 +56,16 @@ class FakeBlobRepo:
         return sorted(
             name for name, blob in self.blobs.items() if blob.status == BlobStatus.READY
         )[: max(0, limit)]
+
+    async def list_pending_names(
+        self, *, limit: int | None = None, after: str | None = None
+    ) -> list[str]:
+        names = sorted(
+            name
+            for name, blob in self.blobs.items()
+            if blob.status == BlobStatus.PENDING and (after is None or name > after)
+        )
+        return names if limit is None else names[: max(0, limit)]
 
     async def delete(self, blob_name: str) -> None:
         self.blobs.pop(blob_name, None)

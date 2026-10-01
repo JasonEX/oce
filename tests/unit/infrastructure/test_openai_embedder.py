@@ -2,47 +2,23 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
-from types import SimpleNamespace
 
 import pytest
 
 from oce.infrastructure.embed.openai_embedder import OpenAIEmbedder
+from tests.fakes.embedding import FakeEmbeddingClient
 
 
-class _FakeEmbeddings:
-    def __init__(self) -> None:
-        self.calls: list[list[str]] = []
-
-    async def create(self, **kwargs):
-        texts = list(kwargs["input"])
-        self.calls.append(texts)
-        data = []
-        for index, text in enumerate(texts):
-            vector = [1.0, 0.0] if text[0] < "f" else [0.0, 1.0]
-            data.append(SimpleNamespace(index=index, embedding=vector))
-        return SimpleNamespace(
-            data=data,
-            usage=SimpleNamespace(total_tokens=sum(map(len, texts))),
-        )
-
-
-class _FakeClient:
-    def __init__(self) -> None:
-        self.embeddings = _FakeEmbeddings()
-
-    async def close(self) -> None:
-        return None
-
-
-def _make_embedder(**kwargs) -> tuple[OpenAIEmbedder, _FakeClient]:
-    client = _FakeClient()
+def _make_embedder(**kwargs) -> tuple[OpenAIEmbedder, FakeEmbeddingClient]:
+    client = FakeEmbeddingClient()
     embedder = OpenAIEmbedder(
         client,
         "test-model",
         2,
         max_batch_size=kwargs.get("max_batch_size", 32),
-        max_concurrency=1,
+        max_concurrency=kwargs.get("max_concurrency", 1),
         max_batch_chars=kwargs.get("max_batch_chars", 32_000),
         max_input_chars=kwargs.get("max_input_chars", 8_000),
         input_overlap_chars=kwargs.get("input_overlap_chars", 0),
@@ -85,7 +61,7 @@ async def test_short_input_preserves_provider_vector():
 
 
 def test_invalid_input_budget_is_rejected():
-    client = _FakeClient()
+    client = FakeEmbeddingClient()
 
     with pytest.raises(ValueError, match="character budgets"):
         OpenAIEmbedder(
@@ -105,7 +81,7 @@ async def test_embed_reports_usage_with_model_and_credential_id():
     async def _on_usage(cid, kind, model, prompt, completion):
         captured.append((cid, kind, model, prompt, completion))
 
-    client = _FakeClient()
+    client = FakeEmbeddingClient()
     embedder = OpenAIEmbedder(
         client,
         "test-model",
@@ -122,7 +98,7 @@ async def test_embed_reports_usage_with_model_and_credential_id():
 
 
 async def test_query_embedding_input_is_capped_before_the_instruction():
-    client = _FakeClient()
+    client = FakeEmbeddingClient()
     embedder = OpenAIEmbedder(
         client,
         "test-model",
@@ -151,3 +127,27 @@ async def test_query_embedding_input_is_capped_before_the_instruction():
     )
     await unlimited.embed_query("b" * 100)
     assert client.embeddings.calls[1][0] == "b" * 100
+
+
+async def test_provider_concurrency_limit_is_shared_by_document_and_query_calls() -> (
+    None
+):
+    client = FakeEmbeddingClient(blocked=True)
+    embedder = OpenAIEmbedder(
+        client, "test-model", 2, max_batch_size=1, max_concurrency=2
+    )
+    documents = [
+        asyncio.create_task(embedder.embed_documents(["aaa", "bbb"])) for _ in range(3)
+    ]
+    queries = [asyncio.create_task(embedder.embed_query("ggg")) for _ in range(5)]
+    async with asyncio.timeout(1):
+        await client.embeddings.started.get()
+        await client.embeddings.started.get()
+    await asyncio.sleep(0)
+    assert client.embeddings.active == 2
+
+    client.embeddings.release.set()
+    assert await asyncio.gather(*documents) == [[[1.0, 0.0], [1.0, 0.0]]] * 3
+    assert await asyncio.gather(*queries) == [[0.0, 1.0]] * 5
+    assert len(client.embeddings.calls) == 11
+    assert client.embeddings.peak_active == 2

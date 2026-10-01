@@ -118,7 +118,7 @@ class BlobModel(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (
-        Index("ix_blobs_status", "status"),
+        Index("ix_blobs_status_name", "status", "blob_name"),
         Index("ix_blobs_last_seen", "last_seen"),
         Index("ix_blobs_language", "language"),
         Index("ix_blobs_retry_count", "retry_count"),

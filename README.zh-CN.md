@@ -382,6 +382,8 @@ Invoke-RestMethod http://127.0.0.1:8986/agents/codebase-retrieval `
 依赖方向向内收敛（`shared <- domain <- application <- api`）。`infrastructure` 实现
 domain/shared 协议，且只能由 composition root（`application/container.py`）装配；router
 不编排业务流程。
+组合根直接绑定类型明确的读写用例。索引、队列维护、凭据就绪与 embedding 请求的
+所有权及状态转移见 [运行时生命周期](docs/runtime-lifecycle.md)。
 
 ```mermaid
 flowchart TB
@@ -396,7 +398,7 @@ flowchart TB
     subgraph APP["Application 层 · CQRS (application/)"]
         direction LR
         AppSvc["RetrievalApplication"]
-        Buses["CommandBus · QueryBus"]
+        UseCases["ApplicationCommands · ApplicationQueries"]
         Worker["EmbedWorker · 服务模式"]
     end
 

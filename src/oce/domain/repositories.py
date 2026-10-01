@@ -22,6 +22,10 @@ class BlobRepository(Protocol):
 
     async def save_many(self, blobs: Sequence[Blob]) -> None: ...
 
+    async def touch(self, blob_name: str) -> None:
+        """Refresh activity without changing indexing state or chunk references."""
+        ...
+
     async def delete(self, blob_name: str) -> None: ...
 
     async def delete_many(self, blob_names: Sequence[str]) -> None: ...
@@ -30,8 +34,10 @@ class BlobRepository(Protocol):
         self, blob_names: Sequence[str] | None = None
     ) -> list[Blob]: ...
 
-    async def list_pending_names(self) -> list[str]:
-        """Names of every pending blob; identities only, no aggregates."""
+    async def list_pending_names(
+        self, *, limit: int | None = None, after: str | None = None
+    ) -> list[str]:
+        """Pending identities in name order, optionally one bounded keyset page."""
         ...
 
     async def list_ready_names(self, limit: int) -> list[str]:

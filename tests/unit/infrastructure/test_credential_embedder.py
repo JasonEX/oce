@@ -4,15 +4,20 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import replace
+from typing import Any
 
 import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from oce.infrastructure.embed.credential_embedder import CredentialConfiguredEmbedder
+from oce.infrastructure.embed.credential_embedder import (
+    CredentialConfiguredEmbedder,
+    EmbeddingRuntimeConfig,
+)
 from oce.infrastructure.persistence.models import ModelCredentialModel
 from oce.shared.config.settings import EmbeddingSettings
 from oce.shared.database.session import Base
 from oce.shared.errors import ServiceNotReadyError
+from tests.fakes.embedding import FakeEmbeddingClient, FakeEmbeddingEndpoint
 
 
 async def _runtime():
@@ -255,3 +260,72 @@ async def test_credential_id_and_usage_callback_wired_through():
     assert delegate._on_usage is _cb
     await delegate.close()
     await engine.dispose()
+
+
+async def test_hot_reload_generations_share_provider_budget_without_cancelling_old_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    engine, sessions = await _runtime()
+    endpoint = FakeEmbeddingEndpoint(blocked=True)
+    clients: list[FakeEmbeddingClient] = []
+
+    def build_client(**kwargs: Any) -> FakeEmbeddingClient:
+        client = FakeEmbeddingClient(
+            endpoint=endpoint, http_client=kwargs["http_client"]
+        )
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(
+        "oce.infrastructure.embed.openai_embedder.AsyncOpenAI", build_client
+    )
+    embedder = CredentialConfiguredEmbedder(
+        sessions,
+        EmbeddingSettings(
+            api_key="fallback-key", dimensions=2, max_batch_size=1, max_concurrency=2
+        ),
+        expected_dimensions=2,
+    )
+    old_call = asyncio.create_task(embedder.embed_documents(["aaa", "bbb"]))
+    new_calls = []
+    try:
+        async with asyncio.timeout(2):
+            await endpoint.started.get()
+            await endpoint.started.get()
+        current = await embedder._resolve_config()
+
+        async def resolve_rotated() -> EmbeddingRuntimeConfig:
+            return replace(current, api_key="rotated-key")
+
+        monkeypatch.setattr(embedder, "_resolve_config", resolve_rotated)
+        prepared = await embedder.prepare_reload()
+        await embedder.validate_prepared(prepared)
+        await embedder.activate_prepared(prepared)
+        assert len(clients) == 2
+        assert not clients[0].closed
+
+        new_calls = [
+            asyncio.create_task(embedder.embed_documents(["ccc", "ddd"])),
+            asyncio.create_task(embedder.embed_query("ggg")),
+        ]
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert endpoint.active == 2
+        assert endpoint.calls == [["aaa"], ["bbb"]]
+        assert endpoint.peak_active == 2
+
+        endpoint.release.set()
+        assert await old_call == [[1.0, 0.0], [1.0, 0.0]]
+        assert await asyncio.gather(*new_calls) == [
+            [[1.0, 0.0], [1.0, 0.0]],
+            [0.0, 1.0],
+        ]
+        assert clients[0].closed
+        assert not clients[1].closed
+        assert endpoint.peak_active == 2
+        assert endpoint.cancelled_calls == 0
+    finally:
+        endpoint.release.set()
+        await asyncio.gather(old_call, *new_calls, return_exceptions=True)
+        await embedder.close()
+        await engine.dispose()

@@ -196,6 +196,7 @@ async def test_related_refresh_failure_keeps_preview_evidence(
     )
     store = FakeExactSearchStore()
     calls = 0
+    sql_calls = 0
 
     async def find_definitions(
         *,
@@ -204,10 +205,8 @@ async def test_related_refresh_failure_keeps_preview_evidence(
         max_per_identifier: int = 3,
         enclosing: Sequence[str] | None = None,
     ) -> list[DefinitionHit]:
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            raise TimeoutError("related refresh timed out")
+        nonlocal sql_calls
+        sql_calls += 1
         return [definition]
 
     monkeypatch.setattr(store, "find_definitions", find_definitions)
@@ -218,6 +217,18 @@ async def test_related_refresh_failure_keeps_preview_evidence(
         exact_store=store,
         settings=settings,
     )
+    related_definitions = pipeline.expander.related_definitions
+
+    async def refresh(
+        state: RetrievalState, *, budget: int | None = None
+    ) -> list[SearchHit]:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise TimeoutError("related refresh timed out")
+        return await related_definitions(state, budget=budget)
+
+    monkeypatch.setattr(pipeline.expander, "related_definitions", refresh)
     audit = RetrievalAudit()
     head = _hit("src/a.py", "a" * 1_400)
     state = RetrievalState(
@@ -232,6 +243,7 @@ async def test_related_refresh_failure_keeps_preview_evidence(
     await pipeline.expander.expand(state)
 
     assert calls == 2
+    assert sql_calls == 1
     assert state.selected[0] == head
     assert [hit.path for hit in state.related] == ["src/helper.py"]
     assert audit.lane_failures == {"related": "TimeoutError"}

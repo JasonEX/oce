@@ -6,14 +6,16 @@ message is still in flight and a worker pops it for nothing, and worse, a
 leftover in the pending sentinel set keeps that blob from ever being
 enqueued again. ``mode="sync"`` (default) drops queue entries the database
 does not list as pending and enqueues the ones it misses; ``mode="purge"``
-empties the queue and re-enqueues everything pending. Both require a stopped
-worker; the handler never stops it, because the composition root owns the
-worker's lifecycle.
+empties the queue and re-enqueues everything pending. The worker's maintenance
+context drains active batches and serializes resets with its lifecycle.
+``requeue=False`` only cleans immediately; periodic worker replay still restores
+missing delivery for durable pending blobs.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from typing import Literal
 
@@ -47,14 +49,22 @@ class ResetQueueCommandHandler:
         uow_factory: UnitOfWorkFactory,
         queue: Queue | None = None,
         worker_running: Callable[[], bool] | None = None,
+        maintenance: Callable[[], AbstractAsyncContextManager[None]] | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._queue = queue
         self._worker_running = worker_running or (lambda: False)
+        self._maintenance = maintenance
 
     async def handle(self, command: ResetQueueCommand) -> ResetQueueResult:
+        if self._maintenance is not None:
+            async with self._maintenance():
+                return await self._reset(command)
         if self._worker_running():
             raise QueueBusyError()
+        return await self._reset(command)
+
+    async def _reset(self, command: ResetQueueCommand) -> ResetQueueResult:
         if self._queue is None:
             return ResetQueueResult(0, 0, 0, 0)
 

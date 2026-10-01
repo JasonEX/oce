@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from oce.application.bus import CommandBus, QueryBus
 from oce.application.commands.checkpoint import CheckpointCommand, CheckpointResult
 from oce.application.commands.credentials import (
     ReloadEmbeddingCredentialsCommand,
@@ -21,13 +21,6 @@ from oce.application.commands.ingest import (
 )
 from oce.application.commands.queue_admin import ResetQueueCommand, ResetQueueResult
 from oce.application.commands.requeue import RequeueStaleCommand, RequeueStaleResult
-from oce.application.credential_admin import (
-    CreateCredentialCommand,
-    DeleteCredentialCommand,
-    DuplicateCredentialCommand,
-    ListCredentialsQuery,
-    UpdateCredentialCommand,
-)
 from oce.application.queries.index_stats import IndexStatsQuery
 from oce.application.queries.queue import QueueStatusQuery, QueueStatusResult
 from oce.application.queries.search import SearchQuery
@@ -40,11 +33,13 @@ from oce.application.queries.status import (
     ResolveScopeQuery,
     ResolveScopeResult,
 )
+from oce.application.use_cases import ApplicationCommands, ApplicationQueries
 from oce.domain.services.formatter import format_retrieval
 from oce.domain.services.search import SearchHit
 from oce.shared.index_stats import IndexStats
 from oce.shared.metrics_read import MonitoringStats
 from oce.shared.model_credentials import (
+    CredentialAdminStore,
     CredentialCreate,
     CredentialPatch,
     CredentialRecord,
@@ -80,22 +75,30 @@ class RetrievalApplication:
 
     def __init__(
         self,
-        command_bus: CommandBus,
-        query_bus: QueryBus,
+        commands: ApplicationCommands,
+        queries: ApplicationQueries,
         *,
+        credentials: CredentialAdminStore,
         background_indexing: bool = False,
+        require_index_ready: Callable[[], None] | None = None,
     ) -> None:
-        self._commands = command_bus
-        self._queries = query_bus
+        self._commands = commands
+        self._queries = queries
+        self._credentials = credentials
         self._background_indexing = background_indexing
+        self._require_index_ready = require_index_ready
 
     async def find_missing(self, blob_names: list[str]) -> FindMissingResult:
-        return await self._queries.ask(FindMissingQuery(tuple(blob_names)))
+        return await self._queries.find_missing.handle(
+            FindMissingQuery(tuple(blob_names))
+        )
 
     async def reload_embedding_credentials(
         self,
     ) -> ReloadEmbeddingCredentialsResult:
-        return await self._commands.execute(ReloadEmbeddingCredentialsCommand())
+        return await self._commands.reload_credentials.handle(
+            ReloadEmbeddingCredentialsCommand()
+        )
 
     async def batch_upload(
         self,
@@ -103,6 +106,8 @@ class RetrievalApplication:
         *,
         checkpoint_id: str | None = None,
     ) -> BatchUploadResult:
+        if self._require_index_ready is not None:
+            self._require_index_ready()
         items = tuple(
             BlobIngest(
                 compute_blob_name(blob.path, blob.content),
@@ -112,15 +117,17 @@ class RetrievalApplication:
             for blob in blobs
         )
         names = [item.blob_name for item in items]
-        await self._commands.execute(IngestBlobsCommand(items))
+        await self._commands.ingest.handle(IngestBlobsCommand(items))
         embedded_count = 0
         if not self._background_indexing:
-            embedded = await self._commands.execute(EmbedPendingCommand(tuple(names)))
+            embedded = await self._commands.embed_pending.handle(
+                EmbedPendingCommand(tuple(names))
+            )
             embedded_count = embedded.embedded_count
         if checkpoint_id:
             # Register the uploaded blobs in the existing checkpoint chain; a
             # non-empty checkpoint_id only advances a chain, never creates one.
-            await self._commands.execute(
+            await self._commands.checkpoint.handle(
                 CheckpointCommand(checkpoint_id, tuple(names), ())
             )
         return BatchUploadResult(tuple(names), embedded_count)
@@ -137,7 +144,7 @@ class RetrievalApplication:
         added = tuple(added_blobs or ())
         deleted = tuple(deleted_blobs or ())
         scope = await self._prepare_scope(checkpoint_id, added, deleted)
-        result = await self._queries.ask(
+        result = await self._queries.search.handle(
             SearchQuery(information_request, scope.scope, source="retrieval")
         )
         elapsed_ms = int((time.perf_counter() - started) * 1000)
@@ -156,8 +163,10 @@ class RetrievalApplication:
         # deleted_blobs only narrows this request's scope; nothing is deleted on
         # the server. Physical cleanup is the GC command's job.
         if added and not self._background_indexing:
-            await self._commands.execute(EmbedPendingCommand(added))
-        return await self._queries.ask(ResolveScopeQuery(checkpoint_id, added, deleted))
+            await self._commands.embed_pending.handle(EmbedPendingCommand(added))
+        return await self._queries.resolve_scope.handle(
+            ResolveScopeQuery(checkpoint_id, added, deleted)
+        )
 
     async def checkpoint(
         self,
@@ -166,7 +175,9 @@ class RetrievalApplication:
         added_blobs: list[str],
         deleted_blobs: list[str],
     ) -> CheckpointResult:
-        return await self._commands.execute(
+        if self._require_index_ready is not None:
+            self._require_index_ready()
+        return await self._commands.checkpoint.handle(
             CheckpointCommand(
                 checkpoint_id,
                 tuple(added_blobs),
@@ -180,53 +191,53 @@ class RetrievalApplication:
         blob_names: list[str],
         checkpoint_id: str | None,
     ) -> BlobStatusResult:
-        return await self._queries.ask(
+        return await self._queries.blob_status.handle(
             BlobStatusQuery(tuple(blob_names), checkpoint_id)
         )
 
     async def monitoring_stats(self, *, window_hours: int = 24) -> MonitoringStats:
-        return await self._queries.ask(MonitoringStatsQuery(window_hours))
+        return await self._queries.monitoring_stats.handle(
+            MonitoringStatsQuery(window_hours)
+        )
 
     async def index_stats(self) -> IndexStats:
-        return await self._queries.ask(IndexStatsQuery())
+        return await self._queries.index_stats.handle(IndexStatsQuery())
 
     async def queue_status(self) -> QueueStatusResult:
-        return await self._queries.ask(QueueStatusQuery())
+        return await self._queries.queue_status.handle(QueueStatusQuery())
 
     async def reset_queue(
         self, *, mode: Literal["sync", "purge"] = "sync", requeue: bool = True
     ) -> ResetQueueResult:
-        return await self._commands.execute(ResetQueueCommand(mode, requeue))
+        return await self._commands.reset_queue.handle(ResetQueueCommand(mode, requeue))
 
     async def requeue_stale(
         self, *, stale_hours: int = 24, limit: int = 100
     ) -> RequeueStaleResult:
-        return await self._commands.execute(RequeueStaleCommand(stale_hours, limit))
+        return await self._commands.requeue_stale.handle(
+            RequeueStaleCommand(stale_hours, limit)
+        )
 
     async def run_gc(
         self, *, ttl_days: int = 30, dry_run: bool = True, limit: int = 1000
     ) -> GcResult:
-        return await self._commands.execute(GcCommand(ttl_days, dry_run, limit))
+        return await self._commands.gc.handle(GcCommand(ttl_days, dry_run, limit))
 
     async def list_credentials(self) -> list[CredentialRecord]:
-        return await self._queries.ask(ListCredentialsQuery())
+        return await self._credentials.list()
 
     async def create_credential(self, data: CredentialCreate) -> CredentialRecord:
-        return await self._commands.execute(CreateCredentialCommand(data))
+        return await self._credentials.create(data)
 
     async def update_credential(
         self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
-        return await self._commands.execute(
-            UpdateCredentialCommand(credential_id, changes)
-        )
+        return await self._credentials.update(credential_id, changes)
 
     async def delete_credential(self, credential_id: int) -> bool:
-        return await self._commands.execute(DeleteCredentialCommand(credential_id))
+        return await self._credentials.delete(credential_id)
 
     async def duplicate_credential(
         self, credential_id: int, changes: CredentialPatch
     ) -> CredentialRecord | None:
-        return await self._commands.execute(
-            DuplicateCredentialCommand(credential_id, changes)
-        )
+        return await self._credentials.duplicate(credential_id, changes)

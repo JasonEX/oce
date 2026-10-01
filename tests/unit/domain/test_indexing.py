@@ -30,6 +30,9 @@ class FakeBlobRepo:
     async def save(self, blob) -> None:
         self.blobs[blob.blob_name] = blob
 
+    async def touch(self, blob_name: str) -> None:
+        self.blobs[blob_name].touch()
+
     async def get_staging(self, blob_name: str) -> str | None:
         return self.staging.get(blob_name)
 

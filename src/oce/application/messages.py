@@ -8,8 +8,8 @@ from __future__ import annotations
 
 
 class Command:
-    """A write operation dispatched through ``CommandBus.execute``."""
+    """An immutable input to a write use case."""
 
 
 class Query:
-    """A read operation dispatched through ``QueryBus.ask``."""
+    """An immutable input to a read use case."""

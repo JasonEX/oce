@@ -36,9 +36,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     container = get_container()
     try:
-        await container.ensure_index_compatible()
-        if container.worker is not None:
-            await container.worker.start()
+        index_ready = await container.ensure_index_compatible()
+        if index_ready:
+            await container.start_worker()
         await container.metrics.start()
         if container.resource_sampler is not None:
             await container.resource_sampler.start()

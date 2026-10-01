@@ -4,20 +4,26 @@
     success: ack each blob; batch failure: retry each blob alone and count
     the failure on the ones that still fail
 
-N consumer coroutines run in parallel; ``stop()`` sets a flag and each loop
-exits at its next dequeue timeout. Every batch builds its own pipeline inside
-its own unit of work, so coroutines share no mutable state.
+The database owns pending work; Redis is its delivery projection. Startup
+and periodic replay repair work that committed before an enqueue failed.
+Every batch builds its own pipeline inside its own unit of work.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from loguru import logger
 
 from oce.application.commands.ingest import PipelineFactory
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
+
+_REPLAY_PAGE_SIZE = 100
+_REPLAY_MAX_PAGES = 4
+_REPLAY_INTERVAL_SECONDS = 30.0
 
 
 class EmbedWorker:
@@ -40,37 +46,101 @@ class EmbedWorker:
         self._blob_batch_size = blob_batch_size
         self._max_retries = max_retries
         self._running = False
-        self._tasks: list[asyncio.Task] = []
+        self._tasks: list[asyncio.Task[None]] = []
+        self._replay_task: asyncio.Task[None] | None = None
+        self._replay_after: str | None = None
+        self._lifecycle_lock = asyncio.Lock()
 
     @property
     def is_running(self) -> bool:
         return self._running
 
     async def start(self) -> None:
-        """Recover what a crashed run left in processing, then start the consumers."""
+        """Recover processing and a bounded pending portion; periodic replay continues."""
+        async with self._lifecycle_lock:
+            await self._start_locked(replay_pending=True)
+
+    async def _start_locked(self, *, replay_pending: bool) -> None:
         if self._running:
             return
-        self._running = True
         recovered = await self._queue.recover_processing()
         if recovered:
             logger.info("EmbedWorker recovered {} in-flight tasks", recovered)
+        if replay_pending:
+            await self._replay_pending()
+        self._running = True
         self._tasks = [
             asyncio.create_task(self._loop(i)) for i in range(self._concurrency)
         ]
+        self._replay_task = asyncio.create_task(self._replay_loop())
         logger.info("EmbedWorker started with {} consumers", self._concurrency)
 
     async def stop(self) -> None:
-        """Set the stop flag, cancel the consumers and wait for them."""
+        """Cancel owned tasks; processing messages remain recoverable on restart."""
+        async with self._lifecycle_lock:
+            await self._stop_locked(drain=False)
+
+    async def _stop_locked(self, *, drain: bool) -> None:
         self._running = False
-        for t in self._tasks:
-            t.cancel()
-        for t in self._tasks:
-            try:
-                await t
-            except (asyncio.CancelledError, Exception):
-                pass
+        if self._replay_task is not None:
+            self._replay_task.cancel()
+            await asyncio.gather(self._replay_task, return_exceptions=True)
+            self._replay_task = None
+        if not drain:
+            for task in self._tasks:
+                task.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
         self._tasks = []
         logger.info("EmbedWorker stopped")
+
+    @asynccontextmanager
+    async def maintenance(self) -> AsyncIterator[None]:
+        """Pause intake, finish active batches, and resume after queue maintenance."""
+        async with self._lifecycle_lock:
+            was_running = self._running
+            drain = asyncio.create_task(self._stop_locked(drain=True))
+            try:
+                try:
+                    await asyncio.shield(drain)
+                except asyncio.CancelledError:
+                    # A disconnected maintenance caller cannot cancel a batch
+                    # or recover its delivery before its transaction finishes.
+                    await drain
+                    raise
+                yield
+            finally:
+                if was_running:
+                    # The reset command owns immediate requeue policy. Normal
+                    # periodic replay will still repair durable pending work.
+                    await self._start_locked(replay_pending=False)
+
+    async def _replay_pending(self) -> None:
+        for _ in range(_REPLAY_MAX_PAGES):
+            async with self._uow_factory() as uow:
+                names = await uow.blobs.list_pending_names(
+                    limit=_REPLAY_PAGE_SIZE, after=self._replay_after
+                )
+            if not names:
+                self._replay_after = None
+                return
+            for blob_name in names:
+                # Enqueue deduplication also covers processing messages. A
+                # completion racing this page only causes an empty future run.
+                await self._queue.enqueue(blob_name)
+            self._replay_after = names[-1]
+            if len(names) < _REPLAY_PAGE_SIZE:
+                self._replay_after = None
+                return
+
+    async def _replay_loop(self) -> None:
+        while self._running:
+            await asyncio.sleep(_REPLAY_INTERVAL_SECONDS)
+            if not self._running:
+                return
+            try:
+                await self._replay_pending()
+            except Exception as exc:
+                logger.warning("EmbedWorker pending replay failed: {}", exc)
 
     async def _loop(self, worker_id: int) -> None:
         """One consumer: dequeue, embed, ack or fail."""
@@ -90,6 +160,10 @@ class EmbedWorker:
             if not blob_names:
                 await asyncio.sleep(0.05)
                 continue
+            if not self._running:
+                # Intake may have been paused while dequeue was blocked. The
+                # delivery remains in processing for recovery after maintenance.
+                return
 
             try:
                 await self._process_batch(worker_id, blob_names)
@@ -142,8 +216,8 @@ class EmbedWorker:
             await self._queue.ack(blob_name)
         except Exception as exc:
             # The database and vector writes succeeded; a failed ack is not an
-            # indexing failure. The message stays in processing and
-            # recover_processing handles it safely on the next start.
+            # indexing failure. An unacknowledged delivery can be replayed
+            # safely by processing recovery on the next start.
             logger.error(
                 "worker#{} ack failed for blob {}: {}",
                 worker_id,
@@ -164,7 +238,6 @@ class EmbedWorker:
             error,
         )
         try:
-            await self._queue.fail(blob_name)
             should_retry = False
             async with self._uow_factory() as uow:
                 blob = await uow.blobs.get(blob_name)
@@ -190,6 +263,9 @@ class EmbedWorker:
                             blob.retry_count,
                         )
                     await uow.commit()
+            # Keep the processing sentinel until retry state commits so the
+            # replay loop cannot publish a blob still owned by this batch.
+            await self._queue.fail(blob_name)
             if should_retry:
                 await self._queue.enqueue(blob_name)
         except Exception as recovery_error:

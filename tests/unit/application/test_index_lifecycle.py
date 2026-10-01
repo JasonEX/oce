@@ -64,9 +64,12 @@ class Probe:
 async def test_empty_index_initializes_once_and_accepts_same_profile():
     store = Store()
     manager = IndexLifecycleManager(store, Settings())
+    with pytest.raises(ServiceNotReadyError, match="Index profile is not ready"):
+        manager.require_ready()
 
     first = await manager.ensure_compatible(_embedding())
     second = await manager.ensure_compatible(_embedding())
+    manager.require_ready()
 
     assert first.fingerprint == second.fingerprint
     assert manager.current == second

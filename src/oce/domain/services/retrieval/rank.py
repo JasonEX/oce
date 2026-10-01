@@ -535,6 +535,9 @@ class Ranker:
             or not state.lookup_identifiers
         ):
             return frozenset()
+        if state.implementor_keys is not None:
+            return state.implementor_keys
+        state.implementor_keys = frozenset()
         try:
             implementations = await store.find_implementations(
                 identifiers=state.lookup_identifiers[:1], scope=state.scope, limit=200
@@ -543,11 +546,12 @@ class Ranker:
             lane_failed(state, "implementors", exc)
             return frozenset()
         wanted = {leaf(name) for name in others}
-        return frozenset(
+        state.implementor_keys = frozenset(
             search_hit_key(item.hit)
             for item in implementations
             if item.enclosing in wanted
         )
+        return state.implementor_keys
 
     def structural_heads(
         self,

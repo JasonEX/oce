@@ -107,6 +107,14 @@ class IndexLifecycleManager:
     def current(self) -> IndexProfile | None:
         return self._current
 
+    def require_ready(self) -> None:
+        """Reject writes before a compatible profile can own the stored artifacts."""
+        if self._current is None:
+            raise ServiceNotReadyError(
+                "Index profile is not ready. Configure valid model credentials "
+                "and reload them before uploading files or creating checkpoints."
+            )
+
     async def ensure_compatible(
         self,
         embedding: EmbeddingIndexProfile,

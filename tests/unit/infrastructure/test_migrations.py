@@ -121,6 +121,62 @@ def test_run_migrations_is_idempotent(sqlite_url: str) -> None:
     run_migrations()  # no "table already exists" the second time
 
 
+def test_pending_replay_index_upgrade_preserves_rows_and_avoids_sort(
+    sqlite_url: str,
+) -> None:
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(_SCRIPT_LOCATION))
+    previous = "d5e6f7a8b9c0"
+    command.upgrade(cfg, previous)
+    engine = _sync_engine(sqlite_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO blobs (blob_name, path, content_size, file_type, status) "
+                    "VALUES ('blob-1', 'src/a.py', 10, 'text', 'pending')"
+                )
+            )
+        command.upgrade(cfg, "head")
+        with engine.begin() as connection:
+            indexes = {
+                index["name"]: index["column_names"]
+                for index in inspect(connection).get_indexes("blobs")
+            }
+            plan = " ".join(
+                row[3]
+                for row in connection.execute(
+                    text(
+                        "EXPLAIN QUERY PLAN SELECT blob_name FROM blobs "
+                        "WHERE status = 'pending' AND blob_name > 'blob-0' "
+                        "ORDER BY blob_name LIMIT 100"
+                    )
+                )
+            )
+            assert indexes["ix_blobs_status_name"] == ["status", "blob_name"]
+            assert "ix_blobs_status" not in indexes
+            assert "ix_blobs_status_name" in plan
+            assert "TEMP B-TREE" not in plan
+            assert connection.execute(text("SELECT blob_name FROM blobs")).scalar() == (
+                "blob-1"
+            )
+        command.downgrade(cfg, previous)
+        with engine.begin() as connection:
+            indexes = {
+                index["name"] for index in inspect(connection).get_indexes("blobs")
+            }
+            assert "ix_blobs_status" in indexes
+            assert "ix_blobs_status_name" not in indexes
+            assert connection.execute(text("SELECT blob_name FROM blobs")).scalar() == (
+                "blob-1"
+            )
+    finally:
+        engine.dispose()
+
+
 def test_migration_chain_round_trips_head_base_head(sqlite_url: str) -> None:
     """A release rollback must leave the migration chain upgradeable again."""
     from alembic import command

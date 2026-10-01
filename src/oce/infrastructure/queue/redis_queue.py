@@ -33,6 +33,44 @@ end
 return added
 """
 
+_ACK_LUA = """
+redis.call('LREM', KEYS[1], 1, ARGV[1])
+redis.call('SREM', KEYS[2], ARGV[1])
+return 1
+"""
+
+_RECOVER_PROCESSING_LUA = """
+local recovered = redis.call('LLEN', KEYS[1])
+while redis.call('RPOPLPUSH', KEYS[1], KEYS[2]) do end
+redis.call('DEL', KEYS[3])
+for _, name in ipairs(redis.call('LRANGE', KEYS[2], 0, -1)) do
+    redis.call('SADD', KEYS[3], name)
+end
+return recovered
+"""
+
+_RETAIN_LUA = """
+local allowed = {}
+for _, name in ipairs(ARGV) do allowed[name] = true end
+local surviving = {}
+local removed = 0
+for i = 1, 2 do
+    local items = redis.call('LRANGE', KEYS[i], 0, -1)
+    redis.call('DEL', KEYS[i])
+    for _, name in ipairs(items) do
+        if allowed[name] then
+            redis.call('RPUSH', KEYS[i], name)
+            surviving[name] = true
+        else
+            removed = removed + 1
+        end
+    end
+end
+redis.call('DEL', KEYS[3])
+for name, _ in pairs(surviving) do redis.call('SADD', KEYS[3], name) end
+return removed
+"""
+
 
 class RedisQueue:
     """Queue over an injected redis client built with ``decode_responses=True``."""
@@ -87,8 +125,7 @@ class RedisQueue:
 
     async def ack(self, blob_name: str) -> None:
         """Drop the blob from processing and from the sentinel set."""
-        await self._redis.lrem(self._processing, 1, blob_name)
-        await self._redis.srem(self._pending, blob_name)
+        await self._redis.eval(_ACK_LUA, 2, self._processing, self._pending, blob_name)
 
     async def fail(self, blob_name: str) -> None:
         """Failure clears the in-flight state exactly like completion; the worker decides on a retry."""
@@ -104,29 +141,17 @@ class RedisQueue:
         The sentinel set is rebuilt from both lists afterwards so it covers
         every blob in flight, including data written by older versions.
         """
-        n = 0
-        while True:
-            blob_name = await self._redis.rpoplpush(self._processing, self._name)
-            if blob_name is None:
-                break
-            n += 1
-
-        # Rebuild the sentinel from both lists (processing should be empty by
-        # now; reading it costs one LRANGE).
-        pipe = self._redis.pipeline()
-        pipe.lrange(self._name, 0, -1)
-        pipe.lrange(self._processing, 0, -1)
-        main, processing = await pipe.execute()
-        all_inflight = set(main) | set(processing)
-        if all_inflight:
-            # Replace the set in one pipeline: DELETE then SADD.
-            pipe = self._redis.pipeline()
-            pipe.delete(self._pending)
-            pipe.sadd(self._pending, *all_inflight)
-            await pipe.execute()
-        else:
-            await self._redis.delete(self._pending)
-        return n
+        # Producers remain live during maintenance: the sentinel rebuild must
+        # share one Redis transition with the list moves.
+        return int(
+            await self._redis.eval(
+                _RECOVER_PROCESSING_LUA,
+                3,
+                self._processing,
+                self._name,
+                self._pending,
+            )
+        )
 
     async def inflight_set(self) -> set[str]:
         """Blob names in flight, read from the sentinel set."""
@@ -152,35 +177,17 @@ class RedisQueue:
     async def retain(self, blob_names: set[str]) -> int:
         """Rebuild the lists and the sentinel keeping only ``blob_names``; returns the removed count.
 
-        LREM per entry is O(n*m) on tens of thousands of messages, so both
-        lists are read, filtered in memory and rewritten. The queue is empty
-        between DELETE and RPUSH, which is why the worker must be stopped.
+        Filtering and sentinel rebuild share one Redis transition so producers
+        can keep enqueueing during maintenance. The worker must be stopped:
+        a processing delivery removed here must have no active batch owner.
         """
-        pipe = self._redis.pipeline()
-        pipe.lrange(self._name, 0, -1)
-        pipe.lrange(self._processing, 0, -1)
-        main_items, processing_items = await pipe.execute()
-
-        # RPUSH keeps the original order: BRPOPLPUSH pops from the tail, so
-        # the head of LRANGE is the end consumed last.
-        kept_main = [item for item in main_items if item in blob_names]
-        kept_processing = [item for item in processing_items if item in blob_names]
-        removed = (len(main_items) - len(kept_main)) + (
-            len(processing_items) - len(kept_processing)
+        return int(
+            await self._redis.eval(
+                _RETAIN_LUA,
+                3,
+                self._name,
+                self._processing,
+                self._pending,
+                *sorted(blob_names),
+            )
         )
-        if removed == 0:
-            return 0
-
-        pipe = self._redis.pipeline()
-        pipe.delete(self._name)
-        if kept_main:
-            pipe.rpush(self._name, *kept_main)
-        pipe.delete(self._processing)
-        if kept_processing:
-            pipe.rpush(self._processing, *kept_processing)
-        pipe.delete(self._pending)
-        surviving = set(kept_main) | set(kept_processing)
-        if surviving:
-            pipe.sadd(self._pending, *surviving)
-        await pipe.execute()
-        return removed

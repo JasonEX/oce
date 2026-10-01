@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from oce.domain.services.path_search import PathSearchResult
+from oce.domain.services.relations import RelatedOccurrence
 from oce.domain.services.search import (
     DefinitionHit,
     SearchHit,
@@ -133,6 +134,110 @@ class FakeExactSearchStore:
         self, *, identifiers, scope, max_per_identifier: int = 3, enclosing=None
     ) -> list[DefinitionHit]:
         return []
+
+
+class FakeEvidenceStore(FakeExactSearchStore):
+    """Recorded raw definition and call lookups for relation expansion."""
+
+    def __init__(
+        self,
+        definitions: Sequence[DefinitionHit] = (),
+        calls: dict[tuple[str, int, int], list[tuple[str, int, str]]] | None = None,
+        *,
+        call_error: Exception | None = None,
+    ) -> None:
+        super().__init__()
+        self.definitions = list(definitions)
+        self.calls = calls or {}
+        self.call_error = call_error
+        self.definition_requests: list[tuple[tuple[str, ...], int]] = []
+        self.call_requests: list[tuple[str, int, int]] = []
+
+    async def find_definitions(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        max_per_identifier: int = 3,
+        enclosing: Sequence[str] | None = None,
+    ) -> list[DefinitionHit]:
+        self.definition_requests.append((tuple(identifiers), max_per_identifier))
+        rows: list[DefinitionHit] = []
+        for name in dict.fromkeys(identifiers):
+            found = [
+                item
+                for item in self.definitions
+                if item.identifier == name
+                and item.hit.blob_name in scope.blob_names
+                and (enclosing is None or item.enclosing in enclosing)
+            ]
+            if len(found) <= max_per_identifier:
+                rows.extend(found)
+        return rows
+
+    async def calls_within(
+        self,
+        *,
+        blob_name: str,
+        start_line: int,
+        end_line: int,
+        scope: SearchScope,
+    ) -> list[tuple[str, int, str]]:
+        key = (blob_name, start_line, end_line)
+        self.call_requests.append(key)
+        if self.call_error is not None:
+            raise self.call_error
+        return list(self.calls.get(key, ()))
+
+
+class FakeRelationStore:
+    """Preset relation rows and recorded implementation queries."""
+
+    def __init__(
+        self,
+        implementations: Sequence[RelatedOccurrence] = (),
+        *,
+        error: Exception | None = None,
+    ) -> None:
+        self.implementations = list(implementations)
+        self.error = error
+        self.implementation_requests: list[tuple[tuple[str, ...], int]] = []
+
+    async def find_implementations(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        limit: int = 8,
+    ) -> list[RelatedOccurrence]:
+        self.implementation_requests.append((tuple(identifiers), limit))
+        if self.error is not None:
+            raise self.error
+        return [
+            item
+            for item in self.implementations
+            if item.identifier in identifiers and item.hit.blob_name in scope.blob_names
+        ][:limit]
+
+    async def find_callers(
+        self, *, identifiers: Sequence[str], scope: SearchScope, limit: int = 8
+    ) -> list[RelatedOccurrence]:
+        return []
+
+    async def find_test_uses(
+        self, *, identifiers: Sequence[str], scope: SearchScope, limit: int = 8
+    ) -> list[RelatedOccurrence]:
+        return []
+
+    async def find_reexports(
+        self, *, identifiers: Sequence[str], scope: SearchScope, limit: int = 4
+    ) -> list[RelatedOccurrence]:
+        return []
+
+    async def defined_identifiers(
+        self, occurrences: Sequence[tuple[str, str]], scope: SearchScope
+    ) -> dict[tuple[str, str], tuple[str, ...]]:
+        return {}
 
 
 class FakeLexicalStore:

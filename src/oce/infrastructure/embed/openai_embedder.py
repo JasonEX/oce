@@ -37,6 +37,7 @@ class OpenAIEmbedder:
         on_usage: UsageCallback | None = None,
         query_instruction: str = "",
         max_query_chars: int = 0,
+        shared_semaphore: asyncio.Semaphore | None = None,
     ) -> None:
         if max_batch_size < 1 or max_concurrency < 1:
             raise ValueError("Embedding batch size and concurrency must be positive")
@@ -48,7 +49,12 @@ class OpenAIEmbedder:
         self._model = model
         self._dimensions = dimensions
         self._max_batch_size = max_batch_size
-        self._max_concurrency = max_concurrency
+        # Credential generations retain the runtime's provider budget while draining.
+        self._semaphore = (
+            shared_semaphore
+            if shared_semaphore is not None
+            else asyncio.Semaphore(max_concurrency)
+        )
         self._max_batch_chars = max_batch_chars
         self._max_input_chars = max_input_chars
         self._input_overlap_chars = input_overlap_chars
@@ -76,6 +82,7 @@ class OpenAIEmbedder:
         proxy: str | None = None,
         query_instruction: str = "",
         max_query_chars: int = 0,
+        shared_semaphore: asyncio.Semaphore | None = None,
     ) -> OpenAIEmbedder:
         http_client = httpx.AsyncClient(
             timeout=httpx.Timeout(timeout),
@@ -101,6 +108,7 @@ class OpenAIEmbedder:
             on_usage=on_usage,
             query_instruction=query_instruction,
             max_query_chars=max_query_chars,
+            shared_semaphore=shared_semaphore,
         )
 
     async def embed_documents(self, texts: list[str]) -> list[list[float]]:
@@ -129,10 +137,9 @@ class OpenAIEmbedder:
 
     async def _embed_segments(self, texts: list[str]) -> list[list[float]]:
         batches = self._make_batches(texts)
-        semaphore = asyncio.Semaphore(self._max_concurrency)
 
         async def run(batch: list[str]) -> list[list[float]]:
-            async with semaphore:
+            async with self._semaphore:
                 return await self._embed_batch(batch)
 
         results = await asyncio.gather(*(run(batch) for batch in batches))

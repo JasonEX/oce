@@ -501,6 +501,9 @@ Invoke-RestMethod http://127.0.0.1:8986/agents/codebase-retrieval `
 Dependencies point inward (`shared <- domain <- application <- api`). `infrastructure`
 implements domain/shared protocols and is wired only by the composition root
 (`application/container.py`); routers never orchestrate business logic.
+The root binds typed command/query use cases directly. See
+[runtime ownership and state transitions](docs/runtime-lifecycle.md) for indexing,
+queue maintenance, credential readiness, and embedding request lifetimes.
 
 ```mermaid
 flowchart TB
@@ -515,7 +518,7 @@ flowchart TB
     subgraph APP["Application layer · CQRS (application/)"]
         direction LR
         AppSvc["RetrievalApplication"]
-        Buses["CommandBus · QueryBus"]
+        UseCases["ApplicationCommands · ApplicationQueries"]
         Worker["EmbedWorker · service mode"]
     end
 

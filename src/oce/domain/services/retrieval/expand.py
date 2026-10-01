@@ -152,6 +152,12 @@ class Expander:
                         - selected_chars(state)
                         - sum(len(hit.content) for hit in chain)
                     )
+            if relation_cap <= 0:
+                state.related = chain
+                if state.audit is not None and chain:
+                    state.audit.relation_counts = {"chain": len(chain)}
+                    state.audit.relation_chars = sum(len(hit.content) for hit in chain)
+                return
             identifiers = state.lookup_identifiers
             if lanes and not identifiers:
                 # A feature request names no symbol; the symbols its top
@@ -199,7 +205,7 @@ class Expander:
                 selected=shown,
                 related=related,
                 sections=sections,
-                remaining_chars=relation_cap if relation_cap > 0 else max(remaining, 0),
+                remaining_chars=relation_cap,
                 snippet_lines=settings.relation_snippet_lines,
                 related_first=related_first,
             )
@@ -230,9 +236,7 @@ class Expander:
                 selected=shown,
                 related=related,
                 sections=sections,
-                remaining_chars=(
-                    min(remaining, relation_cap) if relation_cap > 0 else remaining
-                ),
+                remaining_chars=min(remaining, relation_cap),
                 snippet_lines=settings.relation_snippet_lines,
                 related_first=related_first,
             )
@@ -388,11 +392,45 @@ class Expander:
     ) -> list[DefinitionHit]:
         """The resolved declarations of a reference request's identifiers."""
         assert self.exact_store is not None and state.scope is not None
-        rows = await self.exact_store.find_definitions(
-            identifiers=identifiers, scope=state.scope, max_per_identifier=40
-        )
+        rows = await self.definition_rows(state, identifiers, max_per_identifier=40)
         declared = {search_hit_key(hit) for hit in state.definitions}
         return [item for item in rows if search_hit_key(item.hit) in declared]
+
+    async def definition_rows(
+        self,
+        state: RetrievalState,
+        identifiers: Sequence[str],
+        *,
+        max_per_identifier: int,
+    ) -> list[DefinitionHit]:
+        """Reuse bounded raw definitions without retaining a rendered relation."""
+        assert self.exact_store is not None and state.scope is not None
+        missing = tuple(
+            dict.fromkeys(
+                name
+                for name in identifiers
+                if (max_per_identifier, name) not in state.related_definitions
+            )
+        )
+        if missing:
+            # An unsuccessful lookup remains empty for this request, just as a
+            # failed lane does. The caller records the original exception.
+            for name in missing:
+                state.related_definitions[(max_per_identifier, name)] = ()
+            rows = await self.exact_store.find_definitions(
+                identifiers=missing,
+                scope=state.scope,
+                max_per_identifier=max_per_identifier,
+            )
+            for name in missing:
+                state.related_definitions[(max_per_identifier, name)] = tuple(
+                    item for item in rows if item.identifier == name
+                )
+        return [
+            item
+            for name in identifiers
+            for item in state.related_definitions[(max_per_identifier, name)]
+        ]
 
     async def related_definitions(
         self, state: RetrievalState, *, budget: int | None = None
@@ -420,24 +458,37 @@ class Expander:
         called: list[str] = []
         calls_within = getattr(self.exact_store, "calls_within", None)
         if calls_within is not None and state.intent != QueryIntent.REFERENCE:
+            source_keys = [
+                (hit.blob_name, hit.start_line, hit.end_line)
+                for hit in sources
+                if hit.blob_name
+            ]
+            missing = tuple(
+                dict.fromkeys(
+                    key for key in source_keys if key not in state.related_calls
+                )
+            )
+            for source_key in missing:
+                state.related_calls[source_key] = ()
             try:
                 call_lists: list[list[tuple[str, int, str]]] = await asyncio.gather(
                     *(
                         calls_within(
-                            blob_name=hit.blob_name,
-                            start_line=hit.start_line,
-                            end_line=hit.end_line,
+                            blob_name=blob_name,
+                            start_line=start_line,
+                            end_line=end_line,
                             scope=state.scope,
                         )
-                        for hit in sources
-                        if hit.blob_name
+                        for blob_name, start_line, end_line in missing
                     )
                 )
             except Exception as exc:
                 lane_failed(state, "related", exc)
                 call_lists = []
-            for calls in call_lists:
-                for name, _line, _enclosing in calls:
+            for source_key, call_batch in zip(missing, call_lists, strict=False):
+                state.related_calls[source_key] = tuple(call_batch)
+            for source_key in source_keys:
+                for name, _line, _enclosing in state.related_calls[source_key]:
                     if name.lower() not in IDENTIFIER_NOISE and name not in called:
                         called.append(name)
         ordered: list[str] = []
@@ -465,9 +516,9 @@ class Expander:
             # would never be appended.
             definitions = await self.declarations_of(state, candidates)
         else:
-            definitions = await self.exact_store.find_definitions(
-                identifiers=candidates,
-                scope=state.scope,
+            definitions = await self.definition_rows(
+                state,
+                candidates,
                 max_per_identifier=settings.related_max_definitions_per_symbol,
             )
         selected_keys = {(hit.blob_name, hit.content_hash) for hit in state.selected}

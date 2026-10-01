@@ -7,44 +7,7 @@ from oce.application.commands.queue_admin import (
     ResetQueueCommandHandler,
 )
 from oce.shared.errors import QueueBusyError
-
-
-class FakeQueue:
-    """Models RedisQueue: main list, processing list, in-flight sentinel set."""
-
-    def __init__(self, main: list[str], processing: list[str] | None = None) -> None:
-        self.main = list(main)
-        self.processing = list(processing or [])
-        self.pending = set(self.main) | set(self.processing)
-
-    async def enqueue(self, blob_name: str) -> None:
-        if blob_name not in self.pending:
-            self.pending.add(blob_name)
-            self.main.insert(0, blob_name)
-
-    async def size(self) -> int:
-        return len(self.main)
-
-    async def inflight_set(self) -> set[str]:
-        return set(self.pending)
-
-    async def purge(self) -> int:
-        removed = len(self.main) + len(self.processing)
-        self.main.clear()
-        self.processing.clear()
-        self.pending.clear()
-        return removed
-
-    async def retain(self, blob_names: set[str]) -> int:
-        kept_main = [item for item in self.main if item in blob_names]
-        kept_proc = [item for item in self.processing if item in blob_names]
-        removed = (len(self.main) - len(kept_main)) + (
-            len(self.processing) - len(kept_proc)
-        )
-        self.main = kept_main
-        self.processing = kept_proc
-        self.pending = set(kept_main) | set(kept_proc)
-        return removed
+from tests.fakes.queue import FakeQueue
 
 
 class FakeBlobRepo:

@@ -84,8 +84,7 @@ class IndexingPipeline:
             BlobStatus.PENDING,
             BlobStatus.READY,
         ):
-            existing.touch()
-            await self.blob_repo.save(existing)
+            await self.blob_repo.touch(blob_name)
             return 0
 
         blob = Blob(

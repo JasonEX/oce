@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
@@ -70,6 +71,7 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
         super().__init__()
         self._session_factory = session_factory
         self._fallback = fallback
+        self._provider_semaphore = asyncio.Semaphore(fallback.max_concurrency)
         self._expected_dimensions = expected_dimensions
         self._on_usage = on_usage
         self._on_index_profile = on_index_profile
@@ -116,6 +118,7 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
             max_query_chars=config.max_query_chars,
             credential_id=config.credential_id,
             on_usage=self._on_usage,
+            shared_semaphore=self._provider_semaphore,
         )
 
     async def _resolve_config(self) -> EmbeddingRuntimeConfig:
