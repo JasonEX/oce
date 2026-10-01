@@ -30,13 +30,18 @@ import math
 import re
 import sys
 from collections.abc import Sequence
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from oce.application.commands.ingest import (
+    EmbedPendingCommand,
+    EmbedPendingCommandHandler,
+    build_pipeline_factory,
+)
 from oce.application.service import compute_blob_name
-from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.path_search import PathSearchResult
 from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit, SearchScope, VectorRecord
@@ -267,7 +272,7 @@ class TermPathStore:
         ]
         scored.sort(key=lambda item: (-item[0], item[1]))
         return [
-            PathSearchResult(path=doc["path"], blob_name=doc["blob_name"], score=score)
+            PathSearchResult(blob_name=doc["blob_name"], score=score)
             for score, _path, doc in scored[:top_k]
         ]
 
@@ -307,23 +312,23 @@ async def _index(
         recursive_chunk_overlap=200,
     )
     names: dict[str, str] = {}
-    async with SqlAlchemyUnitOfWork(sessions, provider) as uow:
-        pipeline = IndexingPipeline(
-            chunker=chunker,
-            embedder=TermEmbedder(),
-            vector_index=vector_index,
-            blob_repo=uow.blobs,
-            chunk_repo=uow.chunks,
-            symbol_projection=uow.symbols,
-            lexical_projection=uow.lexical,
-            path_store=path_store,
-        )
+    uow_factory = partial(SqlAlchemyUnitOfWork, sessions, provider)
+    pipelines = build_pipeline_factory(
+        chunker=chunker,
+        embedder=TermEmbedder(),
+        vector_index=vector_index,
+        path_store=path_store,
+    )
+    async with uow_factory() as uow:
+        pipeline = pipelines(uow)
         for path, content in files.items():
             name = compute_blob_name(path, content)
             names[path] = name
             await pipeline.ingest(name, path, content)
-        await pipeline.embed_pending(list(names.values()))
         await uow.commit()
+    await EmbedPendingCommandHandler(
+        uow_factory, pipelines, blob_batch_size=max(1, len(names))
+    ).handle(EmbedPendingCommand(tuple(names.values())))
     return sessions, vector_index, path_store, names
 
 

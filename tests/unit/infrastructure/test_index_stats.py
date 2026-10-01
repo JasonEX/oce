@@ -25,7 +25,7 @@ async def test_metadata_index_stats_count_status_and_index_tables():
         await connection.run_sync(Base.metadata.create_all)
     sessions = async_sessionmaker(engine, expire_on_commit=False)
     now = datetime.now(timezone.utc)
-    blob_names = [str(index) * 64 for index in range(1, 4)]
+    blob_names = [str(index) * 64 for index in range(1, 5)]
     chunk_names = ["a" * 64, "b" * 64]
 
     async with sessions() as session:
@@ -41,7 +41,11 @@ async def test_metadata_index_stats_count_status_and_index_tables():
                     created_at=now,
                 )
                 for index, (name, status) in enumerate(
-                    zip(blob_names, ("ready", "pending", "error"), strict=True)
+                    zip(
+                        blob_names,
+                        ("ready", "pending", "error", "deleting"),
+                        strict=True,
+                    )
                 )
             ]
         )
@@ -83,8 +87,9 @@ async def test_metadata_index_stats_count_status_and_index_tables():
 
     stats = await SqlMetadataIndexStatsReader(sessions).read()
 
-    assert stats.blobs_total == 3
+    assert stats.blobs_total == 4
     assert (stats.blobs_ready, stats.blobs_pending, stats.blobs_error) == (1, 1, 1)
+    assert stats.blobs_deleting == 1
     assert stats.chunks_total == 2
     assert stats.chunks_embedded == 1
     assert stats.blob_chunk_links == 1

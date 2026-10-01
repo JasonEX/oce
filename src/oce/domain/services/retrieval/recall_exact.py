@@ -14,7 +14,6 @@ from collections.abc import Sequence
 
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.retrieval.names import (
-    IDENTIFIER_NOISE,
     QUALIFIER_SEPARATORS,
     leaf,
     order_by_comentions,
@@ -22,7 +21,6 @@ from oce.domain.services.retrieval.names import (
     pin_definitions_to_qualifiers,
     resolve_qualified_definitions,
     resolve_qualified_hits,
-    word_in,
 )
 from oce.domain.services.retrieval.state import (
     ExactEvidence,
@@ -215,6 +213,18 @@ class ExactLane:
         except Exception as exc:
             lane_failed(state, "exact", exc)
             return ExactEvidence()
+        definition_counts: tuple[tuple[str, int], ...] = ()
+        if state.audit is not None:
+            names = tuple(dict.fromkeys(leaf(name) for name in evidence.identifiers))
+            try:
+                with state.stage("exact"):
+                    counts = await store.definition_counts(
+                        identifiers=names, scope=scope
+                    )
+                definition_counts = tuple((name, counts.get(name, 0)) for name in names)
+            except Exception as exc:
+                # Audit collection never discards the exact answer already obtained.
+                lane_failed(state, "definition_counts", exc)
         # A qualified request (``Session.get``) pins the leaf to a scope; the
         # filtering was applied to that identifier's batch above. Among the
         # remaining declarations, the ones that mention the request's other
@@ -237,6 +247,7 @@ class ExactLane:
             use_sites=tuple(use_sites),
             endpoints=endpoints,
             primary_definition_found=primary_definition_found,
+            definition_counts=definition_counts,
         )
 
     async def resolve_endpoints(
@@ -335,13 +346,7 @@ class ExactLane:
         ):
             return ()
         scope = state.scope
-        title = state.query.strip().splitlines()[0] if state.query.strip() else ""
-        title_identifiers = [
-            identifier
-            for identifier in state.route.lookup_identifiers
-            if word_in(leaf(identifier), title)
-            and leaf(identifier).lower() not in IDENTIFIER_NOISE
-        ]
+        title_identifiers = state.route.title_identifiers
         frame_functions = tuple(
             dict.fromkeys(frame.function for frame in evidence.frames)
         )

@@ -10,6 +10,7 @@ from typing import Any, cast
 from sqlalchemy import CursorResult, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from oce.domain.blob.blob import BlobStatus
 from oce.domain.chain.chain import Chain
 from oce.domain.repositories import ChainRepository
 from oce.infrastructure.persistence.dialect import upsert_insert
@@ -18,6 +19,7 @@ from oce.infrastructure.persistence.models import (
     ChainMemberModel,
     ChainModel,
 )
+from oce.shared.errors import ServiceNotReadyError
 
 _MEMBER_WRITE_BATCH_SIZE = 1_000
 
@@ -148,11 +150,18 @@ class SqlChainRepository(ChainRepository):
         member_names = select(ChainMemberModel.blob_name).where(
             ChainMemberModel.chain_id == chain_id
         )
-        await self.session.execute(
+        statuses = await self.session.scalars(
             update(BlobModel)
             .where(BlobModel.blob_name.in_(member_names))
             .values(last_seen=datetime.now(timezone.utc))
+            .returning(BlobModel.status)
         )
+        # The update also orders checkpoint activity against GC's write lock.
+        # Pending and absent identities remain legal checkpoint members.
+        if BlobStatus.DELETING.value in statuses:
+            raise ServiceNotReadyError(
+                "Blob deletion is in progress; retry the checkpoint"
+            )
 
     async def delete(self, chain_id: str) -> None:
         await self.session.execute(

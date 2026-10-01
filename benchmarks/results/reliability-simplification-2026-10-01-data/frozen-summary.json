@@ -1,0 +1,42 @@
+{
+  "pairs": 215,
+  "hit_pairs_identical": 214,
+  "field_differences": {
+    "definition_sites": 35,
+    "exact_definitions": 30,
+    "hits": 1
+  },
+  "hit_differences_by_profile": {
+    "focused_small": 1
+  },
+  "hit_changes": [
+    {
+      "profile": "focused_small",
+      "query": "Where is `Milvus3Client` defined?",
+      "before": [
+        {
+          "content": "8df93d13cf89508d",
+          "context": null,
+          "end": 104,
+          "hop": null,
+          "path": "oce/infrastructure/milvus3/client.py",
+          "role": "primary",
+          "score": 0.95,
+          "start": 28
+        }
+      ],
+      "after": [
+        {
+          "content": "2e112b0dd3e9120d",
+          "context": null,
+          "end": 103,
+          "hop": null,
+          "path": "oce/infrastructure/milvus3/client.py",
+          "role": "primary",
+          "score": 0.95,
+          "start": 28
+        }
+      ]
+    }
+  ]
+}

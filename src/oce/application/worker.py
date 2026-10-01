@@ -33,9 +33,10 @@ from enum import StrEnum
 
 from loguru import logger
 
-from oce.application.commands.ingest import PipelineFactory
+from oce.application.commands.ingest import PipelineFactory, _index_pending_batch
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWorkFactory
+from oce.domain.blob.blob import BlobStatus
 from oce.shared.aio import wait_released
 
 _REPLAY_PAGE_SIZE = 100
@@ -267,17 +268,12 @@ class EmbedWorker:
         # writes are content-addressed and idempotent, so the per-blob retry
         # after a failure may upsert the same rows again; the retry state is
         # the worker's, so a failed batch is not marked errored here.
-        async with self._uow_factory() as uow:
-            pipeline = self._pipeline_factory(uow)
-            batch = await pipeline.prepare(blob_names)
-            await uow.commit()
-        if batch is None:
-            return 0
-        embedded = await pipeline.write_vectors(batch)
-        async with self._uow_factory() as uow:
-            await self._pipeline_factory(uow).complete(batch)
-            await uow.commit()
-        return embedded
+        return await _index_pending_batch(
+            self._uow_factory,
+            self._pipeline_factory,
+            blob_names,
+            mark_failures=False,
+        )
 
     async def _ack(self, worker_id: int, blob_name: str) -> None:
         try:
@@ -309,7 +305,7 @@ class EmbedWorker:
             should_retry = False
             async with self._uow_factory() as uow:
                 blob = await uow.blobs.get(blob_name)
-                if blob:
+                if blob is not None and blob.status is BlobStatus.PENDING:
                     exceeded = blob.increment_retry(self._max_retries)
                     if exceeded:
                         blob.mark_error(str(error))

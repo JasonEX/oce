@@ -11,6 +11,8 @@ in-flight blobs are skipped so nothing being embedded disappears.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager, nullcontext
 from dataclasses import dataclass
 
 from oce.application.commands.ingest import (
@@ -46,12 +48,20 @@ class GcCommandHandler:
         uow_factory: UnitOfWorkFactory,
         delete_blobs: DeleteBlobsCommandHandler,
         queue: Queue | None = None,
+        maintenance: Callable[[], AbstractAsyncContextManager[None]] | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._delete_blobs = delete_blobs
         self._queue = queue
+        self._maintenance = maintenance or nullcontext
 
     async def handle(self, command: GcCommand) -> GcResult:
+        if command.dry_run:
+            return await self._collect(command)
+        async with self._maintenance():
+            return await self._collect(command)
+
+    async def _collect(self, command: GcCommand) -> GcResult:
         async with self._uow_factory() as uow:
             expired_chains = list(await uow.chains.find_expired(command.ttl_days))
             expired_blobs = list(
@@ -81,8 +91,11 @@ class GcCommandHandler:
                 await uow.chains.delete(chain_id)
             await uow.commit()
 
+        deleted_blobs = 0
         if deletable:
-            await self._delete_blobs.handle(DeleteBlobsCommand(tuple(deletable)))
+            deleted_blobs = await self._delete_blobs.handle(
+                DeleteBlobsCommand(tuple(deletable), ttl_days=command.ttl_days)
+            )
 
         return GcResult(
             dry_run=False,
@@ -92,5 +105,5 @@ class GcCommandHandler:
             deletable_blobs=len(deletable),
             skipped_inflight=skipped,
             deleted_chains=len(expired_chains),
-            deleted_blobs=len(deletable),
+            deleted_blobs=deleted_blobs,
         )

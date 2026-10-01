@@ -109,7 +109,6 @@ class CallChainTracer:
             state.route.intent == QueryIntent.CALL_CHAIN
             and len(state.recall.exact.endpoints) >= 1
             and self.store is not None
-            and getattr(self.store, "calls_within", None) is not None
         )
 
     async def trace(self, state: RetrievalState, *, max_chars: int) -> list[SearchHit]:
@@ -225,7 +224,6 @@ class CallChainTracer:
         assert store is not None and state.scope is not None
         scope = state.scope
         snippet = self.settings.related_snippet_lines
-        chunk_for_line = getattr(store, "chunk_for_line", None)
         shown = [
             (hit.blob_name, hit.start_line, hit.end_line) for hit in state.selected
         ]
@@ -238,14 +236,10 @@ class CallChainTracer:
             header = definition_excerpt(definition, reach)
             if header is not None:
                 headers.append(replace(header, hop=hop))
-            if (
-                call_line is None
-                or call_line - definition.start_line < snippet
-                or chunk_for_line is None
-            ):
+            if call_line is None or call_line - definition.start_line < snippet:
                 continue
             try:
-                chunk: SearchHit | None = await chunk_for_line(
+                chunk = await store.chunk_for_line(
                     blob_name=definition.hit.blob_name, line=call_line, scope=scope
                 )
             except Exception as exc:

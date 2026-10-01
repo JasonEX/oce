@@ -1,141 +1,285 @@
 # 检索管线设计
 
-本文记录 `RetrievalPipeline` 各阶段的设计决策与调优历史。约束（改动前必须遵守的规则）
-在 `AGENTS.md`；这里回答"为什么是这样"。代码位于 `src/oce/domain/services/retrieval/`，
-每个阶段一个模块。
+本文说明当前检索编排、配置边界和保留这些规则的原因。源码位于
+`src/oce/domain/services/retrieval/`，意图策略在 `retrieval_strategy.py`，配置默认值在
+`shared/config/settings.py`。开发约束见 [AGENTS.md](../AGENTS.md)，产品启动与配置见
+[README.zh-CN.md](../README.zh-CN.md)，评测方法见 [benchmarks/README.md](../benchmarks/README.md)。
+后文的历史结果不代表当前部署的质量或延迟保证。
 
-## 状态机
+## 当前默认与作用域
 
-一次检索是固定的状态转移。每个阶段产出一条记录（`state.py`），之后的阶段只读不改：
+默认启用 exact、lexical、语义路径索引、SQL 路径查找、句子级 query decomposition、源码先验、
+coverage/focused 选择、相邻合并和按意图开放的关系小节。query rewrite 默认关闭；两种模型
+重排默认也关闭，授权后才由逐查询 policy 决定是否执行。关闭某项能力会去掉对应车道或处理，
+不会关闭整条检索管线。
 
-| 阶段 | 模块 | 产出 | 职责 |
+生产请求必须声明 checkpoint 或 added blobs。应用层先计算
+`declared = (checkpoint members | added) - deleted`，再只让元数据为 READY 的 blob 进入
+`SearchScope.blob_names`。PENDING、ERROR、DELETING 或不存在的 blob 即使留有向量也不准入。
+`deleted_blob_names` 同时保存用户删除项和 `declared - ready`：后者在请求进行中变成 READY，
+也不能扩大这次已解析的 scope。原始 added 集合仍保留，供工作集先验判断增量大小。
+
+这是本次请求的成员准入快照，不是跨 SQL 与 Milvus 的全局数据库快照；后续 SQL 仍检查 READY。
+SQL 车道共用 `persistence/scope_filter.py`：优先用 checkpoint 关系和有限 delta 表达 scope，
+关系版本变化或 delta 过大时回退到已解析成员的分批查询。dense 和语义路径使用同一准入集合。
+空 scope 返回空结果；只有直接调用领域管线的测试允许 `scope=None`。
+
+## 阶段与请求内记录
+
+一次请求按固定顺序执行。前三个阶段的记录是冻结 dataclass，后续阶段只读取这些证据；
+候选和输出列表则由所属阶段更新，expand 可以合并或裁去 selected 的尾部。
+
+| 阶段 | 模块 | 写入 | 职责 |
 | --- | --- | --- | --- |
-| route | `route.py` | `QueryRoute`（冻结） | 只解析一次请求文本：`QueryEvidence`（标识符、traceback 帧、引号短语、文件名、词元）、意图、策略、限定名、`asks_tests` / `asks_implementors` |
-| plan | `plan.py` | `QueryPlan`（冻结） | 可选 LLM 改写、句子级 facet 分解、启动（不等待）query embedding |
-| recall | `recall.py` + `recall_*.py` | `RecallEvidence`（冻结） | dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup ∥ anchors |
-| fuse | `fuse.py` | `candidates` | dense/lexical 按 RRF 融合 → 合并 exact → 端点/锚点补入 → 路径 boost/回填 |
-| prior + rerank | `rank.py` | `candidates` | 源码/工作集先验 → 有界头部槽位 → 模型重排 → 头部复位 |
-| select | `pipeline.py` | `selected` | focused/coverage 选择，字符预算为硬限制 |
-| expand | `expand.py` + `chain.py` | `related` | 相邻合并；关系小节（被引用定义、调用方、实现、测试、转出、调用链） |
+| route | `route.py` | `QueryRoute`（冻结） | 提取标识符、限定名、traceback、短语、文件与词元；确定意图、策略、标题标识符及问测试/问实现标记 |
+| plan | `plan.py` | `QueryPlan`（冻结）、embedding task | 可选改写；保留完整请求并增加句子级 facet；启动 query embedding |
+| recall | `recall.py`、`recall_*.py` | `RecallEvidence`（冻结） | 汇总 exact、lexical、路径、锚点与 dense 结果 |
+| fuse | `fuse.py` | `candidates` | 语义名次融合、按意图合并 exact、补入端点/锚点、路径 boost 与回填 |
+| prior → rerank | `rank.py` | `candidates`、`decision` | 源码/工作集先验、有界头部、模型重排、头部复位 |
+| select | `pipeline.py`、`selector/` | `selected` | focused/coverage 或 Top-K 选择，遵守代码字符预算 |
+| expand | `expand.py`、`chain.py` | `selected`、`related` | 相邻合并、关系小节和调用链，必要时裁去主结果尾部 |
 
-后续阶段不再读原始请求文本做判断：问测试、问实现等问法在 route 阶段算出，写进
-`QueryRoute`。车道以返回值交出结果（例如 exact 车道返回 `ExactEvidence`），由 recall
-编排汇总成一条记录，不在共享状态上留副作用。`RetrievalState` 另外只保存两类请求内缓存：
-头部复位复用的实现关系 key，以及关系小节重渲染复用的 call / definition 原始行。
+请求的结构证据和问法判断集中在 route，后续阶段不再从原文重新判断标题点名、测试或实现意图。
+plan 仍处理搜索文本的句子边界，rewrite/rerank 模型仍会收到请求文本；这些操作不重写已确定的
+`QueryRoute`。车道以返回值交出结果，例如 exact 返回 `ExactEvidence`，由 recall 汇总，
+不直接改候选或其他车道的输出。
 
-关闭对应开关时每个阶段退化为恒等变换。`lane_failed` 是车道失败的唯一出口：任何车道
-抛出异常（包括 SQL 超时）时记录 `audit.lane_failures[lane] = ExceptionType`，落到
-`retrieval_metrics.lane_failures`，请求照常从其余车道作答。存储层不吞超时：空结果只表示
-索引里没有匹配，超时一律抛给车道记录。离线对比时若该列非空，排序变化不能归因于代码。
+请求内缓存 rank 的 import-only 头部 key、实现关系 key，以及 expand 按选中 chunk 保存的
+call 行、按名称和 SQL 上限保存的 definition 行。头部排序和关系小节重新生成，不缓存完整
+答案，也不跨请求保存这些关系证据。
 
-## 路由（route）
+意图策略允许的能力如下，各项仍受对应配置开关、store 可用性和证据条件约束：
 
-- 限定名 `Session.get` 整体保留为一个标识符；管线派生叶子 `get`，并记录 `get` 被钉在
-  `Session` 作用域。钉住顺序：已记录的 `enclosing` → 同时点名作用域与叶子的声明行 →
-  片段文本。路径证据须整段相等（`test/app.render.js` 不算 `app` 作用域）；use-site
-  批次不用声明行阶段。
-- 「哪些地方调用了 X」是 reference；「A 如何到达 B」两个符号是 call_chain；「X 在哪里定义」
-  不论点名多少参数类型都是 symbol（多出的名字用于挑重载，不是新 facet）。
-- 标识符超过 2 个或 planner 切出 ≥ 3 个 facet 的 issue 文本是 compound。
-- 中文调用链信号按构式匹配：「从 A 到 B」（同一分句内两端都在）与「调到 / 到达」；单独的
-  「到 / 路径 / 完整」不算（「在哪里能找到」「配置文件的路径」「完整实现」曾被路由成
-  call_chain），「用到」与「使用」同为 reference 动词。
+| 意图 | 选择 | rewrite（另需授权） | 关系小节 |
+| --- | --- | --- | --- |
+| symbol | focused | 允许 | 定义、调用方、实现/子类、测试、re-export |
+| path | focused | 允许 | 无 |
+| reference | coverage | 允许 | 定义、调用方、测试 |
+| call_chain | coverage | 不使用 | chain、定义、调用方、测试 |
+| feature | coverage | 允许 | 定义、测试 |
+| overview | coverage | 不使用 | 定义 |
+| compound | coverage | 允许 | 测试 |
 
-## 召回（recall）
+### route 与 plan
 
-- SQL 车道只依赖路由，在 embedding 往返前启动。symbol 的首个被问符号定义命中、path 的
-  SQL 路径命中、reference 的被问符号 call/inherit 使用点一旦出现就不再等 embedding
-  （`RETRIEVAL_DECISIVE_SKIPS_DENSE`，`dense_route` 记 `skip:<reason>`）。只有 import
-  证据不算：使用点可能在抽取器归因不了的代码里。
-- embedding 请求只释放、不取消：取消进行中的 httpx 请求会让连接不归还，约 20 次后连接池
-  耗尽，之后每次 embed 都超时。
-- 词法召回：symbol/path 只在结构证据缺失时补跑；reference 以标识符整体代理 token 为必要
-  条件，避免 `get OR json` 被 `json` 密集的片段占满。
-- compound 锚点：traceback 帧解析到该文件该行的声明、标题点名且限定名严格钉住的声明
-  （定义 ≤ 3 处）。早先按「任何点名标识符」锚定曾锁定 MVCE 里的 setup 调用而回退。
-- hub 车道（请求词拼出的已声明名字按被引用文件数排序）已删除：精选 overview nDCG@10
-  67.8→74.3，但 held-out 语义集 overview 66.4→54.1、call-chain 85.6→78.2，两轮评测未成为
-  默认值；扩展到 feature 问句的变体把实现函数挤开（feature nDCG@10 73.5→68.8、CSN Region
-  Top-1 62.5→60.0）。评测记录保留在 `benchmarks/results/`。
+- 限定名 `Session.get` 保留整体，并派生叶子 `get` 与限定作用域 `Session`。匹配优先用
+  已记录的 enclosing，其次是同时点名作用域和叶子的声明行，最后才用片段文本；use-site
+  批次不使用声明行判定。路径组件须完整匹配，`test/app.render.js` 不能证明 `app` 作用域。
+- 「哪里定义 X」是 symbol，参数类型用于挑重载；「哪里使用 X」是 reference；「A 如何到达 B」
+  是 call_chain。多标识符、多明确句子条件的 issue 文本可以成为 compound。
+- 中文调用链按「从 A 到 B」（同一分句内两端都在）、「调到 / 到达」等构式判断；单独的
+  「到 / 路径 / 完整」不触发调用链。「用到」和「使用」都可表达 reference。
+- 默认 decomposition 最多产生 4 个搜索文本（完整请求加 facet），facet 至少 8 字符。
+  单个有效片段不额外分解。多 facet 时每个召回 20 条，facet 的 RRF 权重为 0.75；
+  单文本召回窗口默认 50 条。
+- query rewrite 授权且意图允许时，LLM 返回原文加改写；失败退回原文。语义路径搜索同时保留
+  原文与改写，避免跨语言文件描述失去原来的文件名证据。
 
-## 融合与先验（fuse, rank）
+### recall 的门控
 
-- dense cosine、BM25/ts_rank 只按名次（RRF）融合；exact 按意图合并：symbol 的定义拼接在
-  语义候选之前，call_chain 在窗口里给 exact 预留约三分之一，compound 把 exact 当作一路名次
-  列表，其余意图按 key 取较高分。exact 的种类分（0.85–1.0，按同名定义数衰减）因此在窗口里
-  领先大多数语义候选，这是有意的：结构证据必须留在头部规则可选的窗口里。anchors 与
-  call_chain 端点按 key 补入窗口，由头部规则排序。
-- 已评测并否决：所有意图统一按名次融合 exact（2026-10-01，生产同款 Qwen3-Embedding-4B，
-  同一物理索引配对，基线复跑逐条一致）。纯名次融合会把只有 exact 车道命中的使用点挤出
-  50 条窗口：short reference Top-1 92.5→88.8%、project test_mapping Hit@3 85.7→57.1%、
-  distractor_head 0→2.9%。补上「结构列表不被窗口截断」后仍无任何套件改善（project Hit@3
-  −1 例、semantic weighted R@5 −1 点），按发布规则不采用。
-- 头部槽位：symbol 的定义按文件分散（每个声明文件先各占一槽），path 的 SQL 匹配每文件一槽，
-  compound 的锚点按帧顺序，call_chain 的两个端点。语义查询保留 `RETRIEVAL_SOURCE_HEAD_SLOTS`
-  给未降权的源码文件；只含 import 证据的文件头让出槽位（2026-09-08 在 project_cases 上
-  复测：唯一的头部干扰项消失，其余四套逐 case 不变）。
-- reference 头部按结构分层：call/inherit 使用点 → 文本提及 → 仅 import；点名限定符的
-  片段优先；同时点名另一个符号的优先；他文件的使用点先于声明文件；以符号命名的文件先；
-  离声明包更近的先。问测试的查询由测试文件领头，声明名最贴近符号的测试块在前。
-- 文件命名与包内邻近是结构证据，不是个案拟合：`parser` 这类常见名在脚本里是无关的局部
-  变量，邻近声明包近似了索引没有的名字解析；测试按被测单元命名是通行约定。2026-10-01 删除
-  这三条平局规则的变体回退了 pytest `parser` reference、gin/rtk test_mapping 与 gson
-  multi_impl，已恢复。
-- 模型重排后头部规则复位：`always` 是评测策略，不是抹掉确定性答案的许可。overview 例外，
-  允许语义重排把架构文档放回首位。
-- 头部复位复用当前 `RetrievalState` 已取得的实现关系 key；排序仍重新应用，不重复查询 SQL。
-  证据不跨请求保存，失败仍记入 `lane_failures`。
-- 本地 jina 交叉编码器在结构化头部车道之上复测为净负（semantic nDCG@10 74.9→72.9、
-  issue nDCG@100 74.3→62.0，每个向量请求多约 1.2 s），默认关闭。
+SQL 任务在 plan 启动 embedding 之前创建，允许 SQL 与模型往返重叠。当前 recall 先汇总
+exact、path lookup、按意图开放的 lexical 和 compound anchors，再判断结构证据是否足够；
+判定通过后不等待 embedding 完成，并停止尚未完成的向量车道编排。
 
-## 扩展（expand）
+默认 `RETRIEVAL_DECISIVE_SKIPS_DENSE=true`，决定性证据是二元事实：
 
-- `evidence_pack` 按意图组装独立小节，各自槽位与字符上限，去重后以 role 标注。主结果预算
-  不预扣：只有出现新的关系证据时才裁掉主结果最低优先级的尾部，关系上限随上下文预算缩放。
-- 被引用定义：被调用的名字优先；symbol/reference 在具名车道之后填充；限定名按作用域钉住
-  （"where is `Flask.make_response` defined" 不能附上 `helpers.make_response`）。
-- call_chain 两端点：沿 `symbol_occurrences` 的 call 边有界 BFS，只跟随声明处 ≤ 2 的名字，
-  每跳先放声明头部，交接调用离头部远时再补一段止于调用行的窗口。单端追踪取两层被调用者。
-- 主结果裁尾后重新生成关系小节，只复用本次请求中按选中 chunk 保存的原始 call 记录和
-  按名称、SQL 上限保存的 definition 记录；重新计算顺序、去重、来源与字符预算，不缓存小节
-  成品。已裁掉的来源不能继续贡献关系证据。
-- 普通关系总上限为 0 时不执行普通关系 SQL，也不输出普通关系小节；`chain` 使用独立的
-  `RETRIEVAL_CALL_CHAIN_MAX_CHARS` 预算。两类预算都受请求总字符上限约束。
+| 意图 | 可以跳过等待 dense 的条件 |
+| --- | --- |
+| symbol | 首个被问符号的定义命中；仅参数类型命中不算 |
+| path | SQL 路径命中，且有内容 store 可以回填展示片段 |
+| reference | 有 call/inherit 使用点，且至少一个使用 chunk 不是该符号的声明 chunk |
 
-## 实验开关退休规则
+只有 import 证据不算使用点。跳过时 `dense_route` 记 `skip:<reason>`，不使用相似度阈值猜测
+置信度。已发出的 embedding 请求只释放等待、不取消，让它自行结束并消费任务结果；取消
+HTTP 响应曾导致池连接不能归还。调用者取消或 plan 失败时，SQL 任务会取消并 drain，
+embedding 仍按这项纪律释放。
 
-设置项中默认关闭、且注释写明"实测净负"或"待校准"的开关，是可测量的实验，不是产品功能。
-处置规则：
+词法车道使用 SQL FTS5/tsvector。reference 以完整标识符的代理 token 为必要条件，例如
+`getJson` 的整体 token，避免宽泛的 `get OR json` 召回；多个标识符的必要 token 之间是 OR。
+symbol/path 通常只在 exact/SQL path 缺失时补跑；引号短语可以使词法车道提前执行。
+call_chain、feature、overview、compound 默认提前执行词法召回。
 
-1. 一个开关自加入起经过两轮配对评测仍未成为默认值，删除开关及其代码路径；评测记录保留
-   在 `benchmarks/results/`。
-2. 已判定净负（所有套件回退）的变体立即删除，不保留为可选项。
-3. "待校准"开关必须附带离线标签的获取计划；没有计划的按第 1 条处理。
-4. 已成为默认值的消融开关，若关闭分支既不在生产也不在评测编排中使用，删除开关、保留行为。
+语义路径索引服务于找文件的请求，SQL 路径查找处理显式文件名、路径及 traceback；两个车道
+都以 blob 交出证据。路径回填只为内容车道遗漏的文件取代表 chunk，不替换已经命中的正文。
+traceback 的路径证据通常只 boost，避免把文件首部 import 回填成故障位置。
 
-当前状态：
+compound 锚点来自 traceback 文件/行定位的声明，或 route 保存的标题标识符：后者须严格满足
+限定名约束且同名声明不超过 3 处。仅在 issue 正文或最小复现中提到的 helper 不成为锚点。
 
-| 开关 | 状态 | 依据 |
-| --- | --- | --- |
-| `RETRIEVAL_HUB_HEAD_SLOTS` / `RETRIEVAL_HUB_MAX_DEFINITIONS` | 已删除（规则 1） | 精选集正向、held-out 负向，两轮未成为默认值 |
-| `RETRIEVAL_HUB_FEATURE_ENABLED` | 已删除（规则 2） | feature 上净负 |
-| `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` | 已删除（规则 3） | 无同名定义离线标签的获取计划 |
-| `RETRIEVAL_CONFIDENCE_FLOOR` | 已删除 | 默认 0 为恒等；非 0 时以融合后的混合标尺分数过滤，违反「不混排」 |
-| `RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` | 已删除（规则 4），行为保留 | 2026-09-08 起为默认值 |
-| `RETRIEVAL_REFERENCE_HEAD_FALLBACK` | 已删除（规则 4），行为保留 | 默认开启 |
+## 融合、头部与重排
 
-## 等价性验证
+### 不同证据的合并边界
 
-纯结构重构（不改变默认排序）用 `benchmarks/internal/retrieval_equivalence.py` 证明：
-它把一个目录索引进内存 SQLite，用确定性词频向量替代 embedding，对固定查询集在五种配置档
-下跑管线并记录每条结果与审计字段。重构前后两份 dump 必须逐条一致：
+多路 dense cosine 与 lexical BM25/ts_rank 按名次做 RRF，单路保留其顺序与分数；
+默认 `RRF_K=60`、词法权重 1.0。
+exact 按意图合并：symbol 的定义位于语义候选前；call_chain 在候选窗口中给 exact-only
+保留约三分之一；compound 把 exact 作为一路名次列表；其他意图按 key 保留较高分的命中。
+exact 种类分（约 0.85–1.0，按同名定义数衰减）会在部分窗口里领先 RRF 候选，这是当前
+有意保留的行为，使结构证据进入可被头部规则保护的窗口。
+
+anchors 与 call_chain 端点按 key 补入，之后由头部规则排序。路径证据按配置权重对同 blob
+的候选做 boost；它不能作为重排置信度。这里没有把所有存储分数统一校准到一个数值尺度。
+
+### 有界头部
+
+源码先验降权文档、测试和 barrel 文件；明确找文件或问测试的短查询使用中性先验。
+小规模 added delta 可以获得工作集 boost，首次全量同步超过增量上限时不会被当成编辑线索。
+先验只准备模型之前的候选顺序。
+
+结构头部按被问对象保留有限槽位：symbol 最多 3 个（也受最终主结果数限制），每个声明文件
+先占一槽再补重载；path 每个 SQL 匹配文件一槽；compound 最多 3 个锚点，按帧再标题的顺序；
+call_chain 保护已解析的一到两个端点。语义与 reference 默认另外优先放 3 个源码片段，
+import-only 头部优先让位给实现，根 README 不消耗源码槽位。
+
+reference 头部须有 exact/lexical 发生证据，声明 chunk 通常让位给使用点。问实现时已记录的
+目标实现块优先，随后比较 call/inherit → 文本提及 → 仅 import、限定符共现、其他被问符号
+共现、是否位于声明文件、文件是否按符号命名、与声明包的邻近关系。源码候选为空时允许测试、
+示例或包入口中的真实使用点领头。明确问测试时优先匹配命名和包邻近的测试文件，再比较测试
+声明名与符号的距离、使用点及提及证据。
+
+模型重排后恢复结构头部和源码偏好，同时保留模型的尾部顺序；overview 不再恢复源码偏好，
+允许模型把架构文档放回首位。实现关系与 import-only key 在本次请求内复用，不重复查 SQL。
+
+### 模型授权与 policy
+
+`RERANK_ENABLED`、`LLM_RERANK_ENABLED` 是部署者的能力授权；`RETRIEVAL_RERANK_POLICY`、
+`RETRIEVAL_LLM_RERANK_POLICY` 是授权后的逐查询路由，不能打开一个未授权模型。
+专用 reranker 先执行，chat LLM 后执行；两者只重排，不删除其输入候选。
+`RERANK_PROVIDER=api` 和 chat LLM 会外发请求/候选源码，`local` 在进程内运行。
+
+两者共用 `plan_rerank`，当前只读 intent、候选数、exact 命中、SQL path 命中、dense 是否
+已被结构证据跳过，以及授权和 policy。候选少于 2 条时不重排。默认 `adaptive` 对有任何
+exact 命中的 symbol、SQL path 命中的 path 和已跳过 dense 的结构答案跳过模型；无对应命中
+的 symbol/path 允许两者。这里的 symbol exact 条件比 dense 的决定性条件宽：可能只命中参数
+类型，不能把 `skip:exact_definition` 解读为首个请求符号已经找到。reference 保留专用重排、
+跳过 chat LLM 以保留发生点覆盖；其他意图允许两者。`always` 在候选足够时运行对应已授权
+模型，但仍恢复结构头部。
+
+`exact_definitions`、`definition_sites` 和 `head_slots` 都是审计字段，不是当前 policy 输入；
+任何原始或融合分数也不用于估计是否重排。
+
+## 选择、扩展与字符预算
+
+symbol/path 使用 focused，保留相关性顺序、默认每文件最多 4 个主片段、代码预算 12,000 字符。
+其他意图使用 coverage，先覆盖不同文件再填第二个片段、默认每文件最多 2 个、预算 32,000 字符。
+两者去重并抑制高度重叠的源码区间，默认选择最多 10 个主片段；关系小节另计条数。
+关闭 coverage selector 时使用 Top-K，也遵守当前意图的代码预算。
+
+硬上限按 `sum(len(hit.content))` 计算，含 primary 和 relation 的正文及合并后正文中的换行。
+它不是 token、UTF-8 字节或整个 `formatted_retrieval` 的长度：formatter 添加的标题、Path、
+Lines、Context、Hop、行号与分节分隔符不计入代码字符预算，所以 HTTP 文本可以更长。
+首个主片段超限时截成摘录，优先保留完整源码行；单行过长时截该行并同步 end_line。后续
+片段只有整体放得下才选入。相邻合并增加换行后若超限，保留合并前的片段。
+
+`evidence_pack` 按意图与各车道开关组装相关定义、调用方、实现/子类、测试和 re-export，
+去重并赋 role。feature 未点名符号时，从主结果已声明的名字寻找关系。被调用的名字优先于
+一般正文提及；symbol/reference 的具名关系车道先填，普通定义补充在后；限定名始终钉住
+作用域，不能把 `Flask.make_response` 的关系接到 `helpers.make_response`。
+
+普通关系总上限默认 6,000 字符，还受活跃车道上限之和及上下文规模限制。主预算不预扣，
+只有新关系证据出现时才从最低优先级的主结果尾部腾出空间，保留领头答案；裁尾后重新计算
+关系的来源、顺序、去重和预算，已被裁掉的来源不能继续贡献证据。总上限为 0 时不查普通
+关系 SQL，也不输出普通关系小节。
+
+call_chain 的 `chain` 小节有独立 3,600 字符上限，同时受请求剩余总预算限制。两端点链沿
+已记录 call 边做有界 BFS，默认最深 4 跳，只跟随同名声明不超过 2 处的名字；同文件声明
+优先。每跳先放声明头部，交接调用离头部较远时补止于调用行的窗口；单端追踪取两层被调用者。
+限定端点先以 enclosing 约束 SQL，再检查歧义，不能用全 scope 的同名数量误拒绝已钉住端点。
+
+## 失败与审计
+
+召回、头部证据和关系车道被管线吸收的异常都经 `lane_failed` 记录异常类型到
+`retrieval_metrics.lane_failures`，同时写日志。存储层不把超时改成空结果，空结果只表示无匹配。
+其余车道有答案时可以降级返回；dense 失败且最终没有任何候选时仍抛出错误，plan 失败或
+调用者取消也不被伪装成成功。rewrite 自身失败退回原文，这是模型客户端的容错，不能把它当作
+一次完整改写实验。HTTP 200 且 `lane_failures` 非空只证明降级作答，评测必须单独标出，
+不能把差异直接归因于排序调整。
+
+| 字段 | 当前含义 |
+| --- | --- |
+| `dense_route` | `dense`、结构跳过原因或 dense 异常类型 |
+| `rerank_route` | 计划运行 `dedicated`、`llm` 或级联；无模型时为 `skip:<reason>` |
+| `head_slots` | rank 计算的受保护 `structural_heads` 数量；不统计所有源码偏好，也不保证这些片段最后都被选入 |
+| `exact_definitions` | 请求不同叶子名在 ready scope 内已记录的声明处数之和 |
+| `definition_sites` | 上述各名计数的最大值；多个名字各一处不会被误写成一个名字多处 |
+| `relation_hits`、`relation_chars` | 最终附加关系摘录数量及正文字符数；审计 collector 另按 role 计数 |
+| `stages`、`lane_failures` | 分阶段耗时（同名累加）及被吸收的车道异常类型 |
+
+声明计数只对带 audit 的 exact 请求执行一次按名称范围的 SQL 查询，不受召回 chunk 去重和
+截断影响；限定名审计仍按叶子名在整个 ready scope 中计数。计数查询失败只标记
+`definition_counts` 车道失败，保留已经取得的 exact 答案。当前 symbol projection 会合并
+同 chunk、同 enclosing、同名的记录，所以指标描述的是已记录位点，不能宣称完整源码声明数。
+旧版本两个字段统计召回 chunk 数，不能与修复后的记录混合做歧义校准。
+
+## 实验管理与保留的决策
+
+模型能力授权与消融实验分开处理：默认关闭的 reranker 授权控制部署成本和数据外发，不能
+因一个模型配置的负结果删除通用 API/local 能力；具体模型、路由或召回变体仍须按配对结果判断。
+默认启用能力的关闭分支只有在生产配置或评测消融中有用途才保留。
+
+实验退休规则：
+
+1. 默认关闭的实验自加入起经过两轮配对评测仍未成为默认值，删除开关及其代码路径，保留结果。
+2. 已判定净负的变体立即删除。
+3. 待校准实验必须有独立真值的标签计划，不能用服务端路由或返回结果反向生成答案。
+4. 已成为默认值的消融开关，其关闭分支不再用于生产或评测时，删除开关并保留默认行为。
+
+当前待评估的 query rewrite 默认关闭。标签计划是从黑盒查询与真实项目用例中分别整理明确文件
+定位、跨语言功能描述及普通查询，人工按仓库源码确认目标路径/区间；既有开发集用于第一轮，
+另留未参与调参的项目或查询用于第二轮。两轮均配对关闭/开启 rewrite，固定客户端、模型、
+索引与其他配置，记录改写失败、各类别召回/排序、字符数和延迟；若目标类别没有稳定改善，
+或其他套件超过容忍回退，两轮后移除。当前文档不把该计划写成已完成的评测证据。
+
+| 已退休开关 | 原因 |
+| --- | --- |
+| `RETRIEVAL_HUB_HEAD_SLOTS` / `RETRIEVAL_HUB_MAX_DEFINITIONS` | 两轮未成为默认值，精选集正向、held-out 负向 |
+| `RETRIEVAL_HUB_FEATURE_ENABLED` | feature 变体净负 |
+| `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` | 没有同名定义离线标签计划 |
+| `RETRIEVAL_CONFIDENCE_FLOOR` | 默认恒等；非零分支用混合标尺分数过滤 |
+| `RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` | 已成为默认行为，关闭分支退休 |
+| `RETRIEVAL_REFERENCE_HEAD_FALLBACK` | 默认开启，关闭分支退休 |
+
+保留的历史结果（完整记录见 `benchmarks/results/`）：
+
+- hub 召回按请求词拼已声明名字，再按被引用文件数排序。精选 overview nDCG@10 67.8→74.3，
+  held-out overview 66.4→54.1、call-chain 85.6→78.2；扩展到 feature 的变体使 feature
+  nDCG@10 73.5→68.8、CSN Region Top-1 62.5→60.0。代码已删除，不能拿精选收益推断默认效用。
+  见 [round 3 的 hub 消融](../benchmarks/results/utility-round3-2026-09-09.md#hub-lane-retrieval_hub_head_slots2-cycles-r3br3d)。
+- 2026-09-08 的 import-only 头部让位早期观察曾消除唯一头部干扰项；后续 round 3 没有复现
+  这项单轮降幅，不能承诺当前 distractor_head 为零。默认保留该规则，退休关闭分支。
+- 本地 jina 交叉编码器在当时结构头部之上复测为负：semantic nDCG@10 74.9→72.9、issue
+  nDCG@100 74.3→62.0，每个向量请求增加约 1.2 s。它支持默认不启用该配置的决策，不代表
+  其他模型或部署环境必然相同。见 [round 3 的本地模型消融](../benchmarks/results/utility-round3-2026-09-09.md)。
+- 2026-10-01 统一 exact RRF 的变体使用同款 Qwen3-Embedding-4B 和同一物理索引，基线复跑
+  逐条一致。纯名次融合把 exact-only 使用点挤出 50 条窗口：short reference Top-1
+  92.5→88.8%、project test_mapping Hit@3 85.7→57.1%、distractor_head 0→2.9%。补上
+  结构列表免截断后仍没有套件改善（project Hit@3 −1 例、semantic weighted R@5 −1 点），
+  因而保留当前按意图合并。
+- 同日删除符号文件命名、声明包邻近、测试声明名平局规则，回退了 pytest `parser`
+  reference、gin/rtk test_mapping 和 gson multi_impl。规则已恢复；它们在缺少完整类型与
+  名称解析时提供结构近似，后续替换仍需独立真值和配对证据。两项否决的完整配对协议与限制见
+  [2026-10-01 评测](../benchmarks/results/principled-refactor-2026-10-01.md)。
+
+## 变更验证
+
+纯结构重构用 `benchmarks.internal.retrieval_equivalence`：真实应用 indexing handler 把冻结
+语料写进内存 SQLite，保留真实切块、symbol、lexical 和 path lookup，以确定性词频向量代替
+embedding，固定查询在五个配置档中运行，比较结果摘录与审计字段。
 
 ```bash
-uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus src/oce --out before.json
-# ... refactor ...
-uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus src/oce --out after.json
+corpus_dir=$(mktemp -d)
+git archive HEAD src/oce | tar -x -C "$corpus_dir"
+uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus "$corpus_dir/src/oce" --out before.json
+# 修改实现，继续使用同一份 corpus。
+uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus "$corpus_dir/src/oce" --out after.json
 uv run python -m benchmarks.internal.retrieval_equivalence compare before.json after.json
 ```
 
-语料必须冻结（重构会改动 `src/oce` 本身），用 `git archive HEAD src/oce` 解出一份。这只
-证明两个版本计算同一函数，不代表产品效用；效用仍由 `benchmarks/blackbox/` 配对复跑判定。
+语料、查询和配置须同时冻结；仅对纯结构重构要求 dump 逐条一致。预算或审计语义修正应逐条
+解释预期差异，不能称为完整 dump 等价。此工具证明函数行为保持，不证明模型效用；默认行为
+变更仍按 AGENTS.md 要求配对运行四套黑盒护栏，关系改动以真实项目关系用例为主裁判。
+`tests/unit/infrastructure/test_retrieval_regression.py` 固定头部顺序与关系小节的离线回归，
+也不能替代发布客户端驱动的产品评测。
+
+2026-10-01 可靠性修正的预期预算/审计差异、四套黑盒护栏和验证边界见
+[对应记录](../benchmarks/results/reliability-simplification-2026-10-01.md)。

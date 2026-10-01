@@ -1,73 +1,48 @@
 # Changelog
 
-本项目版本遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
-变更条目由 `scripts/generate_changelog.py` 生成。
+This project follows [Semantic Versioning](https://semver.org/).
+Unreleased entries summarize the current changes since the latest release.
+[`scripts/generate_changelog.py`](scripts/generate_changelog.py) can generate a
+draft from Conventional Commits; review it against the final implementation.
 
 ## [Unreleased]
 
 ### Added
 
-- **retrieval**: add a hub lane for overview requests and flow questions that name no symbol: the request's words are joined into the identifier spellings a declaration could use (`Router`, `register_checker`, `createSlice`), the scope's declarations of those spellings are looked up with their reference fan-in, and the most widely referenced ones that are not package names take protected head slots (`RETRIEVAL_HUB_HEAD_SLOTS`, `RETRIEVAL_HUB_MAX_DEFINITIONS`); the lane ships off by default: it raised the curated overview nDCG@10 67.8→74.3 but lowered the sealed held-out semantic set (overview 66.4→54.1, call-chain 85.6→78.2), and `RETRIEVAL_HUB_FEATURE_ENABLED` displaced the implementing function on feature questions
-- **retrieval**: anchor issue-style requests on their deterministic facts: every traceback frame (Python, IPython and Node forms, with its line) is resolved to the declaration of that function in that file, the title's identifiers are resolved with their qualifier pinned strictly, and those declarations take protected head slots in trace order (`RETRIEVAL_COMPOUND_ANCHOR_SLOTS`, now 3); the remaining declarations of an issue's identifiers join fusion by rank instead of outbidding it by score
-- **retrieval**: pin qualified names by the recorded enclosing declaration first (`route` inside `Router`), then by a declaration line that names both scope and leaf (`app.render = function render`), then by the chunk text; path evidence must match a whole path component, so `test/app.render.js` no longer passes for the scope `app`; use-site batches are pinned by structure or text but never by the declaration stage, and a qualified reference orders chunks that name the qualifier ahead of bare mentions
-- **retrieval**: skip adaptive dedicated reranking when SQL call/inherit sites made a reference request decisive and vector recall was never awaited (`rerank_route = skip:deterministic`; symbol/path keep their existing structural skip routes, and `always` still runs)
-- **evaluation**: add an `issue` kind to the semantic suite and a sealed held-out semantic manifest (`benchmarks/blackbox/heldout_semantic_cases.json`, 18 feature/overview/call-chain/issue requests over the round-2 held-out repositories)
-- **retrieval**: stop waiting for the query embedding when the SQL lanes already answered: a found definition of the requested symbol (not merely a named parameter type), a matched path, or a call/inherit site of the referenced symbol drops vector recall and fuses the remaining lexical evidence with the exact lane by rank (`RETRIEVAL_DECISIVE_SKIPS_DENSE`); the in-flight embedding request is released, never cancelled, and `retrieval_metrics.dense_route` records the decision
-- **retrieval**: route "which functions call X" / "哪些地方调用了 X" to reference, "how does A reach B" with two symbols to call-chain, "where is X defined" with parameter types to symbol, and "where is X implemented for Y" to implementors; private names are extracted once
-- **retrieval**: order reference heads by structural tiers (call/inherit sites, then textual mentions, then imports; co-mention of the other named symbol; other files before the declaring file; a test file named after the symbol; path proximity to the declaring package) and exclude only the declaration chunk rather than its whole file
-- **retrieval**: search the indexed call graph between two named symbols and return the shortest path as a `chain` section with `Hop:` marks (`RETRIEVAL_CALL_CHAIN_MAX_DEPTH`, `RETRIEVAL_CALL_CHAIN_MAX_CHARS`); a hop whose delegating call sits deep in its body renders as its declaration header plus the window ending at the hand-over line, including the non-overlapping tail when those excerpts touch, headers of every hop are placed before any window spends budget, and the declaration of every named endpoint is protected in the head for one- and two-ended traces alike; an unresolved start never reverses the trace from its target, one-ended traces receive two levels of callees, and chain plus relation excerpts stay within the hard context budget; symbol and reference answers append the definitions their code calls, filled after the named relation lanes, with qualified names pinned to their scope so `Flask.make_response` never appends `helpers.make_response`
-- **retrieval**: import-only file headers yield the source head slots by default (`RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS=true`): re-measured on the relation judge the rule removes the last distractor head and moves no other case
-- **retrieval**: extract snake_case identifiers only as whole tokens, so `DataArray.__init__` no longer leaks an `init__` fragment that turned a two-symbol "how does A reach B" question into a compound one; private names keep their leading underscores and remain distinct from public names with the same stem
-- **retrieval**: make relation context demand-driven: primary selection uses its full budget until novel relation evidence exists, then trims only the lowest-priority tail within a context-scaled cap; relation candidates prefer new source files and enclosing definitions per character
-- **retrieval**: add an opt-in, uniqueness-gated upstream call-chain hop (`RETRIEVAL_CALL_CHAIN_MAX_HOPS`, default `1`) with stable `Hop:` provenance; partition relation SQL by file/enclosing definition before applying global limits so large scopes do not lose whole files to repetitive occurrences
-- **retrieval**: append relation sections after the primary results: callers grouped per enclosing definition, implementations and subclasses, tests exercising the symbol, and barrel re-exports, each with its own slot and character cap, deduplicated against the primary spans and rendered as fixed-order sections (`RETRIEVAL_CALLERS_*`, `RETRIEVAL_IMPLEMENTATIONS_*`, `RETRIEVAL_TESTS_*`, `RETRIEVAL_REEXPORTS_*`, `RETRIEVAL_RELATION_RESERVE_CHARS`, `RETRIEVAL_RELATION_SNIPPET_LINES`)
-- **retrieval**: resolve qualified names (`Session.get`, `Context.ShouldBindJSON`) to the declaration inside the named scope, order same-named overloads by the parameter types the request spells out, and give every declaring file a head slot before any file gets a second
-- **retrieval**: route "which tests cover X" and "which classes implement X" to use-site retrieval, with evidenced test files taking the head for test questions
-- **symbols**: record the enclosing definition of every occurrence, barrel re-exports (`export {} from`, `pub use`, relative and self-package imports in `__init__.py`/`index.ts`/`mod.rs`), and `extends`/`implements`/trait-impl edges (`SYMBOL_EXTRACTION_VERSION` 5; existing indexes must be rebuilt)
-- **monitoring**: record the structural evidence the router saw (`exact_definitions`, `definition_sites`) and the size of the appended relation sections (`relation_hits`, `relation_chars`) per retrieval, and add an opt-in `RETRIEVAL_RERANK_AMBIGUOUS_DEFINITIONS` route for symbol requests whose name is declared in more places than the head holds
-- **evaluation**: add `project_cases`, 35 LLM-assisted, tool-verified relation cases (reference, call-chain, test mapping, re-export, multi-implementation) with distractor files and one derived error class per case, and `csn_queries`, an 80-query CodeSearchNet docstring-to-function guard over 8 pinned repositories in four languages
-- **symbols**: record call sites (`kind=call`) from tree-sitter for every grammar, extract Bash functions and JavaScript prototype/CommonJS assignments, and retry a transiently unavailable grammar instead of pinning the regex fallback for the process
-- **rerank**: add an in-process ONNX cross-encoder provider (`RERANK_PROVIDER=local`, `uv sync --extra local-rerank`) so reranking can run without sending queries or source to a model endpoint
-- **embedding**: cap the query text sent for embedding (`EMBED_MAX_QUERY_CHARS`, default 3,000 characters)
-- **evaluation**: extend the curated black-box corpus to Go, C, C#, JavaScript, Java, and Bash (13 snapshots, 40 anchors, 39 reviewed semantic cases) with per-language report columns
-- **retrieval**: add SQL lexical recall (SQLite FTS5 / PostgreSQL tsvector) over sub-word chunk terms, fused by rank with dense results
-- **retrieval**: recover traceback frames, error phrases, and filenames from requests as exact path, symbol, and phrase evidence
-- **retrieval**: append signature excerpts of definitions referenced by the top results and merge touching spans of one file
-- **retrieval**: apply a bounded working-set prior to files the request just added
-- **indexing**: embed cAST chunks with their enclosing scope chain and expose it as a `Context:` line and to both rerankers
-- **symbols**: extract definitions, endpoints, and imports with tree-sitter from whole files, with regex fallback and frequency-damped exact scores
-- **evaluation**: add a `standard` issue profile and Chinese variants of the routing queries
-- **evaluation**: add six reviewed function anchors (96 routing queries), a reference definition-first diagnostic, and p50/p95 latency for issue runs
-- **evaluation**: report head-of-list quality (Top-1, MRR, nDCG@100, first useful hit) next to recall in both benchmark comparison tables, and add an adversarial SQLite regression guard for symbol/path/reference head order
+- **indexing**: store enclosing scope context on cAST chunks and embed `File + Context + code`; persist a secret-free index profile and reject incompatible startup or model reloads.
+- **retrieval**: add scoped SQL lexical recall, exact path lookup, traceback/title anchors, qualified-symbol evidence and bounded working-set/source priors.
+- **relations**: record call, enclosing-definition, re-export and inheritance evidence; return bounded callers, implementations, tests, re-exports, related definitions and call-chain sections.
+- **reranking**: support an optional in-process ONNX provider alongside the API reranker and chat-LLM cascade. Both rerankers remain disabled by default; enabling local reranking does not authorize external calls.
+- **embedding**: bound long query inputs, coalesce concurrent identical queries, share concurrency limits across credential generations, and cache only query hashes/vectors in an optional TTL LRU.
+- **monitoring**: expose safe index/runtime provenance, retrieval stages, lane failures, rerank decisions, declaration counts and relation budgets through existing admin metrics.
+- **evaluation**: add reviewed multilingual semantic/relation suites, CodeSearchNet guards, wording/layout controls and external issue profiles driven by the released Rust client; archive paired measurements separately from implementation microbenchmarks.
 
 ### Fixed
 
-- **retrieval**: order overloads by the names in their parameter list only, so a body line such as `JsonReader jsonReader = ...` no longer ties `fromJson(Reader, TypeToken)` with `fromJson(JsonReader, TypeToken)`
-- **retrieval**: a test question leads with the chunk whose declared test name is closest to the symbol (`TestWalker` for `Walk`), then call sites, then mentions, then the module header; a reference answer appends the resolved declaration itself when its use sites crowded it out, instead of re-querying under the ambiguity bound that dropped `render`
-- **retrieval**: callers sections exclude test files (the test section shows them; a call inside a same-named declaration such as `Command.invoke` calling `ctx.invoke` stays a caller) and related definitions never come from test files; symbol answers append one test excerpt; vendored directories and `*.config.*` files take the supporting-material prior
-- **symbols**: stop recording CommonJS `var X = require(...)` aliases, Rust `impl Trait for Type` blocks, `let` bindings, and TypeScript/JavaScript `export { x } from` re-exports as definitions, and record no symbols at all for Markdown/reStructuredText/plain-text files whose fenced examples were read as project declarations (`SYMBOL_EXTRACTION_VERSION` 4; existing indexes must be rebuilt)
-- **retrieval**: diversify exact use-site evidence per file before the candidate window closes, so a test module that calls a symbol in every chunk no longer pushes the one import in each other file out of the reference head
-- **milvus**: flush Milvus Lite before the first search that follows a write so scoped dense and path searches stay on the HNSW index; an incremental upload of 1.4K blobs had raised workspace search latency from about 30 ms to about 800 ms until the growing segment was sealed
-- **indexing**: embed pending chunks in pages of 256 instead of 64 so the embedder's concurrent batches are actually used during synchronous uploads (about 14 chunks/s before)
-- **persistence**: open personal-mode SQLite in WAL mode with a busy timeout, so the metrics sink and concurrent readers no longer fail with "database is locked" during batch uploads
-- **evaluation**: retry the idempotent black-box `sync` on transient transport resets (`run_client(..., retries=4)`), so a momentarily busy server no longer aborts a whole suite, while `retrieve` stays single-shot; and read the offline routing/evidence view from the `retrieval` metrics source (`benchmarks.internal.rerank_evidence --source`)
+- **persistence**: enable SQLite foreign keys and remove historical orphan metadata with migration `b8c9d0e1f2a3`; retain live metadata. Use WAL/busy timeouts and bounded scope queries for personal-mode concurrency.
+- **deletion**: retain `DELETING` identities until dense and path cleanup succeed, retry failed cleanup, and recheck activity/checkpoint references. Reject stale indexing/checkpoint writes without changing legal pending or absent checkpoint membership.
+- **indexing**: keep embedding round trips outside metadata transactions, reread pending identities after lock/touch, and prevent duplicate uploads from resetting their state. Recover pending Redis delivery from durable SQL truth.
+- **queue**: preserve confirmed batch claims when a later Redis fill fails; atomically update queue projections during maintenance. Count queue state without loading every identity.
+- **credentials**: serialize runtime reloads, validate explicitly disabled embedding without activating credentials, and report partial LLM reload failures through the existing response fields.
+- **configuration**: parse personal-mode `.env` and `.env.local` together so local values override base values while process variables retain priority; preserve explicit `--env-file` precedence and interpolation.
+- **paths**: enforce the 1024-character upload limit, keep full embedding/result paths, and fit UTF-8 diagnostic text into existing Milvus fields. Existing longer SQLite paths remain readable.
+- **retrieval**: freeze ready scope and route/title evidence, report failed lanes rather than treating them as empty matches, and release shared embedding work without cancelling provider requests.
+- **budgets**: enforce the hard code-content budget in both selectors and account for adjacent-merge separators; clip a leading excerpt when required while preserving complete lines where possible.
+- **audit**: count recorded declarations before chunk deduplication and recall limits; keep these counts diagnostic rather than adding uncalibrated rerank inputs.
+- **symbols/routing**: correct whole-token/private-name extraction, qualified endpoints and symbol kinds; route Chinese flow constructions without treating single characters as call-chain evidence.
+- **runtime**: move resource sampling off the event loop and retain bounded startup probes. Apply explicit local dense-index type changes without discarding vectors; fail initialization when verification/build fails.
 
 ### Changed
 
-- **retrieval**: the local ONNX reranker is measured net-negative on top of the structural head rules (semantic nDCG@10 74.9→72.9, issue nDCG@100 74.3→62.0, about 1.2 s added per vector-backed request) and stays off by default; deterministic requests skip it under adaptive policies, while `always` still runs
-- **retrieval**: when a reference question has no evidenced use site in undemoted source, fill the head slots with evidenced use sites in test, example, or barrel files ordered by prior instead of leaving the slots to documentation without occurrence evidence (`RETRIEVAL_REFERENCE_HEAD_FALLBACK`); add a measured-neutral ablation switch that stays off, `RETRIEVAL_HEAD_SKIPS_IMPORT_HEADERS` (import-only file headers yield source head slots; on by default since the relation round), and `RETRIEVAL_COMPOUND_ANCHOR_SLOTS` (protected slots for the definitions an issue text names; now anchored on frames and title names)
-- **retrieval**: classify call-chain requests by their verb even without a symbol anchor, treat dotted qualified names (`Context.ShouldBindJSON`) as symbols rather than file names, decide overview before path, and only let file/config nouns imply a path request in short questions
-- **retrieval**: neutralize the source prior only for questions that ask for tests, and demote `samples/` like `examples/`
-- **retrieval**: damp exact-symbol scores by how many places declare a name, not by how often it is used
-- **retrieval**: restructure the pipeline as an explicit `RetrievalState` machine (route → plan → recall → fuse → prior → rerank → select → expand)
-- **retrieval**: route lexical recall to queries that benefit from it, preserve exact symbol/path answers in fixed head slots, give focused queries a smaller context budget, and constrain related definitions to relationship-oriented queries and the remaining context budget
-- **rerank**: cap the query text sent to the dedicated reranker (`RERANK_MAX_QUERY_CHARS`, default 2,400) so long issue texts no longer multiply reranker latency, and reapply the source and reference head slots after model reranking
-- **retrieval**: rank a file whose whole path is the tail of the request above sibling files that only share the two-segment suffix in exact path lookup, and treat `__tests__`, `__testfixtures__`, `*.test-d.ts`, `*.spec.*`, and `*_test.go` as test files in the source prior
-- **monitoring**: persist lexical, exact-path, and related-definition stage latency plus the number of deterministic symbol/path head slots in retrieval audits
-- **retrieval**: extend the source prior to change logs, singular `doc/` and `examples/` directories, configuration files, `.pyi` stubs, and `__init__.py` barrels, keep it active for compound issue text that merely mentions file names, and neutralize it only for short questions that ask about tests
-- **retrieval**: reserve bounded head slots for implementation files on semantic requests and for lexically verified use sites ahead of the declaration on reference requests; start exact, path-lookup, and lexical SQL recall before the query embedding round trip
-- **retrieval**: gate reference-query lexical recall on the whole-identifier surrogate so call sites outrank chunks that only share sub-words, and backfill an exact SQL path match for path requests the content index never mentions
-- **index lifecycle**: bump schema, chunker, embedding, and symbol versions; existing indexes require a clean data directory and full resync
+- **architecture**: use explicit Container ownership and worker lifecycle states, direct application use cases, one shared short-transaction indexing flow, and fixed retrieval stages with frozen route/plan/recall evidence.
+- **reranking**: separate feature authorization from per-query adaptive/always policies; use deterministic route/candidate/exact/path evidence and preserve protected structural heads.
+- **documentation**: organize bilingual user guides, retrieval/runtime contracts, developer constraints and dated evaluation evidence through one documentation index.
+- **compatibility**: source admission is version 2, scope-aware chunking is version 4, embedding input is version 2 and symbol extraction is version 5. Incompatible persisted profiles require a new data directory and full client resync; the orphan-cleanup migration alone does not change the index fingerprint.
+
+### Removed
+
+- **experiments**: retire negative hub recall, uncalibrated ambiguous-definition routing and confidence-floor branches. Import-header/reference fallback rules are fixed behavior rather than stale configuration switches.
+- **architecture**: remove the generic message bus, forwarding-only credential handlers, unused path-result text and the domain same-transaction indexing convenience flow; production callers share application orchestration.
 
 ## [0.3.0] - 2026-09-02
 

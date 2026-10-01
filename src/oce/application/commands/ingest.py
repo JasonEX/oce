@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-
-from loguru import logger
 
 from oce.application.queue import Queue
 from oce.application.uow import UnitOfWork, UnitOfWorkFactory
@@ -100,6 +98,36 @@ class EmbedPendingResult:
     embedded_count: int
 
 
+async def _index_pending_batch(
+    uow_factory: UnitOfWorkFactory,
+    pipeline_factory: PipelineFactory,
+    blob_names: Sequence[str] | None,
+    *,
+    mark_failures: bool,
+) -> int:
+    """Index between short transactions; the caller owns the failure policy."""
+    async with uow_factory() as uow:
+        pipeline = pipeline_factory(uow)
+        batch = await pipeline.prepare(blob_names)
+        await uow.commit()
+    if batch is None:
+        return 0
+    try:
+        embedded = await pipeline.write_vectors(batch)
+    except Exception as exc:
+        if mark_failures:
+            # Synchronous indexing makes the error visible before re-raising.
+            # Workers keep it pending until their per-blob retries are spent.
+            async with uow_factory() as uow:
+                await pipeline_factory(uow).fail(batch, exc)
+                await uow.commit()
+        raise
+    async with uow_factory() as uow:
+        await pipeline_factory(uow).complete(batch)
+        await uow.commit()
+    return embedded
+
+
 class EmbedPendingCommandHandler:
     def __init__(
         self,
@@ -126,34 +154,19 @@ class EmbedPendingCommandHandler:
 
         embedded = 0
         for group in groups:
-            embedded += await self._index(group)
+            embedded += await _index_pending_batch(
+                self._uow_factory,
+                self._pipeline_factory,
+                group,
+                mark_failures=True,
+            )
         return EmbedPendingResult(embedded)
-
-    async def _index(self, group: tuple[str, ...] | None) -> int:
-        """Index one group with the embedding round trip outside any transaction."""
-        async with self._uow_factory() as uow:
-            pipeline = self._pipeline_factory(uow)
-            batch = await pipeline.prepare(group)
-            await uow.commit()
-        if batch is None:
-            return 0
-        try:
-            embedded = await pipeline.write_vectors(batch)
-        except Exception as exc:
-            # Commit the error before re-raising so the failed state is visible.
-            async with self._uow_factory() as uow:
-                await self._pipeline_factory(uow).fail(batch, exc)
-                await uow.commit()
-            raise
-        async with self._uow_factory() as uow:
-            await self._pipeline_factory(uow).complete(batch)
-            await uow.commit()
-        return embedded
 
 
 @dataclass(frozen=True)
 class DeleteBlobsCommand:
     blob_names: tuple[str, ...]
+    ttl_days: int | None = None
 
 
 class DeleteBlobsCommandHandler:
@@ -167,20 +180,20 @@ class DeleteBlobsCommandHandler:
         self._vector_index = vector_index
         self._path_store = path_store
 
-    async def handle(self, command: DeleteBlobsCommand) -> None:
+    async def handle(self, command: DeleteBlobsCommand) -> int:
         if not command.blob_names:
-            return
+            return 0
         async with self._uow_factory() as uow:
-            await uow.blobs.delete_many(command.blob_names)
+            names = await uow.blobs.mark_deleting(
+                command.blob_names, ttl_days=command.ttl_days
+            )
             await uow.commit()
-        await self._vector_index.delete(list(command.blob_names))
+        if not names:
+            return 0
+        await self._vector_index.delete(names)
         if self._path_store is not None:
-            try:
-                await self._path_store.delete_by_blob_names(list(command.blob_names))
-            except Exception as exc:
-                # A failed path-index delete never blocks the deletion itself.
-                logger.warning(
-                    "path index delete failed for {} blobs: {}",
-                    len(command.blob_names),
-                    exc,
-                )
+            await self._path_store.delete_by_blob_names(names)
+        async with self._uow_factory() as uow:
+            await uow.blobs.delete_deleting(names)
+            await uow.commit()
+        return len(names)

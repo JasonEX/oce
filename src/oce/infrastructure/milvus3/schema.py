@@ -8,6 +8,8 @@ filtering and a JSON metadata field.
 
 from pymilvus import CollectionSchema, DataType, FieldSchema
 
+from oce.shared.path_limits import PATH_DOCUMENT_PREVIEW_BYTES, PATH_PREVIEW_BYTES
+
 
 def create_oce_collection_schema(dense_dim: int = 1024) -> CollectionSchema:
     """The content collection schema for ``dense_dim`` vectors."""
@@ -79,14 +81,14 @@ def create_path_collection_schema(dense_dim: int = 1024) -> CollectionSchema:
             FieldSchema(
                 name="path",
                 dtype=DataType.VARCHAR,
-                max_length=512,
-                description="Original file path",
+                max_length=PATH_PREVIEW_BYTES,
+                description="Diagnostic path prefix; SQL stores the authoritative path",
             ),
             FieldSchema(
                 name="path_document",
                 dtype=DataType.VARCHAR,
-                max_length=2048,
-                description="Semantic path document",
+                max_length=PATH_DOCUMENT_PREVIEW_BYTES,
+                description="Diagnostic document prefix; embedding uses the full document",
             ),
             FieldSchema(
                 name="path_vector",

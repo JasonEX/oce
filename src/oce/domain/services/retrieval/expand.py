@@ -125,7 +125,12 @@ class Expander:
     async def expand(self, state: RetrievalState) -> None:
         settings = self.settings
         if settings.merge_adjacent_enabled:
-            state.selected = merge_adjacent_hits(state.selected)
+            merged = merge_adjacent_hits(state.selected)
+            # Joining complete lines can add separators absent from the chunks.
+            if sum(len(hit.content) for hit in merged) <= context_budget(
+                settings, state
+            ):
+                state.selected = merged
         if not state.selected or not self.expands_relations(state):
             return
         assert state.scope is not None
@@ -461,8 +466,7 @@ class Expander:
         # merely mentions (types in annotations, words in docstrings), so
         # they are pulled first.
         called: list[str] = []
-        calls_within = getattr(self.exact_store, "calls_within", None)
-        if calls_within is not None and state.route.intent != QueryIntent.REFERENCE:
+        if state.route.intent != QueryIntent.REFERENCE:
             source_keys = [
                 (hit.blob_name, hit.start_line, hit.end_line)
                 for hit in sources
@@ -478,7 +482,7 @@ class Expander:
             try:
                 call_lists: list[list[tuple[str, int, str]]] = await asyncio.gather(
                     *(
-                        calls_within(
+                        self.exact_store.calls_within(
                             blob_name=blob_name,
                             start_line=start_line,
                             end_line=end_line,

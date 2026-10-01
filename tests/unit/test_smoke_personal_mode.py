@@ -266,6 +266,7 @@ async def test_credentials_reload_starts_deferred_worker_and_allows_queue_reset(
 async def test_disabled_embedding_still_chunks_service_mode_uploads(
     container: Container, embedding_server: EmbeddingServer
 ) -> None:
+    assert (await container.application.reload_embedding_credentials()).reloaded
     await container.start_worker()
     assert container.worker is not None and container.worker.is_running
     uploaded = await container.application.batch_upload(

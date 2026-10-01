@@ -243,9 +243,9 @@ class Ranker:
         """
         if state.header_keys is not None:
             return
-        lookup = getattr(self.exact_store, "occurrence_kinds", None)
+        store = self.exact_store
         if (
-            lookup is None
+            store is None
             or state.scope is None
             or state.route.intent in (QueryIntent.SYMBOL, QueryIntent.PATH)
         ):
@@ -260,9 +260,7 @@ class Ranker:
         if not occurrences:
             return
         try:
-            kinds: dict[tuple[str, str], frozenset[str]] = await lookup(
-                occurrences, state.scope
-            )
+            kinds = await store.occurrence_kinds(occurrences, state.scope)
         except Exception as exc:
             lane_failed(state, "header_kinds", exc)
             return

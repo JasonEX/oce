@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 
 from oce.infrastructure.metrics.resource_sampler import (
     ResourceSampler,
@@ -36,6 +37,27 @@ async def test_tick_records_one_sample():
     await sampler._tick()
     assert len(sink.samples) == 1
     assert sink.samples[0].disk_total_bytes == 3
+
+
+async def test_slow_collector_leaves_the_event_loop_available() -> None:
+    sink = _RecordingSink()
+    entered = threading.Event()
+    release = threading.Event()
+
+    def collect() -> ResourceSampleRecord:
+        entered.set()
+        release.wait(timeout=2)
+        return _fake_record()
+
+    sampler = ResourceSampler(sink, interval_seconds=999, collector=collect)
+    tick = asyncio.create_task(sampler._tick())
+    try:
+        assert await asyncio.to_thread(entered.wait, 1)
+        assert not tick.done()
+    finally:
+        release.set()
+        await tick
+    assert len(sink.samples) == 1
 
 
 async def test_start_stop_runs_loop():

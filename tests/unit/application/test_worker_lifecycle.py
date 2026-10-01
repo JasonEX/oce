@@ -214,6 +214,32 @@ async def test_failure_commits_retry_state_before_releasing_delivery(monkeypatch
     assert queue.processing == []
 
 
+@pytest.mark.parametrize(
+    "status", [status for status in BlobStatus if status is not BlobStatus.PENDING]
+)
+async def test_late_worker_failure_does_not_change_a_nonpending_blob(
+    status: BlobStatus,
+) -> None:
+    factory, queue, _, pipelines, worker = _runtime()
+    name, command = _upload()
+    await IngestBlobsCommandHandler(factory, pipelines).handle(command)
+    blob = factory.uow.blobs.blobs[name]
+    blob.status = status
+    blob.retry_count = 2
+    queue.processing.append(name)
+    queue.pending.add(name)
+
+    await worker._handle_failure(0, name, RuntimeError("late provider failure"))
+
+    assert blob.status is status
+    assert blob.retry_count == 2
+    assert name in factory.uow.blobs.staging
+    assert queue.failed == [name]
+    assert queue.main == []
+    assert queue.pending == set()
+    assert queue.processing == []
+
+
 async def test_maintenance_finishes_active_batch_and_resumes_after_reset(monkeypatch):
     factory, queue, embedder, pipelines, worker = _runtime()
     name, command = _upload()

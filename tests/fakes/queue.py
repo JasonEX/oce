@@ -57,6 +57,9 @@ class FakeQueue:
     async def inflight_set(self) -> set[str]:
         return set(self.pending)
 
+    async def inflight_count(self) -> int:
+        return len(self.pending)
+
     async def recover_processing(self) -> int:
         recovered = len(self.processing)
         while self.processing:

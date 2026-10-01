@@ -100,6 +100,9 @@ class ResolveScopeQueryHandler:
     async def handle(self, query: ResolveScopeQuery) -> ResolveScopeResult:
         """Resolve ``(checkpoint members | added) - deleted`` into the retrieval scope.
 
+        Only ready metadata enters the materialized scope. Non-ready identities
+        are retained as exclusions for SQL's checkpoint relation, so becoming
+        ready after resolution does not widen the frozen scope.
         Whole-index retrieval is disabled: the client must declare a working
         set through ``checkpoint_id`` or ``added_blobs``; ``deleted_blobs``
         only subtracts and declares nothing. An invalid checkpoint (malformed,
@@ -110,12 +113,16 @@ class ResolveScopeQueryHandler:
         base: set[str] = set()
         chain_id: str | None = None
         chain_version: int | None = None
-        if query.checkpoint_id:
-            parsed = Chain.parse_checkpoint_token(query.checkpoint_id)
-            if parsed is None:
-                raise InvalidCheckpointTokenError(query.checkpoint_id)
-            chain_id, expected_version = parsed
-            async with self._uow_factory() as uow:
+        if not query.checkpoint_id and not query.added_blobs:
+            raise ScopeRequiredError()
+        added = frozenset(query.added_blobs)
+        deleted = frozenset(query.deleted_blobs)
+        async with self._uow_factory() as uow:
+            if query.checkpoint_id:
+                parsed = Chain.parse_checkpoint_token(query.checkpoint_id)
+                if parsed is None:
+                    raise InvalidCheckpointTokenError(query.checkpoint_id)
+                chain_id, expected_version = parsed
                 chain = await uow.chains.get(chain_id)
                 if chain is None or chain.version != expected_version:
                     raise NeedsResetError(
@@ -123,18 +130,24 @@ class ResolveScopeQueryHandler:
                     )
                 base = set(chain.members)
                 chain_version = chain.version
-        elif not query.added_blobs:
-            # Neither a checkpoint nor added_blobs: refuse whole-index retrieval.
-            raise ScopeRequiredError()
-        added = frozenset(query.added_blobs)
-        deleted = frozenset(query.deleted_blobs)
-        blob_names = frozenset((base | set(added)) - set(deleted))
+            declared = (base | set(added)) - set(deleted)
+            # Dense storage may still hold partial writes or a failed deletion.
+            # The metadata ready state gates every lane's declared scope.
+            declared_scope = SearchScope(
+                blob_names=frozenset(declared),
+                chain_id=chain_id,
+                chain_version=chain_version,
+                added_blob_names=added,
+                deleted_blob_names=deleted,
+            )
+            blob_names = frozenset(await uow.blobs.ready_names(declared_scope))
+            excluded = deleted | (declared - blob_names)
         return ResolveScopeResult(
             SearchScope(
                 blob_names=blob_names,
                 chain_id=chain_id,
                 chain_version=chain_version,
                 added_blob_names=added,
-                deleted_blob_names=deleted,
+                deleted_blob_names=excluded,
             )
         )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 
 from oce.domain.services.search import SearchHit, SearchHitKey, search_hit_key
+from oce.domain.services.selector.budget import fit_leading_hit
 from oce.domain.services.selector.protocols import SelectionMode
 
 
@@ -65,7 +66,9 @@ class CoverageSelector:
         if max_chars is not None:
             # A caller reserving room for relation sections lowers the budget;
             # it can never raise it above the configured hard limit.
-            char_budget = max(1, min(char_budget, max_chars))
+            char_budget = min(char_budget, max_chars)
+        if char_budget <= 0:
+            return []
 
         # Coverage gives every file one chunk before any file gets a second;
         # focused keeps strict relevance order. Both share the overlap
@@ -90,6 +93,10 @@ class CoverageSelector:
                 hit_chars = len(hit.content)
                 if selected and used_chars + hit_chars > char_budget:
                     continue
+
+                if not selected:
+                    hit = fit_leading_hit(hit, char_budget)
+                    hit_chars = len(hit.content)
 
                 selected.append(hit)
                 seen.add(key)

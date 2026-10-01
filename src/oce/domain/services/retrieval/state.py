@@ -74,6 +74,9 @@ class ExactEvidence:
     # requested symbol makes the SQL answer decisive; a definition of one of
     # the disambiguating types does not.
     primary_definition_found: bool = False
+    # Scope-wide recorded declaration counts, gathered only for an audited request.
+    # A chunk may contain several declarations; chunk counts cannot measure ambiguity.
+    definition_counts: tuple[tuple[str, int], ...] = ()
 
 
 @dataclass(frozen=True)

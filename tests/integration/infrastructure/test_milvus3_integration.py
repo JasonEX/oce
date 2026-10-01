@@ -310,9 +310,14 @@ async def test_path_index_lite_lifecycle(tmp_path):
         stats = await client.index_stats()
 
         assert inserted == {"inserted": 2}
-        assert [(hit.blob_name, hit.path) for hit in hits] == [
-            (first_blob, "src/auth.py")
-        ]
+        assert [hit.blob_name for hit in hits] == [first_blob]
+        stored = await client._call(
+            "query",
+            "test_oce_paths",
+            filter=f'blob_name == "{first_blob}"',
+            output_fields=["path"],
+        )
+        assert [row["path"] for row in stored] == ["src/auth.py"]
         assert stats.exists is True
         assert stats.entities == 2
 

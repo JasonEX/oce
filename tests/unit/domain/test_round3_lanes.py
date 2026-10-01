@@ -23,7 +23,7 @@ from oce.domain.services.search import (
     SearchScope,
 )
 from oce.shared.config.settings import RetrievalSettings
-from tests.fakes.retrieval import retrieval_state
+from tests.fakes.retrieval import FakeExactSearchStore, retrieval_state
 
 
 def _hit(path, content, start=1, context=None, blob=None):
@@ -179,13 +179,6 @@ def test_deterministic_requests_skip_adaptive_rerankers_but_not_always():
     assert forced.dedicated is True
 
 
-class _Store:
-    async def find_definitions(
-        self, *, identifiers, scope, max_per_identifier=3, enclosing=None
-    ):
-        return []
-
-
 def _pipeline(**settings):
     class Embedder:
         async def embed_query(self, text):
@@ -199,7 +192,7 @@ def _pipeline(**settings):
         embedder=Embedder(),
         store=Search(),
         settings=RetrievalSettings(**settings),
-        exact_store=_Store(),
+        exact_store=FakeExactSearchStore(),
     )
 
 

@@ -12,8 +12,11 @@ from oce.application.worker import WorkerState
 
 
 class _FakeBlobs:
+    async def count_pending(self) -> int:
+        return 4
+
     async def list_pending_names(self):
-        return ["a", "b", "c", "d"]
+        raise AssertionError("A status count must not load pending identities")
 
 
 class _FakeUow:
@@ -35,8 +38,11 @@ class _FakeQueue:
     async def size(self):
         return 3
 
+    async def inflight_count(self) -> int:
+        return 2
+
     async def inflight_set(self):
-        return {"a", "b"}
+        raise AssertionError("A status count must not load inflight identities")
 
 
 async def test_queue_status_reports_counts_and_worker_state():

@@ -10,6 +10,7 @@ database and an embedded vector store without touching process-global state.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
@@ -151,9 +152,18 @@ class _CredentialRuntime:
         self._llm_clients = tuple(llm_clients)
         self._query_cache = query_cache
         self._on_ready = on_ready
+        self._reload_lock = asyncio.Lock()
 
-    async def reload(self) -> None:
-        embedding_replacement = await self._embedder.prepare_reload()
+    async def reload(self) -> str | None:
+        async with self._reload_lock:
+            return await self._reload_locked()
+
+    async def _reload_locked(self) -> str | None:
+        embedding_replacement = None
+        if self._embedder.enabled:
+            embedding_replacement = await self._embedder.prepare_reload()
+        else:
+            await self._embedder.validate_disabled_profile()
         # The reranker replacement exists exactly when a credential-backed
         # reranker is configured; both are discarded together on failure.
         rerank_replacement: tuple[CredentialConfiguredReranker, Reranker] | None
@@ -162,36 +172,44 @@ class _CredentialRuntime:
             try:
                 prepared = await self._reranker.prepare_reload()
             except Exception:
-                await self._embedder.discard_prepared(embedding_replacement)
+                if embedding_replacement is not None:
+                    await self._embedder.discard_prepared(embedding_replacement)
                 raise
             rerank_replacement = (self._reranker, prepared)
-        try:
-            await self._embedder.validate_prepared(embedding_replacement)
-        except Exception:
-            await self._embedder.discard_prepared(embedding_replacement)
-            if rerank_replacement is not None:
-                await rerank_replacement[0].discard_prepared(rerank_replacement[1])
-            raise
-        try:
-            await self._embedder.activate_prepared(embedding_replacement)
-        except Exception:
-            if rerank_replacement is not None:
-                await rerank_replacement[0].discard_prepared(rerank_replacement[1])
-            raise
-        if self._query_cache is not None:
-            await self._query_cache.clear_query_cache()
+        if embedding_replacement is not None:
+            try:
+                await self._embedder.validate_prepared(embedding_replacement)
+            except Exception:
+                await self._embedder.discard_prepared(embedding_replacement)
+                if rerank_replacement is not None:
+                    await rerank_replacement[0].discard_prepared(rerank_replacement[1])
+                raise
+            try:
+                await self._embedder.activate_prepared(embedding_replacement)
+            except Exception:
+                if rerank_replacement is not None:
+                    await rerank_replacement[0].discard_prepared(rerank_replacement[1])
+                raise
+            if self._query_cache is not None:
+                await self._query_cache.clear_query_cache()
         if rerank_replacement is not None:
             await rerank_replacement[0].activate_prepared(rerank_replacement[1])
         # LLM clients have no prepare/activate phases: reload swaps the
-        # delegate atomically. A failed refresh is logged and never rolls
-        # back the embedder and reranker that were already activated.
+        # delegate atomically. A failed refresh does not roll back clients
+        # already activated, but the response reports the partial result.
+        failures: list[str] = []
         for client in self._llm_clients:
             try:
                 await client.reload()
             except Exception as exc:
-                logger.warning("LLM client reload failed: {}", exc)
+                failure = f"{client.kind} ({type(exc).__name__})"
+                failures.append(failure)
+                logger.warning("Model credential reload failed: {}", failure)
         if self._on_ready is not None:
             await self._on_ready()
+        if failures:
+            return "Model credentials only partially reloaded: " + ", ".join(failures)
+        return None
 
 
 # ── subsystem builders ───────────────────────────────────────────────────
@@ -646,7 +664,14 @@ class Container:
                     self.worker.maintenance if self.worker is not None else None
                 ),
             ),
-            gc=GcCommandHandler(uow_factory, delete_blobs, self.queue),
+            gc=GcCommandHandler(
+                uow_factory,
+                delete_blobs,
+                self.queue,
+                maintenance=(
+                    self.worker.maintenance if self.worker is not None else None
+                ),
+            ),
         )
 
     def _build_queries(
@@ -713,9 +738,7 @@ class Container:
         """Validate persisted artifacts before workers or data-plane traffic start."""
         embedding = self.models.embedding_runtime
         if not embedding.enabled:
-            await self.index_lifecycle.ensure_compatible(
-                await embedding.resolve_index_profile()
-            )
+            await embedding.validate_disabled_profile()
             return True
         try:
             replacement = await embedding.prepare_reload()

@@ -13,7 +13,6 @@ from oce.domain.services.search import SearchHit
 class PathSearchResult:
     """One path index hit."""
 
-    path: str
     blob_name: str
     score: float
 
@@ -31,7 +30,7 @@ class PathSearchStore(Protocol):
         ...
 
     async def insert(self, path_docs: list[dict[str, Any]]) -> dict[str, Any]:
-        """Upsert path documents (path_id, blob_name, path, path_document, path_vector)."""
+        """Upsert full embedding documents; stored text fields are diagnostic prefixes."""
         ...
 
     async def delete_by_blob_names(self, blob_names: list[str]) -> None:

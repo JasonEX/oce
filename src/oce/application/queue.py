@@ -40,6 +40,10 @@ class Queue(Protocol):
         """Blob names in the main queue or in processing."""
         ...
 
+    async def inflight_count(self) -> int:
+        """Count queued and processing identities without loading the set."""
+        ...
+
     async def purge(self) -> int:
         """Drop every queue key; returns how many messages were in flight.
 

@@ -1,6 +1,7 @@
 """Issue text yields deterministic recall evidence."""
 
 from oce.domain.services.query_evidence import extract_query_evidence
+from oce.domain.services.retrieval.route import route_query
 
 _ISSUE = """Calling `Dataset.to_zarr` fails.
 Traceback (most recent call last):
@@ -65,3 +66,14 @@ def test_quoted_phrases_skip_single_identifiers_and_urls():
     )
     assert evidence.phrases == ("connection pool exhausted",)
     assert evidence.identifiers == ("retry_once",)
+
+
+def test_route_records_title_names_without_body_only_identifiers():
+    route = route_query(
+        "  `Session.get` fails.\n`Cache` and `setup_helper` appear in the reproduction.",
+        path_index_available=False,
+    )
+
+    assert route.title_identifiers == ("Session.get", "get")
+    assert "Cache" in route.lookup_identifiers
+    assert "setup_helper" in route.lookup_identifiers

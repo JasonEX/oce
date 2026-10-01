@@ -43,7 +43,7 @@ def _hit(path: str, content: str) -> SearchHit:
     )
 
 
-class BrokenExactStore:
+class BrokenExactStore(FakeExactSearchStore):
     async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
         raise RuntimeError("symbol table unavailable")
 
@@ -122,6 +122,50 @@ async def test_a_healthy_request_records_no_lane_failures():
     )
 
     assert audit.lane_failures == {}
+
+
+async def test_failed_definition_counts_keep_the_exact_answer():
+    class BrokenCountStore(FakeExactSearchStore):
+        async def definition_counts(self, *, identifiers, scope):
+            raise TimeoutError()
+
+    exact = _hit("src/settings.py", "def load_settings(): pass")
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(),
+        exact_store=BrokenCountStore([exact]),
+        settings=RetrievalSettings(_env_file=None, relation_reserve_chars=0),
+    )
+    audit = RetrievalAudit()
+
+    hits = await pipeline.search(
+        "Where is `load_settings` defined?", SearchScope(frozenset({BLOB})), audit=audit
+    )
+
+    assert hits == [exact]
+    assert audit.dense_route == "skip:exact_definition"
+    assert audit.lane_failures == {"definition_counts": "TimeoutError"}
+
+
+async def test_missing_required_header_method_is_audited():
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(),
+        exact_store=object(),
+        settings=RetrievalSettings(_env_file=None),
+    )
+    hit = _hit("src/settings.py", "settings = {}")
+    state = retrieval_state(
+        "How are settings configured?",
+        SearchScope(frozenset({BLOB})),
+        audit=RetrievalAudit(),
+        intent=QueryIntent.FEATURE,
+    )
+
+    await pipeline.ranker.mark_header_chunks(state, [hit])
+
+    assert state.audit is not None
+    assert state.audit.lane_failures == {"header_kinds": "AttributeError"}
 
 
 async def test_relation_lane_failure_is_named_by_its_role():

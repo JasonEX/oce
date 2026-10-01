@@ -202,6 +202,10 @@ class CredentialConfiguredEmbedder(SwappableDelegate[OpenAIEmbedder]):
             return EmbeddingIndexProfile(enabled=False)
         return self.index_profile_for_config(await self._resolve_config())
 
+    async def validate_disabled_profile(self) -> None:
+        if self._on_index_profile is not None:
+            await self._on_index_profile(EmbeddingIndexProfile(enabled=False))
+
     @staticmethod
     def index_profile_for_config(
         config: EmbeddingRuntimeConfig,

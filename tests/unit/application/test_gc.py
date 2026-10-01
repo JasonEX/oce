@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from oce.application.commands.gc import GcCommand, GcCommandHandler
 
 
@@ -62,6 +64,7 @@ class _FakeDeleteHandler:
 
     async def handle(self, command):
         self.calls.append(command.blob_names)
+        return len(command.blob_names)
 
 
 async def test_gc_dry_run_counts_without_deleting():
@@ -108,3 +111,23 @@ async def test_gc_without_queue_treats_all_expired_as_deletable():
 
     assert result.deletable_blobs == 2
     assert result.skipped_inflight == 0
+
+
+async def test_only_real_gc_uses_worker_maintenance():
+    events = []
+
+    @asynccontextmanager
+    async def maintenance():
+        events.append("enter")
+        yield
+        events.append("exit")
+
+    handler = GcCommandHandler(
+        _uow_factory(_FakeChains([]), _FakeBlobs([])),
+        _FakeDeleteHandler(),
+        maintenance=maintenance,
+    )
+    await handler.handle(GcCommand(dry_run=True))
+    assert events == []
+    await handler.handle(GcCommand(dry_run=False))
+    assert events == ["enter", "exit"]

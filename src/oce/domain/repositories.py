@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from oce.domain.blob.blob import Blob
     from oce.domain.chain.chain import Chain
     from oce.domain.chunk import Chunk, LocatedChunk
+    from oce.domain.services.search import SearchScope
 
 
 class BlobRepository(Protocol):
@@ -17,6 +18,10 @@ class BlobRepository(Protocol):
     async def get_many(self, blob_names: Sequence[str]) -> dict[str, Blob]: ...
 
     async def exists_many(self, blob_names: Sequence[str]) -> dict[str, bool]: ...
+
+    async def ready_names(self, scope: SearchScope) -> set[str]:
+        """Ready identities from a working set, without loading chunk references."""
+        ...
 
     async def save(self, blob: Blob) -> None: ...
 
@@ -30,6 +35,16 @@ class BlobRepository(Protocol):
 
     async def delete_many(self, blob_names: Sequence[str]) -> None: ...
 
+    async def mark_deleting(
+        self, blob_names: Sequence[str], *, ttl_days: int | None = None
+    ) -> list[str]:
+        """Retain unreferenced identities until every vector store deletes them."""
+        ...
+
+    async def delete_deleting(self, blob_names: Sequence[str]) -> None:
+        """Remove only identities still owned by the deletion lifecycle."""
+        ...
+
     async def find_pending(
         self, blob_names: Sequence[str] | None = None
     ) -> list[Blob]: ...
@@ -38,6 +53,10 @@ class BlobRepository(Protocol):
         self, *, limit: int | None = None, after: str | None = None
     ) -> list[str]:
         """Pending identities in name order, optionally one bounded keyset page."""
+        ...
+
+    async def count_pending(self) -> int:
+        """Count pending tasks without loading their identities."""
         ...
 
     async def list_ready_names(self, limit: int) -> list[str]:

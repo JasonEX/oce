@@ -6,7 +6,7 @@
 
 **自托管、ACE 兼容的代码检索服务，为 AI 编码代理提供精准上下文。**
 
-dense + exact + path 混合召回 · cAST 语义切块 · 按需重排 · 任务感知选择
+Dense + exact + 词法 + 路径检索 · 语义切块 · 可选重排
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -19,46 +19,40 @@ dense + exact + path 混合召回 · cAST 语义切块 · 按需重排 · 任务
 
 </div>
 
-OpenContextEngine 是一个自托管、ACE 兼容的代码检索服务。它用 cAST 语义切块索引源码，
-把元数据存入 PostgreSQL 或 SQLite，在 Milvus 3.0 中做 dense 向量检索，可选调用专用
-rerank API 或 chat LLM 重排，再按任务类型选择上下文。
+OpenContextEngine 是面向 AI 编码代理的自托管、ACE 兼容代码检索服务。它结合语义向量、精确
+标识符、词法文本和文件路径，从客户端声明的工作集中返回源码上下文。
 
-它提供两种部署模式：零依赖的**个人模式**（SQLite + 内嵌 Milvus Lite，后台 worker 关闭），
-面向单机；以及**服务模式**（PostgreSQL + Milvus 3.0 + Redis），面向共享、更高吞吐的部署。
+单机使用**个人模式**（SQLite + 内嵌 Milvus Lite，同步索引）；多人或多台机器共享索引时使用
+**服务模式**（PostgreSQL + Milvus 3.0 + Redis，后台索引）。两种模式遵循同一套检索与索引合同。
 
-项目完全开源，服务端和客户端分别维护：
+服务端和客户端分别维护：
 
 - 服务端：<https://github.com/JasonEX/oce>
 - 客户端：<https://github.com/JasonEX/oce-client>
 
-这是此前 ACE 服务的重构版本，相关背景和早期实现见
+这是此前 ACE 服务的重构版本，相关背景见
 [linux.do 讨论](https://linux.do/t/topic/2308140/125)。
-
-如果你只想在本机给 AI 编码工具提供代码上下文，直接使用个人模式即可；如果需要让多台
-机器或多个用户共享同一套索引，再部署服务模式并配合 `oce-client`。
 
 ## 特性
 
-- **混合检索** —— 并发的 dense 语义召回（Milvus 3.0）、exact 精确标识符查找（`symbol_occurrences`）与独立路径索引，用加权 rank fusion 融合。
-- **cAST 语义切块** —— 基于 tree-sitter 沿语义边界切分源码，而非机械的行窗口。
-- **可组合重排 + 任务感知选择** —— 专用 reranker 提供低延迟相关性排序，chat LLM 负责全局比较实现语义；二者可单独运行，也可级联。两种重排都保留输入候选集，裁剪只由显式召回过滤与最终 selector 执行。
-- **两种部署模式** —— 零依赖个人模式（SQLite + 内嵌 Milvus Lite）面向单机；服务模式（PostgreSQL + Milvus 3.0 + Redis）面向共享与更高吞吐。
-- **ACE 兼容 API** —— 面向 ACE 客户端的 `/agents/*` 接口，Bearer 鉴权保护。
-- **清晰的 DDD/CQRS 架构** —— 依赖向内收敛；infrastructure 只由 composition root 装配，业务逻辑保持可测。
-- **运维 admin API + 监控** —— 独立 admin key 的接口面管理模型凭据、嵌入队列与垃圾回收；旁路 metrics 管线记录调用/token/资源指标与检索各阶段审计。
-- **[黑盒检索评测体系](benchmarks/README.md)** —— 只通过发布版 client 与稳定 API 驱动服务，覆盖英中双语短查询、Python/TypeScript/Rust 人工复核的架构查询，以及固定版本的 SWE-bench/SWE-Explore issue 评测，不导入服务端实现，也不直读数据库。
+- **混合检索** —— 按查询意图组合独立的 dense、精确标识符、SQL 词法、路径索引与精确路径查找车道。
+- **语义源码上下文** —— cAST/tree-sitter 切块保留代码边界和封闭作用域；结果可附带相关定义、调用者、实现、测试与重导出。
+- **可选重排** —— API 或本地 ONNX reranker 与 chat LLM 可单独运行，也可级联；最终选择遵守各类任务的代码字符预算。
+- **ACE 兼容 API 与 MCP 客户端** —— Bearer 鉴权保护上传、checkpoint 和检索，按工作集隔离。
+- **运维与监控** —— 独立 admin 鉴权管理模型凭据、队列恢复、垃圾回收和索引/调用/token/资源统计。
+- **[黑盒评测](benchmarks/README.md)** —— 通过发布版客户端和稳定 API 评测双语查询、人工复核的架构查询与固定源码版本的 issue 任务。
 
 <details>
 <summary><strong>目录</strong></summary>
 
-- [特性](#特性)
 - [环境要求](#环境要求)
 - [个人模式](#个人模式)
 - [服务模式](#服务模式)
+- [可选模型](#可选模型)
+- [运维](#运维)
 - [客户端与 MCP](#客户端与-mcp)
 - [API](#api)
-- [架构](#架构)
-  - [检索管线](#检索管线)
+- [架构与检索](#架构与检索)
 - [测试](#测试)
 - [许可](#许可)
 
@@ -68,90 +62,32 @@ rerank API 或 chat LLM 重排，再按任务类型选择上下文。
 
 - Python 3.11 及以上
 - [uv](https://docs.astral.sh/uv/)
+- 默认启用向量时，需要可用的嵌入端点及其凭据
 
-个人模式无需其它依赖：元数据落在 SQLite，向量落在内嵌的 Milvus Lite 文件。服务模式额外
-需要 PostgreSQL 16、Milvus 3.0 和 Redis；其开发用编排见 `docker-compose.dev.yml`。
+个人模式不需要单独部署数据库、向量或队列服务。服务模式使用 PostgreSQL 16、Milvus 3.0
+和 Redis，开发用依赖编排见 `docker-compose.dev.yml`。
 
 ## 个人模式
 
-个人模式适合本机使用，不需要单独部署 PostgreSQL、Milvus 或 Redis。安装 CLI、生成配置、
-填好嵌入 key，然后启动：
+安装 CLI 并生成配置：
 
 ```powershell
 uv tool install "git+https://github.com/JasonEX/oce.git"
 oce init                    # 生成 ~/.oce/data/.env
 ```
 
-本 fork 不发布 PyPI。正式版本请使用带版本号的 GHCR 镜像；也可以像上面一样直接从 Git
-源码安装当前版本。
+本 fork 不发布 PyPI。上面的命令安装当前 Git 源码，已发布的服务端镜像位于 GHCR。
 
-源码准入版本 2 允许索引以 `-retrieval-eval` 结尾的普通目录。从版本 1 索引升级时，
-需要使用新数据目录并通过客户端完整重新同步；启动时会拒绝不兼容的索引。
-
-编辑 `~/.oce/data/.env`。嵌入服务是建库和检索所需的唯一必填项；默认配置使用 SiliconFlow
-和 Qwen3-Embedding-4B（输出 1024 维向量）：
+编辑 `~/.oce/data/.env` 并填入嵌入 key。默认使用 SiliconFlow 和 Qwen3-Embedding-4B，
+向量为 1024 维：
 
 ```dotenv
 EMBED_API_KEY=你的嵌入服务密钥
-# 以下两项已有默认值，只有更换供应商或模型时才需要修改
+# 使用其它端点或模型时修改这些配置。
 EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
+EMBED_DIMENSIONS=1024
 ```
-
-嵌入会把准入后的源码块发送到配置的 endpoint；可选重排和 LLM 功能还会发送检索 query 和候选源码
-片段。私有代码只应使用获准接收这些数据的端点，优先选择本地或内网服务。
-
-新生成的个人模式配置默认关闭可选重排，需要先选择运行方式和数据边界。
-API provider 适合可预期的相关性排序：
-
-```dotenv
-RERANK_ENABLED=true
-RERANK_PROVIDER=api
-RERANK_API_KEY=你的 rerank 服务密钥
-RERANK_ENDPOINT=https://provider.example.com/v1/rerank
-RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
-# 对默认 50 条候选窗完整排序；provider 未返回的候选仍保留
-RERANK_TOP_N=50
-# 限制对每个候选重复读取的 query 长度；保留 issue 开头的主要上下文
-RERANK_MAX_QUERY_CHARS=2400
-# adaptive 在 exact symbol / path 证据已回答问题时跳过调用
-RETRIEVAL_RERANK_POLICY=adaptive
-# Qwen 报告任务 instruction 通常有增益；provider 不支持时请置空
-# RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
-```
-
-强 chat LLM 可以替代专用 reranker，或在它之后继续判断跨语言语义、真实实现与转发代码、
-多文件行为。质量优先的级联建议先把第二阶段限制为 20 个候选，再在自己的 workload 上测量：
-
-```dotenv
-LLM_RERANK_ENABLED=true
-LLM_API_KEY=你的 LLM 服务密钥
-LLM_BASE_URL=https://provider.example.com/v1
-LLM_MODEL=deepseek-v4-flash
-RETRIEVAL_LLM_RERANK_POLICY=adaptive
-LLM_MAX_CANDIDATES=20
-LLM_RERANK_TIMEOUT_SECONDS=15
-```
-
-`RERANK_ENABLED` 与 `LLM_RERANK_ENABLED` 授权各自的重排阶段；两个 `*_POLICY` 只决定已启用
-模型看到哪些查询，且两种模型共用同一份确定性判断。API provider 和 chat LLM 会向各自 endpoint 外发数据，local provider 不外发。`adaptive` 在 exact symbol/path 证据
-已足够时跳过模型调用，reference 查询不交给 chat LLM 以保留 occurrence 覆盖，而
-feature/flow/overview/compound 查询两者都用。`always` 对所有至少两个候选的结果重排，
-适合质量优先部署与受控对照。每次检索的路由（`dedicated`、`dedicated+llm` 或
-`skip:<原因>`）记录在 `retrieval_metrics.rerank_route`。专用 reranker 有两种提供方式：
-`RERANK_PROVIDER=api` 把 query 和候选源码发到远端 rerank 端点；`RERANK_PROVIDER=local` 在进程内跑
-ONNX 交叉编码器（`uv sync --extra local-rerank`，`RERANK_LOCAL_MODEL_DIR` 指向含 `model_int8.onnx`
-与 `tokenizer.json` 的目录，例如 `jinaai/jina-reranker-v2-base-multilingual` 的 onnx 导出），不外发任何
-数据。该评测模型使用 [CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)，部署前必须单独核对模型的使用权，或改用兼容的其他导出。实测的 16 核 CPU 上 20 个候选约 1.2 秒。同时启用两种后端时，管线按专用 reranker
-→ chat LLM 级联。默认关闭只是运行成本和数据边界，不代表质量高低。当前 development
-benchmark 中，本地 reranker 曾明显改善长 issue 排序，保持短结构查询 Top-1，但没有改善较小的
-语义集；在后来加入的结构化头部车道（traceback 帧锚点、已退休的 hub 车道）之上复测，它在所有套件上都是
-净负（semantic nDCG@10 74.9→72.9、issue nDCG@100 74.3→62.0，向量类请求各多约 1.2 秒），因此
-保持关闭；adaptive 策略下，SQL 使用点已经回答的 reference 请求记为
-`rerank_route = skip:deterministic`，symbol/path 请求仍分别记为 `skip:exact_definition` 与
-`skip:path_evidence`；`always` 仍会运行。详见
-[第三轮 benchmark 报告](benchmarks/results/utility-round3-2026-09-09.md)。无论窗口多大，
-窗口外候选都不会被 reranker 删除，仍可进入最终选择。
 
 然后启动服务：
 
@@ -159,348 +95,320 @@ benchmark 中，本地 reranker 曾明显改善长 issue 排序，保持短结�
 oce serve                   # http://127.0.0.1:8986
 ```
 
-个人模式默认只监听 `127.0.0.1`，并预填客户端约定的 `API_KEY=sk-opencontextengine`。如果
-要监听局域网或公网地址，请改用强随机 `API_KEY`，并在客户端同步设置 `OCE_API_KEY`。
+`oce serve` 自动执行数据库迁移，并补齐个人模式默认值：data 目录中的 SQLite 数据库与
+Milvus Lite 文件，以及 `WORKER_ENABLED=false`。上传在请求内同步索引。生成的
+`API_KEY=sk-opencontextengine` 与客户端默认值一致；服务暴露到本机以外时，请改用强随机
+`API_KEY`，并在客户端设置相同的 `OCE_API_KEY`。
 
-`oce serve` 启动时会自动执行数据库迁移（Alembic），然后准备好 SQLite、内嵌 Milvus Lite
-文件和一个关闭的后台 worker，因此 `oce init` 只暴露你真正要填的少量 key。生成的 `.env`
-放在 data 目录，每次启动自动加载。常用参数：
+data 目录中的 `.env.local` 覆盖 `.env`，已有进程环境变量优先于两者。`${VAR}` 引用按这
+两个文件的顺序展开；存在同名进程变量时使用进程值。常用参数：
 
-- `--data-dir <path>` —— 数据库、向量文件和 `.env` 的存放位置（默认 `~/.oce/data`）
-- `--env-file <path>` —— 改为加载指定的 `.env`（优先级最高）
-- `--port <n>` / `--host <addr>` —— 监听地址（默认 `127.0.0.1:8986`）
+| 参数 | 用途 |
+| --- | --- |
+| `--data-dir <path>` | 数据库、向量文件和配置目录，默认 `~/.oce/data` |
+| `--env-file <path>` | 改为读取指定文件；该文件提供的值覆盖进程变量 |
+| `--host <addr>` / `--port <n>` | 监听地址，默认 `127.0.0.1:8986` |
+| `--reload` | 开启 Uvicorn 开发模式重载 |
 
-`oce version`（或 `oce --version`）打印当前版本；`oce -v serve` 把日志级别提到 INFO，
-`-vv` 提到 DEBUG（默认 WARNING，让检索管线的 info 日志保持安静）。
+`oce version` 与 `oce --version` 打印版本。`oce -v serve` 开启 INFO 日志，
+`oce -vv serve` 开启 DEBUG；CLI 默认级别为 WARNING。
 
-想临时试跑而不安装：
-`uvx --from "git+https://github.com/JasonEX/oce.git" oce serve`。
+临时运行而不安装：
+
+```powershell
+uvx --from "git+https://github.com/JasonEX/oce.git" oce serve
+```
 
 ## 服务模式
 
-服务模式面向多人或多台机器共享索引，由 PostgreSQL、Milvus 3.0 和 Redis 支撑。推荐使用
-仓库自带的 Docker Compose：
+根目录 Compose 会启动应用、PostgreSQL、Redis 和 Milvus 依赖：
 
 ```powershell
 git clone https://github.com/JasonEX/oce.git
 Set-Location oce
 Copy-Item .env.example .env
-# 编辑 .env：至少设置 API_KEY、ADMIN_API_KEY、EMBED_API_KEY；按需设置 LLM_API_KEY
+# 设置 API_KEY、ADMIN_API_KEY、EMBED_API_KEY、POSTGRES_PASSWORD 和 REDIS_PASSWORD。
 docker compose up -d
 ```
 
-根目录的 `docker-compose.yml` 会一起启动 OCE、PostgreSQL、Redis 和 Milvus 依赖；只向宿主机
-发布 OCE API，Milvus 保留在 Compose 内部网络。应用容器启动时自动执行迁移。服务模式务必
-把 `API_KEY` 和 `ADMIN_API_KEY` 换成强随机值，并在 `.env`
-中设置 Compose 使用的 `POSTGRES_PASSWORD`、`REDIS_PASSWORD`；不要把真实密钥提交到仓库。
-开发环境若只想启动依赖、在宿主机运行应用，可使用 `docker-compose.dev.yml`，但要先把
-`.env` 中的 `DB_URL`、`REDIS_URL` 改为该文件映射到宿主机的端口，再执行
-`uv run alembic upgrade head` 和 `uv run uvicorn`。
+只有应用 API 端口发布到宿主机，应用容器启动时执行迁移。真实凭据应保留在仓库以外。
+Compose 会把 `.env` 注入应用进程环境；如需其它文件，请显式配置 Compose 的 `env_file`。
 
-也可以直接使用已经发布的镜像：
+若要在源码目录运行应用、仅把依赖放在 Docker 中：
+
+```powershell
+uv sync --extra dev
+docker compose -f docker-compose.dev.yml up -d
+# 按开发编排的宿主端口和凭据设置 DB_URL 与 REDIS_URL。
+# DB: 127.0.0.1:25432；Redis: 127.0.0.1:26379；Milvus: 127.0.0.1:19530。
+uv run alembic upgrade head
+uv run uvicorn oce.main:app --host 127.0.0.1 --port 8986
+```
+
+源码启动时，所有配置组按工作目录中的 `.env`、`.env.local` 顺序读取，进程变量优先。
+可用配置及默认值见 [.env.example](.env.example)。
+
+也可以在自己的编排中使用已发布镜像：
 
 ```powershell
 docker pull ghcr.io/jasonex/oce:latest
 ```
 
-在自己的 Compose、Kubernetes 或其它编排文件中，将应用服务镜像设为
-`ghcr.io/jasonex/oce:latest`，并提供下面三个服务连接配置：`DB_URL`、`REDIS_URL` 和
-`MILVUS_ENDPOINT`。镜像入口默认监听容器内的 `8986` 端口。
+固定部署请选择带版本号的镜像，并提供 `DB_URL`、`REDIS_URL` 和 `MILVUS_ENDPOINT`；
+镜像监听容器内的 `8986` 端口。
 
-### Admin 管理面板
+## 可选模型
 
-服务启动后可使用官方在线面板：<https://oce-ai.github.io/oce-admin>。
+嵌入会把准入后的源码块和语义查询发送到 `EMBED_ENDPOINT`；API reranker 把查询与候选源码
+发送到 `RERANK_ENDPOINT`；chat 重排把查询与候选片段发送到 LLM 端点，query rewrite
+只发送查询。请使用获准接收这些数据的端点。`RERANK_PROVIDER=local` 在进程内重排，不发出外部调用。
 
-1. 在服务端设置独立的 `ADMIN_API_KEY`（不设置时会回落到 `API_KEY`）。
-2. 在面板中填写服务地址和 admin key。
-3. 通过面板管理模型凭据、队列、垃圾回收和监控指标。
+两种重排默认都关闭。启用 API reranker：
 
-admin key 只保存在浏览器本地存储中，不要写入 URL、仓库或日志。自定义面板域名时，用
-`CORS_ORIGINS` 配置允许的来源。
+```dotenv
+RERANK_ENABLED=true
+RERANK_PROVIDER=api
+RERANK_API_KEY=你的 rerank 服务密钥
+RERANK_ENDPOINT=https://provider.example.com/v1/rerank
+RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+RERANK_TOP_N=50
+RERANK_MAX_QUERY_CHARS=2400
+RETRIEVAL_RERANK_POLICY=adaptive
+# provider 不支持 task instruction 时，将 RERANK_INSTRUCTION 置空。
+```
 
-模型客户端从单张 `model_credentials` 表按 `kind`（`embed`、`rerank`、`llm_rerank`、
-`query_rewrite`）解析凭据：取 status=active 中 `priority` 数字最小的一行。某个
-kind 没有匹配的启用行时，对应客户端回退到各自的环境变量（`EMBED_*`、`RERANK_*`、`LLM_*`；
-重排还会复用嵌入 key）。通过 `/admin/credentials` API 管理这些行，再调
-`POST /admin/credentials/reload` 可在不重启服务的情况下热重载运行凭据。嵌入 API key、凭据
-超时和凭据批量限制可原位更新；更换嵌入 endpoint、模型、维度或文档输入窗口前，必须准备
-干净的元数据与向量存储，再让客户端完整重同步；不兼容的热重载会被拒绝。
+chat LLM 可以单独运行，或接在专用 reranker 后面。下面的例子把第二阶段限制为 20 个候选，
+配置默认值为 50：
 
-空索引第一次使用时，OCE 会持久化一份不含密钥的 SHA-256 profile，覆盖解析后的 embedding
-endpoint 哈希、模型、维度、query instruction 哈希、文档窗口，以及 chunker 模式/配置/版本、
-Milvus endpoint/collection 标识、path index 模式、dense metric、索引 schema、symbol
-extraction 和 path-document 版本。每次启动都会在 worker 运行前将当前配置与该 profile
-比对。配置不匹配，或旧索引已有数据却没有 profile 时，服务会 fail closed，且不会改动旧
-数据。此时应改用新的 data directory（服务模式则使用新的数据库和 Milvus collection
-名称），再让客户端完整重同步。OCE 不会再把旧向量与新模型静默混用、让 ready 元数据连接
-到另一套向量 collection，也不会在切块行为变化后继续复用旧 chunks。
+```dotenv
+LLM_RERANK_ENABLED=true
+LLM_API_KEY=你的 LLM 服务密钥
+LLM_BASE_URL=https://provider.example.com/v1
+LLM_MODEL=你的 chat 模型
+LLM_MAX_CANDIDATES=20
+LLM_RERANK_TIMEOUT_SECONDS=15
+RETRIEVAL_LLM_RERANK_POLICY=adaptive
+```
 
-SiliconFlow 单次嵌入请求的 `input` 数组最多接受 32,000 字符。`max_batch_size` 和
-`max_batch_chars` 是每个凭据可覆盖的 provider 默认值。超过 `max_input_chars` 的输入会在
-文本边界带重叠地切分、分别嵌入，再按长度加权、池化并归一化成一个 chunk 向量。这种模型
-特定的分段不会改变领域层的 chunk 边界。
+`RERANK_ENABLED` 和 `LLM_RERANK_ENABLED` 授权相应阶段，`RETRIEVAL_*_POLICY` 再按查询
+决定是否调用：`adaptive` 在确定性证据足够时跳过，`always` 对至少两个候选的结果运行。
+两阶段均保留重排窗口之外的候选。查询改写单独通过
+`RETRIEVAL_QUERY_REWRITE_ENABLED` 启用，默认值为 `false`。
 
-包含多个明确句子或列表项的仓库级请求，会被分解成一个完整查询加若干有界 facet 查询。每个
-查询独立召回候选；结果用加权 rank fusion（`RETRIEVAL_RRF_K` 可调）融合后再重排。单查询
-模式用 `RETRIEVAL_DEFAULT_TOP_K`，多查询模式每个查询用 `RETRIEVAL_PER_QUERY_TOP_K` 控制
-候选池大小。静态 source prior 在模型之前应用，不会覆盖模型顺序。两种 reranker 都只提升
-队首候选，并保留其余顺序给最终 selector。`adaptive` chat-LLM 策略在 exact symbol/path 证据
-足够时跳过模型，reference 查询保留 occurrence 覆盖，feature/flow/overview/compound 查询则进行
-全局片段语义比较。最终选择对 symbol/path
-查询使用 focused 模式，按相关性顺序允许同文件提供更多片段；其他查询使用 coverage 模式，先
-覆盖不同文件再填充剩余预算。两种模式都抑制文件内重叠片段；focused 使用 12K 字符预算，
-coverage 保留 32K 仓库探索预算。设
-`RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` 可关闭分解，回到经典单查询召回。
+使用本地 ONNX reranker 时，从源码目录安装可选依赖，并自行准备模型文件：
 
-精确标识符召回直接关联 checkpoint 成员关系，大型工作集不会关闭 exact recall，也不会把全部
-成员展开为一个 SQL `IN (...)`。仅 added 组成的 scope 与异常大的请求增量会使用固定批次查询；
-超时仍回退 dense 检索。
-symbol index 由 tree-sitter 对整文件抽取 definition、endpoint、import 与调用点，并保留真实
-行号；无法加载 grammar 时回退 regex。调用点让 reference 和调用链查询拿到精确的使用证据，
-但这仍不是解析过的调用图：被调名没有绑定到接收者类型或具体实现。query embedding 最多取请求的前 `EMBED_MAX_QUERY_CHARS`（3,000）个
-字符；issue 长文超出的部分只会稀释向量并拖慢调用。SQLite 个人模式用 FTS5、PostgreSQL 服务模式用 `tsvector` 建立词法索引，
-补充召回 dense 不敏感的报错文案、日志文本与调用点。词法召回用于 reference、调用链、feature、
-overview 和复合查询；symbol/path 只在确定性证据缺失时补跑，引号或报错短语会强制启用。
-标识符同时按整体和子词入库，因此
-`ParseConfig`、`parse_config` 和自然语言里的 “parse the config” 可以相互命中。请求中的
-traceback 帧会变成精确路径与函数证据，引号内报错会变成短语查询。exact symbol 未命中时，
-词法回退只查标识符整体代理 token，不用宽泛高频子词。reference 查询会以该代理 token 作为
-词法召回的必要条件：片段必须包含完整标识符才能进入这一路，排序仍由全部词元决定。cAST chunk 的 embedding
-输入会带封闭作用域链（如 `class Foo > def bar`），结果中也会显示同一条 `Context:`。精确
-symbol 定义和 SQL 精确路径命中会占用有界头部槽位，不再与 RRF 分数直接混排。路径先验把文档目录
-（`docs/`、`doc/`、`examples/`、changelog）、变更记录、配置文件、`.pyi` 桩、`__init__.py`
-桶文件和测试文件视为实现文件之后的辅助材料，仓库根目录的 `README` 保持全权重。feature、
-compound、调用链和 reference 查询会给未被路径先验降权的实现文件保留前几个槽位（根目录
-`README` 在这条规则里仍按文档处理）：同时领先
-dense 和词法列表的测试或文档片段，其融合分数是乘性先验压不下去的；明确问测试的查询保持
-中立先验。reference 查询只提升 exact 或整标识符词法证据，并把被问符号自身的声明排在最先
-出现的使用位置之后。这两条头部规则在模型重排之后会再应用一次，层内保持模型给出的顺序；
-专用 reranker 最多只收到
-`RERANK_MAX_QUERY_CHARS` 个字符的请求文本，issue 长文不再成倍放大它的延迟。exact、
-路径查找和按意图的词法召回在 query embedding 往返之前就开始执行。选择后，同文件相邻
-片段会合并；调用链、feature 和 overview 查询可用主结果的剩余字符预算附带简短定义摘录，
-compound 查询不会对已选片段里的所有标识符扇出。请求刚加入的少量 `added_blobs` 还会获得轻量
-工作集先验。
+```powershell
+uv sync --extra local-rerank
+# 用该源码环境运行 uv run oce serve。
+```
 
-可复现消融可通过 `CHUNKING_SEMANTIC_ENABLED`、`RETRIEVAL_EXACT_ENABLED`、
-`RETRIEVAL_LEXICAL_ENABLED`、`RETRIEVAL_PATH_LOOKUP_ENABLED`、
-`RETRIEVAL_SOURCE_PRIORITY_ENABLED`、`RETRIEVAL_COVERAGE_SELECTION_ENABLED`、
-`RETRIEVAL_MERGE_ADJACENT_ENABLED` 与 `RETRIEVAL_RELATED_DEFINITIONS_ENABLED` 分别关闭
-结构化切块、exact recall、词法召回、路径查找、源码路径先验、coverage selector、相邻合并和
-相关定义扩展。切块配置变化后必须使用干净数据目录完整重同步，这些开关不会改写已有索引。
+```dotenv
+RERANK_ENABLED=true
+RERANK_PROVIDER=local
+RERANK_LOCAL_MODEL_DIR=/path/to/model-directory
+# 默认读取目录中的 model_int8.onnx 与 tokenizer.json。
+```
 
-上传准入会在切块前拒绝依赖/构建/缓存目录、`.env`、私钥、SSH/AWS 凭据目录、含 NUL 的文件，
-以及 SVG、媒体、压缩包、压缩打包产物、source map、lock 文件等非源码产物；`.env.example`
-等安全模板仍可索引。被跳过的路径会作为空的 ready blob 持久化，避免客户端反复重传。
-项目清单和测试固件有显式豁免。
+模型许可与服务端许可独立。评测使用的
+[`jinaai/jina-reranker-v2-base-multilingual`](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
+模型采用 CC-BY-NC-4.0；请核对使用权或选择兼容的其它导出。
+
+[第三轮报告](benchmarks/results/utility-round3-2026-09-09.md)记录了本地 reranker 在当时配置下
+的质量回退与 CPU 延迟；选择可选模型前，请在自己的工作负载上测量。
+按日期查阅对照结果，见[历史评测索引](benchmarks/results/README.md)。
+
+## 运维
+
+### Admin 面板与凭据
+
+官方面板：<https://oce-ai.github.io/oce-admin>。设置独立 `ADMIN_API_KEY`，在面板填入服务
+地址和 key，即可管理凭据、队列、GC 和统计。admin key 留空时回落到 `API_KEY`。
+面板把 key 存在浏览器本地存储中，请勿放进 URL 或日志。默认放行官方面板来源；其它来源
+用逗号分隔的 `CORS_ORIGINS` 配置，留空可关闭 CORS。
+
+凭据按 kind（`embed`、`rerank`、`llm_rerank`、`query_rewrite`）选择，启用行中 `priority`
+数值最小者优先。没有对应启用行时回落到 `EMBED_*`、`RERANK_*` 或 `LLM_*`；API 重排的
+key 为空时回落到嵌入 key。凭据响应只暴露 key 的末四位。
+
+修改凭据后调用 `POST /admin/credentials/reload`。兼容的 key、timeout 和批量限制变更无需
+重启。成功响应为 `{"reloaded": true, "reason": null}`；请检查 `reloaded` 和 `reason`：
+不兼容的 profile 会被拒绝，LLM 刷新失败可能报告部分重载，此时已切换的客户端继续生效。
+通过环境配置启用或关闭模型阶段需要重启。reload 刷新数据库凭据，不重读环境文件；成功
+重载只验证本地配置与索引兼容性，不探测远端 key 或 provider 可用性。
+
+### 索引兼容与查询缓存
+
+OCE 持久化不含密钥的 index profile，在接收索引任务前检查兼容性。改变嵌入身份、维度、
+文档输入语义或切块/索引语义时，需要新 data 目录；服务模式则使用新的 SQL 存储与 Milvus
+collection，再由客户端完整重同步。不兼容的启动或重载会 fail closed，保留旧数据。
+`EMBED_DIMENSIONS` 同时决定两个向量 collection 的维度和凭据校验。
+
+源码准入版本 2 允许以 `-retrieval-eval` 结尾的普通目录，版本 1 索引需要新存储及完整重同步。
+显式改变 `MILVUS_DENSE_INDEX_TYPE` 会重建本地 dense 索引并保留向量，与改变嵌入身份不同。
+
+重复语义查询使用进程内 query-vector LRU，默认容量 256、TTL 600 秒
+（`EMBED_QUERY_CACHE_MAX_ENTRIES`、`EMBED_QUERY_CACHE_TTL_SECONDS`），任一设为 `0` 可关闭。
+缓存只保存 query 哈希与向量；源码向量留在 Milvus，检索结果不缓存。兼容的嵌入凭据重载会
+清空该缓存。监控保存查询原文是另一项配置，默认关闭（`MONITORING_STORE_QUERY_TEXT=false`）。
+
+### 队列与垃圾回收
+
+服务模式中，SQL pending blob 与 staging 源码是持久任务依据，Redis 承载投递。
+`GET /admin/queue` 返回 `main_size`、`inflight`、`db_pending` 和 `worker_state`。
+`inflight` 统计尚未确认的投递身份，包括排队中与处理中的项。worker 关闭时返回
+`enabled=false` 和零队列计数；元数据数量请看 `/admin/index-stats`。
+
+`POST /admin/queue/reset` 默认接受 `{"mode":"sync","requeue":true}`。`sync` 清掉过期
+队列记录并补齐 pending 投递；`purge` 先清空队列再恢复 pending。`requeue=false` 只抑制本次
+立即补队，worker 的周期 replay 仍可能恢复持久 pending 任务。reset 修改前会等待活动批次
+结束。`POST /admin/queue/requeue-stale` 接受 `stale_hours`（默认 24）和 `limit`（默认 100），
+用于重新投递有 staging 的长时间 pending blob。
+
+GC 通过 admin 显式执行，删除前先预览：
+
+```powershell
+# ADMIN_API_KEY 未设置时，这里改用服务端 API_KEY。
+$adminHeaders = @{ Authorization = "Bearer $env:ADMIN_API_KEY" }
+$gc = @{ ttl_days = 30; dry_run = $true; limit = 1000 } | ConvertTo-Json
+Invoke-RestMethod http://127.0.0.1:8986/admin/gc `
+  -Method Post -Headers $adminHeaders -ContentType application/json -Body $gc
+# 确认后把 dry_run 改为 $false 再执行。
+```
+
+API 默认 `ttl_days=30`、`dry_run=true`、`limit=1000`，TTL 至少为一天。真实 GC 会等待 worker
+活动批次结束、跳过 inflight 身份，并在标记删除前重新检查最近活动与 checkpoint 引用。
+本轮被删除 checkpoint 释放的 blob 会留到后续 GC 回收。
+
+向量清理失败时，blob 保留为 `deleting`，后续 GC 可以重试；该身份不进入检索，复用它的
+上传或 checkpoint 请求返回可重试的 HTTP 503，直到删除完成。
+`/admin/index-stats` 的 `metadata.blobs_deleting` 与 ready、pending、error 计数一起展示。
+清理后同一份源码可以再次上传。状态转移与恢复细节见
+[docs/runtime-lifecycle.md](docs/runtime-lifecycle.md)。
 
 ## 客户端与 MCP
 
-客户端负责扫描本地工作区、上传变更、维护 checkpoint，并调用服务端检索当前代码。它是
-独立维护的 Rust 二进制，仓库见 <https://github.com/JasonEX/oce-client>：从
-[Releases](https://github.com/JasonEX/oce-client/releases) 下载对应 Windows、Linux 或 macOS 的
-压缩包并把 `oce-client` 放进 `PATH`，或用 Rust 1.88 及以上版本从源码构建
-（`cargo install --git https://github.com/JasonEX/oce-client --locked`）。PyPI 上的 Python 包
-`opencontextengine-client` 是已被取代的 0.1 版客户端。
+独立 Rust 客户端扫描工作区、上传变更、维护 checkpoint 并检索代码上下文。
+从[客户端 Releases](https://github.com/JasonEX/oce-client/releases)下载 Windows、Linux 或
+macOS 压缩包，把 `oce-client` 放进 `PATH`，也可以从源码构建：
 
 ```powershell
+cargo install --git https://github.com/JasonEX/oce-client --locked
 $env:OCE_API_URL = "http://127.0.0.1:8986"
-$env:OCE_API_KEY = "sk-opencontextengine"  # 服务模式请改为服务端 API_KEY
+$env:OCE_API_KEY = "sk-opencontextengine"  # 服务模式改为服务端 API_KEY
 $env:OCE_WORKSPACE = (Get-Location).Path
 
 oce-client sync
 oce-client retrieve "Where is request authentication implemented?"
 ```
 
-需要接入支持 MCP 的 AI 编码工具时，用同一个二进制启动 stdio server：
+PyPI 包 `opencontextengine-client` 是已被取代的 0.1 客户端。接入支持 MCP 的 AI 编码工具时，
+用同一个二进制启动 stdio server：
 
 ```powershell
 oce-client mcp --workspace C:\path\to\workspace
 ```
 
-`oce-client mcp` 会在后台建立初始索引、监听工作区变化，并把 `codebase-retrieval` 暴露为
-MCP 工具。多个工作区可重复传入 `--workspace`；此时工具调用必须指定对应的
-`workspace_folder`。API 地址、密钥和工作区也可以通过 `OCE_API_URL`、`OCE_API_KEY`、
-`OCE_WORKSPACE`/`OCE_WORKSPACES` 配置。请将密钥放在环境变量或 secret manager 中，不要写进
-MCP 配置文件。
+它在后台建立初始索引、监听变更，并暴露 `codebase-retrieval` 工具。多工作区可重复传入
+`--workspace`，工具调用须指定对应的 `workspace_folder`。环境变量等价配置为
+`OCE_API_URL`、`OCE_API_KEY` 和 `OCE_WORKSPACE`/`OCE_WORKSPACES`，凭据请放在进程环境
+变量或 secret manager 中。
 
 ## API
 
-鉴权分三档：
-
-- **公开**（无需鉴权）—— `GET /health`、`GET /version`
-- **数据面** —— `Authorization: Bearer <API_KEY>`
-- **Admin**（`/admin/*`）—— `Authorization: Bearer <ADMIN_API_KEY>`；未配置 `ADMIN_API_KEY` 时回落到 `API_KEY`
-
-后端默认已放行官方 `oce-admin` 面板 `https://oce-ai.github.io`，直接使用公共面板时无需额外配置。
-若面板部署在自定义域名或私有地址，用 `CORS_ORIGINS` 覆盖（多个来源用逗号分隔）；设
-`CORS_ORIGINS=`（留空）可关闭浏览器跨域调用。admin key 仅保存在面板浏览器的本地存储中，不要写入仓库或 URL。
+- **公开：** `GET /health`、`GET /version` 无需鉴权；`/health` 只报告存活，不探测模型 provider。
+- **数据面：** `Authorization: Bearer <API_KEY>`。
+- **Admin（`/admin/*`）：** `Authorization: Bearer <ADMIN_API_KEY>`，留空时回落到 `API_KEY`。
 
 ### 数据面端点
 
-| 方法 | 路径 | 用途 |
+| POST 路径 | 请求字段 | 响应字段 |
 | --- | --- | --- |
-| `POST` | `/find-missing` | 分类未知和未索引的 blob 哈希 |
-| `POST` | `/batch-upload` | 切块、嵌入并索引源码 blob |
-| `POST` | `/agents/codebase-retrieval` | 返回格式化的代码上下文 |
-| `POST` | `/agents/blob-status` | 校对 blob 与 checkpoint 状态 |
-| `POST` | `/checkpoint-blobs` | 创建或推进工作集 checkpoint |
+| `/find-missing` | `mem_object_names` | `unknown_memory_names`、`nonindexed_blob_names` |
+| `/batch-upload` | `blobs: [{path, content}]`、可选 `checkpoint_id` | `blob_names` |
+| `/agents/codebase-retrieval` | `information_request`、`blobs`、可选 `chat_history` | `formatted_retrieval`、`codebase_retrieval_elapsed_ms` |
+| `/agents/blob-status` | `blobs`（检查 `added_blobs` 和 `checkpoint_id`） | `unknown_blob_names`、`nonindexed_blob_names`、`checkpoint_not_found` |
+| `/checkpoint-blobs` | `blobs` | `new_checkpoint_id` |
 
-### Admin 端点
+共用的 `blobs` payload 包含 `checkpoint_id`、`added_blobs` 和 `deleted_blobs`。
+blob 名称为 UTF-8 `path + content` 的 SHA-256。新上传要求路径为 1–1024 个字符，SQLite
+已有的更长路径仍可读取。SQL 和返回上下文保留完整路径，路径向量旁保存的有界字符串仅供诊断预览，embedding 使用完整路径文档。
+上传准入跳过依赖/构建/缓存目录、敏感文件、二进制和非源码产物；`.env.example` 等安全模板、
+项目清单和测试固件有豁免。跳过的上传保存为空 ready blob，避免反复上传。
 
-| 方法 | 路径 | 用途 |
-| --- | --- | --- |
-| `GET` | `/admin/credentials` | 列出模型凭据（密钥已脱敏） |
-| `POST` | `/admin/credentials` | 创建凭据 |
-| `PATCH` | `/admin/credentials/{id}` | 更新凭据 |
-| `DELETE` | `/admin/credentials/{id}` | 删除凭据 |
-| `POST` | `/admin/credentials/{id}/duplicate` | 用新 key 复制一份凭据 |
-| `POST` | `/admin/credentials/reload` | 热重载启用中的凭据 |
-| `GET` | `/admin/queue` | 嵌入队列深度与在飞数 |
-| `POST` | `/admin/queue/reset` | 清空或重置嵌入队列 |
-| `POST` | `/admin/queue/requeue-stale` | 重新入队滞留的在飞 blob |
-| `POST` | `/admin/gc` | 回收过期的 chain 与 blob |
-| `GET` | `/admin/stats` | 调用 / token / 检索 / 资源指标 |
-| `GET` | `/admin/index-stats` | 元数据、dense/path/cache、运行开关与持久化 index profile |
+后台上传返回 blob 身份时，索引可能尚未完成；用 `/find-missing` 或 `/agents/blob-status`
+检查就绪。checkpoint 可以包含 pending 身份，但检索只准入 ready 元数据。
 
-示例：
+检索作用域为 `(checkpoint 成员 ∪ added_blobs) − deleted_blobs`，再限定为 ready blob。
+必须提供有效 checkpoint 或非空 added 列表；解析出的工作集为空时返回空答案。
+`deleted_blobs` 只收窄检索范围，或经 `/checkpoint-blobs` 更新 checkpoint 成员，物理清理由
+GC 执行。检索缺少 scope 或 checkpoint token 格式错误时返回 HTTP 400，checkpoint 不存在
+或版本过期时返回 404。
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:API_KEY" }
 $body = @{
   information_request = "Where is request authentication implemented?"
-  # 全库检索已禁用：必须声明工作集（有效的 checkpoint_id 或非空 added_blobs）。
-  # added_blobs 是 batch-upload 返回的 blob_name（sha256 内容地址），此处为示例占位。
-  blobs = @{ checkpoint_id = ""; added_blobs = @("<blob-name-from-batch-upload>"); deleted_blobs = @() }
+  blobs = @{
+    checkpoint_id = ""
+    added_blobs = @("<blob-name-from-batch-upload>")
+    deleted_blobs = @()
+  }
 } | ConvertTo-Json -Depth 4
 Invoke-RestMethod http://127.0.0.1:8986/agents/codebase-retrieval `
   -Method Post -Headers $headers -ContentType application/json -Body $body
 ```
 
-## 架构
+### Admin 端点
 
-依赖方向向内收敛（`shared <- domain <- application <- api`）。`infrastructure` 实现
-domain/shared 协议，且只能由 composition root（`application/container.py`）装配；router
-不编排业务流程。
-组合根直接绑定类型明确的读写用例。索引、队列维护、凭据就绪与 embedding 请求的
-所有权及状态转移见 [运行时生命周期](docs/runtime-lifecycle.md)。
+| 方法 | 路径 | 用途 |
+| --- | --- | --- |
+| `GET` / `POST` | `/admin/credentials` | 列出脱敏凭据 / 创建凭据 |
+| `PATCH` / `DELETE` | `/admin/credentials/{id}` | 更新 / 删除凭据 |
+| `POST` | `/admin/credentials/{id}/duplicate` | 复制凭据，可覆盖部分字段 |
+| `POST` | `/admin/credentials/reload` | 重载运行凭据 |
+| `GET` | `/admin/queue` | 队列计数与 worker 状态 |
+| `POST` | `/admin/queue/reset` | 同步或清空队列投递 |
+| `POST` | `/admin/queue/requeue-stale` | 投递长时间 pending blob |
+| `POST` | `/admin/gc` | 预览或回收过期 checkpoint 与 blob |
+| `GET` | `/admin/stats` | 调用、token、检索与资源指标 |
+| `GET` | `/admin/index-stats` | 元数据计数、dense/path 存储、查询缓存、运行配置与 index profile |
 
-```mermaid
-flowchart TB
-    Client["AI 编码代理 / ACE 客户端"]
+## 架构与检索
 
-    subgraph API["API 层 · FastAPI (api/router.py, auth.py)"]
-        direction LR
-        Auth["Bearer 鉴权 · API_KEY"]
-        Endpoints["/agents/·  /batch-upload<br/>/find-missing  /checkpoint-blobs<br/>/admin/·  /health"]
-    end
+依赖向内收敛：`shared ← domain ← application ← api`。infrastructure 实现协议，由
+`application/container.py` 装配；应用层负责用例和事务边界。SQL 存元数据、symbol 与词法
+证据（SQLite FTS5 / PostgreSQL `tsvector`），Milvus 存 dense 和路径向量。
 
-    subgraph APP["Application 层 · CQRS (application/)"]
-        direction LR
-        AppSvc["RetrievalApplication"]
-        UseCases["ApplicationCommands · ApplicationQueries"]
-        Worker["EmbedWorker · 服务模式"]
-    end
+检索采用固定序列：route → plan → recall → fuse → prior → rerank → select → expand。
+SQL 证据在 query embedding 往返前开始召回；决定性的 symbol、path 或使用点证据可以直接
+作答，无需等待 dense。symbol/path 查询采用 focused 选择，其它任务采用 coverage 选择，
+默认代码正文字符预算分别为 12,000 和 32,000；标题、行号和 `Context:` 等格式化内容另计。
 
-    subgraph DOMAIN["Domain 层 (domain/services/)"]
-        direction LR
-        Pipeline["RetrievalPipeline"]
-        Indexing["Indexing · cAST 编排"]
-        Proto["Protocols<br/>Embedder·SearchStore<br/>Reranker·Repository"]
-    end
-
-    subgraph INFRA["Infrastructure 层 · 由 composition root 装配"]
-        direction LR
-        Chunker["cAST / tree-sitter"]
-        Embed["Embedder / Reranker<br/>OpenAI 兼容"]
-        LLMC["LLM 客户端<br/>rerank·rewrite"]
-        Vector["Milvus3SearchStore<br/>PathIndexClient"]
-        Sql["SQL Repos · UoW<br/>SymbolSearchStore"]
-        RedisQ["RedisQueue · 服务模式"]
-    end
-
-    subgraph STORE["存储与外部服务"]
-        direction LR
-        DB[("PostgreSQL / SQLite<br/>元数据 · symbol_occurrences<br/>model_credentials · metrics")]
-        Milvus[("Milvus 3.0 / Milvus Lite<br/>dense 向量 · 路径索引")]
-        Redis[("Redis · 任务队列")]
-        EmbedAPI{{"Embedding API"}}
-        LLMAPI{{"LLM API"}}
-    end
-
-    Client --> API
-    API --> APP
-    APP --> DOMAIN
-    APP -. 装配 .-> INFRA
-    INFRA -. 实现协议 .-> DOMAIN
-
-    Embed --> EmbedAPI
-    LLMC --> LLMAPI
-    Vector --> Milvus
-    Sql --> DB
-    RedisQ --> Redis
-```
-
-应用层负责用例编排和事务边界。FastAPI 只校验传输 DTO、执行鉴权和错误映射。PostgreSQL
-（个人模式下为 SQLite）存 blob/chunk/checkpoint 元数据和标识符出现位置；Milvus 存 dense
-向量和路径索引。
-
-### 检索管线
-
-`RetrievalPipeline.search`（`domain/services/retrieval/`，每阶段一个模块）是一条固定的状态转移
-序列：每个阶段写入 `RetrievalState` 的一条记录（`QueryRoute`、`QueryPlan`、`RecallEvidence`，
-然后是候选、选中与关系列表），之后的阶段只读不改；请求文本只在 route 解析一次。任何可选算子
-关闭后都退化为恒等变换。失败的车道（包括 SQL 超时）会被跳过并记入
-`retrieval_metrics.lane_failures`，因此从更少车道作答的请求可以离线识别。各阶段的设计理由与调优历史见 [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md)。
-
-| 阶段 | 职责 |
-| --- | --- |
-| route | 只解析一次请求：`QueryEvidence`（标识符、traceback 帧、引号内报错文案、文件名、词法词元）、确定性意图与策略 |
-| plan | 可选 LLM 改写、句子级 facet 分解、查询向量 |
-| recall | dense（Milvus）∥ 精确符号（SQL）∥ 按意图词法 FTS（SQL）∥ 路径索引（Milvus）∥ 精确路径查找（SQL） |
-| fuse | dense facet 与词法结果按加权 RRF 融合，合并 exact 命中，路径 boost / 回填 |
-| prior | 源码先验 × 工作集先验；有界头部槽位：精确 symbol/path 答案、语义查询的未降权源码文件、reference 查询里排在声明之前的使用位置 |
-| rerank | `plan_rerank` 决策 → 专用 reranker → chat-LLM reranker，两者都保留候选集 |
-| select | focused / coverage 选择，字符预算为硬限制 |
-| expand | 合并同文件相邻片段；语义关系查询可用剩余上下文预算附带相关定义 |
-
-```mermaid
-flowchart TB
-    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
-    Route --> Plan["plan<br/>改写（可选）· facet · embed"]
-    Plan --> Recall
-    subgraph Recall["recall（并发）"]
-        direction LR
-        Dense["dense<br/>Milvus"]
-        Exact["精确符号<br/>symbol_occurrences"]
-        Lexical["按意图词法 FTS<br/>chunk_lexical"]
-        PathIdx["路径索引<br/>Milvus"]
-        PathLookup["路径查找<br/>blobs.path 后缀"]
-    end
-    Recall --> Fuse["fuse<br/>RRF · exact 合并 · 路径 boost"]
-    Fuse --> Prior["prior<br/>源码先验 · 确定性头部"]
-    Prior --> Rerank["rerank<br/>专用 → chat LLM（策略）"]
-    Rerank --> Select["select<br/>focused / coverage"]
-    Select --> Expand["expand<br/>相邻合并 · 相关定义"]
-    Expand --> Out["formatted_retrieval"]
-```
+关系结果依据已索引的名称、出现位置和封闭定义，并受歧义上限约束，不绑定动态接收者类型。
+可选车道能独立失败，失败记录在检索审计指标中。意图门控、头部规则、关系预算、配置和历史
+评测见[检索设计](docs/retrieval-pipeline.md)；索引、恢复和资源所有权见
+[运行时生命周期](docs/runtime-lifecycle.md)。维护中的设计与运维说明汇总在
+[文档索引](docs/README.md)。
 
 ## 测试
 
-按文件独立运行，让 Milvus Lite 和 tree-sitter 运行时在进程间释放：
+从源码目录安装开发依赖，按文件独立运行，让 Milvus Lite 和 tree-sitter 运行时在进程间释放：
 
 ```powershell
+uv sync --extra dev
 uv run pytest tests/unit/application/test_service.py -q
 uv run pytest tests/unit/domain/test_retrieval.py -q
 uv run pytest tests/unit/infrastructure/test_milvus3.py -q
-uv run pytest tests/unit/test_smoke_personal_mode.py -q   # 真实 Container、迁移、Milvus Lite、HTTP
+uv run pytest tests/unit/test_smoke_personal_mode.py -q
+uv run ruff check .
+uv run ruff format --check .
 uv run mypy
 ```
 
-在内存受限的开发机上，不要在一个进程里运行整个 `tests/unit/infrastructure` 目录。冒烟测试
-用临时 SQLite 文件、嵌入式 Milvus Lite 和进程内 OpenAI 兼容 embedding 端点装配生产组合根，
-再经 FastAPI 路由完成上传、checkpoint 与检索。检索管线的纯结构重构用
-`benchmarks.internal.retrieval_equivalence` 证明行为不变（见设计文档）。
+冒烟测试使用真实容器、迁移、Milvus Lite 和 HTTP 路由，以及临时存储与进程内 embedding
+端点。内存受限时，不要在一个进程中运行整个 `tests/unit/infrastructure`。
+检索纯重构用 `benchmarks.internal.retrieval_equivalence` 验证行为保持；产品质量与延迟通过
+[黑盒评测](benchmarks/README.md)测量。
 
 ## 许可
 

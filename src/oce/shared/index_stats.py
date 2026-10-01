@@ -12,6 +12,7 @@ class MetadataIndexStats:
     blobs_ready: int = 0
     blobs_pending: int = 0
     blobs_error: int = 0
+    blobs_deleting: int = 0
     chunks_total: int = 0
     chunks_embedded: int = 0
     blob_chunk_links: int = 0

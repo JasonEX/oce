@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import httpx
+import pytest
 from fastapi import Header
 
 from oce.api.router import get_application
@@ -80,3 +81,14 @@ async def test_gc_requires_admin_auth():
     async with _client(StubGcApp()) as client:
         response = await client.post("/admin/gc", json={})
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize("ttl_days", [0, -1])
+async def test_gc_rejects_ttl_that_can_expire_active_indexing(ttl_days: int) -> None:
+    stub = StubGcApp()
+    async with _client(stub) as client:
+        response = await client.post(
+            "/admin/gc", headers=_AUTH, json={"ttl_days": ttl_days, "dry_run": False}
+        )
+    assert response.status_code == 422
+    assert stub.calls == []

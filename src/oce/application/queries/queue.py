@@ -45,11 +45,11 @@ class QueueStatusQueryHandler:
                 enabled=False, main_size=0, inflight=0, db_pending=0
             )
         async with self._uow_factory() as uow:
-            db_pending = len(await uow.blobs.list_pending_names())
+            db_pending = await uow.blobs.count_pending()
         return QueueStatusResult(
             enabled=True,
             main_size=await self._queue.size(),
-            inflight=len(await self._queue.inflight_set()),
+            inflight=await self._queue.inflight_count(),
             db_pending=db_pending,
             worker_state=(
                 self._worker.state.value if self._worker is not None else "disabled"

@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from oce.domain.blob.blob import Blob, BlobStatus
 from oce.domain.chunk import ChunkRef
 from oce.domain.repositories import BlobRepository
+from oce.domain.services.search import SearchScope
 from oce.infrastructure.persistence.dialect import upsert_insert
 from oce.infrastructure.persistence.lexical_index import delete_lexical_rows
 from oce.infrastructure.persistence.models import (
@@ -20,6 +21,8 @@ from oce.infrastructure.persistence.models import (
     ChainMemberModel,
     ChunkModel,
 )
+from oce.infrastructure.persistence.scope_filter import run_scoped
+from oce.shared.errors import ServiceNotReadyError
 
 
 class SqlBlobRepository(BlobRepository):
@@ -66,6 +69,17 @@ class SqlBlobRepository(BlobRepository):
     async def save(self, blob: Blob) -> None:
         await self.save_many([blob])
 
+    async def ready_names(self, scope: SearchScope) -> set[str]:
+        rows = await run_scoped(
+            self.session,
+            scope,
+            BlobModel.blob_name,
+            lambda predicate: select(BlobModel.blob_name).where(
+                predicate, BlobModel.status == BlobStatus.READY.value
+            ),
+        )
+        return {row.blob_name for row in rows}
+
     async def touch(self, blob_name: str) -> None:
         # Uploads must not replay a stale aggregate over a worker's status.
         await self.session.execute(
@@ -105,8 +119,13 @@ class SqlBlobRepository(BlobRepository):
                 "last_seen": stmt.excluded.last_seen,
                 "error_message": stmt.excluded.error_message,
             },
+            where=BlobModel.status != BlobStatus.DELETING.value,
         )
-        await self.session.execute(stmt)
+        saved = set(
+            (await self.session.scalars(stmt.returning(BlobModel.blob_name))).all()
+        )
+        if saved != {blob.blob_name for blob in blobs}:
+            raise ServiceNotReadyError("Blob deletion is in progress; retry the upload")
         for blob in blobs:
             await self._save_blob_chunks(blob.blob_name, blob.chunks)
 
@@ -145,8 +164,48 @@ class SqlBlobRepository(BlobRepository):
             # documents of chunks that just became unreferenced.
             await delete_lexical_rows(self.session, content_hashes)
 
+    async def mark_deleting(
+        self, blob_names: Sequence[str], *, ttl_days: int | None = None
+    ) -> list[str]:
+        if not blob_names:
+            return []
+        referenced = select(ChainMemberModel.chain_id).where(
+            ChainMemberModel.blob_name == BlobModel.blob_name
+        )
+        expired = ~referenced.exists()
+        if ttl_days is not None:
+            threshold = datetime.now(timezone.utc) - timedelta(days=ttl_days)
+            expired = expired & (BlobModel.last_seen < threshold)
+        rows = await self.session.scalars(
+            update(BlobModel)
+            .where(
+                BlobModel.blob_name.in_(blob_names),
+                (BlobModel.status == BlobStatus.DELETING.value) | expired,
+            )
+            .values(status=BlobStatus.DELETING.value)
+            .returning(BlobModel.blob_name)
+        )
+        return list(rows)
+
+    async def delete_deleting(self, blob_names: Sequence[str]) -> None:
+        if not blob_names:
+            return
+        names = list(
+            await self.session.scalars(
+                select(BlobModel.blob_name).where(
+                    BlobModel.blob_name.in_(blob_names),
+                    BlobModel.status == BlobStatus.DELETING.value,
+                )
+            )
+        )
+        await self.delete_many(names)
+
     async def find_pending(self, blob_names: Sequence[str] | None = None) -> list[Blob]:
-        stmt = select(BlobModel).where(BlobModel.status == BlobStatus.PENDING.value)
+        stmt = (
+            select(BlobModel)
+            .where(BlobModel.status == BlobStatus.PENDING.value)
+            .with_for_update()
+        )
         if blob_names is not None:
             if not blob_names:
                 return []
@@ -174,8 +233,13 @@ class SqlBlobRepository(BlobRepository):
         rows = await self.session.execute(
             select(BlobModel.blob_name)
             .where(
-                BlobModel.last_seen < threshold,
-                ~referenced.exists(),
+                (BlobModel.status == BlobStatus.DELETING.value)
+                | ((BlobModel.last_seen < threshold) & ~referenced.exists()),
+            )
+            .order_by(
+                (BlobModel.status == BlobStatus.DELETING.value).desc(),
+                BlobModel.last_seen,
+                BlobModel.blob_name,
             )
             .limit(batch_size)
         )
@@ -272,6 +336,14 @@ class SqlBlobRepository(BlobRepository):
             statement = statement.limit(limit)
         result = await self.session.execute(statement)
         return list(result.scalars())
+
+    async def count_pending(self) -> int:
+        result = await self.session.execute(
+            select(func.count())
+            .select_from(BlobModel)
+            .where(BlobModel.status == BlobStatus.PENDING.value)
+        )
+        return int(result.scalar_one())
 
     async def find_stale_with_staging(
         self,

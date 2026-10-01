@@ -82,8 +82,9 @@ class Recall:
             await asyncio.gather(vector_lanes, return_exceptions=True)
             raise
         if state.audit is not None:
-            state.audit.exact_definitions = len(exact.definitions)
-            state.audit.definition_sites = len(exact.definitions)
+            counts = [count for _name, count in exact.definition_counts]
+            state.audit.exact_definitions = sum(counts)
+            state.audit.definition_sites = max(counts, default=0)
         evidence = RecallEvidence(
             exact=exact, lexical=lexical, anchors=anchors, lookup_scores=lookup_scores
         )

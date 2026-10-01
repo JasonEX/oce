@@ -43,6 +43,11 @@ class FakeBlobRepo:
     async def exists_many(self, blob_names) -> dict[str, bool]:
         return {n: n in self.blobs for n in blob_names}
 
+    async def ready_names(self, scope) -> set[str]:
+        return {
+            n for n in scope.blob_names if n in self.blobs and self.blobs[n].is_ready()
+        }
+
     async def find_pending(self, blob_names=None) -> list[Blob]:
         names = set(blob_names) if blob_names is not None else None
         return [
@@ -67,12 +72,26 @@ class FakeBlobRepo:
         )
         return names if limit is None else names[: max(0, limit)]
 
+    async def count_pending(self) -> int:
+        return sum(blob.status == BlobStatus.PENDING for blob in self.blobs.values())
+
     async def delete(self, blob_name: str) -> None:
         self.blobs.pop(blob_name, None)
 
     async def delete_many(self, blob_names) -> None:
         for name in blob_names:
             self.blobs.pop(name, None)
+
+    async def mark_deleting(self, blob_names, *, ttl_days=None) -> list[str]:
+        names = [name for name in blob_names if name in self.blobs]
+        for name in names:
+            self.blobs[name].status = BlobStatus.DELETING
+        return names
+
+    async def delete_deleting(self, blob_names) -> None:
+        for name in blob_names:
+            if name in self.blobs and self.blobs[name].status == BlobStatus.DELETING:
+                self.blobs.pop(name)
 
     async def save_staging(self, blob_name: str, content: str) -> None:
         """Store the staged text."""

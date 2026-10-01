@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from loguru import logger
+
 if TYPE_CHECKING:
     from redis.asyncio import Redis
 
@@ -117,7 +119,17 @@ class RedisQueue:
         # narrows the driver's ``bytes | str`` return type.
         items = [str(first)]
         while len(items) < max_items:
-            blob_name = await self._redis.rpoplpush(self._name, self._processing)
+            try:
+                blob_name = await self._redis.rpoplpush(self._name, self._processing)
+            except Exception as exc:
+                # Confirmed claims already have an owner. A response lost after
+                # Redis moved another item is recovered by restart/maintenance.
+                logger.warning(
+                    "Queue batch fill failed; processing {} confirmed claims: {}",
+                    len(items),
+                    type(exc).__name__,
+                )
+                break
             if blob_name is None:
                 break
             items.append(str(blob_name))
@@ -156,6 +168,9 @@ class RedisQueue:
     async def inflight_set(self) -> set[str]:
         """Blob names in flight, read from the sentinel set."""
         return {str(item) for item in await self._redis.smembers(self._pending)}
+
+    async def inflight_count(self) -> int:
+        return int(await self._redis.scard(self._pending))
 
     async def purge(self) -> int:
         """Delete all three keys; returns how many messages were in the two lists.

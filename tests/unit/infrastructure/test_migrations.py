@@ -230,3 +230,74 @@ def test_symbol_occurrences_insert_auto_id_on_sqlite(sqlite_url: str) -> None:
 
     assert row is not None
     assert row.id == 1
+
+
+def test_orphan_cleanup_upgrade_preserves_owned_metadata(sqlite_url: str) -> None:
+    from alembic import command
+    from alembic.config import Config
+
+    cfg = Config()
+    cfg.set_main_option("script_location", str(_SCRIPT_LOCATION))
+    command.upgrade(cfg, "a7b8c9d0e1f2")
+    engine = _sync_engine(sqlite_url)
+    try:
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    "INSERT INTO blobs (blob_name, path, content_size, file_type, status) "
+                    "VALUES ('live', 'a.py', 10, 'text', 'ready')"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO chunks (content_hash, content, content_size) "
+                    "VALUES ('live-chunk', 'def work(): pass', 16)"
+                )
+            )
+            connection.execute(
+                text(
+                    "INSERT INTO blob_staging (blob_name, content) VALUES (:name, 'source')"
+                ),
+                [{"name": "live"}, {"name": "gone"}],
+            )
+            for table in ("symbol_occurrences", "blob_chunks"):
+                fields = (
+                    "identifier, kind, "
+                    if table == "symbol_occurrences"
+                    else "chunk_index, "
+                )
+                prefix = (
+                    "'work', 'definition', " if table == "symbol_occurrences" else "0, "
+                )
+                connection.execute(
+                    text(
+                        f"INSERT INTO {table} ({fields}blob_name, content_hash, start_line, end_line) "
+                        f"VALUES ({prefix}:name, :chunk, 1, 1)"
+                    ),
+                    [
+                        {"name": "live", "chunk": "live-chunk"},
+                        {"name": "gone", "chunk": "live-chunk"},
+                        {"name": "live", "chunk": "gone-chunk"},
+                    ],
+                )
+            connection.execute(
+                text(
+                    "INSERT INTO chunk_lexical (content_hash, terms) VALUES (:hash, 'work')"
+                ),
+                [{"hash": "live-chunk"}, {"hash": "gone-chunk"}],
+            )
+        command.upgrade(cfg, "head")
+        with engine.begin() as connection:
+            for table in (
+                "blob_staging",
+                "symbol_occurrences",
+                "blob_chunks",
+                "chunk_lexical",
+            ):
+                assert (
+                    connection.execute(text(f"SELECT count(*) FROM {table}")).scalar()
+                    == 1
+                )
+            assert connection.execute(text("PRAGMA foreign_key_check")).all() == []
+    finally:
+        engine.dispose()

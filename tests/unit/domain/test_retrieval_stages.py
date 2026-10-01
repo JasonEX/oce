@@ -7,6 +7,7 @@ from dataclasses import replace
 
 import pytest
 
+from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.retrieval import (
     RetrievalPipeline,
     definition_excerpt,
@@ -17,11 +18,13 @@ from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
 from tests.fakes.retrieval import (
     FakeEmbedder,
+    FakeEvidenceStore,
     FakeExactSearchStore,
     FakeLexicalStore,
     FakePathContentStore,
     FakePathLookupStore,
     FakeSearchStore,
+    retrieval_state,
 )
 
 BLOB_A = "a" * 64
@@ -56,6 +59,33 @@ class DefinitionStore(FakeExactSearchStore):
 
 def _settings(**kwargs):
     return RetrievalSettings(final_select_k=10, **kwargs)
+
+
+async def test_compound_anchors_read_routed_title_names():
+    titled = _hit("src/session.py", 1.0, content="def get(): pass", hash_="get", end=2)
+    body_only = _hit(
+        "src/cache.py", 1.0, blob=BLOB_B, content="class Cache: pass", hash_="cache"
+    )
+    store = FakeEvidenceStore(
+        [
+            DefinitionHit("get", "definition", titled, 1, 2),
+            DefinitionHit("Cache", "definition", body_only, 1, 1),
+        ]
+    )
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(),
+        exact_store=store,
+        settings=RetrievalSettings(_env_file=None),
+    )
+    state = retrieval_state(
+        "`get` fails.\n`Cache` only appears in the reproduction.",
+        SearchScope(frozenset({BLOB_A, BLOB_B})),
+        intent=QueryIntent.COMPOUND,
+    )
+    state.query = "`Cache` is now the title"
+
+    assert await pipeline.exact.recall_anchors(state) == (titled,)
 
 
 class TestLexicalRecall:

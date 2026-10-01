@@ -45,8 +45,9 @@ The black-box layer has five infrastructure modules:
 - [`csn_data.py`](blackbox/csn_data.py) owns the pinned CodeSearchNet parquet
   files and the deterministic function sample behind `csn_queries`.
 
-The default cache is `~/.cache/oce/retrieval-bench-v1`. Datasets, repositories,
-client state, and raw results stay outside this repository.
+The default execution cache is `~/.cache/oce/retrieval-bench-v1`. Datasets,
+repositories, client state and run outputs live there or in an explicit output
+directory. Selected sanitized reports are archived in [`results`](results/README.md).
 
 ## Evaluation layers
 
@@ -132,52 +133,22 @@ are established. Keep characters and latency visible throughout; a faster answer
 does not compensate for missing evidence.
 
 Release judgement uses the metric vector, not one score. The target category of
-a change must improve; every other suite must stay inside its tolerance; the
-distractor-in-head rate of `project_cases` must not rise; characters and p50
+a retrieval-utility change must improve; every other suite must stay inside its
+tolerance; the distractor-in-head rate of `project_cases` must not rise; characters and p50
 latency are checked separately. The tolerances that have held so far are one
 short-suite query (0.4 points Top-1), one semantic nDCG@10 point, one issue on
 the development profile, and the same run-to-run noise on `project_cases`
 (one case, about 3 points on any rate).
+Structural or reliability changes must establish their corrected behavior and
+preserve retrieval quality; unchanged scores are not a utility improvement.
 There is not yet a downstream agent task-success suite or an ACE head-to-head
 evaluation, so retrieval scores must not be presented as either result.
 
-The [September 11 version decision](results/version-decision-2026-09-11.md)
-compares `ac5c9e1` plus the shared repairs from `1fc581f` with the archived current
-version. The current version fails two semantic guards, so the default source
-restores that foundation. Its wording and layout gains remain available on the
-archive branch for further research. This decision supersedes the older reports'
-working-tree status; their historical use of "foundation" can refer to a different
-source revision. No fresh validation set was consumed by this decision.
-
-The [September 10 state-machine evaluation](results/state-machine-2026-09-10.md)
-records the repeated baseline/candidate comparison, wording and layout controls,
-and separate source-prior ablations. It retains the semantic regressions that
-exceed the current tolerance; passing unit checks is not a utility qualification.
-The [follow-up evaluation](results/state-machine-followup-2026-09-10.md) records
-the subsequent test-to-implementation and explicit-implementor repairs. It keeps
-the earlier semantic losses visible without restoring filename-specific priors
-to recover scores on those cases.
-The [global simplification evaluation](results/state-machine-simplification-2026-09-10.md)
-records the subsequent unified fusion/budget candidate, six optional-capability
-ablations, and a frozen 20-issue external comparison. It retains lower observed
-latency alongside head-order and ranking regressions; the candidate is not
-qualified as a quality-preserving default release.
-These reports preserve their original run-time status and source hashes.
-Statements about uncommitted work or publication describe the recorded run;
-archiving a report does not adopt its candidate or change its original scores.
-The [retrieval quality recovery](results/retrieval-quality-recovery-2026-09-11.md)
-records the completed C6–C12 experiments, including the failed final validation.
-Those archived candidates do not describe the current working tree.
-The [repair isolation](results/retrieval-isolation-2026-09-11.md) retains the
-original ranking with shared SQL, cancellation, insertion and admission repairs.
-Three separate stage hypotheses were screened on 18 development issues and 35
-project cases; none established enough benefit to adopt. Historical lexical
-timeouts remain unreproduced, so the report makes no root-cause or speedup claim.
-The [reference head experiment](results/reference-heads-2026-09-11.md) follows the
-separate foundation commit `1fc581f`. The v2 development catalog improves, but
-six Bash reference regressions and a wrong qualified caller prevent adoption.
-Its four paired guards, source audit of legacy-label conflicts, and opt-in SQL
-timeout observer are retained; no fresh validation batch was consumed.
+Dated measurements, rejected variants and source-selection decisions are indexed
+in the [evaluation archive](results/README.md). The latest [reliability study](results/reliability-simplification-2026-10-01.md)
+and [retrieval experiments](results/principled-refactor-2026-10-01.md) state their
+measured source/index identities and limitations. Archived reports retain their
+original status and scores; they do not describe the current checkout by default.
 
 The [reference region contract v2](results/reference-region-contract-v2-2026-09-11.md)
 uses actual source-use lines, including uses in a declaration's file. Its separate
@@ -240,6 +211,17 @@ The [initial repeated baseline](results/upstream-supplement-2026-09-09.md)
 records the current gaps and all truth/result digests.
 
 ## Prepare and validate
+
+Download the client from [published oce-client releases](https://github.com/JasonEX/oce-client/releases)
+and point the harness to that binary before prewarming or running product evaluations:
+
+```bash
+export OCE_CLIENT_BINARY=/absolute/path/to/released/oce-client
+```
+
+Keep this value for both variants; results record the client version and binary
+SHA-256. Automatic discovery can fall back to a sibling checkout's local build,
+so discovery alone does not establish that a released client was used.
 
 Validate the reviewed query sets and prepare their pinned snapshots:
 
@@ -468,23 +450,23 @@ deterministic term vector, runs a fixed query list under several settings profil
 writes every hit and audit field; two dumps must be identical.
 
 ```bash
-uv run python -m benchmarks.internal.retrieval_equivalence dump --corpus src/oce --out before.json
-uv run python -m benchmarks.internal.retrieval_equivalence compare before.json after.json
+OCE_EQ_DIR=$(mktemp -d)
+mkdir -p "$OCE_EQ_DIR/corpus"
+cp -a src/oce "$OCE_EQ_DIR/corpus/oce"
+uv run python -m benchmarks.internal.retrieval_equivalence dump \
+  --corpus "$OCE_EQ_DIR/corpus/oce" --out "$OCE_EQ_DIR/before.json"
+# Apply the structural refactor, retaining the frozen corpus above.
+uv run python -m benchmarks.internal.retrieval_equivalence dump \
+  --corpus "$OCE_EQ_DIR/corpus/oce" --out "$OCE_EQ_DIR/after.json"
+uv run python -m benchmarks.internal.retrieval_equivalence compare \
+  "$OCE_EQ_DIR/before.json" "$OCE_EQ_DIR/after.json"
 ```
 
-A
-dated host-specific sample is retained in
-[`results/milvus-lite-scope-2026-09-01.json`](results/milvus-lite-scope-2026-09-01.json).
-It is not a release threshold or evidence of end-to-end retrieval quality.
+Use the same frozen corpus on both revisions. A correctness fix that deliberately
+changes an excerpt or audit count must report those differences explicitly rather
+than claim strict equivalence. These internal results supplement the required
+black-box pairs; they do not replace product-utility evaluation.
 
-The first black-box baseline, including the Milvus Lite flush and SQLite WAL findings it
-surfaced, is in [`results/blackbox-baseline-2026-09-03.md`](results/blackbox-baseline-2026-09-03.md).
-The nine-language round that followed (extraction fixes, routing fixes, query cap, call-hop
-ablation, and the in-process ONNX reranker against the API reranker) is in
-[`results/nine-language-utility-2026-09-03.md`](results/nine-language-utility-2026-09-03.md).
-Earlier adaptive-rerank and head-order observations are retained in
-[`results/swe-explore-development-2026-09-02.md`](results/swe-explore-development-2026-09-02.md)
-and
-[`results/swe-explore-development-2026-09-03.md`](results/swe-explore-development-2026-09-03.md).
-Their raw result schema predates the current suite/truth identity contract, so use the reports
-as narrative history rather than inputs to the current `compare` commands.
+Earlier component samples and baseline studies are listed in the
+[evaluation archive](results/README.md). Older raw result schemas may not satisfy
+the current `compare` identity contract.

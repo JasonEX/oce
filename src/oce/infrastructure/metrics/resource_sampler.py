@@ -6,6 +6,7 @@ and startup is unaffected. Sampling is a side channel: a failure is logged.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 from collections.abc import Callable
@@ -82,6 +83,7 @@ class ResourceSampler(PeriodicTask):
         if self._collector is None:
             return
         try:
-            self._sink.record_resource_sample(self._collector())
+            sample = await asyncio.to_thread(self._collector)
+            self._sink.record_resource_sample(sample)
         except Exception as exc:
             logger.warning("resource sample failed: {}", exc)

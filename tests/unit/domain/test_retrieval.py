@@ -111,6 +111,53 @@ class TestRetrievalPipeline:
             settings=_settings(final_select_k=10),
         )
 
+    @pytest.mark.parametrize(
+        ("query", "counts", "total", "ambiguity"),
+        [
+            (
+                "Where are `alpha`, `beta`, `gamma` defined?",
+                {"alpha": 1, "beta": 1, "gamma": 1},
+                3,
+                1,
+            ),
+            ("Where is `alpha` defined?", {"alpha": 8}, 8, 8),
+            ("Where is `Session.get` defined?", {"get": 2}, 2, 2),
+        ],
+    )
+    async def test_definition_audit_counts_declarations_before_chunk_deduplication(
+        self, query, counts, total, ambiguity
+    ):
+        exact = FakeExactSearchStore(
+            [_hit("src/definition.py", 1.0)], definition_counts=counts
+        )
+        pipeline = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=exact,
+            settings=RetrievalSettings(_env_file=None, relation_reserve_chars=0),
+        )
+        audit = RetrievalAudit()
+
+        hits = await pipeline.search(query, _scope("x" * 64), audit=audit)
+
+        assert len(hits) == 1
+        assert audit.exact_definitions == total
+        assert audit.definition_sites == ambiguity
+        assert exact.definition_count_requests == [tuple(counts)]
+
+    async def test_unaudited_retrieval_skips_definition_count_query(self):
+        exact = FakeExactSearchStore([_hit("src/definition.py", 1.0)])
+        pipeline = RetrievalPipeline(
+            embedder=FakeEmbedder(),
+            store=FakeSearchStore(),
+            exact_store=exact,
+            settings=RetrievalSettings(_env_file=None, relation_reserve_chars=0),
+        )
+
+        await pipeline.search("Where is `alpha` defined?", _scope("x" * 64))
+
+        assert exact.definition_count_requests == []
+
     async def test_search_returns_sorted_results(self, pipe):
         results = await pipe.search("find core")
 
@@ -329,7 +376,7 @@ class TestRetrievalPipeline:
 
     async def test_path_only_hit_uses_injected_content_store(self):
         blob_name = "p" * 64
-        path_store = FakePathStore([PathSearchResult("src/config.py", blob_name, 0.91)])
+        path_store = FakePathStore([PathSearchResult(blob_name, 0.91)])
         embedder = FakeEmbedder()
         content_store = FakePathContentStore(
             [
@@ -366,9 +413,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore([_hit("src/fallback.py", 0.7)]),
-            path_store=FakePathStore(
-                [PathSearchResult("src/missing.py", missing_blob, 0.9)]
-            ),
+            path_store=FakePathStore([PathSearchResult(missing_blob, 0.9)]),
             path_content_store=FakePathContentStore(
                 error=RuntimeError("database unavailable")
             ),
@@ -398,9 +443,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=CoordinatedContentStore([_hit("src/config.py", 0.8)]),
-            path_store=CoordinatedPathStore(
-                [PathSearchResult("src/config.py", "x" * 64, 0.9)]
-            ),
+            path_store=CoordinatedPathStore([PathSearchResult("x" * 64, 0.9)]),
             settings=_settings(final_select_k=10),
         )
 
@@ -430,9 +473,7 @@ class TestRetrievalPipeline:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(),
-            path_store=FakePathStore(
-                [PathSearchResult("src/missing.py", blob_name, 0.9)]
-            ),
+            path_store=FakePathStore([PathSearchResult(blob_name, 0.9)]),
             path_content_store=FakePathContentStore(
                 error=RuntimeError("metadata unavailable")
             ),
@@ -990,9 +1031,7 @@ class TestRerankRouting:
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=FakeSearchStore(hits),
-            path_store=FakePathStore(
-                [PathSearchResult("docs/CHANGES.rst", "a" * 64, 0.9)]
-            ),
+            path_store=FakePathStore([PathSearchResult("a" * 64, 0.9)]),
             reranker=reranker,
             settings=_settings(final_select_k=10),
         )

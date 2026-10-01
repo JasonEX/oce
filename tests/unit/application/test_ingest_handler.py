@@ -192,7 +192,7 @@ async def test_embed_failure_commits_error_state(dependencies):
     assert factory.uow.commits == 3
 
 
-async def test_delete_commits_metadata_before_deleting_vectors(dependencies):
+async def test_delete_commits_deletion_intent_before_deleting_vectors(dependencies):
     factory, _, index = dependencies
     name = blob_name("src/deleted.py", "content")
     factory.uow.blobs.blobs[name] = Blob(
@@ -204,5 +204,5 @@ async def test_delete_commits_metadata_before_deleting_vectors(dependencies):
     await DeleteBlobsCommandHandler(factory, index).handle(DeleteBlobsCommand((name,)))
 
     assert name not in factory.uow.blobs.blobs
-    assert factory.uow.commits == 1
+    assert factory.uow.commits == 2
     assert index.deleted == [name]

@@ -17,12 +17,17 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from functools import partial
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from oce.application.commands.ingest import (
+    EmbedPendingCommand,
+    EmbedPendingCommandHandler,
+    build_pipeline_factory,
+)
 from oce.application.service import compute_blob_name
-from oce.domain.services.indexing import IndexingPipeline
 from oce.domain.services.lexical import lexical_tokens
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.retrieval import RetrievalPipeline
@@ -304,22 +309,22 @@ async def indexed():
         recursive_chunk_overlap=200,
     )
     names = {}
-    async with SqlAlchemyUnitOfWork(sessions, provider) as uow:
-        pipeline = IndexingPipeline(
-            chunker=chunker,
-            embedder=ConstantEmbedder(dimensions=2),
-            vector_index=vector_index,
-            blob_repo=uow.blobs,
-            chunk_repo=uow.chunks,
-            symbol_projection=uow.symbols,
-            lexical_projection=uow.lexical,
-        )
+    uow_factory = partial(SqlAlchemyUnitOfWork, sessions, provider)
+    pipelines = build_pipeline_factory(
+        chunker=chunker,
+        embedder=ConstantEmbedder(dimensions=2),
+        vector_index=vector_index,
+    )
+    async with uow_factory() as uow:
+        pipeline = pipelines(uow)
         for path, content in FILES.items():
             name = compute_blob_name(path, content)
             names[path] = name
             await pipeline.ingest(name, path, content)
-        await pipeline.embed_pending(list(names.values()))
         await uow.commit()
+    await EmbedPendingCommandHandler(uow_factory, pipelines).handle(
+        EmbedPendingCommand(tuple(names.values()))
+    )
     yield sessions, vector_index, names
     await engine.dispose()
 

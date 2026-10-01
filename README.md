@@ -6,7 +6,7 @@
 
 **Self-hosted, ACE-compatible code retrieval for AI coding agents.**
 
-Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking · task-aware selection
+Dense + exact + lexical + path retrieval · semantic chunking · optional reranking
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -19,16 +19,15 @@ Hybrid dense + exact + path recall · cAST-aware chunking · optional reranking 
 
 </div>
 
-OpenContextEngine is a self-hosted, ACE-compatible code retrieval service. It indexes
-source files with cAST-aware chunking, stores metadata in PostgreSQL or SQLite, performs
-dense vector retrieval in Milvus 3.0, and can apply a dedicated rerank API or chat LLM
-before task-aware context selection.
+OpenContextEngine is a self-hosted, ACE-compatible code retrieval service for AI coding
+agents. It combines semantic vectors, exact symbols, lexical text, and file paths to
+return source context from a client-declared workspace.
 
-It ships two deployment modes: a zero-dependency **personal mode** (SQLite + embedded
-Milvus Lite, background worker disabled) for a single machine, and a **service mode**
-(PostgreSQL + Milvus 3.0 + Redis) for shared, higher-throughput deployments.
+Use **personal mode** (SQLite + embedded Milvus Lite, synchronous indexing) on one machine.
+Use **service mode** (PostgreSQL + Milvus 3.0 + Redis, background indexing) when multiple
+users or machines share an index. Both use the same retrieval and indexing contracts.
 
-The project is fully open source, with the server and client maintained separately:
+The server and client are maintained separately:
 
 - Server: <https://github.com/JasonEX/oce>
 - Client: <https://github.com/JasonEX/oce-client>
@@ -36,32 +35,26 @@ The project is fully open source, with the server and client maintained separate
 This is the refactored successor to the earlier ACE service. See the original
 [linux.do discussion](https://linux.do/t/topic/2308140/125) for background.
 
-Use personal mode when an AI coding tool only needs code context from your local machine.
-Deploy service mode, together with `oce-client`, when multiple users or
-machines need to share one index.
-
 ## Features
 
-- **Hybrid retrieval** — concurrent dense semantic recall (Milvus 3.0), exact identifier lookup (`symbol_occurrences`), and an independent path index, fused with weighted rank fusion.
-- **cAST-aware chunking** — tree-sitter parsing splits source along semantic boundaries instead of blind line windows.
-- **Composable reranking + task-aware selection** — a dedicated reranker can provide low-latency relevance ordering, while a chat LLM can compare implementation semantics globally. Either may run alone or as an ordered cascade. Both preserve their input candidate set; configured recall filtering and the final focused/coverage selector own pruning.
-- **Two deployment modes** — zero-dependency personal mode (SQLite + embedded Milvus Lite) for a single machine, or service mode (PostgreSQL + Milvus 3.0 + Redis) for shared, higher-throughput use.
-- **ACE-compatible API** — a drop-in `/agents/*` surface for ACE clients, secured with bearer auth.
-- **Clean DDD/CQRS architecture** — dependencies point inward; infrastructure is wired only by the composition root, keeping business logic testable.
-- **Operational admin API + monitoring** — an admin-key-scoped surface manages model credentials, the embedding queue, and garbage collection, while a bypass metrics pipeline records call/token/resource stats and per-stage retrieval audits.
-- **[Black-box retrieval benchmark system](benchmarks/README.md)** — the released client and stable APIs drive multilingual short lookups, reviewed Python/TypeScript/Rust architecture queries, and source-pinned SWE-bench/SWE-Explore issue evaluation without importing server internals or reading its database.
+- **Hybrid retrieval** — combines independent dense, exact symbol, SQL lexical, path index, and exact path lookup lanes according to query intent.
+- **Semantic source context** — cAST/tree-sitter chunking preserves code boundaries and enclosing scope; results can include related definitions, callers, implementations, tests, and re-exports.
+- **Optional reranking** — an API or local ONNX reranker and a chat LLM can run individually or as a cascade; final selection applies task-specific code character budgets.
+- **ACE-compatible API and MCP client** — bearer-authenticated upload, checkpoints, and retrieval, with workspace scoping.
+- **Operations and monitoring** — separate admin authentication for model credentials, queue recovery, garbage collection, and index/call/token/resource statistics.
+- **[Black-box benchmarks](benchmarks/README.md)** — released clients and stable APIs evaluate multilingual lookups, reviewed architecture queries, and source-pinned issue tasks.
 
 <details>
 <summary><strong>Table of contents</strong></summary>
 
-- [Features](#features)
 - [Requirements](#requirements)
 - [Personal mode](#personal-mode)
 - [Service mode](#service-mode)
+- [Optional models](#optional-models)
+- [Operations](#operations)
 - [Client and MCP](#client-and-mcp)
 - [API](#api)
-- [Architecture](#architecture)
-  - [Retrieval pipeline](#retrieval-pipeline)
+- [Architecture and retrieval](#architecture-and-retrieval)
 - [Tests](#tests)
 - [License](#license)
 
@@ -71,103 +64,33 @@ machines need to share one index.
 
 - Python 3.11 or newer
 - [uv](https://docs.astral.sh/uv/)
+- An embedding endpoint and its credentials for the default vector-enabled configuration
 
-Personal mode needs nothing else: metadata lives in SQLite and vectors in an embedded
-Milvus Lite file. Service mode additionally requires PostgreSQL 16, Milvus 3.0, and
-Redis; its development stack is defined in `docker-compose.dev.yml`.
+Personal mode requires no separate database, vector, or queue service. Service mode uses
+PostgreSQL 16, Milvus 3.0, and Redis; `docker-compose.dev.yml` provides the development stack.
 
 ## Personal mode
 
-Personal mode is intended for local use and does not require separate PostgreSQL, Milvus,
-or Redis services. Install the CLI, generate a config, set the embedding key, and serve:
+Install the CLI and generate its configuration:
 
 ```powershell
 uv tool install "git+https://github.com/JasonEX/oce.git"
 oce init                    # writes ~/.oce/data/.env
 ```
 
-This fork does not publish to PyPI. Use a versioned GHCR image for releases, or install
-the current source directly with `uv` as shown above.
+This fork does not publish to PyPI. The command installs the current Git source; released
+server images are available on GHCR.
 
-Source-admission version 2 includes ordinary directories ending in `-retrieval-eval`.
-When upgrading from a version 1 index, use a new data directory and fully resynchronize
-through the client. Startup rejects incompatible indexes.
-
-Edit `~/.oce/data/.env`. The embedding service is the only required setting for indexing
-and retrieval. The defaults use SiliconFlow and Qwen3-Embedding-4B (1024-dimensional
-vectors):
+Edit `~/.oce/data/.env` and set the embedding key. The default endpoint uses SiliconFlow
+and Qwen3-Embedding-4B with 1024-dimensional vectors:
 
 ```dotenv
 EMBED_API_KEY=your_embedding_service_key
-# These already have defaults; change them only when using another provider or model.
+# Change these when using another endpoint or model.
 EMBED_ENDPOINT=https://api.siliconflow.cn/v1/embeddings
 EMBED_MODEL=Qwen/Qwen3-Embedding-4B
+EMBED_DIMENSIONS=1024
 ```
-
-Embedding sends admitted source chunks to the configured endpoint. Optional reranking and
-LLM features send retrieval queries and candidate snippets as well. For private code, use
-only endpoints approved to receive that data, preferably local or internal services.
-
-The generated personal configuration keeps optional reranking disabled until you choose its
-runtime and data boundary. The API provider offers predictable relevance ordering:
-
-```dotenv
-RERANK_ENABLED=true
-RERANK_PROVIDER=api
-RERANK_API_KEY=your_rerank_service_key
-RERANK_ENDPOINT=https://provider.example.com/v1/rerank
-RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
-# Rank the full default candidate window; provider-omitted candidates still remain.
-RERANK_TOP_N=50
-# Bound the query repeated against every candidate; keeps the leading issue context.
-RERANK_MAX_QUERY_CHARS=2400
-# adaptive skips the call when exact symbol / path evidence already answers the query.
-RETRIEVAL_RERANK_POLICY=adaptive
-# Qwen reports typical gains from task instructions; clear this for unsupported providers.
-# RERANK_INSTRUCTION=Given a code search query, judge whether the code snippet implements, defines, or directly answers what the query asks for
-```
-
-A strong chat LLM can instead, or subsequently, judge cross-language meaning, implementation
-versus forwarding code, and multi-file behavior. For a bounded quality-first cascade, start
-with a 20-candidate second stage and measure the model on your workload:
-
-```dotenv
-LLM_RERANK_ENABLED=true
-LLM_API_KEY=your_llm_service_key
-LLM_BASE_URL=https://provider.example.com/v1
-LLM_MODEL=deepseek-v4-flash
-RETRIEVAL_LLM_RERANK_POLICY=adaptive
-LLM_MAX_CANDIDATES=20
-LLM_RERANK_TIMEOUT_SECONDS=15
-```
-
-`RERANK_ENABLED` and `LLM_RERANK_ENABLED` authorize their respective ranking stages; the two
-`*_POLICY` settings only decide which queries an enabled model sees, and both models share
-one deterministic decision. The API dedicated provider and the chat LLM send data to their
-configured endpoints; the local dedicated provider does not. `adaptive` skips a model when exact symbol/path evidence already
-answers a focused lookup, keeps the chat LLM out of reference queries to preserve occurrence
-coverage, and uses both for feature, flow, overview, and compound requests. `always` reranks
-every result set with at least two candidates and is useful for quality-first deployments and
-controlled comparisons. Each retrieval records its route (`dedicated`, `dedicated+llm`, or
-`skip:<reason>`) in `retrieval_metrics.rerank_route`. The dedicated reranker has two providers:
-`RERANK_PROVIDER=api` sends the query and candidate source to a rerank endpoint, while
-`RERANK_PROVIDER=local` runs an ONNX cross-encoder in-process (install with
-`uv sync --extra local-rerank`, point `RERANK_LOCAL_MODEL_DIR` at a directory holding
-`model_int8.onnx` and `tokenizer.json`, for example the `jinaai/jina-reranker-v2-base-multilingual`
-export) and sends nothing outside the machine. That benchmark model is
-[CC-BY-NC-4.0](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual),
-so verify model-specific usage rights or choose another compatible export before deployment.
-On the measured 16-core CPU it scores 20 candidates in about 1.2 s. Enabling both backends
-forms a dedicated-reranker → chat-LLM cascade. The default-off posture is an operational
-data/latency boundary, not a quality claim. In the current development benchmark, the local
-reranker materially improved long issue-style ranking, preserved short structural Top-1, and
-did not improve the smaller semantic suite; measured again on top of the structural head lanes
-added later (frame anchors and the since-retired hub lane), it was net-negative on every suite (semantic nDCG@10
-74.9→72.9, issue nDCG@100 74.3→62.0, about 1.2 s added per vector-backed request), so it remains
-off. Treat it as a complex-query opt-in until broader
-repeated evaluation supports a wider default. See the
-[round-three benchmark report](benchmarks/results/utility-round3-2026-09-09.md). Candidates outside
-either rerank window remain available to final selection.
 
 Then start the service:
 
@@ -175,240 +98,229 @@ Then start the service:
 oce serve                   # http://127.0.0.1:8986
 ```
 
-Personal mode binds to `127.0.0.1` by default and pre-fills the client-compatible
-`API_KEY=sk-opencontextengine`. If you expose the service on a LAN or the public internet,
-replace it with a strong random key and set the same value in the client as `OCE_API_KEY`.
+`oce serve` applies database migrations and supplies the personal-mode defaults: a SQLite
+database and Milvus Lite file in the data directory, with `WORKER_ENABLED=false`. Uploads
+are indexed synchronously. The generated API key is `sk-opencontextengine`, matching the
+client default. Set a strong `API_KEY` and the same client `OCE_API_KEY` when exposing the
+service beyond your machine.
 
-`oce serve` runs the database migrations (Alembic) on startup, then provisions SQLite,
-the embedded Milvus Lite file, and a disabled background worker automatically, so
-`oce init` only exposes the few keys you actually set. The generated `.env` lives in
-the data directory and is loaded on every start. Useful flags:
+A sibling `.env.local` overrides the data directory's `.env`; existing process variables
+win over both. `${VAR}` references follow file order across these two files and use the
+process value when one is present. Useful options:
 
-- `--data-dir <path>` — where the database, vector file, and `.env` live (default `~/.oce/data`)
-- `--env-file <path>` — load a specific `.env` instead (highest priority)
-- `--port <n>` / `--host <addr>` — bind address (default `127.0.0.1:8986`)
+| Option | Purpose |
+| --- | --- |
+| `--data-dir <path>` | Database, vector file, and configuration directory; default `~/.oce/data` |
+| `--env-file <path>` | Load a selected file instead of the personal files; its supplied values override process variables |
+| `--host <addr>` / `--port <n>` | Bind address; default `127.0.0.1:8986` |
+| `--reload` | Enable Uvicorn's development reload |
 
-`oce version` (or `oce --version`) prints the current version. `oce -v serve` raises the
-log level to INFO and `-vv` to DEBUG; the default WARNING keeps retrieval-path info logs
-quiet.
+`oce version` and `oce --version` print the version. `oce -v serve` enables INFO logs;
+`oce -vv serve` enables DEBUG; the CLI default is WARNING.
 
-For a throwaway run without installing:
-`uvx --from "git+https://github.com/JasonEX/oce.git" oce serve`.
+For a temporary run without installing:
+
+```powershell
+uvx --from "git+https://github.com/JasonEX/oce.git" oce serve
+```
 
 ## Service mode
 
-Service mode is intended for multiple users or machines sharing one index. It is backed
-by PostgreSQL, Milvus 3.0, and Redis. The repository's Docker Compose setup is the
-recommended starting point:
+The root Compose setup starts the application, PostgreSQL, Redis, and Milvus dependencies:
 
 ```powershell
 git clone https://github.com/JasonEX/oce.git
 Set-Location oce
 Copy-Item .env.example .env
-# Edit .env: set API_KEY, ADMIN_API_KEY, and EMBED_API_KEY; add LLM_API_KEY as needed.
+# Set API_KEY, ADMIN_API_KEY, EMBED_API_KEY, POSTGRES_PASSWORD, and REDIS_PASSWORD.
 docker compose up -d
 ```
 
-The root `docker-compose.yml` starts OCE, PostgreSQL, Redis, and the Milvus dependencies;
-only the OCE API is published to the host, while Milvus remains on the internal Compose
-network. The application container runs database migrations on startup. In service mode,
-replace `API_KEY` and `ADMIN_API_KEY` with strong random values and set the
-`POSTGRES_PASSWORD` and `REDIS_PASSWORD` values used by Compose. Never commit real
-credentials. For development setups that start only the dependencies and run the app on
-the host, use `docker-compose.dev.yml`; update `DB_URL` and `REDIS_URL` to its published
-host ports before running `uv run alembic upgrade head` and `uv run uvicorn`.
-The development file publishes PostgreSQL on `25432`, Redis on `26379`, and Milvus on
-`19530` by default.
+Only the application API is published to the host. The application container applies
+migrations on startup. Keep real credentials outside the repository. Compose injects
+`.env` into the application environment; to use another file, configure Compose's
+`env_file` explicitly.
 
-You can also use the published image directly:
+To run the application from a source checkout with only the dependencies in Docker:
+
+```powershell
+uv sync --extra dev
+docker compose -f docker-compose.dev.yml up -d
+# Set DB_URL and REDIS_URL to the development file's host ports and credentials.
+# DB: 127.0.0.1:25432; Redis: 127.0.0.1:26379; Milvus: 127.0.0.1:19530.
+uv run alembic upgrade head
+uv run uvicorn oce.main:app --host 127.0.0.1 --port 8986
+```
+
+All settings groups read `.env` and then `.env.local` from the source run's working
+directory, with process variables taking priority. See [.env.example](.env.example) for
+the available configuration and defaults.
+
+A published image can also be used in your own orchestration:
 
 ```powershell
 docker pull ghcr.io/jasonex/oce:latest
 ```
 
-In your own Compose, Kubernetes, or other deployment, set the application image to
-`ghcr.io/jasonex/oce:latest` and provide `DB_URL`, `REDIS_URL`, and `MILVUS_ENDPOINT`.
-The image listens on port `8986` inside the container.
+For a fixed deployment, select a versioned image. Supply `DB_URL`, `REDIS_URL`, and
+`MILVUS_ENDPOINT`; the image listens on container port `8986`.
 
-### Admin panel
+## Optional models
 
-After the service starts, use the official web panel at
-<https://oce-ai.github.io/oce-admin>.
+Embedding sends admitted source chunks and semantic queries to `EMBED_ENDPOINT`. An API
+reranker sends queries and candidate source to `RERANK_ENDPOINT`. Chat reranking sends
+queries and candidate snippets to its LLM endpoint; query rewriting sends the query alone.
+Use endpoints approved to receive that data. `RERANK_PROVIDER=local` performs reranking in-process without external calls.
 
-1. Set a dedicated `ADMIN_API_KEY` on the server (if unset, it falls back to `API_KEY`).
-2. Enter the service URL and admin key in the panel.
-3. Manage model credentials, the embedding queue, garbage collection, and monitoring
-   metrics from the panel.
+Both reranking stages are disabled by default. To enable the API reranker:
 
-The admin key is stored only in the browser's local storage. Do not put it in a URL,
-repository, or log. For a custom panel domain, configure its allowed origin with
-`CORS_ORIGINS`.
+```dotenv
+RERANK_ENABLED=true
+RERANK_PROVIDER=api
+RERANK_API_KEY=your_rerank_service_key
+RERANK_ENDPOINT=https://provider.example.com/v1/rerank
+RERANK_MODEL=Qwen/Qwen3-Reranker-0.6B
+RERANK_TOP_N=50
+RERANK_MAX_QUERY_CHARS=2400
+RETRIEVAL_RERANK_POLICY=adaptive
+# Clear RERANK_INSTRUCTION for providers that do not support task instructions.
+```
 
-Model clients resolve credentials from the single `model_credentials` table by `kind`
-(`embed`, `rerank`, `llm_rerank`, `query_rewrite`): the active row with the
-lowest `priority` number wins. When no active row matches a kind, that client falls back
-to its environment variables (`EMBED_*`, `RERANK_*`, `LLM_*`; rerank also reuses the
-embedding key). Manage these rows through the `/admin/credentials` API, then call
-`POST /admin/credentials/reload` to hot-reload runtime credentials without restarting the
-service. Embedding API keys, credential timeouts, and credential batching limits can be
-reloaded in place. Changing the embedding endpoint, model, dimensions, or document input
-window requires clean metadata and vector storage followed by a full client resync; an
-incompatible hot reload is rejected.
+A chat LLM can run alone or after the dedicated reranker. This example limits its second
+stage to 20 candidates; the configuration default is 50:
 
-On the first use of an empty index, OCE persists a secret-free SHA-256 profile covering the
-resolved embedding endpoint hash, model, dimensions, query instruction hash, document
-window, Milvus endpoint/collection identity, path-index mode, dense metric, chunker
-mode/config/version, index schema, symbol extraction, and path-document versions. Every
-startup compares the active configuration with that profile before workers start. A
-mismatch—or legacy index data without a profile—fails closed and leaves the old data
-untouched. Select a new data directory (or new database and Milvus collection names), then
-fully resync clients. The service never silently combines old vectors with a new model,
-connects ready metadata to a different vector collection, or reuses old chunks after
-chunking behavior changes.
+```dotenv
+LLM_RERANK_ENABLED=true
+LLM_API_KEY=your_llm_service_key
+LLM_BASE_URL=https://provider.example.com/v1
+LLM_MODEL=your_chat_model
+LLM_MAX_CANDIDATES=20
+LLM_RERANK_TIMEOUT_SECONDS=15
+RETRIEVAL_LLM_RERANK_POLICY=adaptive
+```
 
-SiliconFlow accepts at most 32,000 characters across one embedding request's `input`
-array. `max_batch_size` and `max_batch_chars` are provider defaults that each credential
-may override. Inputs longer than `max_input_chars` are split at text boundaries with
-overlap, embedded separately, then length-weighted, pooled, and normalized into one chunk
-vector. This model-specific segmentation does not change domain chunk boundaries.
+`RERANK_ENABLED` and `LLM_RERANK_ENABLED` authorize the stages. Their `RETRIEVAL_*_POLICY`
+settings route individual queries: `adaptive` skips calls when deterministic evidence is
+sufficient, while `always` runs on result sets with at least two candidates. Both stages
+preserve candidates outside their ranking window. Query rewriting is separately opt-in
+through `RETRIEVAL_QUERY_REWRITE_ENABLED=false` by default.
 
-Repository-level requests containing multiple explicit sentences or list items are
-decomposed into one complete query plus bounded facet queries. Each query recalls
-candidates independently; results are fused with weighted rank fusion (configurable via
-`RETRIEVAL_RRF_K`) before reranking. Single-query mode uses `RETRIEVAL_DEFAULT_TOP_K`;
-multi-query mode uses `RETRIEVAL_PER_QUERY_TOP_K` per query to control candidate pool
-size. Static source priors run before either model, so static order cannot overwrite model
-ordering.
-Both rerankers conserve candidates: they promote a ranked head and leave the remaining
-retrieval order available to the final selector. With `adaptive` chat-LLM policy, exact symbol
-and path evidence skip the model, reference queries retain occurrence coverage, and semantic
-feature/flow/overview/compound requests use global snippet comparison. Final selection uses focused mode for symbol
-and path lookups, preserving relevance order with a higher per-path cap, and coverage mode
-for broader queries, first representing different files before filling remaining budget.
-Both modes suppress overlapping spans; focused queries use a 12K character budget while
-coverage queries retain the 32K repository-exploration budget. Disable
-decomposition with `RETRIEVAL_QUERY_DECOMPOSITION_ENABLED=false` to revert to classic
-single-query recall.
+For a local ONNX reranker, install the optional dependencies from a source checkout and
+provide the model files yourself:
 
-Exact identifier recall joins checkpoint membership directly, so large workspaces keep exact
-recall without expanding every member into one SQL `IN (...)` clause. Added-only scopes and
-unusually large request deltas use bounded batches; timeout still falls back to dense retrieval.
-The symbol index is built by tree-sitter from whole files (definitions, endpoints, imports,
-and call sites with real spans; a regex provider covers grammars the pack cannot load). Call
-sites give reference and call-chain lookups exact use evidence, but they are not a resolved
-call graph: callee names are not bound to a receiver type or implementation. Query embeddings use at most `EMBED_MAX_QUERY_CHARS` (3,000) characters
-of the request; issue-length text beyond that only diluted the vector and slowed the call. A lexical term index (SQLite FTS5 in personal mode,
-PostgreSQL `tsvector` in service mode) recalls error strings, log text, and call sites that
-dense vectors miss. It is routed to reference, call-chain, feature, overview, and compound requests;
-symbol/path queries add it only when deterministic evidence is missing, while quoted or error-like
-phrases force it on.
-Identifiers are indexed both whole and split into sub-words so
-`ParseConfig`, `parse_config`, and "parse the config" meet. Traceback frames in a request
-become exact path and function evidence, and quoted error text becomes a phrase query. When an
-exact symbol lookup misses, its lexical fallback uses the whole-identifier surrogate rather than
-broad common sub-words. Reference requests gate lexical recall on that surrogate: a chunk must
-name the whole identifier to enter the lane, while every term still shapes the ranking.
-Each cAST chunk is embedded with its enclosing scope chain (`class Foo > def bar`), and the
-same chain is shown as a `Context:` line in results. Exact symbol definitions and explicit SQL
-path matches occupy bounded head slots instead of mixing incompatible structural and RRF scores.
-The path prior treats documentation directories (`docs/`, `doc/`, `examples/`, changelogs),
-change logs, configuration files, `.pyi` stubs, `__init__.py` barrels, and test files as
-supporting material behind implementation files; a root `README` keeps full weight. Feature,
-compound, call-chain, and reference requests reserve a few leading slots for implementation
-files the path prior does not demote (the root `README` remains documentation for this rule).
-A test or document chunk that leads both the dense and lexical lists keeps a fused score no
-multiplicative prior can undercut; requests that name tests keep a neutral prior, and chunks whose only symbol evidence is imports
-(file headers) yield those slots to implementing code. Reference
-requests only promote exact or whole-identifier lexical evidence and place the symbol's own
-declaration chunk after its use sites; within that evidence, chunks that call or extend the
-symbol come before textual mentions and before mere imports, a chunk that also names the
-request's other symbol ("implemented for `StatusCode`") comes first, uses in other files come
-before uses next to the declaration, a file named after the symbol leads a test question, and
-files nearer the declaring package come before scripts and examples; a test question leads
-with the test whose declared name is closest to the symbol (`TestWalker` for `Walk`). Qualified
-names are pinned by the recorded enclosing declaration, then by a declaration line naming both
-scope and leaf (`app.render = function render`), then by chunk text, and path evidence must match
-a whole path component. "Which functions call X"
-and "哪些地方调用了 X" are reference questions; "how does A reach B" with two symbols is a
-call-chain question; "where is X defined" stays a definition question however many parameter
-types it names, and overloads are ordered by the types in their declaration line. Both head rules are reapplied after a model reranker
-runs, keeping the model's order inside each tier. The dedicated reranker also receives at most
-`RERANK_MAX_QUERY_CHARS` of the request so issue-length text does not multiply its latency.
-Exact, path-lookup, and routed lexical recall start before the query embedding round trip,
-and the embedding is never waited for when they already answered: a definition of the
-requested symbol (not merely a named parameter type), a matched path, or a call/inherit
-site of the referenced symbol makes the request
-decisive, vector recall is dropped, and the remaining lexical evidence joins the exact lane by
-rank. `RETRIEVAL_DECISIVE_SKIPS_DENSE=false` restores the wait; `retrieval_metrics.dense_route`
-records `dense`, `skip:exact_definition`, `skip:path_evidence`, or `skip:use_sites` per request.
-Under the adaptive policies, a reference request whose SQL use sites made dense recall unnecessary
-also skips the dedicated reranker (`rerank_route = skip:deterministic`); symbol and path requests
-retain their existing `skip:exact_definition` and `skip:path_evidence` routes. `always` still runs.
-Issue-style requests are anchored on their
-deterministic facts: each traceback frame (Python, IPython and Node forms) is resolved to the
-declaration of that function in that file at that line, the title's identifiers are resolved with
-their qualifier pinned strictly, and those declarations take protected head slots in trace order
-(`RETRIEVAL_COMPOUND_ANCHOR_SLOTS`, default 3); the rest of an issue's identifiers join fusion by
-rank rather than by score.
-After selection, touching spans of one file are merged. Requests that name a symbol then
-receive relation sections after the primary results, each with its own slot and character
-cap and deduplicated against what is already shown: signature excerpts of definitions the
-selected code refers to, the names it calls first (symbol, call-chain, feature, overview; for symbol they fill
-after the named lanes, a name declared both in the selected file and elsewhere resolves to
-the local one, a qualified name is pinned to its scope exactly as in the primary lane, and
-a reference answer appends only the asked symbol's own declaration when its use sites
-crowded it out), callers grouped per enclosing
-function (symbol, reference, call-chain), implementations and subclasses (symbol), tests
-that exercise the symbol (symbol, reference, call-chain, feature, compound), and the
-barrel file that re-exports it (symbol). The primary budget is not reserved up front:
-only novel relation evidence can trim its lowest-priority tail, and the relation cap
-scales with the active context budget. Qualified names (`Session.get`) are resolved to
-the declaration inside the named scope; overloads are ordered by the parameter types the
-request spells out. Call-chain queries can opt into a second upstream hop with
-`RETRIEVAL_CALL_CHAIN_MAX_HOPS=2`; expansion requires the intermediate enclosing definition
-to be uniquely indexed, and every returned hop is marked in the stable formatter. A
-call-chain request that names two symbols ("how does `requests.get` reach
-`HTTPAdapter.send`") protects both declarations in the head and searches the indexed call
-edges breadth first from the first to the second, following only names declared in at most
-two places, up to `RETRIEVAL_CALL_CHAIN_MAX_DEPTH` hops; the path is returned as a
-`chain` section in which every hop shows its declaration header and, when the call that
-hands over to the next hop sits deeper in the body, a second excerpt ending at that call
-(opening at the enclosing method or closure when it is close), within
-`RETRIEVAL_CALL_CHAIN_MAX_CHARS`; headers of every hop are placed before any window
-spends that budget. A one-ended trace ("trace how `wsgi_app` dispatches") protects the
-named declaration in the head the same way and gets two levels of what the symbol calls
-instead of a path. Compound
-requests do not fan out through every identifier in their selected snippets. Files the
-request just added (`added_blobs`) receive a small ranking prior when the delta is small.
-Reproducible ablations can disable semantic chunking, exact recall, lexical recall, path
-lookup, source priority, coverage selection, adjacent merging, and related definitions with
-`CHUNKING_SEMANTIC_ENABLED`, `RETRIEVAL_EXACT_ENABLED`, `RETRIEVAL_LEXICAL_ENABLED`,
-`RETRIEVAL_PATH_LOOKUP_ENABLED`, `RETRIEVAL_SOURCE_PRIORITY_ENABLED`,
-`RETRIEVAL_COVERAGE_SELECTION_ENABLED`, `RETRIEVAL_MERGE_ADJACENT_ENABLED`, and
-`RETRIEVAL_RELATED_DEFINITIONS_ENABLED`; the relation sections have their own switches
-(`RETRIEVAL_CALLERS_ENABLED`, `RETRIEVAL_IMPLEMENTATIONS_ENABLED`, `RETRIEVAL_TESTS_ENABLED`,
-`RETRIEVAL_REEXPORTS_ENABLED`) and caps (`*_MAX`, `*_MAX_CHARS`).
-Changing chunking requires a clean data directory and full resync; these switches do not
-retroactively transform an existing index.
+```powershell
+uv sync --extra local-rerank
+# Run the installed source environment with uv run oce serve.
+```
 
-Upload admission rejects dependency/build/cache directories, common secret files such as
-`.env`, private keys, and SSH/AWS credential directories, NUL-containing files, and
-non-source artifacts such as SVG, media, archives, minified bundles, source maps, and lock
-files before chunking. Safe templates such as `.env.example` remain indexable. Skipped
-paths are persisted as empty ready blobs so clients do not re-upload them indefinitely.
-Project manifests and test fixtures have explicit exemptions.
+```dotenv
+RERANK_ENABLED=true
+RERANK_PROVIDER=local
+RERANK_LOCAL_MODEL_DIR=/path/to/model-directory
+# The directory contains model_int8.onnx and tokenizer.json by default.
+```
+
+Model licenses are separate from the server license. The benchmarked
+[`jinaai/jina-reranker-v2-base-multilingual`](https://huggingface.co/jinaai/jina-reranker-v2-base-multilingual)
+model uses CC-BY-NC-4.0; check its usage rights or choose a compatible export.
+
+The [round-three report](benchmarks/results/utility-round3-2026-09-09.md) records the
+local reranker's quality regressions and CPU latency for that historical configuration; evaluate optional models on your own workload. See the
+[historical results index](benchmarks/results/README.md) for dated comparisons.
+
+## Operations
+
+### Admin panel and credentials
+
+The official panel is <https://oce-ai.github.io/oce-admin>. Set a dedicated
+`ADMIN_API_KEY`, enter the service URL and key in the panel, then manage credentials,
+queue, GC, and statistics. An empty admin key falls back to `API_KEY`. The panel stores
+its key in browser local storage; keep it out of URLs and logs. The official panel origin
+is allowed by default. Set comma-separated `CORS_ORIGINS` for another origin, or an empty
+value to disable CORS.
+
+Credentials are selected by kind (`embed`, `rerank`, `llm_rerank`, `query_rewrite`), using
+the active row with the lowest `priority`. Without a matching active row, the client
+falls back to `EMBED_*`, `RERANK_*`, or `LLM_*`; an empty API rerank key falls back to the
+embedding key. Credential responses expose only the last four key characters.
+
+After credential edits, call `POST /admin/credentials/reload`. Compatible key, timeout,
+and batching changes take effect without restarting. The response is
+`{"reloaded": true, "reason": null}` on success. Check `reloaded` and `reason`: an
+incompatible profile is rejected, and an LLM refresh failure can report a partial reload
+while already-activated clients remain active. Enabling or disabling model stages through
+environment configuration requires a restart. Reload refreshes database credentials; it
+does not reread environment files. A successful reload validates local configuration and
+index compatibility without probing the remote provider's key or availability.
+
+### Index compatibility and query cache
+
+OCE persists a secret-free index profile and checks it before admitting indexing work.
+Changes to embedding identity, dimensions, document input semantics, or chunking/index
+semantics require a new data directory, or new SQL storage and Milvus collections in
+service mode, followed by full client resynchronization. Incompatible startup or reload
+fails closed and preserves the old data. `EMBED_DIMENSIONS` is the common dimension for
+both vector collections and credential validation.
+
+Source-admission version 2 includes ordinary directories ending in `-retrieval-eval`.
+Version 1 indexes require fresh storage and full resynchronization. Changing
+`MILVUS_DENSE_INDEX_TYPE` explicitly rebuilds the local dense index while preserving its
+vectors; this is distinct from changing the embedding identity.
+
+Repeated semantic queries use an in-process query-vector LRU, defaulting to 256 entries
+and a 600-second TTL (`EMBED_QUERY_CACHE_MAX_ENTRIES`, `EMBED_QUERY_CACHE_TTL_SECONDS`).
+Set either to `0` to disable it. It stores query hashes and vectors; source vectors stay
+in Milvus and retrieval results are not cached. Compatible embedding credential reloads
+clear this cache. Monitoring query text is separately disabled by default
+(`MONITORING_STORE_QUERY_TEXT=false`).
+
+### Queue and garbage collection
+
+In service mode, SQL pending blobs and staged source are the durable work record; Redis
+carries deliveries. `GET /admin/queue` reports `main_size`, `inflight`, `db_pending`, and
+`worker_state`. `inflight` counts unacknowledged delivery identities, including queued
+and processing entries. With the worker disabled, the endpoint reports `enabled=false`
+and zero queue counts; use `/admin/index-stats` for metadata counts.
+
+`POST /admin/queue/reset` accepts `{"mode":"sync","requeue":true}` by default. `sync`
+removes stale queue entries and restores pending delivery; `purge` clears the queue before
+restoring pending work. `requeue=false` suppresses that immediate restoration, but worker
+replay can enqueue durable pending work later. Resets drain active batches before mutation.
+`POST /admin/queue/requeue-stale` accepts `stale_hours` (default 24) and `limit` (default 100)
+for aged pending blobs with staging.
+
+GC is an explicit admin operation; preview it before deleting:
+
+```powershell
+# Use the server API_KEY instead if ADMIN_API_KEY is unset.
+$adminHeaders = @{ Authorization = "Bearer $env:ADMIN_API_KEY" }
+$gc = @{ ttl_days = 30; dry_run = $true; limit = 1000 } | ConvertTo-Json
+Invoke-RestMethod http://127.0.0.1:8986/admin/gc `
+  -Method Post -Headers $adminHeaders -ContentType application/json -Body $gc
+# Repeat with dry_run = $false to apply the collection.
+```
+
+The API defaults to `ttl_days=30`, `dry_run=true`, and `limit=1000`; TTL must be at least
+one day. Real GC drains worker batches, skips inflight identities, and rechecks recent
+activity and checkpoint references before deleting expired blobs. Blobs released by a
+checkpoint deleted in this run are collected on a later run.
+
+A failed vector cleanup retains the blob as `deleting` for a later GC retry. It remains
+excluded from retrieval; uploads and checkpoints that reuse that identity receive
+retryable HTTP 503 until deletion finishes. `/admin/index-stats` includes
+`metadata.blobs_deleting` alongside ready, pending, and error counts. After cleanup, the
+same source can be uploaded again. State transitions and recovery details are in
+[docs/runtime-lifecycle.md](docs/runtime-lifecycle.md).
 
 ## Client and MCP
 
-The client scans a local workspace, uploads changes, maintains checkpoints, and retrieves
-current code context from the service. It is a standalone Rust binary maintained at
-<https://github.com/JasonEX/oce-client>; download the archive for Windows, Linux, or macOS
-from its [releases](https://github.com/JasonEX/oce-client/releases) and put `oce-client` on
-`PATH`, or build it with Rust 1.88 or newer
-(`cargo install --git https://github.com/JasonEX/oce-client --locked`). The Python package
-`opencontextengine-client` on PyPI is the superseded 0.1 client.
+The standalone Rust client scans the workspace, uploads changes, maintains checkpoints,
+and retrieves code context. Download a Windows, Linux, or macOS archive from the
+[client releases](https://github.com/JasonEX/oce-client/releases) and put `oce-client` on
+`PATH`, or build it from source:
 
 ```powershell
+cargo install --git https://github.com/JasonEX/oce-client --locked
 $env:OCE_API_URL = "http://127.0.0.1:8986"
 $env:OCE_API_KEY = "sk-opencontextengine"  # use the server API_KEY in service mode
 $env:OCE_WORKSPACE = (Get-Location).Path
@@ -417,207 +329,127 @@ oce-client sync
 oce-client retrieve "Where is request authentication implemented?"
 ```
 
-To connect an AI coding tool that supports MCP, run the same binary as a stdio server:
+The PyPI package `opencontextengine-client` is the superseded 0.1 client. For an AI coding
+tool supporting MCP, use the same binary as a stdio server:
 
 ```powershell
 oce-client mcp --workspace C:\path\to\workspace
 ```
 
-`oce-client mcp` builds the initial index in the background, watches the workspace, and
-exposes `codebase-retrieval` as an MCP tool. Pass `--workspace` more than once for
-multiple workspaces; tool calls must then include the matching `workspace_folder`.
-`OCE_API_URL`, `OCE_API_KEY`, and `OCE_WORKSPACE`/`OCE_WORKSPACES` provide environment
-variable equivalents. Keep credentials in environment variables or a secret manager,
-not in the MCP configuration file.
+It builds the initial index in the background, watches changes, and exposes the
+`codebase-retrieval` tool. For multiple workspaces, repeat `--workspace`; tool calls must
+include the matching `workspace_folder`. `OCE_API_URL`, `OCE_API_KEY`, and
+`OCE_WORKSPACE`/`OCE_WORKSPACES` provide environment equivalents. Keep credentials in
+process environment variables or a secret manager.
 
 ## API
 
-Three auth tiers:
-
-- **Public** (no auth) — `GET /health`, `GET /version`
-- **Data plane** — `Authorization: Bearer <API_KEY>`
-- **Admin** (`/admin/*`) — `Authorization: Bearer <ADMIN_API_KEY>`; when `ADMIN_API_KEY` is unset it falls back to `API_KEY`
-
-Browser calls from the official admin panel (`https://oce-ai.github.io`) are allowed by
-default; override the allowlist with `CORS_ORIGINS` (comma-separated) or set it empty to
-disable CORS. The admin key lives only in the panel's browser storage — never commit it or
-put it in a URL.
+- **Public:** `GET /health`, `GET /version` require no authentication. `/health` reports liveness; it does not probe model providers.
+- **Data plane:** `Authorization: Bearer <API_KEY>`.
+- **Admin (`/admin/*`):** `Authorization: Bearer <ADMIN_API_KEY>`, falling back to `API_KEY` when empty.
 
 ### Data-plane endpoints
 
-| Method | Path | Purpose |
+| POST path | Request fields | Response fields |
 | --- | --- | --- |
-| `POST` | `/find-missing` | Classify unknown and non-indexed blob hashes |
-| `POST` | `/batch-upload` | Chunk, embed, and index source blobs |
-| `POST` | `/agents/codebase-retrieval` | Return formatted code context |
-| `POST` | `/agents/blob-status` | Reconcile blob and checkpoint state |
-| `POST` | `/checkpoint-blobs` | Create or advance a working-set checkpoint |
+| `/find-missing` | `mem_object_names` | `unknown_memory_names`, `nonindexed_blob_names` |
+| `/batch-upload` | `blobs: [{path, content}]`, optional `checkpoint_id` | `blob_names` |
+| `/agents/codebase-retrieval` | `information_request`, `blobs`, optional `chat_history` | `formatted_retrieval`, `codebase_retrieval_elapsed_ms` |
+| `/agents/blob-status` | `blobs` (checks `added_blobs` and `checkpoint_id`) | `unknown_blob_names`, `nonindexed_blob_names`, `checkpoint_not_found` |
+| `/checkpoint-blobs` | `blobs` | `new_checkpoint_id` |
 
-### Admin endpoints
+The shared `blobs` payload contains `checkpoint_id`, `added_blobs`, and `deleted_blobs`.
+Blob names are SHA-256 of UTF-8 `path + content`. New uploads require paths of 1–1024
+characters; existing longer SQLite paths remain readable. SQL and returned context preserve
+the full path; the bounded strings stored
+beside path vectors are diagnostic previews, while path embedding uses the full path
+document. Admission skips dependency/build/cache directories, secret files, binary and
+non-source artifacts; safe templates such as `.env.example`, project manifests, and test
+fixtures have exemptions. Skipped uploads become empty ready blobs to avoid repeated uploads.
 
-| Method | Path | Purpose |
-| --- | --- | --- |
-| `GET` | `/admin/credentials` | List model credentials (secrets masked) |
-| `POST` | `/admin/credentials` | Create a credential |
-| `PATCH` | `/admin/credentials/{id}` | Update a credential |
-| `DELETE` | `/admin/credentials/{id}` | Delete a credential |
-| `POST` | `/admin/credentials/{id}/duplicate` | Clone a credential with a new key |
-| `POST` | `/admin/credentials/reload` | Hot-reload active credentials |
-| `GET` | `/admin/queue` | Embedding queue depth and inflight count |
-| `POST` | `/admin/queue/reset` | Drain or reset the embedding queue |
-| `POST` | `/admin/queue/requeue-stale` | Requeue stale inflight blobs |
-| `POST` | `/admin/gc` | Garbage-collect expired chains and blobs |
-| `GET` | `/admin/stats` | Call / token / retrieval / resource metrics |
-| `GET` | `/admin/index-stats` | Metadata, dense/path/cache state, runtime switches, and persisted index profile |
+Background upload completion returns blob identities before indexing may finish. Use
+`/find-missing` or `/agents/blob-status` to check readiness. Checkpoints can include pending
+identities; retrieval admits only ready metadata.
 
-Example:
+Retrieval scope is `(checkpoint members ∪ added_blobs) − deleted_blobs`, restricted to
+ready blobs. Declare a valid checkpoint or a non-empty added list; an empty resolved scope
+returns an empty answer. `deleted_blobs` only narrows retrieval or updates checkpoint
+membership through `/checkpoint-blobs`; physical cleanup belongs to GC. Retrieval with
+missing scope or malformed checkpoint tokens returns HTTP 400; missing or outdated
+checkpoints return 404.
 
 ```powershell
 $headers = @{ Authorization = "Bearer $env:API_KEY" }
 $body = @{
   information_request = "Where is request authentication implemented?"
-  # Full-repository search is disabled: declare a working set with a valid checkpoint_id
-  # or a non-empty added_blobs list. added_blobs are blob_name values returned by
-  # batch-upload (content-addressed by SHA-256); this is a placeholder example.
-  blobs = @{ checkpoint_id = ""; added_blobs = @("<blob-name-from-batch-upload>"); deleted_blobs = @() }
+  blobs = @{
+    checkpoint_id = ""
+    added_blobs = @("<blob-name-from-batch-upload>")
+    deleted_blobs = @()
+  }
 } | ConvertTo-Json -Depth 4
 Invoke-RestMethod http://127.0.0.1:8986/agents/codebase-retrieval `
   -Method Post -Headers $headers -ContentType application/json -Body $body
 ```
 
-## Architecture
+### Admin endpoints
 
-Dependencies point inward (`shared <- domain <- application <- api`). `infrastructure`
-implements domain/shared protocols and is wired only by the composition root
-(`application/container.py`); routers never orchestrate business logic.
-The root binds typed command/query use cases directly. See
-[runtime ownership and state transitions](docs/runtime-lifecycle.md) for indexing,
-queue maintenance, credential readiness, and embedding request lifetimes.
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `GET` / `POST` | `/admin/credentials` | List masked credentials / create a credential |
+| `PATCH` / `DELETE` | `/admin/credentials/{id}` | Update / delete a credential |
+| `POST` | `/admin/credentials/{id}/duplicate` | Clone a credential with optional overrides |
+| `POST` | `/admin/credentials/reload` | Reload active runtime credentials |
+| `GET` | `/admin/queue` | Queue counts and worker state |
+| `POST` | `/admin/queue/reset` | Synchronize or purge queue delivery |
+| `POST` | `/admin/queue/requeue-stale` | Enqueue aged pending blobs |
+| `POST` | `/admin/gc` | Preview or collect expired checkpoints and blobs |
+| `GET` | `/admin/stats` | Call, token, retrieval, and resource metrics |
+| `GET` | `/admin/index-stats` | Metadata counts, dense/path stores, query cache, runtime settings, and index profile |
 
-```mermaid
-flowchart TB
-    Client["AI coding agent / ACE client"]
+## Architecture and retrieval
 
-    subgraph API["API layer · FastAPI (api/router.py, auth.py)"]
-        direction LR
-        Auth["Bearer auth · API_KEY"]
-        Endpoints["/agents/·  /batch-upload<br/>/find-missing  /checkpoint-blobs<br/>/admin/·  /health"]
-    end
+Dependencies point inward: `shared ← domain ← application ← api`. Infrastructure
+implements protocols and is assembled by `application/container.py`; the application
+layer owns use cases and transaction boundaries. SQL stores metadata, symbols, and lexical
+evidence (SQLite FTS5 / PostgreSQL `tsvector`); Milvus stores dense and path vectors.
 
-    subgraph APP["Application layer · CQRS (application/)"]
-        direction LR
-        AppSvc["RetrievalApplication"]
-        UseCases["ApplicationCommands · ApplicationQueries"]
-        Worker["EmbedWorker · service mode"]
-    end
+Retrieval follows one fixed sequence: route → plan → recall → fuse → prior → rerank →
+select → expand. SQL evidence begins before the query embedding round trip, and decisive
+symbol, path, or use-site evidence can answer without waiting for dense recall. Results
+use focused selection for symbol/path requests and coverage selection for broader tasks,
+with default code content budgets of 12,000 and 32,000 characters respectively. Headers,
+line numbers, and `Context:` labels add formatting outside that code content budget.
 
-    subgraph DOMAIN["Domain layer (domain/services/)"]
-        direction LR
-        Pipeline["RetrievalPipeline"]
-        Indexing["Indexing · cAST orchestration"]
-        Proto["Protocols<br/>Embedder·SearchStore<br/>Reranker·Repository"]
-    end
-
-    subgraph INFRA["Infrastructure · wired by composition root"]
-        direction LR
-        Chunker["cAST / tree-sitter"]
-        Embed["Embedder / Reranker<br/>OpenAI-compatible"]
-        LLMC["LLM client<br/>rerank·rewrite"]
-        Vector["Milvus3SearchStore<br/>PathIndexClient"]
-        Sql["SQL repos · UoW<br/>SymbolSearchStore"]
-        RedisQ["RedisQueue · service mode"]
-    end
-
-    subgraph STORE["Stores & external services"]
-        direction LR
-        DB[("PostgreSQL / SQLite<br/>metadata · symbol_occurrences<br/>model_credentials · metrics")]
-        Milvus[("Milvus 3.0 / Milvus Lite<br/>dense vectors · path index")]
-        Redis[("Redis · task queue")]
-        EmbedAPI{{"Embedding API"}}
-        LLMAPI{{"LLM API"}}
-    end
-
-    Client --> API
-    API --> APP
-    APP --> DOMAIN
-    APP -. wires .-> INFRA
-    INFRA -. implements protocols .-> DOMAIN
-
-    Embed --> EmbedAPI
-    LLMC --> LLMAPI
-    Vector --> Milvus
-    Sql --> DB
-    RedisQ --> Redis
-```
-
-The application layer owns use-case orchestration and transaction boundaries. FastAPI only
-validates transport DTOs, applies authentication, and maps errors. PostgreSQL (SQLite in
-personal mode) stores blob/chunk/checkpoint metadata and identifier occurrences; Milvus
-stores dense vectors and the path index.
-
-### Retrieval pipeline
-
-`RetrievalPipeline.search` (`domain/services/retrieval/`, one module per stage) is one fixed
-sequence of state transitions: each stage writes one record of `RetrievalState` (`QueryRoute`,
-`QueryPlan`, `RecallEvidence`, then the candidate, selected and related lists) and later stages
-only read it. The request text is parsed once, in route. Every optional operator degrades to the
-identity transform when disabled. A lane that fails, an SQL timeout included, is skipped and
-named in `retrieval_metrics.lane_failures`, so an answer that came from fewer lanes than planned
-is visible offline. The design rationale and tuning history
-per stage are in [docs/retrieval-pipeline.md](docs/retrieval-pipeline.md).
-
-| Stage | What it does |
-| --- | --- |
-| route | one parse of the request: `QueryEvidence` (identifiers, traceback frames, quoted error text, filenames, lexical terms), deterministic intent and strategy |
-| plan | optional LLM rewrite, sentence-level facet decomposition, query vectors |
-| recall | dense (Milvus) ∥ exact symbols (SQL) ∥ intent-routed lexical FTS (SQL) ∥ path index (Milvus) ∥ exact path lookup (SQL) |
-| fuse | weighted reciprocal rank fusion over dense facets and lexical hits, exact merge, path boost/backfill |
-| prior | source priority × working-set boost; bounded head slots: exact symbol/path answers, undemoted source files for semantic requests, use sites before the declaration for reference requests |
-| rerank | `plan_rerank` decision → dedicated reranker → chat-LLM reranker, both candidate-preserving |
-| select | focused / coverage selection under a hard character budget |
-| expand | merge touching spans; append budgeted relation sections: related definitions, callers, implementations, tests, re-exports |
-
-```mermaid
-flowchart TB
-    Q["query + SearchScope"] --> Route["route<br/>intent + QueryEvidence"]
-    Route --> Plan["plan<br/>rewrite (optional) · facets · embed"]
-    Plan --> Recall
-    subgraph Recall["recall (concurrent)"]
-        direction LR
-        Dense["dense<br/>Milvus"]
-        Exact["exact symbols<br/>symbol_occurrences"]
-        Lexical["intent-routed lexical FTS<br/>chunk_lexical"]
-        PathIdx["path index<br/>Milvus"]
-        PathLookup["path lookup<br/>blobs.path suffix"]
-    end
-    Recall --> Fuse["fuse<br/>RRF · exact merge · path boost"]
-    Fuse --> Prior["prior<br/>source priority · structural head"]
-    Prior --> Rerank["rerank<br/>dedicated → chat LLM (policy)"]
-    Rerank --> Select["select<br/>focused / coverage"]
-    Select --> Expand["expand<br/>adjacent merge · relation sections"]
-    Expand --> Out["formatted_retrieval"]
-```
+Relations use indexed names, occurrences, and enclosing declarations with ambiguity
+limits; they do not bind dynamic receiver types to implementations. Optional lanes can
+fail independently, with failures recorded in retrieval audit metrics. See
+[the retrieval design](docs/retrieval-pipeline.md) for intent gates, head rules, relation
+budgets, settings, and dated evaluation history, and
+[the runtime lifecycle](docs/runtime-lifecycle.md) for indexing, recovery, and ownership.
+The [documentation index](docs/README.md) links the maintained design and operator guides.
 
 ## Tests
 
-Run focused files so Milvus Lite and tree-sitter runtimes are released between processes:
+From a source checkout, install development dependencies and run files independently so
+Milvus Lite and tree-sitter runtimes are released between processes:
 
 ```powershell
+uv sync --extra dev
 uv run pytest tests/unit/application/test_service.py -q
 uv run pytest tests/unit/domain/test_retrieval.py -q
 uv run pytest tests/unit/infrastructure/test_milvus3.py -q
-uv run pytest tests/unit/test_smoke_personal_mode.py -q   # real container, migrations, Milvus Lite, HTTP
+uv run pytest tests/unit/test_smoke_personal_mode.py -q
+uv run ruff check .
+uv run ruff format --check .
 uv run mypy
 ```
 
-The smoke test assembles the production composition root against a temporary SQLite file, an
-embedded Milvus Lite file and an in-process OpenAI-compatible embedding endpoint, then
-uploads, checkpoints and retrieves through the FastAPI router. A pure refactor of the
-retrieval pipeline is proven behaviour-preserving with
-`benchmarks.internal.retrieval_equivalence` (see the design document).
-
-Do not invoke the entire `tests/unit/infrastructure` directory in one process on
-memory-constrained development machines.
+The smoke test uses the real container, migrations, Milvus Lite, and HTTP routes against
+temporary storage and an in-process embedding endpoint. Avoid running the entire
+`tests/unit/infrastructure` directory in one process on memory-constrained machines.
+Pure retrieval refactors use `benchmarks.internal.retrieval_equivalence` for preservation;
+product quality and latency are measured through [black-box benchmarks](benchmarks/README.md).
 
 ## License
 

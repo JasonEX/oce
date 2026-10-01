@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 
+import pytest
+
 from oce.domain.services.evidence_pack import SectionInput, assemble_sections
 from oce.domain.services.formatter import format_retrieval
 from oce.domain.services.query_classifier import QueryIntent
@@ -17,7 +19,7 @@ from oce.domain.services.retrieval.fuse import filter_qualified_candidates
 from oce.domain.services.retrieval.state import ExactEvidence, RecallEvidence
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
-from tests.fakes.retrieval import retrieval_state
+from tests.fakes.retrieval import FakeExactSearchStore, retrieval_state
 
 
 def _hit(path, content, start=1, context=None, blob="a" * 64):
@@ -254,7 +256,7 @@ async def test_call_chain_expands_only_through_unique_definitions():
                 for item in values.get(identifier, ())
             ][:limit]
 
-    class ExactStore:
+    class ExactStore(FakeExactSearchStore):
         async def find_definitions(
             self, *, identifiers, scope, max_per_identifier=3, enclosing=None
         ):
@@ -348,7 +350,7 @@ async def test_two_endpoint_chain_renders_header_and_handover_window():
     main = DefinitionHit("main", "definition", main_chunk, 1, len(body))
     target = DefinitionHit("target", "definition", target_chunk, 1, 2)
 
-    class ExactStore:
+    class ExactStore(FakeExactSearchStore):
         async def calls_within(self, *, blob_name, start_line, end_line, scope):
             return [("target", 15, "main")] if blob_name == "a" * 64 else []
 
@@ -404,7 +406,7 @@ async def test_unresolved_start_does_not_turn_the_target_into_a_trace_start():
     target_chunk = _hit("src/target.py", "def target():\n    return 1", blob="b" * 64)
     target = DefinitionHit("target", "definition", target_chunk, 1, 2)
 
-    class ExactStore:
+    class ExactStore(FakeExactSearchStore):
         async def find_definitions(
             self, *, identifiers, scope, max_per_identifier=3, enclosing=None
         ):
@@ -442,7 +444,7 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
     caller = RelatedOccurrence("start", "call", caller_hit, 1, 1, "caller")
     start = DefinitionHit("start", "definition", primary[0], 1, 1)
 
-    class ExactStore:
+    class ExactStore(FakeExactSearchStore):
         async def calls_within(self, *, blob_name, start_line, end_line, scope):
             return []
 
@@ -482,3 +484,25 @@ async def test_chain_and_relation_sections_share_the_hard_context_budget():
     hits = [*state.selected, *state.related]
     assert sum(len(hit.content) for hit in hits) <= 2_500
     assert {hit.role for hit in state.related} == {"chain", "caller"}
+
+
+@pytest.mark.parametrize("budget, expected", [(4, ["ab", "cd"]), (5, ["ab\ncd"])])
+async def test_adjacent_merge_respects_separator_cost(budget, expected):
+    pipeline = RetrievalPipeline(
+        embedder=object(),
+        store=object(),
+        settings=RetrievalSettings(max_context_chars=budget),
+    )
+    state = retrieval_state(
+        "Explain the code",
+        SearchScope(frozenset({"a" * 64})),
+        selected=[
+            replace(_hit("src/a.py", "ab", blob="a" * 64), start_line=1, end_line=1),
+            replace(_hit("src/a.py", "cd", blob="a" * 64), start_line=2, end_line=2),
+        ],
+    )
+
+    await pipeline.expander.expand(state)
+
+    assert [hit.content for hit in state.selected] == expected
+    assert sum(len(hit.content) for hit in state.selected) <= budget

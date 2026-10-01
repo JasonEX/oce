@@ -83,8 +83,8 @@ class RetrievalMetricRecord:
     # already answered and the embedding round trip was not awaited.
     dense_route: str | None = None
     head_slots: int = 0
-    # Structural evidence the routing saw: definitions of the queried names and
-    # the largest number of places declaring one of them (ambiguity).
+    # Scope-wide recorded declarations of the queried leaf names before chunk recall
+    # limits, and the largest per-name count (ambiguity).
     exact_definitions: int = 0
     definition_sites: int = 0
     # Relation sections appended after the primary results, and their size.
@@ -115,8 +115,8 @@ class RetrievalAudit:
     dense_route: str | None = None
     # Head slots the deterministic symbol/path answer actually took.
     head_slots: int = 0
-    # Definitions found for the named symbols, and how many places declare
-    # the most ambiguous one.
+    # Scope-wide recorded declarations of query leaves, and the largest per-name count;
+    # these audit facts do not participate in the current rerank routing.
     exact_definitions: int = 0
     definition_sites: int = 0
     # Relation sections: excerpts per lane and their total size.

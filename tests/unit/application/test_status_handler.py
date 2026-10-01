@@ -144,11 +144,13 @@ class TestResolveScopeQueryHandler:
             )
 
     async def test_added_blobs_only_forms_scope(self, repos):
-        factory, _, _ = repos
+        factory, blob_repo, _ = repos
+        a = await _save_ready_blob(blob_repo, "src/a.py", "a")
+        b = await _save_ready_blob(blob_repo, "src/b.py", "b")
         result = await ResolveScopeQueryHandler(factory).handle(
-            ResolveScopeQuery(added_blobs=("a", "b"), deleted_blobs=("b",))
+            ResolveScopeQuery(added_blobs=(a, b), deleted_blobs=(b,))
         )
-        assert result.scope.blob_names == frozenset({"a"})
+        assert result.scope.blob_names == frozenset({a})
         assert result.scope.chain_id is None
 
     async def test_malformed_token_raises_invalid(self, repos):
@@ -178,22 +180,52 @@ class TestResolveScopeQueryHandler:
             )
 
     async def test_checkpoint_members_plus_increments(self, repos):
-        factory, _, chain_repo = repos
-        chain = await chain_repo.create(["a", "b"])
+        factory, blob_repo, chain_repo = repos
+        a = await _save_ready_blob(blob_repo, "src/a.py", "a")
+        b = await _save_ready_blob(blob_repo, "src/b.py", "b")
+        c = await _save_ready_blob(blob_repo, "src/c.py", "c")
+        chain = await chain_repo.create([a, b])
         result = await ResolveScopeQueryHandler(factory).handle(
             ResolveScopeQuery(
                 checkpoint_id=Chain.format_checkpoint_token(
                     chain.chain_id, chain.version
                 ),
-                added_blobs=("c",),
-                deleted_blobs=("b",),
+                added_blobs=(c,),
+                deleted_blobs=(b,),
             )
         )
-        assert result.scope.blob_names == frozenset({"a", "c"})
+        assert result.scope.blob_names == frozenset({a, c})
         assert result.scope.chain_id == chain.chain_id
         assert result.scope.chain_version == chain.version
-        assert result.scope.added_blob_names == frozenset({"c"})
-        assert result.scope.deleted_blob_names == frozenset({"b"})
+        assert result.scope.added_blob_names == frozenset({c})
+        assert result.scope.deleted_blob_names == frozenset({b})
+
+    @pytest.mark.parametrize("with_checkpoint", [False, True])
+    async def test_only_ready_metadata_enters_the_dense_scope(
+        self, repos, with_checkpoint: bool
+    ) -> None:
+        factory, blob_repo, chain_repo = repos
+        ready = await _save_ready_blob(blob_repo, "src/ready.py", "ready")
+        names = [ready, "missing"]
+        for status in (BlobStatus.PENDING, BlobStatus.ERROR, BlobStatus.DELETING):
+            path = f"src/{status.value}.py"
+            name = blob_name(path, status.value)
+            blob_repo.blobs[name] = Blob(blob_name=name, path=path, status=status)
+            names.append(name)
+        checkpoint_id = None
+        if with_checkpoint:
+            chain = await chain_repo.create(names)
+            checkpoint_id = Chain.format_checkpoint_token(chain.chain_id, chain.version)
+
+        result = await ResolveScopeQueryHandler(factory).handle(
+            ResolveScopeQuery(
+                checkpoint_id=checkpoint_id,
+                added_blobs=() if with_checkpoint else tuple(names),
+            )
+        )
+
+        assert result.scope.blob_names == frozenset({ready})
+        assert result.scope.deleted_blob_names == frozenset(names) - {ready}
 
     async def test_empty_chain_is_empty_scope_not_error(self, repos):
         # A valid checkpoint without members is an empty working set, not the whole index.

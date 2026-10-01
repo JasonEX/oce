@@ -22,6 +22,7 @@ class BlobStatus(str, Enum):
     PENDING = "pending"  # waiting to be embedded
     READY = "ready"  # retrievable
     ERROR = "error"  # embedding failed
+    DELETING = "deleting"  # vector cleanup must complete before metadata removal
 
 
 @dataclass

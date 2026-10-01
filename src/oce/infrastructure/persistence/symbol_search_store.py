@@ -205,6 +205,20 @@ class SymbolSearchStore:
                 )
         return self._rows_to_hits(rows, top_k)
 
+    async def definition_counts(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+    ) -> dict[str, int]:
+        """Recorded declaration sites per identifier, before search hits are deduplicated."""
+        identifiers = tuple(dict.fromkeys(item for item in identifiers if item))
+        if not identifiers or not scope.blob_names:
+            return {}
+        async with asyncio.timeout(self._timeout_seconds):
+            async with self._session_factory() as session:
+                return await self._definition_counts(session, identifiers, scope)
+
     async def find_definitions(
         self,
         *,

@@ -133,6 +133,7 @@ async def test_pending_name_pages_preserve_order_and_exclude_ready(tmp_path):
         async with sessions() as session:
             repo = SqlBlobRepository(session)
             expected = [name for name in names if name != names[2]]
+            assert await repo.count_pending() == len(expected)
             assert await repo.list_pending_names() == expected
             collected = []
             after = None

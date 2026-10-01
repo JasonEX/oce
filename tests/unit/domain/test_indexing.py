@@ -137,10 +137,13 @@ class TestIngest:
 
         count = await indexing_pipeline.ingest(name, "src/a.py", content)
 
-        # ingest returns 0; embed_pending chunks.
+        # ingest returns 0; prepare chunks.
         assert count == 0
 
-        embedded_count = await indexing_pipeline.embed_pending([name])
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
+        embedded_count = await indexing_pipeline.write_vectors(batch)
+        await indexing_pipeline.complete(batch)
         assert embedded_count >= 2  # 1000 characters at 400 per chunk
 
         blob = indexing_pipeline.blob_repo.blobs[name]
@@ -155,12 +158,14 @@ class TestIngest:
 
         assert count == 0
 
-        # An empty file is pending until embed_pending handles it.
+        # An empty file stays pending until every indexing phase completes.
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.PENDING
 
-        # embed_pending marks empty content ready.
-        await indexing_pipeline.embed_pending([name])
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
+        assert await indexing_pipeline.write_vectors(batch) == 0
+        await indexing_pipeline.complete(batch)
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.READY
         assert blob.chunks == []
@@ -206,8 +211,8 @@ class TestIngest:
         assert indexing_pipeline.blob_repo.staging[name] == content
 
 
-class TestEmbedPending:
-    async def test_embed_pending_marks_blob_ready(self, indexing_pipeline):
+class TestIndexingPhases:
+    async def test_complete_marks_blob_ready(self, indexing_pipeline):
         # Reset the fixture state completely.
         indexing_pipeline.chunk_repo.pending.clear()
         indexing_pipeline.chunk_repo.chunks.clear()
@@ -246,7 +251,11 @@ class TestEmbedPending:
             LocatedChunk(name, chunk.content_hash, chunk.path, chunk.content, 1, 1)
         ]
 
-        embedded = await indexing_pipeline.embed_pending([name])
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
+        embedded = await indexing_pipeline.write_vectors(batch)
+        assert blob.status == BlobStatus.PENDING
+        await indexing_pipeline.complete(batch)
 
         assert embedded == 1
         blob = indexing_pipeline.blob_repo.blobs[name]
@@ -266,13 +275,17 @@ class TestEmbedPending:
         indexing_pipeline.path_store = path_store
 
         await indexing_pipeline.ingest(name, "src/feature.py", content)
-        await indexing_pipeline.embed_pending([name])
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
+        await indexing_pipeline.write_vectors(batch)
 
-        assert indexing_pipeline.blob_repo.blobs[name].status == BlobStatus.READY
+        assert indexing_pipeline.blob_repo.blobs[name].status == BlobStatus.PENDING
         assert len(path_store.documents) == 1
         assert path_store.documents[0]["blob_name"] == name
         assert path_store.documents[0]["path"] == "src/feature.py"
         assert path_store.documents[0]["path_vector"] == [1.0] * 4
+        await indexing_pipeline.complete(batch)
+        assert indexing_pipeline.blob_repo.blobs[name].status == BlobStatus.READY
 
     async def test_path_index_failure_keeps_blob_retryable(self, indexing_pipeline):
         content = "def feature():\n    return True\n"
@@ -282,14 +295,16 @@ class TestEmbedPending:
         )
 
         await indexing_pipeline.ingest(name, "src/feature.py", content)
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
         with pytest.raises(RuntimeError, match="path store unavailable"):
-            await indexing_pipeline.embed_pending([name], mark_failures=False)
+            await indexing_pipeline.write_vectors(batch)
 
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.PENDING
         assert name in indexing_pipeline.blob_repo.staging
 
-    async def test_embed_pending_disabled_keeps_pending_and_staging(
+    async def test_disabled_embedding_keeps_pending_and_staging(
         self, indexing_pipeline
     ):
         """Regression: with embedding disabled a chunked blob stays pending with its staging.
@@ -341,7 +356,10 @@ class TestEmbedPending:
             path_store=indexing_pipeline.path_store,
             embedding_enabled=False,
         )
-        embedded = await disabled_pipeline.embed_pending([name])
+        batch = await disabled_pipeline.prepare([name])
+        assert batch is not None
+        embedded = await disabled_pipeline.write_vectors(batch)
+        await disabled_pipeline.complete(batch)
 
         assert embedded == 0
         assert indexing_pipeline.vector_index.records == []  # no vector was written
@@ -354,7 +372,7 @@ class TestEmbedPending:
             len(indexing_pipeline.chunk_repo.pending) == 1
         )  # the chunk was not consumed
 
-    async def test_embed_pending_no_pending_returns_zero(self, indexing_pipeline):
+    async def test_prepare_no_pending_returns_none(self, indexing_pipeline):
         name = _blob_name("src/x.py", "print(1)\n")
         await indexing_pipeline.ingest(name, "src/x.py", "print(1)\n")
 
@@ -364,9 +382,9 @@ class TestEmbedPending:
         blob.mark_ready()
         await indexing_pipeline.blob_repo.save(blob)
 
-        assert await indexing_pipeline.embed_pending([name]) == 0
+        assert await indexing_pipeline.prepare([name]) is None
 
-    async def test_embed_failure_marks_blob_error(self, indexing_pipeline):
+    async def test_fail_marks_blob_error(self, indexing_pipeline):
         class FailingEmbedder:
             async def embed_documents(self, _texts):
                 raise RuntimeError("provider rejected input")
@@ -386,8 +404,13 @@ class TestEmbedPending:
         ]
         indexing_pipeline.embedder = FailingEmbedder()
 
-        with pytest.raises(RuntimeError, match="provider rejected input"):
-            await indexing_pipeline.embed_pending([name])
+        batch = await indexing_pipeline.prepare([name])
+        assert batch is not None
+        with pytest.raises(RuntimeError, match="provider rejected input") as caught:
+            await indexing_pipeline.write_vectors(batch)
+
+        assert indexing_pipeline.blob_repo.blobs[name].status == BlobStatus.PENDING
+        await indexing_pipeline.fail(batch, caught.value)
 
         blob = indexing_pipeline.blob_repo.blobs[name]
         assert blob.status == BlobStatus.ERROR
@@ -427,7 +450,10 @@ class TestProjections:
         content = "def run(self):\n    return 1"
         name = _blob_name("src/svc.py", content)
         await pipeline.ingest(name, "src/svc.py", content)
-        await pipeline.embed_pending([name])
+        batch = await pipeline.prepare([name])
+        assert batch is not None
+        await pipeline.write_vectors(batch)
+        await pipeline.complete(batch)
 
         assert lexical.indexed == [(Chunk.compute_hash(content),)]
         assert symbols.indexed[0][0] == name

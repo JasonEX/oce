@@ -11,6 +11,12 @@ from oce.domain.services.path_search import PathSearchResult
 from oce.infrastructure.milvus3.base import MilvusCollectionClient, build_blob_filter
 from oce.infrastructure.milvus3.schema import create_path_collection_schema
 from oce.shared.config.settings import MilvusSettings
+from oce.shared.path_limits import PATH_DOCUMENT_PREVIEW_BYTES, PATH_PREVIEW_BYTES
+
+
+def _utf8_prefix(value: str, max_bytes: int) -> str:
+    """Fit a stored diagnostic without cutting a UTF-8 code point."""
+    return value.encode("utf-8")[:max_bytes].decode("utf-8", errors="ignore")
 
 
 class PathIndexClient(MilvusCollectionClient):
@@ -33,8 +39,10 @@ class PathIndexClient(MilvusCollectionClient):
             {
                 "path_id": doc["path_id"],
                 "blob_name": doc["blob_name"],
-                "path": doc["path"],
-                "path_document": doc["path_document"],
+                "path": _utf8_prefix(doc["path"], PATH_PREVIEW_BYTES),
+                "path_document": _utf8_prefix(
+                    doc["path_document"], PATH_DOCUMENT_PREVIEW_BYTES
+                ),
                 "path_vector": doc["path_vector"],
             }
             for doc in path_docs
@@ -58,11 +66,10 @@ class PathIndexClient(MilvusCollectionClient):
             query_vector,
             filter_expr=filter_expr,
             top_k=top_k,
-            output_fields=["blob_name", "path"],
+            output_fields=["blob_name"],
         )
         hits = [
             PathSearchResult(
-                path=entity.get("path") or "",
                 blob_name=entity.get("blob_name") or "",
                 score=score,
             )

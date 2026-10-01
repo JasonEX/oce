@@ -81,6 +81,28 @@ async def _index_files(session: AsyncSession, files: dict[str, str]) -> dict[str
     return names
 
 
+async def test_definition_counts_preserves_per_name_counts_in_a_ready_scope(sessions):
+    async with sessions() as session:
+        names = await _index_files(
+            session,
+            {
+                "a.py": "def alpha(): pass\ndef beta(): pass\ndef gamma(): pass",
+                "b.py": "def alpha(): pass\ndef helper(): pass",
+                "pending.py": "def alpha(): pass\ndef beta(): pass",
+                "outside.py": "def alpha(): pass\ndef beta(): pass",
+            },
+        )
+        pending = await session.get(BlobModel, names["pending.py"])
+        pending.status = BlobStatus.PENDING.value
+        await session.commit()
+    store = SymbolSearchStore(sessions)
+    counts = await store.definition_counts(
+        identifiers=["alpha", "beta", "gamma", "alpha", "absent"],
+        scope=SearchScope(frozenset(names[p] for p in ("a.py", "b.py", "pending.py"))),
+    )
+    assert counts == {"alpha": 2, "beta": 1, "gamma": 1}
+
+
 _FILES = {
     "src/base.py": "import os\n\n\nclass BaseService:\n    limit = 3\n\n    def start(self):\n        return self.limit\n",
     "src/svc.py": "from src.base import BaseService\n\n\nclass Service(BaseService):\n    def run(self):\n        return start_all()\n",
@@ -88,7 +110,9 @@ _FILES = {
 }
 
 
-@pytest.mark.parametrize("operation", ["search_exact", "find_definitions"])
+@pytest.mark.parametrize(
+    "operation", ["search_exact", "find_definitions", "definition_counts"]
+)
 async def test_small_scope_definition_lookup_has_bounded_sql_work(sessions, operation):
     identifiers = [f"operation_{index}" for index in range(40)]
     content = "\n\n".join(f"def {name}():\n    return 1" for name in identifiers)
@@ -135,7 +159,9 @@ async def test_small_scope_definition_lookup_has_bounded_sql_work(sessions, oper
     finally:
         await driver.set_progress_handler(None, 1000)
     assert result
-    if operation == "find_definitions":
+    if operation == "definition_counts":
+        assert result == dict.fromkeys(identifiers, 1)
+    elif operation == "find_definitions":
         assert [item.identifier for item in result] == identifiers
     else:
         assert {hit.path for hit in result} == {"src/operations.py"}
@@ -146,6 +172,7 @@ async def test_small_scope_definition_lookup_has_bounded_sql_work(sessions, oper
     [
         ("search_exact", {"identifiers": ["work"]}),
         ("find_definitions", {"identifiers": ["work"]}),
+        ("definition_counts", {"identifiers": ["work"]}),
         ("find_callers", {"identifiers": ["work"]}),
         ("defined_identifiers", {"occurrences": [("blob", "chunk")]}),
         ("calls_within", {"blob_name": "blob", "start_line": 1, "end_line": 2}),

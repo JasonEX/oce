@@ -19,6 +19,17 @@ async def test_close_releases_redis_pool():
     redis.aclose.assert_awaited_once_with()
 
 
+async def test_inflight_count_uses_server_cardinality_without_loading_names() -> None:
+    redis = AsyncMock()
+    redis.scard.return_value = 123_456
+    queue = RedisQueue(redis, "oce:test")
+
+    assert await queue.inflight_count() == 123_456
+
+    redis.scard.assert_awaited_once_with("oce:test:pending")
+    redis.smembers.assert_not_awaited()
+
+
 async def test_dequeue_many_blocks_for_first_item_then_drains_available_items():
     redis = AsyncMock()
     redis.brpoplpush.return_value = "first"
@@ -49,6 +60,29 @@ async def test_dequeue_many_stops_when_backlog_is_empty():
         "oce:test",
         "oce:test:processing",
     )
+
+
+async def test_dequeue_many_returns_confirmed_claims_after_batch_fill_failure() -> None:
+    redis = AsyncMock()
+    redis.brpoplpush.return_value = "first"
+    redis.rpoplpush.side_effect = ["second", ConnectionError("Redis unavailable")]
+    queue = RedisQueue(redis, "oce:test")
+
+    assert await queue.dequeue_many(4) == ["first", "second"]
+
+    assert redis.rpoplpush.await_count == 2
+    redis.eval.assert_not_awaited()
+
+
+async def test_dequeue_many_propagates_failure_before_any_confirmed_claim() -> None:
+    redis = AsyncMock()
+    redis.brpoplpush.side_effect = ConnectionError("Redis unavailable")
+    queue = RedisQueue(redis, "oce:test")
+
+    with pytest.raises(ConnectionError, match="Redis unavailable"):
+        await queue.dequeue_many(4)
+
+    redis.rpoplpush.assert_not_awaited()
 
 
 async def test_dequeue_many_returns_empty_after_timeout_without_draining():

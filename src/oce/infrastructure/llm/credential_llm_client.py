@@ -64,6 +64,10 @@ class CredentialConfiguredLLMClient(SwappableDelegate[_ActiveLLM]):
         self._fallback_model = fallback_model
         self._on_usage = on_usage
 
+    @property
+    def kind(self) -> str:
+        return self._kind
+
     async def chat(
         self,
         messages: list[dict[str, str]],

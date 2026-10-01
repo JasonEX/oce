@@ -1,0 +1,403 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-01",
+  "purpose": "Blackbox paired verification of reliability/simplification changes",
+  "verdict": "327/327 cases preserved status, retrieved path and line spans, quality metrics, and returned character count",
+  "cases": 327,
+  "successful_cases_each_run": 327,
+  "error_cases_each_run": 0,
+  "case_comparison_fields": [
+    "status",
+    "retrieved",
+    "metrics",
+    "returned_chars"
+  ],
+  "preflight": {
+    "snapshot_entries": 26,
+    "distinct_blob_names": 9676,
+    "missing_each_run": 0,
+    "nonindexed_each_run": 0
+  },
+  "sync_uploaded_blobs_each_run": 0,
+  "external_embedding_calls_each_run": 376,
+  "settings": {
+    "worker_enabled": false,
+    "rerank_enabled": false,
+    "llm_rerank_enabled": false,
+    "query_rewrite_enabled": false,
+    "query_vector_cache_enabled": false,
+    "embedding_model": "Qwen3-Embedding-4B",
+    "embedding_dimensions": 1024
+  },
+  "provenance": {
+    "release_url": "https://github.com/JasonEX/oce-client/releases/tag/v0.2.0",
+    "archive_sha256": "e294a2f021ba5a31d3c2fdaca20c2aad49f2e1c93309d1afe1d47300fdcb7b95",
+    "binary_candidates": [
+      "/home/yuqian/.cache/oce/audit-paired-20261001-hymbn8ch/client/oce-client"
+    ],
+    "source_baseline": "/tmp/oce-audit-fix-jsyaidz2/baseline/src",
+    "baseline_source_tree_sha256": "1cc20b6cebf4e4c98512549ddf6c270bdd3f19f8f7c318e99c425a3d38355eee",
+    "baseline_source_files": 179,
+    "client_binary_sha256": "ec7983848c3515e30774517f94c629289504cca43f974113a18b6b247545eb61",
+    "client_version": "oce-client 0.2.0",
+    "preflight_snapshots": 26,
+    "preflight_distinct_blobs": 9676,
+    "preflight_missing": 0,
+    "local_grpc_proxy_exclusions": "127.0.0.1,localhost",
+    "baseline_utc_start": "2026-10-01T15:57:41.563887+00:00",
+    "baseline_utc_finish": "2026-10-01T16:00:19.329614+00:00",
+    "candidate_source_tree_sha256": "d8a90c90b542b7a930ad0ac5b92208d718ea29dcb75166fea75eb75bb547b325",
+    "candidate_source_files": 182,
+    "candidate_utc_start": "2026-10-01T16:20:21.057298+00:00",
+    "candidate_utc_finish": "2026-10-01T16:22:48.841718+00:00",
+    "source_snapshot_note": "Candidate hash records the source before candidate scoring. After scoring, cli.py dotenv parsing and domain/blob/blob.py legacy long-path loading received compatibility fixes; the final whole source tree was not rerun through all four suites.",
+    "post_scoring_compatibility_files": [
+      "src/oce/cli.py",
+      "src/oce/domain/blob/blob.py"
+    ],
+    "server_stopped": true,
+    "server_port": 18986,
+    "candidate_final_profile": "compatible",
+    "candidate_final_dense_entities": 346265,
+    "candidate_final_path_entities": 57751,
+    "candidate_final_sql_wal_present": false,
+    "preserved_originals": {
+      "sql_bytes": 4327280640,
+      "sql_mtime_utc": "2026-09-12T01:20:33.200409+00:00",
+      "original_client_states_used_for_writes": false,
+      "client_state_copies_are_symlinks": false,
+      "live_benchmark_server_processes": 0,
+      "port_18986_listening": false,
+      "retrieval_client_state_latest_mtime_utc": "2026-09-12T01:20:26.480029+00:00",
+      "swe_client_state_latest_mtime_utc": "2026-09-03T13:21:16.415263+00:00"
+    }
+  },
+  "suites": {
+    "short_queries": {
+      "case_count": 240,
+      "quality_changes": {},
+      "grouped_changes": {},
+      "case_changes": [],
+      "baseline_summary": {
+        "cases": 240,
+        "successful_cases": 240,
+        "error_cases": 0,
+        "top1": 1.0,
+        "hit_at_10": 1.0,
+        "mrr": 1.0,
+        "path_recall_at_10": 0.8844238347673848,
+        "definition_top1": 0.6666666666666666,
+        "mean_elapsed_ms": 131.975,
+        "mean_returned_chars": 11043.408333333333,
+        "mean_hit_count": 8.058333333333334,
+        "p50_elapsed_ms": 41,
+        "p95_elapsed_ms": 647,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 240,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "candidate_summary": {
+        "cases": 240,
+        "successful_cases": 240,
+        "error_cases": 0,
+        "top1": 1.0,
+        "hit_at_10": 1.0,
+        "mrr": 1.0,
+        "path_recall_at_10": 0.8844238347673848,
+        "definition_top1": 0.6666666666666666,
+        "mean_elapsed_ms": 127.9125,
+        "mean_returned_chars": 11043.408333333333,
+        "mean_hit_count": 8.058333333333334,
+        "p50_elapsed_ms": 41,
+        "p95_elapsed_ms": 633,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 240,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "identical_case_payloads": 240
+    },
+    "semantic_queries": {
+      "case_count": 39,
+      "quality_changes": {},
+      "grouped_changes": {},
+      "case_changes": [],
+      "baseline_summary": {
+        "cases": 39,
+        "successful_cases": 39,
+        "error_cases": 0,
+        "top1_relevant": 0.7435897435897436,
+        "top1_primary": 0.6923076923076923,
+        "mrr": 0.8534188034188034,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.6643123970047047,
+        "weighted_recall_at_10": 0.797624455316763,
+        "primary_recall_at_10": 0.9358974358974359,
+        "ndcg_at_10": 0.7526135676029607,
+        "mean_elapsed_ms": 594.3076923076923,
+        "p50_elapsed_ms": 559,
+        "p95_elapsed_ms": 903,
+        "mean_returned_chars": 30410.128205128207,
+        "mean_hit_count": 20.512820512820515,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 39,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "candidate_summary": {
+        "cases": 39,
+        "successful_cases": 39,
+        "error_cases": 0,
+        "top1_relevant": 0.7435897435897436,
+        "top1_primary": 0.6923076923076923,
+        "mrr": 0.8534188034188034,
+        "hit_at_5": 1.0,
+        "weighted_recall_at_5": 0.6643123970047047,
+        "weighted_recall_at_10": 0.797624455316763,
+        "primary_recall_at_10": 0.9358974358974359,
+        "ndcg_at_10": 0.7526135676029607,
+        "mean_elapsed_ms": 538.1282051282051,
+        "p50_elapsed_ms": 507,
+        "p95_elapsed_ms": 737,
+        "mean_returned_chars": 30410.128205128207,
+        "mean_hit_count": 20.512820512820515,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 39,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "identical_case_payloads": 39
+    },
+    "project_cases": {
+      "case_count": 35,
+      "quality_changes": {},
+      "grouped_changes": {},
+      "case_changes": [],
+      "baseline_summary": {
+        "cases": 35,
+        "successful_cases": 35,
+        "error_cases": 0,
+        "primary_top1": 0.8857142857142857,
+        "primary_hit_at_3": 0.9714285714285714,
+        "primary_hit_at_10": 0.9714285714285714,
+        "primary_mrr": 0.9285714285714286,
+        "primary_recall": 0.9428571428571428,
+        "supporting_recall": 0.9380952380952382,
+        "relation_recall": 0.9338095238095238,
+        "hop_recall": 0.9833333333333333,
+        "chain_closed": 0.9428571428571428,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.2,
+        "truth_region_share": 0.3211102107877871,
+        "error_classes": {
+          "none": 12,
+          "exact_miss": 1,
+          "distractor": 0,
+          "test_missing": 0,
+          "relation_missing": 3,
+          "redundant": 19
+        },
+        "mean_elapsed_ms": 227.74285714285713,
+        "p50_elapsed_ms": 68,
+        "p95_elapsed_ms": 838,
+        "mean_returned_chars": 19244.428571428572,
+        "mean_hit_count": 13.514285714285714,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 35,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "candidate_summary": {
+        "cases": 35,
+        "successful_cases": 35,
+        "error_cases": 0,
+        "primary_top1": 0.8857142857142857,
+        "primary_hit_at_3": 0.9714285714285714,
+        "primary_hit_at_10": 0.9714285714285714,
+        "primary_mrr": 0.9285714285714286,
+        "primary_recall": 0.9428571428571428,
+        "supporting_recall": 0.9380952380952382,
+        "relation_recall": 0.9338095238095238,
+        "hop_recall": 0.9833333333333333,
+        "chain_closed": 0.9428571428571428,
+        "test_recall": 1.0,
+        "distractor_head": 0.0,
+        "distractor_any": 0.2,
+        "truth_region_share": 0.3211102107877871,
+        "error_classes": {
+          "none": 12,
+          "exact_miss": 1,
+          "distractor": 0,
+          "test_missing": 0,
+          "relation_missing": 3,
+          "redundant": 19
+        },
+        "mean_elapsed_ms": 206.42857142857142,
+        "p50_elapsed_ms": 70,
+        "p95_elapsed_ms": 748,
+        "mean_returned_chars": 19244.428571428572,
+        "mean_hit_count": 13.514285714285714,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 35,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "identical_case_payloads": 35
+    },
+    "swe_explore": {
+      "case_count": 13,
+      "quality_changes": {},
+      "grouped_changes": {},
+      "case_changes": [],
+      "baseline_summary": {
+        "cases": 13,
+        "successful_cases": 13,
+        "error_cases": 0,
+        "edit_top1": 0.46153846153846156,
+        "edit_file_recall_at_10": 0.8076923076923077,
+        "edit_region_recall_at_10": 0.38461538461538464,
+        "edit_mrr": 0.6230769230769231,
+        "core_top1": 0.7692307692307693,
+        "core_file_recall_at_10": 0.6653846153846155,
+        "core_region_recall_at_10": 0.5756410256410256,
+        "core_mrr": 0.8186813186813187,
+        "swe_explore_precision": 0.16400835728357982,
+        "swe_explore_recall": 0.06194720058993496,
+        "swe_explore_f1_score": 0.0798421851476338,
+        "swe_explore_hit_file_rate": 0.6653846153846155,
+        "swe_explore_noise_file_rate": 0.771014882553344,
+        "swe_explore_hit_region_rate": 0.5756410256410256,
+        "swe_explore_noise_region_rate": 0.7581943697328313,
+        "swe_explore_weighted_core_coverage": 0.175098950826196,
+        "swe_explore_context_efficiency": 0.29172293226577084,
+        "swe_explore_ndcg_at_100": 0.6237438080231376,
+        "swe_explore_ndcg_at_300": 0.7559123428665819,
+        "swe_explore_ndcg_at_500": 0.7559123428665819,
+        "swe_explore_recall_at_100": 0.046726910245357786,
+        "swe_explore_recall_at_300": 0.05907654658359708,
+        "swe_explore_recall_at_500": 0.059906077898404214,
+        "swe_explore_first_useful_hit": 0.8811637080867849,
+        "mean_elapsed_ms": 2300.769230769231,
+        "p50_elapsed_ms": 2092,
+        "p95_elapsed_ms": 3772,
+        "mean_returned_chars": 24952.615384615383,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 62,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "candidate_summary": {
+        "cases": 13,
+        "successful_cases": 13,
+        "error_cases": 0,
+        "edit_top1": 0.46153846153846156,
+        "edit_file_recall_at_10": 0.8076923076923077,
+        "edit_region_recall_at_10": 0.38461538461538464,
+        "edit_mrr": 0.6230769230769231,
+        "core_top1": 0.7692307692307693,
+        "core_file_recall_at_10": 0.6653846153846155,
+        "core_region_recall_at_10": 0.5756410256410256,
+        "core_mrr": 0.8186813186813187,
+        "swe_explore_precision": 0.16400835728357982,
+        "swe_explore_recall": 0.06194720058993496,
+        "swe_explore_f1_score": 0.0798421851476338,
+        "swe_explore_hit_file_rate": 0.6653846153846155,
+        "swe_explore_noise_file_rate": 0.771014882553344,
+        "swe_explore_hit_region_rate": 0.5756410256410256,
+        "swe_explore_noise_region_rate": 0.7581943697328313,
+        "swe_explore_weighted_core_coverage": 0.175098950826196,
+        "swe_explore_context_efficiency": 0.29172293226577084,
+        "swe_explore_ndcg_at_100": 0.6237438080231376,
+        "swe_explore_ndcg_at_300": 0.7559123428665819,
+        "swe_explore_ndcg_at_500": 0.7559123428665819,
+        "swe_explore_recall_at_100": 0.046726910245357786,
+        "swe_explore_recall_at_300": 0.05907654658359708,
+        "swe_explore_recall_at_500": 0.059906077898404214,
+        "swe_explore_first_useful_hit": 0.8811637080867849,
+        "mean_elapsed_ms": 1991.923076923077,
+        "p50_elapsed_ms": 1888,
+        "p95_elapsed_ms": 2877,
+        "mean_returned_chars": 24952.615384615383,
+        "external_model_tokens": {
+          "embed": {
+            "calls": 62,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+          }
+        }
+      },
+      "identical_case_payloads": 13
+    }
+  },
+  "limits": [
+    "One sequential baseline/candidate pair with a remote embedding endpoint; observed timing deltas do not establish a causal speedup.",
+    "Blackbox runners recorded path and line spans, not bytewise response text or retrieval scores. Frozen internal dump independently covers those details.",
+    "Worker was disabled in personal mode, so Redis and background lifecycle fault behavior is covered by targeted tests rather than this blackbox run.",
+    "The final two compatibility-only source changes landed after scoring; their dedicated tests are separate evidence.",
+    "No retrieval quality gain is claimed; existing project redundancy and SWE retrieval limitations remain.",
+    "Embedding usage token counters are zero when endpoint usage is unavailable; this does not mean no tokens were consumed."
+  ],
+  "artifacts": {
+    "baseline-short_queries.json": "9512fb226e7596839785a34ccb3f364b4f4a7bec6189280e958202710e44d1dd",
+    "baseline-semantic_queries.json": "d5672f4e3054c686b57891ed8d9040c0bc5bf3f56498a8c43b39d42d98f3a3c7",
+    "baseline-project_cases.json": "c153ca61262501ad7c64aac29612ef00eb654ce82e041397dbec5efcdad93171",
+    "baseline-swe_explore.json": "40bde05766aa646c351529c8b396672ebc47f89a208c2c50ef7ca4297496be95",
+    "candidate-short_queries.json": "e6884d42787dad3349b321a59c34ec4ac997d55a0aa4372a26a6e53c56533815",
+    "candidate-semantic_queries.json": "860ffbcf40a3a7856b937490d12334a00a1b91814e58f392df9f4578b70df23a",
+    "candidate-project_cases.json": "0f12626b9b55bcd7930deb1c76babadc9732d73c4eaaa075ccd321269b0b386f",
+    "candidate-swe_explore.json": "4a49faa287689316eb7b665c54cb123694b0ecfa9789b90f8dddb052442561af",
+    "compare-short_queries.md": "35d83fd33039f89a2e1b2623ff94a6a80c1e93d9a5dc249d298a21e7182013b6",
+    "compare-semantic_queries.md": "cee4b73f3d57a60cfc47dd37664e66cf131bde0b59b54a453692d00e0568ce8b",
+    "compare-project_cases.md": "62b4af481ace5b6fef129cd1bc3b8f354e388c9011abed6668f7b844e9ef07bf",
+    "compare-swe_explore.md": "ac6a81abcc24ae599da60bc80358ee8e490afbad44f4ed658ba64d1cc726e529",
+    "paired-summary.json": "e03c73e37ea88fe15c3995abdece66ee2b8ea690c05aa831341e258e07dc0ef1",
+    "provenance.json": "e1e463c5f64d14f2d86df5efdf2611855c42afa80cc6ff3745fd862c3fa20917",
+    "baseline-preflight.json": "494e28357b74f6fa95077ca99159f1e98188db9070be5d0b3ba43a012b464d46",
+    "candidate-preflight.json": "494e28357b74f6fa95077ca99159f1e98188db9070be5d0b3ba43a012b464d46",
+    "baseline-timing.json": "a79ea6dee632ae36bb29366a3eb06a00762adfb14adc9452a2c4eeb8e2a77f8d",
+    "candidate-timing.json": "40222cc2afdf79cec08a3230c8992c7f5c1b0feecba1cb25c321a866e866d896",
+    "candidate-final-index-stats.json": "39d7a6df9fa92ed889e2c37f2cc9fd1b828f4ada39cdb87043117bf2a187b6bd"
+  },
+  "final_validation_reported_by_root": {
+    "unit_passed": 951,
+    "unit_skipped": 1,
+    "mypy_files": 164,
+    "ruff": "passed",
+    "format": "passed",
+    "lock": "passed",
+    "diff": "passed",
+    "final_package_rebuild": "passed",
+    "post_scoring_compatibility_regressions": 16
+  }
+}

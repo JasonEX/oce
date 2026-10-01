@@ -7,6 +7,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from oce.shared.path_limits import MAX_SOURCE_PATH_CHARS
+
 
 def _none_to_empty_string(value: Any) -> Any:
     return "" if value is None else value
@@ -27,7 +29,7 @@ class FindMissingResponse(BaseModel):
 
 class BlobInput(BaseModel):
     content: str
-    path: str = Field(min_length=1)
+    path: str = Field(min_length=1, max_length=MAX_SOURCE_PATH_CHARS)
 
 
 class BatchUploadRequest(BaseModel):
@@ -137,6 +139,7 @@ class MetadataIndexStatsResponse(BaseModel):
     blobs_ready: int = 0
     blobs_pending: int = 0
     blobs_error: int = 0
+    blobs_deleting: int = 0
     chunks_total: int = 0
     chunks_embedded: int = 0
     blob_chunk_links: int = 0
@@ -316,7 +319,7 @@ class RequeueStaleResponse(BaseModel):
 
 
 class GcRequest(BaseModel):
-    ttl_days: int = 30
+    ttl_days: int = Field(default=30, ge=1)
     dry_run: bool = True
     limit: int = 1000
 

@@ -14,8 +14,8 @@ SQLite's single write lock for seconds, so a concurrent upload, a retrieval
 that indexes its added files, or the monitoring flush failed with "database
 is locked". ``complete`` and ``fail`` reload the blobs that are still pending,
 so a blob another request finished or garbage collection removed in between
-is neither resurrected nor marked twice. ``embed_pending`` runs the phases in
-one unit of work for callers that do not commit in between.
+is neither resurrected nor marked twice. Application handlers own the
+transactions and choose how failures are retried or made terminal.
 """
 
 from __future__ import annotations
@@ -40,6 +40,7 @@ from oce.domain.services.path_search import PathSearchStore
 from oce.domain.services.search import VectorIndex, VectorRecord
 from oce.domain.services.source_filter import is_binary_source, is_ignored_source_path
 from oce.domain.services.symbols import SymbolProjection
+from oce.shared.errors import ServiceNotReadyError
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,8 @@ class IndexingPipeline:
         and polls ``find_missing`` for readiness. Always returns 0.
         """
         existing = await self.blob_repo.get(blob_name)
+        if existing is not None and existing.status == BlobStatus.DELETING:
+            raise ServiceNotReadyError("Blob deletion is in progress; retry the upload")
         is_binary = is_binary_source(content)
         if is_binary or is_ignored_source_path(path):
             if existing is not None and existing.chunks:
@@ -124,34 +127,10 @@ class IndexingPipeline:
         )
         await self.blob_repo.save(blob)
 
-        # The staged text is what embed_pending chunks; the column is Text, so
+        # The staged text is what prepare chunks; the column is Text, so
         # bytes would be rejected by the driver.
         await self.blob_repo.save_staging(blob_name, content)
         return 0
-
-    async def embed_pending(
-        self,
-        blob_names: Sequence[str] | None = None,
-        *,
-        mark_failures: bool = True,
-    ) -> int:
-        """Run every phase in this pipeline's unit of work; returns the chunks embedded.
-
-        For callers that do not commit between phases (tests, offline tools).
-        The application handlers commit after ``prepare`` and run
-        ``write_vectors`` outside the transaction.
-        """
-        batch = await self.prepare(blob_names)
-        if batch is None:
-            return 0
-        try:
-            embedded = await self.write_vectors(batch)
-        except Exception as exc:
-            if mark_failures:
-                await self.fail(batch, exc)
-            raise
-        await self.complete(batch)
-        return embedded
 
     async def prepare(
         self, blob_names: Sequence[str] | None = None
@@ -166,6 +145,16 @@ class IndexingPipeline:
         if not blobs:
             return None
 
+        for blob in blobs:
+            # The prepare transaction owns these pending rows. Refreshing
+            # activity keeps a GC snapshot from deleting a batch now indexing.
+            blob.touch()
+            await self.blob_repo.touch(blob.blob_name)
+
+        # SQLite ignores SELECT FOR UPDATE. Read again after taking its write
+        # lock: a completed or deleting blob must not be prepared from the
+        # earlier snapshot, even when its staged text has disappeared.
+        blobs = await self.blob_repo.find_pending([blob.blob_name for blob in blobs])
         for blob in blobs:
             if blob.chunks:
                 continue

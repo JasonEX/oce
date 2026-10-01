@@ -9,7 +9,7 @@ from oce.shared.errors import ServiceNotReadyError
 
 
 class ReloadableEmbeddingRuntime(Protocol):
-    async def reload(self) -> None: ...
+    async def reload(self) -> str | None: ...
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class ReloadEmbeddingCredentialsCommandHandler:
         _command: ReloadEmbeddingCredentialsCommand,
     ) -> ReloadEmbeddingCredentialsResult:
         try:
-            await self._runtime.reload()
+            reason = await self._runtime.reload()
         except ServiceNotReadyError as exc:
             return ReloadEmbeddingCredentialsResult(False, reason=str(exc))
-        return ReloadEmbeddingCredentialsResult(True)
+        return ReloadEmbeddingCredentialsResult(reason is None, reason=reason)

@@ -118,7 +118,11 @@ class FakeExactSearchStore:
     """``ExactSearchStore`` returning preset occurrences and no definitions."""
 
     def __init__(
-        self, hits: list[SearchHit] | None = None, error: Exception | None = None
+        self,
+        hits: list[SearchHit] | None = None,
+        error: Exception | None = None,
+        *,
+        definition_counts: Mapping[str, int] | None = None,
     ) -> None:
         self.hits = hits or []
         self.error = error
@@ -126,6 +130,8 @@ class FakeExactSearchStore:
         self.scope: SearchScope | None = None
         self.kinds: tuple[str, ...] | None = None
         self.kinds_seen: list[tuple[str, ...] | None] = []
+        self.counts_by_identifier = dict(definition_counts or {})
+        self.definition_count_requests: list[tuple[str, ...]] = []
 
     async def search_exact(
         self, *, identifiers, scope, top_k: int = 50, kinds=None
@@ -142,6 +148,38 @@ class FakeExactSearchStore:
         self, *, identifiers, scope, max_per_identifier: int = 3, enclosing=None
     ) -> list[DefinitionHit]:
         return []
+
+    async def definition_counts(
+        self, *, identifiers: Sequence[str], scope: SearchScope
+    ) -> dict[str, int]:
+        self.definition_count_requests.append(tuple(identifiers))
+        return {
+            name: self.counts_by_identifier[name]
+            for name in identifiers
+            if name in self.counts_by_identifier
+        }
+
+    async def occurrence_kinds(
+        self,
+        occurrences: Sequence[tuple[str, str]],
+        scope: SearchScope,
+    ) -> dict[tuple[str, str], frozenset[str]]:
+        return {}
+
+    async def calls_within(
+        self,
+        *,
+        blob_name: str,
+        start_line: int,
+        end_line: int,
+        scope: SearchScope,
+    ) -> list[tuple[str, int, str]]:
+        return []
+
+    async def chunk_for_line(
+        self, *, blob_name: str, line: int, scope: SearchScope
+    ) -> SearchHit | None:
+        return None
 
 
 class FakeEvidenceStore(FakeExactSearchStore):
@@ -160,6 +198,22 @@ class FakeEvidenceStore(FakeExactSearchStore):
         self.call_error = call_error
         self.definition_requests: list[tuple[tuple[str, ...], int]] = []
         self.call_requests: list[tuple[str, int, int]] = []
+
+    async def definition_counts(
+        self, *, identifiers: Sequence[str], scope: SearchScope
+    ) -> dict[str, int]:
+        self.definition_count_requests.append(tuple(identifiers))
+        return {
+            name: len(
+                {
+                    (item.hit.blob_name, item.start_line)
+                    for item in self.definitions
+                    if item.identifier == name
+                    and item.hit.blob_name in scope.blob_names
+                }
+            )
+            for name in dict.fromkeys(identifiers)
+        }
 
     async def find_definitions(
         self,

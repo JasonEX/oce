@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from io import StringIO
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -124,11 +125,10 @@ def _local_defaults(data_dir: Path) -> dict[str, str]:
 
 
 def _load_personal_env(data_dir: Path, env_file: str | None) -> None:
-    """Load the personal-mode .env into the environment before settings are read.
+    """Load personal-mode files before any settings group is constructed.
 
-    ``--env-file`` overrides existing variables; ``<data-dir>/.env`` does not.
-    The environment outranks pydantic's own .env reading, so every settings
-    group sees the same values regardless of the working directory.
+    Merge .env.local over .env before promoting values to the environment.
+    Existing process variables win unless --env-file was explicitly supplied.
     """
     if env_file:
         path = Path(env_file).expanduser().resolve()
@@ -136,9 +136,13 @@ def _load_personal_env(data_dir: Path, env_file: str | None) -> None:
             sys.exit(f"env file not found: {path}")
         load_dotenv(path, override=True)
         return
-    default_env = data_dir / ".env"
-    if default_env.is_file():
-        load_dotenv(default_env, override=False)
+    contents = [
+        path.read_text(encoding="utf-8")
+        for path in (data_dir / ".env", data_dir / ".env.local")
+        if path.is_file()
+    ]
+    # One parse preserves ordered variable interpolation across both files.
+    load_dotenv(stream=StringIO("\n".join(contents)), override=False)
 
 
 def _init(args: argparse.Namespace) -> None:

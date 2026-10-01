@@ -20,6 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from oce.shared.database.session import Base
+from oce.shared.path_limits import MAX_SOURCE_PATH_CHARS
 
 # SQLite autoincrement only works on INTEGER primary keys.
 _AutoId = BigInteger().with_variant(Integer, "sqlite")
@@ -107,7 +108,7 @@ class BlobModel(Base):
     __tablename__ = "blobs"
 
     blob_name: Mapped[str] = mapped_column(String(64), primary_key=True)
-    path: Mapped[str] = mapped_column(String(1024))
+    path: Mapped[str] = mapped_column(String(MAX_SOURCE_PATH_CHARS))
     content_size: Mapped[int] = mapped_column(Integer)
     language: Mapped[str | None] = mapped_column(String(32))
     file_type: Mapped[str] = mapped_column(String(16), default="text")

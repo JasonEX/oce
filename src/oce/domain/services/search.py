@@ -45,8 +45,9 @@ class SearchScope:
     ``blob_names`` is the authoritative materialized scope used by Milvus.  When
     the scope came from a checkpoint, the chain metadata lets SQL stores apply
     the same scope as a relation instead of expanding every member into an
-    ``IN`` clause.  Request deltas remain explicit because they have not been
-    committed to the checkpoint yet.
+    ``IN`` clause. Request additions remain explicit because they have not been
+    committed to the checkpoint yet; deletions also include identities that were
+    non-ready when resolved, so SQL cannot widen the frozen scope later.
     """
 
     blob_names: frozenset[str]
@@ -116,6 +117,12 @@ class ExactSearchStore(Protocol):
         kinds: Sequence[str] | None = None,
     ) -> list[SearchHit]:
         """``kinds`` restricts the occurrence kinds; None allows every kind."""
+        ...
+
+    async def definition_counts(
+        self, *, identifiers: Sequence[str], scope: SearchScope
+    ) -> dict[str, int]:
+        """Scope-wide recorded declaration counts before chunk recall limits."""
         ...
 
     async def find_definitions(

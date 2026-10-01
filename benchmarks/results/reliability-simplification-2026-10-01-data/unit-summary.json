@@ -1,0 +1,162 @@
+{
+  "log_dir": "/tmp/oce-audit-fix-units-j4gjbr9s",
+  "counts": {
+    "passed": 951,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "files": 107
+  },
+  "failures": [],
+  "missing": [],
+  "complete": true,
+  "rerun_elapsed_seconds": 23.6,
+  "rerun_results": [
+    {
+      "file": "tests/unit/api/test_admin_credentials.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_credentials.log"
+    },
+    {
+      "file": "tests/unit/api/test_admin_gc.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_gc.log"
+    },
+    {
+      "file": "tests/unit/api/test_admin_queue.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_queue.log"
+    },
+    {
+      "file": "tests/unit/api/test_router.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_router.log"
+    },
+    {
+      "file": "tests/unit/application/test_credentials_handler.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__application__test_credentials_handler.log"
+    },
+    {
+      "file": "tests/unit/application/test_token_usage_bridge.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__application__test_token_usage_bridge.log"
+    },
+    {
+      "file": "tests/unit/domain/test_indexing.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__domain__test_indexing.log"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_milvus3.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_milvus3.log"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_milvus_index_stats.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_milvus_index_stats.log"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_retrieval_regression.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_retrieval_regression.log"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_sql_retrieval_e2e.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_sql_retrieval_e2e.log"
+    },
+    {
+      "file": "tests/unit/infrastructure/test_sqlite_integrity.py",
+      "exit_code": 0,
+      "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_sqlite_integrity.log"
+    }
+  ],
+  "first_pass_summary": {
+    "log_dir": "/tmp/oce-audit-fix-units-j4gjbr9s",
+    "total_files": 107,
+    "completed_files": 107,
+    "last_file": "tests/unit/test_smoke_personal_mode.py",
+    "counts": {
+      "passed": 823,
+      "failed": 9,
+      "errors": 40,
+      "skipped": 1,
+      "files": 107
+    },
+    "failures": [
+      {
+        "file": "tests/unit/api/test_admin_credentials.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_credentials.log"
+      },
+      {
+        "file": "tests/unit/api/test_admin_gc.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_gc.log"
+      },
+      {
+        "file": "tests/unit/api/test_admin_queue.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_admin_queue.log"
+      },
+      {
+        "file": "tests/unit/api/test_router.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__api__test_router.log"
+      },
+      {
+        "file": "tests/unit/application/test_credentials_handler.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__application__test_credentials_handler.log"
+      },
+      {
+        "file": "tests/unit/application/test_token_usage_bridge.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__application__test_token_usage_bridge.log"
+      },
+      {
+        "file": "tests/unit/domain/test_indexing.py",
+        "exit_code": 1,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__domain__test_indexing.log"
+      },
+      {
+        "file": "tests/unit/infrastructure/test_milvus3.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_milvus3.log"
+      },
+      {
+        "file": "tests/unit/infrastructure/test_milvus_index_stats.py",
+        "exit_code": 2,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_milvus_index_stats.log"
+      },
+      {
+        "file": "tests/unit/infrastructure/test_retrieval_regression.py",
+        "exit_code": 1,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_retrieval_regression.log"
+      },
+      {
+        "file": "tests/unit/infrastructure/test_sql_retrieval_e2e.py",
+        "exit_code": 1,
+        "log": "/tmp/oce-audit-fix-units-j4gjbr9s/tests__unit__infrastructure__test_sql_retrieval_e2e.log"
+      }
+    ],
+    "elapsed_seconds": 105.1,
+    "complete": true
+  },
+  "original_counts": {
+    "passed": 945,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 1,
+    "files": 107
+  },
+  "final_compatibility_checks": {
+    "command": "uv run pytest tests/unit/test_cli.py tests/unit/infrastructure/test_path_index_storage.py -q",
+    "passed": 16,
+    "original_tests_replaced": 10,
+    "added_tests": 6,
+    "description": "12 CLI interpolation/priority tests and 4 path tests including legacy SQLite row loading"
+  }
+}
