@@ -181,6 +181,10 @@ Milvus 的 path/path_document 只存 UTF-8 有界诊断前缀；实际返回路�
 `CredentialConfiguredEmbedder` 把同一 semaphore 传给所有新旧 delegate，限制文档和查询
 HTTP 批次，热重载不叠加并发额度；直接构造的 `OpenAIEmbedder` 自行持有 semaphore。
 
+具备可用 SQL operator 的 symbol 和显式 path 请求先判断结构答案，命中时不创建 query
+embedding 任务；未命中才使用同一个模型客户端。reference、语义请求和关闭决定性跳过的
+配置保留并行召回。该调度不增加 provider 并发额度。
+
 query cache 是只存 query 哈希和向量的进程内 TTL LRU。启用时，同一哈希与 generation
 共用活动任务；活动任务总数受 cache 容量约束，满时等待槽位，每个调用方取得独立向量
 副本。决定性 SQL 提前返回或调用方取消，只通过 `wait_released` 释放等待者，provider

@@ -137,7 +137,7 @@ def plan_rerank(
     intent: QueryIntent,
     candidate_count: int,
     *,
-    has_exact_hits: bool = False,
+    primary_definition_found: bool = False,
     has_path_hits: bool = False,
     dense_skipped: bool = False,
     dedicated_enabled: bool = True,
@@ -152,7 +152,8 @@ def plan_rerank(
     not share a calibrated scale, so a skip is only taken when a structural
     operator has already answered the question. ``enabled`` flags
     authorize the corresponding stage; a policy can never switch on a model
-    that is disabled.
+    that is disabled. Only a definition of the primary requested symbol
+    answers a symbol query; auxiliary parameter-type declarations do not.
     """
     for name, policy in (
         ("dedicated rerank", dedicated_policy),
@@ -164,7 +165,7 @@ def plan_rerank(
     if candidate_count < 2:
         return RerankDecision(False, False, "too_few_candidates")
 
-    if intent == QueryIntent.SYMBOL and has_exact_hits:
+    if intent == QueryIntent.SYMBOL and primary_definition_found:
         adaptive = (False, False, "exact_definition")
     elif intent == QueryIntent.PATH and has_path_hits:
         adaptive = (False, False, "path_evidence")

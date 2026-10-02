@@ -246,6 +246,9 @@ collection，再由客户端完整重同步。不兼容的启动或重载会 fai
 源码准入版本 2 允许以 `-retrieval-eval` 结尾的普通目录，版本 1 索引需要新存储及完整重同步。
 显式改变 `MILVUS_DENSE_INDEX_TYPE` 会重建本地 dense 索引并保留向量，与改变嵌入身份不同。
 
+符号抽取版本 6 补充 Python 导入别名的调用证据，并保留直接调用本文件常见名称声明的
+使用点。旧符号索引需要新存储及客户端完整重同步。
+
 重复语义查询使用进程内 query-vector LRU，默认容量 256、TTL 600 秒
 （`EMBED_QUERY_CACHE_MAX_ENTRIES`、`EMBED_QUERY_CACHE_TTL_SECONDS`），任一设为 `0` 可关闭。
 缓存只保存 query 哈希与向量；源码向量留在 Milvus，检索结果不缓存。兼容的嵌入凭据重载会

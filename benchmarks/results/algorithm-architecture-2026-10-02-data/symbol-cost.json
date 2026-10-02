@@ -1,0 +1,47 @@
+{
+  "baseline": {
+    "files": 182,
+    "source_bytes": 843417,
+    "round_seconds": [
+      0.3731688659754582,
+      0.3659691759967245,
+      0.35618192894617096,
+      0.3589911859598942,
+      0.3610673400107771
+    ],
+    "median_seconds": 0.3610673400107771,
+    "occurrence_counts": {
+      "definition": 2555,
+      "call": 3972,
+      "import": 3919,
+      "inherit": 131,
+      "endpoint": 7,
+      "reexport": 2
+    },
+    "scope": "Implementation-only AST parsing and symbol extraction; warmed grammar and corpus loaded before timing. Excludes file I/O, SQL, chunking, model calls and end-to-end indexing."
+  },
+  "candidate": {
+    "files": 182,
+    "source_bytes": 843417,
+    "round_seconds": [
+      0.4788132929825224,
+      0.46946027397643775,
+      0.4718861490255222,
+      0.4633700830163434,
+      0.46086835605092347
+    ],
+    "median_seconds": 0.46946027397643775,
+    "occurrence_counts": {
+      "definition": 2555,
+      "call": 3973,
+      "import": 3919,
+      "inherit": 131,
+      "endpoint": 7,
+      "reexport": 2
+    },
+    "scope": "Implementation-only AST parsing and symbol extraction; warmed grammar and corpus loaded before timing. Excludes file I/O, SQL, chunking, model calls and end-to-end indexing."
+  },
+  "method": "Five sequential extraction passes per revision over the same frozen 182 Python files; separate source imports, no remote models. Host also running background blackbox indexing; observational component cost only.",
+  "median_extra_seconds_per_file": 0.0005955655712398935,
+  "candidate_to_baseline_ratio": 1.3002014360047778
+}

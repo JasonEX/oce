@@ -27,15 +27,15 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务，使用 FastAPI +
 
 - 固定流程：route → plan → recall（dense ∥ exact ∥ 按意图 lexical ∥ path ∥ path lookup）→ fuse → prior/rerank → select → expand。`domain/services/retrieval/` 每阶段一个模块；`QueryRoute`、`QueryPlan`、`RecallEvidence` 冻结，后续只读这些证据，按阶段交出候选、选择与扩展结果
 - 请求文本只在 route 解析一次，问法、标题标识符等进 `QueryRoute`，后续不得再对原文跑正则；车道以返回值交出结果，不在共享状态上留副作用
-- SQL 车道在 embedding 往返前启动；SQL 结果具备决定性证据时不等 embedding 完成。embedding 请求只释放不取消（`shared/aio.wait_released`，不用 `asyncio.shield`）
+- SQL 车道在 plan 前启动；可用 SQL operator 的 symbol/显式 path 请求先判断结构答案，命中不创建 embedding task，未命中才启动；其他请求保留并行。已发出的 embedding 请求只释放不取消（`shared/aio.wait_released`，不用 `asyncio.shield`）
 - 任何车道失败通过 `lane_failed` 记入 `retrieval_metrics.lane_failures`，不得静默吞掉；存储层不吞超时，空结果只表示无匹配
 - 新召回证据只能作为独立车道进入（固定槽位、必要条件门控或按意图开关），不得把不同标尺的分数直接混排；reference 词法召回以标识符整体代理 token 为必要条件
 - 现有 exact 按意图窗口优先与 path 有界 boost 的合并策略见检索文档；`SearchHit.score` 是阶段内排序值，不是跨车道校准分数或置信度，不能用它为新车道增加阈值
 - scope 只接纳已物化的 ready 身份，并冻结当前非 ready 身份的排除集合；词法、精确、路径查找共用 `persistence/scope_filter.py`，不得自行展开 `IN (...)` 全集。symbol 在已连接的 ready blob 上提前应用 scope；词法 deadline 由调用方持有
-- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应阶段，policy 只做逐查询路由。两者共用 `retrieval_strategy.plan_rerank`（intent、候选数、exact/path 命中、dense 是否被结构证据跳过），禁止以原始召回分数估置信度或新增 LLM 分类器
+- `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应阶段，policy 只做逐查询路由。两者共用 `retrieval_strategy.plan_rerank`（intent、候选数、主要请求符号的定义/SQL path 命中、dense 是否被结构证据跳过），symbol 与 dense 门控共用 `primary_definition_found`；禁止以原始召回分数估置信度或新增 LLM 分类器
 - 同名声明数与头部槽位仅用于审计，不参与当前路由。`exact_definitions` 是 ready scope 内请求叶子名的已记录声明数之和，`definition_sites` 是最大单名计数，均在 chunk 去重/截断前计数，不宣称抽取了全部源码声明。路由、槽位和关系字符等写入 `retrieval_metrics`，用于离线校准
 - 默认关闭的实验开关两轮配对评测未成为默认值即删除，净负变体立即删除，待校准开关必须附带标签计划
-- 选择与扩展共用代码正文的硬字符预算；HTTP 格式化标题、路径等不计入该预算。相邻合并须计入分隔符开销
+- rank 交出有界 `structural_heads`，select 先保留其候选顺序，再执行文件覆盖；保护不绕过条数、每文件、重叠和字符上限。选择与扩展共用代码正文的硬字符预算；HTTP 格式化标题、路径等不计入该预算。相邻合并须计入分隔符开销
 - 限定名调用链端点先按已记录的 `enclosing` 约束 SQL 查询，再检查同名声明数；作用域隔离与歧义上限仍然生效
 
 ### 运行时、配置与数据外发

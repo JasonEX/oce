@@ -165,14 +165,11 @@ def test_frame_path_matching_is_component_aligned(frame, indexed, expected):
 
 
 def test_deterministic_requests_skip_adaptive_rerankers_but_not_always():
-    skipped = plan_rerank(
-        QueryIntent.REFERENCE, 10, has_exact_hits=True, dense_skipped=True
-    )
+    skipped = plan_rerank(QueryIntent.REFERENCE, 10, dense_skipped=True)
     assert skipped.route == "skip:deterministic"
     forced = plan_rerank(
         QueryIntent.REFERENCE,
         10,
-        has_exact_hits=True,
         dense_skipped=True,
         dedicated_policy="always",
     )

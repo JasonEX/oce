@@ -17,8 +17,10 @@ EMBEDDING_PIPELINE_VERSION = 2
 # let bindings and TS/JS re-exports are not definitions; prose files declare
 # nothing. 5: every occurrence records its enclosing definition (caller edges)
 # and barrel re-exports (``export {} from``, ``pub use``, relative imports in
-# ``__init__.py``) are recorded as ``reexport`` rows.
-SYMBOL_EXTRACTION_VERSION = 5
+# ``__init__.py``) are recorded as ``reexport`` rows. 6: unshadowed Python
+# named-import aliases retain origin call evidence; direct calls to local
+# declarations survive the common-name noise filter.
+SYMBOL_EXTRACTION_VERSION = 6
 PATH_DOCUMENT_VERSION = 1
 # 2: ordinary source directories ending in -retrieval-eval are admitted.
 SOURCE_ADMISSION_VERSION = 2

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, search_hit_key
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import Selector
 from oce.domain.services.selector.topk_selector import TopKSelector
@@ -86,3 +86,53 @@ async def test_smaller_later_answer_fits_when_a_tail_chunk_does_not(
 async def test_zero_remaining_budget_returns_no_code(selector: Selector) -> None:
     hits = [SearchHit("a", "src/a.py", "code", 0.9)]
     assert await selector.select(hits, 1, max_chars=0) == []
+
+
+async def test_protected_answers_keep_input_rank_order(selector: Selector) -> None:
+    hits = [
+        SearchHit("a", "src/a.py", "unprotected", 0.9),
+        SearchHit("b", "src/b.py", "first head", 0.8),
+        SearchHit("c", "src/c.py", "second head", 0.7),
+    ]
+
+    selected = await selector.select(
+        hits,
+        2,
+        protected=(search_hit_key(hits[2]), search_hit_key(hits[1])),
+    )
+
+    assert selected == hits[1:]
+
+
+async def test_protected_answers_share_character_budget(selector: Selector) -> None:
+    hits = [
+        SearchHit("a", "src/a.py", "123", 0.9),
+        SearchHit("b", "src/b.py", "too large", 0.8),
+        SearchHit("c", "src/c.py", "456", 0.7),
+    ]
+
+    selected = await selector.select(
+        hits,
+        3,
+        max_chars=6,
+        protected=tuple(search_hit_key(hit) for hit in hits[:2]),
+    )
+
+    assert selected == [hits[0], hits[2]]
+    assert sum(len(hit.content) for hit in selected) == 6
+
+
+async def test_oversized_protected_head_is_fitted_to_budget(selector: Selector) -> None:
+    hits = [
+        SearchHit("a", "src/a.py", "tail", 0.9),
+        SearchHit("b", "src/b.py", "first\nsecond\nthird", 0.8, end_line=3),
+    ]
+
+    selected = await selector.select(
+        hits, 2, max_chars=12, protected=(search_hit_key(hits[1]),)
+    )
+
+    assert len(selected) == 1
+    assert selected[0].blob_name == "b"
+    assert selected[0].content == "first\nsecond"
+    assert selected[0].end_line == 2

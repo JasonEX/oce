@@ -4,7 +4,7 @@ A retrieval is a fixed sequence of transitions; each stage produces one
 record and the stages after it only read it:
 
     route   -> QueryRoute      what the request asks for (``route.py``)
-    plan    -> QueryPlan       the query variants; the embedding task starts
+    plan    -> QueryPlan       query variants; embedding starts or is deferred
     recall  -> RecallEvidence  what every lane found
     fuse    -> candidates      one ordered list
     rank    -> candidates      priors, bounded heads, model reorder
@@ -123,13 +123,16 @@ class RetrievalState:
     audit: RetrievalAudit | None = None
 
     plan: QueryPlan = field(default_factory=QueryPlan)
-    # The remote embedding round trip runs as a task so the SQL lanes can
-    # answer first; recall decides whether it is awaited or released.
+    # None until model-backed recall is needed. A sent remote request runs
+    # independently so recall can release its waiter without cancelling it.
     embedding: asyncio.Task[EmbeddingResult] | None = None
     recall: RecallEvidence = field(default_factory=RecallEvidence)
 
     candidates: list[SearchHit] = field(default_factory=list)
     decision: RerankDecision | None = None
+    # Rank owns the bounded deterministic heads; selection must retain their
+    # precedence when coverage would otherwise postpone a same-file answer.
+    structural_heads: tuple[SearchHitKey, ...] = ()
     selected: list[SearchHit] = field(default_factory=list)
     related: list[SearchHit] = field(default_factory=list)
 

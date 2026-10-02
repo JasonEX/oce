@@ -7,6 +7,7 @@ ever hands it a vector.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping, Sequence
 from dataclasses import replace
 from types import MappingProxyType
@@ -187,6 +188,41 @@ class FakeExactSearchStore:
         self, *, blob_name: str, line: int, scope: SearchScope
     ) -> SearchHit | None:
         return None
+
+
+class ControlledExactSearchStore(FakeExactSearchStore):
+    """SQL occurrences held until a test releases the structural lookup."""
+
+    def __init__(
+        self,
+        hits: list[SearchHit] | None = None,
+        *,
+        use_sites: list[SearchHit] | None = None,
+    ) -> None:
+        super().__init__(hits)
+        self.use_sites = use_sites
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.finished = asyncio.Event()
+
+    async def search_exact(
+        self,
+        *,
+        identifiers: Sequence[str],
+        scope: SearchScope,
+        top_k: int = 50,
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        self.started.set()
+        try:
+            await self.release.wait()
+            if kinds == ("call", "inherit") and self.use_sites is not None:
+                return list(self.use_sites[:top_k])
+            return await super().search_exact(
+                identifiers=identifiers, scope=scope, top_k=top_k, kinds=kinds
+            )
+        finally:
+            self.finished.set()
 
 
 class FakeEvidenceStore(FakeExactSearchStore):

@@ -267,6 +267,10 @@ Version 1 indexes require fresh storage and full resynchronization. Changing
 `MILVUS_DENSE_INDEX_TYPE` explicitly rebuilds the local dense index while preserving its
 vectors; this is distinct from changing the embedding identity.
 
+Symbol-extraction version 6 adds conservative Python import-alias call evidence and
+retains direct calls to local declarations with common names. Earlier symbol indexes
+require fresh storage and full client resynchronization.
+
 Repeated semantic queries use an in-process query-vector LRU, defaulting to 256 entries
 and a 600-second TTL (`EMBED_QUERY_CACHE_MAX_ENTRIES`, `EMBED_QUERY_CACHE_TTL_SECONDS`).
 Set either to `0` to disable it. It stores query hashes and vectors; source vectors stay

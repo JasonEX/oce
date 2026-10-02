@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchHitKey, search_hit_key
 from oce.domain.services.selector.budget import fit_leading_hit
 from oce.domain.services.selector.protocols import SelectionMode
 
@@ -15,9 +15,15 @@ class TopKSelector:
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
         max_chars: int | None = None,
+        protected: tuple[SearchHitKey, ...] = (),
     ) -> list[SearchHit]:
         if top_k <= 0 or (max_chars is not None and max_chars <= 0):
             return []
+        if protected:
+            protected_keys = frozenset(protected)
+            hits = sorted(
+                hits, key=lambda hit: search_hit_key(hit) not in protected_keys
+            )
         if max_chars is None:
             return hits[:top_k]
         selected: list[SearchHit] = []

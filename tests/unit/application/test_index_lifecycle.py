@@ -118,6 +118,26 @@ async def test_source_admission_change_is_rejected_without_reusing_old_blobs():
         await IndexLifecycleManager(store, Settings()).ensure_compatible(_embedding())
 
 
+async def test_symbol_extraction_change_requires_fresh_index_without_overwrite() -> (
+    None
+):
+    store = Store(has_data=True)
+    profile = build_index_profile(Settings(), _embedding())
+    old_profile = replace(profile, symbol_extraction_version=5)
+    original = StoredIndexProfile(old_profile.fingerprint, old_profile.canonical_json())
+    store.stored = original
+    manager = IndexLifecycleManager(store, Settings())
+
+    with pytest.raises(ServiceNotReadyError, match="symbol_extraction_version"):
+        await manager.ensure_compatible(_embedding())
+
+    assert profile.symbol_extraction_version == 6
+    assert store.stored == original
+    assert store.initializations == 0
+    with pytest.raises(ServiceNotReadyError, match="Index profile is not ready"):
+        manager.require_ready()
+
+
 @pytest.mark.parametrize(
     ("settings", "changed_field"),
     [

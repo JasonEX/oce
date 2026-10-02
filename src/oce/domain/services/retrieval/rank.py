@@ -190,6 +190,7 @@ class Ranker:
         await self.mark_header_chunks(state, hits)
         hits = await self.prefer_source_head(state, hits, priority_factor)
         structural_heads = self.structural_heads(state, hits, priority_factor)
+        state.structural_heads = tuple(structural_heads)
         if state.audit is not None:
             state.audit.head_slots = len(structural_heads)
         hits = promote_heads(hits, structural_heads)
@@ -197,7 +198,7 @@ class Ranker:
         decision = plan_rerank(
             state.route.intent,
             len(hits),
-            has_exact_hits=bool(state.recall.exact.hits),
+            primary_definition_found=state.recall.exact.primary_definition_found,
             dense_skipped=state.recall.dense_skipped,
             # Embedding path similarity is useful recall but not deterministic
             # evidence. Only an exact SQL path/basename match may skip reranking.
@@ -563,7 +564,12 @@ class Ranker:
                 for hit in state.recall.anchors
                 if search_hit_key(hit) in in_window and priority_factor(hit.path) >= 1.0
             )[: settings.compound_anchor_slots]
-        if state.route.intent == QueryIntent.SYMBOL and state.recall.exact.hits:
+        if (
+            state.route.intent == QueryIntent.SYMBOL
+            and state.recall.exact.primary_definition_found
+        ):
+            # A parameter-type declaration cannot own the requested symbol's
+            # answer slots when the primary declaration has not been found.
             # The exact lane already orders declarations: the symbol asked for
             # first, its overloads by the parameter types the request names.
             # Real source still beats the same signature quoted in a

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Sequence
 from dataclasses import replace
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -18,6 +20,7 @@ from tests.fakes.retrieval import (
     FakeExactSearchStore,
     FakePathContentStore,
     FakePathStore,
+    FakeReranker,
     FakeSearchStore,
 )
 
@@ -586,17 +589,10 @@ class TestRetrievalPipeline:
         assert exact_started.is_set()
         assert [hit.path for hit in results] == ["src/exact.py", "src/semantic.py"]
 
-    async def test_symbol_definition_does_not_wait_for_the_embedding(self):
-        """The exact lane answers a symbol request; the vector lanes are dropped."""
-        released = asyncio.Event()
-
-        class SlowEmbedder(FakeEmbedder):
-            async def embed_query(self, text):
-                await released.wait()
-                return await super().embed_query(text)
-
+    async def test_symbol_definition_does_not_start_embedding(self) -> None:
+        """A deterministic symbol answer avoids the embedding request entirely."""
         store = FakeSearchStore([_hit("src/semantic.py", 0.9)])
-        embedder = SlowEmbedder()
+        embedder = FakeEmbedder()
         pipe = RetrievalPipeline(
             embedder=embedder,
             store=store,
@@ -608,16 +604,11 @@ class TestRetrievalPipeline:
             pipe.search("`target_symbol` 在哪里？", _scope("a" * 64), audit=audit),
             timeout=1.0,
         )
-        released.set()
-
         assert [hit.path for hit in results] == ["src/exact.py"]
         assert store.queries == []
         assert audit.dense_route == "skip:exact_definition"
         assert "embed" not in audit.stages and "dense" not in audit.stages
-        # The request itself is released, not cancelled: it completes later.
         assert embedder.queries == []
-        await asyncio.sleep(0)
-        assert embedder.queries == ["`target_symbol` 在哪里？"]
 
     async def test_without_structural_evidence_dense_recall_is_awaited(self):
         store = FakeSearchStore([_hit("src/semantic.py", 0.9)])
@@ -635,23 +626,45 @@ class TestRetrievalPipeline:
         assert audit.dense_route == "dense"
         assert "embed" in audit.stages
 
-    async def test_secondary_type_definition_does_not_skip_dense_recall(self):
+    async def test_secondary_type_definition_does_not_own_structural_stages(
+        self,
+    ) -> None:
+        known_type = replace(
+            _hit("src/known_type.py", 1.0), content="class KnownType: pass"
+        )
+        semantic = replace(
+            _hit("src/semantic.py", 0.9), content="def missing_symbol(value): pass"
+        )
+
         class SecondaryOnlyStore(FakeExactSearchStore):
-            async def search_exact(self, *, identifiers, scope, top_k=50, kinds=None):
+            async def search_exact(
+                self,
+                *,
+                identifiers: Sequence[str],
+                scope: SearchScope,
+                top_k: int = 50,
+                kinds: Sequence[str] | None = None,
+            ) -> list[SearchHit]:
                 if "KnownType" in identifiers:
-                    return [_hit("src/known_type.py", 1.0)]
+                    return [known_type]
                 return []
 
-        dense = FakeSearchStore([_hit("src/semantic.py", 0.9)])
+        dense = FakeSearchStore([semantic])
+        dedicated = FakeReranker()
+        llm = FakeReranker()
+        dedicated.rerank = AsyncMock(wraps=dedicated.rerank)
+        llm.rerank = AsyncMock(return_value=[semantic, known_type])
         pipe = RetrievalPipeline(
             embedder=FakeEmbedder(),
             store=dense,
             exact_store=SecondaryOnlyStore(),
+            reranker=dedicated,
+            llm_reranker=llm,
             settings=_settings(final_select_k=10),
         )
         audit = RetrievalAudit()
 
-        await pipe.search(
+        hits = await pipe.search(
             "Where is `missing_symbol` taking `KnownType` defined?",
             _scope("a" * 64),
             audit=audit,
@@ -659,6 +672,11 @@ class TestRetrievalPipeline:
 
         assert dense.queries
         assert audit.dense_route == "dense"
+        assert audit.rerank_route == "dedicated+llm"
+        assert audit.head_slots == 0
+        assert [hit.path for hit in hits] == ["src/semantic.py", "src/known_type.py"]
+        dedicated.rerank.assert_awaited_once()
+        llm.rerank.assert_awaited_once()
 
     async def test_secondary_use_site_does_not_make_reference_decisive(self):
         class SecondaryUseStore(FakeExactSearchStore):

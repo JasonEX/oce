@@ -44,6 +44,7 @@ class CoverageSelector:
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
         max_chars: int | None = None,
+        protected: tuple[SearchHitKey, ...] = (),
     ) -> list[SearchHit]:
         if top_k <= 0 or not hits:
             return []
@@ -53,14 +54,14 @@ class CoverageSelector:
         seen: set[SearchHitKey] = set()
         used_chars = 0
 
-        passes: tuple[bool | None, ...]
+        passes: tuple[tuple[bool, bool | None], ...]
         per_path_limit: int
         if mode == SelectionMode.FOCUSED:
-            passes = (None,)
+            passes = ((True, None), (False, None))
             per_path_limit = self.focused_max_per_path
             char_budget = self.focused_max_chars
         else:
-            passes = (True, False)
+            passes = ((True, None), (False, True), (False, False))
             per_path_limit = self.max_per_path
             char_budget = self.max_chars
         if max_chars is not None:
@@ -70,22 +71,24 @@ class CoverageSelector:
         if char_budget <= 0:
             return []
 
-        # Coverage gives every file one chunk before any file gets a second;
-        # focused keeps strict relevance order. Both share the overlap
-        # suppression and the character budget.
-        for prefer_new_path in passes:
+        # Structural answers retain their rank before file diversity can
+        # spend the remaining slots. Every pass shares the same hard limits.
+        protected_keys = frozenset(protected)
+        for protected_only, prefer_new_path in passes:
             for hit in hits:
                 # Past the count limit; a smaller chunk may still fit the budget.
                 if len(selected) >= top_k:
                     continue
 
+                key = search_hit_key(hit)
+                if (key in protected_keys) != protected_only:
+                    continue
                 if prefer_new_path is not None and prefer_new_path != (
                     path_counts[hit.path] == 0
                 ):
                     continue
                 if path_counts[hit.path] >= per_path_limit:
                     continue
-                key = search_hit_key(hit)
                 if key in seen or self._overlaps_selected(hit, selected):
                     continue
 

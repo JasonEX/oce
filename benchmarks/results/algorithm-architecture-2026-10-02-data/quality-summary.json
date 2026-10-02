@@ -1,0 +1,1950 @@
+{
+  "python_version": "3.13.5 (main, Jul 23 2025, 00:37:22) [Clang 20.1.4 ]",
+  "source_tree_sha256": "cbcf1763cde9177e65e0574c2cd63491c7fdae8bc3015ba40efeb1b679bab046",
+  "python_source_files": 183,
+  "unit_file_count": 108,
+  "unit_counts": {
+    "passed": 1027,
+    "skipped": 1
+  },
+  "source_verified_after": true,
+  "source_verification_scope": "src/oce; all 184 frozen product files; no extra Python files",
+  "skipped_tests": [
+    {
+      "file": "tests/unit/infrastructure/test_new_models.py",
+      "line": 76,
+      "name": "test_new_models_create_in_postgresql",
+      "reason": "No PostgreSQL configured in .env (got: None)"
+    }
+  ],
+  "all_passed": true,
+  "static": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "check",
+        "."
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.055,
+      "summary": "",
+      "counts": {}
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "ruff",
+        "format",
+        "--check",
+        "."
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.051,
+      "summary": "",
+      "counts": {}
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "mypy"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.354,
+      "summary": "",
+      "counts": {}
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.007,
+      "summary": "",
+      "counts": {}
+    }
+  ],
+  "unit": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_admin_credentials.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.131,
+      "summary": "8 passed in 1.11s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/api/test_admin_credentials.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_admin_gc.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.976,
+      "summary": "5 passed in 0.98s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/api/test_admin_gc.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_admin_queue.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.039,
+      "summary": "4 passed in 1.04s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/api/test_admin_queue.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_api_metrics_middleware.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.637,
+      "summary": "5 passed in 0.12s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/api/test_api_metrics_middleware.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_auth.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.664,
+      "summary": "4 passed in 0.11s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/api/test_auth.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/api/test_router.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.215,
+      "summary": "17 passed in 1.15s",
+      "counts": {
+        "passed": 17
+      },
+      "file": "tests/unit/api/test_router.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_batch_ingest.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6,
+      "summary": "1 passed in 0.09s",
+      "counts": {
+        "passed": 1
+      },
+      "file": "tests/unit/application/test_batch_ingest.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_checkpoint_handler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.529,
+      "summary": "6 passed in 0.04s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/application/test_checkpoint_handler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_chunker_composition.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.597,
+      "summary": "3 passed in 0.09s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/application/test_chunker_composition.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_credentials_handler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.871,
+      "summary": "9 passed in 0.90s",
+      "counts": {
+        "passed": 9
+      },
+      "file": "tests/unit/application/test_credentials_handler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_gc.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.514,
+      "summary": "4 passed in 0.04s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/application/test_gc.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_index_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.635,
+      "summary": "16 passed in 0.12s",
+      "counts": {
+        "passed": 16
+      },
+      "file": "tests/unit/application/test_index_lifecycle.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_index_stats.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.529,
+      "summary": "2 passed in 0.03s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/application/test_index_stats.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_indexing_concurrency.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.114,
+      "summary": "3 passed in 0.45s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/application/test_indexing_concurrency.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_ingest_handler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.672,
+      "summary": "9 passed in 0.13s",
+      "counts": {
+        "passed": 9
+      },
+      "file": "tests/unit/application/test_ingest_handler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_queue_admin.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.508,
+      "summary": "6 passed in 0.03s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/application/test_queue_admin.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_queue_status.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.558,
+      "summary": "2 passed in 0.04s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/application/test_queue_status.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_retrieval_audit.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.618,
+      "summary": "7 passed in 0.10s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/application/test_retrieval_audit.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_search_handler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.582,
+      "summary": "3 passed in 0.08s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/application/test_search_handler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_service.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.671,
+      "summary": "5 passed in 0.15s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/application/test_service.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_status_handler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.561,
+      "summary": "17 passed in 0.05s",
+      "counts": {
+        "passed": 17
+      },
+      "file": "tests/unit/application/test_status_handler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_token_usage_bridge.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.059,
+      "summary": "2 passed in 1.00s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/application/test_token_usage_bridge.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_warmup.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.582,
+      "summary": "5 passed in 0.05s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/application/test_warmup.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_worker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.907,
+      "summary": "4 passed in 0.33s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/application/test_worker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/application/test_worker_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.691,
+      "summary": "16 passed in 0.13s",
+      "counts": {
+        "passed": 16
+      },
+      "file": "tests/unit/application/test_worker_lifecycle.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_blackbox_boundary.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.58,
+      "summary": "1 passed in 0.05s",
+      "counts": {
+        "passed": 1
+      },
+      "file": "tests/unit/benchmarks/test_blackbox_boundary.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_corpus.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.596,
+      "summary": "3 passed in 0.03s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/benchmarks/test_corpus.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_csn_queries.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.548,
+      "summary": "3 passed in 0.03s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/benchmarks/test_csn_queries.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_harness.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.561,
+      "summary": "8 passed in 0.03s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/benchmarks/test_harness.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_prewarm.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.543,
+      "summary": "4 passed in 0.03s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/benchmarks/test_prewarm.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_project_cases.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.555,
+      "summary": "7 passed in 0.03s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/benchmarks/test_project_cases.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_semantic_queries.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.576,
+      "summary": "4 passed in 0.03s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/benchmarks/test_semantic_queries.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_short_queries.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.596,
+      "summary": "10 passed in 0.06s",
+      "counts": {
+        "passed": 10
+      },
+      "file": "tests/unit/benchmarks/test_short_queries.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/benchmarks/test_swe_explore.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.531,
+      "summary": "6 passed in 0.03s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/benchmarks/test_swe_explore.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_blob.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.572,
+      "summary": "7 passed in 0.06s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/domain/test_blob.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_chain.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.512,
+      "summary": "6 passed in 0.03s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/domain/test_chain.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_chunk_language.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.512,
+      "summary": "14 passed in 0.04s",
+      "counts": {
+        "passed": 14
+      },
+      "file": "tests/unit/domain/test_chunk_language.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_chunk_spans.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.678,
+      "summary": "16 passed in 0.13s",
+      "counts": {
+        "passed": 16
+      },
+      "file": "tests/unit/domain/test_chunk_spans.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.679,
+      "summary": "9 passed in 0.14s",
+      "counts": {
+        "passed": 9
+      },
+      "file": "tests/unit/domain/test_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_chunker_protocols.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.528,
+      "summary": "2 passed in 0.03s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/domain/test_chunker_protocols.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_coverage_selector.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.526,
+      "summary": "8 passed in 0.03s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/domain/test_coverage_selector.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_formatter.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.5,
+      "summary": "3 passed in 0.03s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/domain/test_formatter.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_indexing.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.595,
+      "summary": "12 passed in 0.08s",
+      "counts": {
+        "passed": 12
+      },
+      "file": "tests/unit/domain/test_indexing.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_lane_failures.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.607,
+      "summary": "9 passed in 0.09s",
+      "counts": {
+        "passed": 9
+      },
+      "file": "tests/unit/domain/test_lane_failures.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_language_chunker_router.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.592,
+      "summary": "13 passed in 0.08s",
+      "counts": {
+        "passed": 13
+      },
+      "file": "tests/unit/domain/test_language_chunker_router.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_lexical.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.516,
+      "summary": "4 passed in 0.02s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/domain/test_lexical.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_llm_reranker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.634,
+      "summary": "8 passed in 0.10s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/domain/test_llm_reranker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_query_classifier.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.58,
+      "summary": "50 passed in 0.06s",
+      "counts": {
+        "passed": 50
+      },
+      "file": "tests/unit/domain/test_query_classifier.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_query_evidence.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.595,
+      "summary": "6 passed in 0.07s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/domain/test_query_evidence.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_query_planner.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.519,
+      "summary": "4 passed in 0.02s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/domain/test_query_planner.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_recursive_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.65,
+      "summary": "17 passed in 0.09s",
+      "counts": {
+        "passed": 17
+      },
+      "file": "tests/unit/domain/test_recursive_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_relation_lanes.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.69,
+      "summary": "14 passed in 0.09s",
+      "counts": {
+        "passed": 14
+      },
+      "file": "tests/unit/domain/test_relation_lanes.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_retrieval.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.71,
+      "summary": "53 passed in 0.15s",
+      "counts": {
+        "passed": 53
+      },
+      "file": "tests/unit/domain/test_retrieval.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_retrieval_evidence_reuse.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.643,
+      "summary": "10 passed in 0.10s",
+      "counts": {
+        "passed": 10
+      },
+      "file": "tests/unit/domain/test_retrieval_evidence_reuse.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_retrieval_stages.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.743,
+      "summary": "63 passed in 0.20s",
+      "counts": {
+        "passed": 63
+      },
+      "file": "tests/unit/domain/test_retrieval_stages.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_retrieval_strategy.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.601,
+      "summary": "15 passed in 0.06s",
+      "counts": {
+        "passed": 15
+      },
+      "file": "tests/unit/domain/test_retrieval_strategy.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_round3_lanes.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.634,
+      "summary": "16 passed in 0.07s",
+      "counts": {
+        "passed": 16
+      },
+      "file": "tests/unit/domain/test_round3_lanes.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_selector_budget.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.589,
+      "summary": "20 passed in 0.04s",
+      "counts": {
+        "passed": 20
+      },
+      "file": "tests/unit/domain/test_selector_budget.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_source_filter.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.575,
+      "summary": "7 passed in 0.03s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/domain/test_source_filter.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/domain/test_structural_retrieval.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.659,
+      "summary": "11 passed in 0.09s",
+      "counts": {
+        "passed": 11
+      },
+      "file": "tests/unit/domain/test_structural_retrieval.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_astchunk.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.698,
+      "summary": "10 passed in 0.12s",
+      "counts": {
+        "passed": 10
+      },
+      "file": "tests/unit/infrastructure/test_astchunk.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_cast_chunker_context.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.669,
+      "summary": "3 passed in 0.11s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/infrastructure/test_cast_chunker_context.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_cast_chunker_merge.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.659,
+      "summary": "13 passed in 0.12s",
+      "counts": {
+        "passed": 13
+      },
+      "file": "tests/unit/infrastructure/test_cast_chunker_merge.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_credential_admin_store.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.155,
+      "summary": "13 passed in 0.50s",
+      "counts": {
+        "passed": 13
+      },
+      "file": "tests/unit/infrastructure/test_credential_admin_store.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_credential_embedder.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.691,
+      "summary": "7 passed in 0.84s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/infrastructure/test_credential_embedder.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_credential_llm_client.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.059,
+      "summary": "7 passed in 0.46s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/infrastructure/test_credential_llm_client.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_credential_reranker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.972,
+      "summary": "4 passed in 0.36s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/infrastructure/test_credential_reranker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_index_profile_store.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.878,
+      "summary": "2 passed in 0.26s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/infrastructure/test_index_profile_store.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_index_stats.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.841,
+      "summary": "1 passed in 0.22s",
+      "counts": {
+        "passed": 1
+      },
+      "file": "tests/unit/infrastructure/test_index_stats.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_jsp_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.62,
+      "summary": "12 passed in 0.09s",
+      "counts": {
+        "passed": 12
+      },
+      "file": "tests/unit/infrastructure/test_jsp_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_lexical_index.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.326,
+      "summary": "9 passed in 2.70s",
+      "counts": {
+        "passed": 9
+      },
+      "file": "tests/unit/infrastructure/test_lexical_index.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_local_onnx_reranker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.674,
+      "summary": "5 passed in 0.16s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/infrastructure/test_local_onnx_reranker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_markdown_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.662,
+      "summary": "12 passed in 0.09s",
+      "counts": {
+        "passed": 12
+      },
+      "file": "tests/unit/infrastructure/test_markdown_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_metrics_sink.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.057,
+      "summary": "8 passed in 0.44s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/infrastructure/test_metrics_sink.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_migrations.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.204,
+      "summary": "6 passed in 1.37s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/infrastructure/test_migrations.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_milvus3.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.239,
+      "summary": "24 passed in 0.46s",
+      "counts": {
+        "passed": 24
+      },
+      "file": "tests/unit/infrastructure/test_milvus3.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_milvus_index_stats.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.363,
+      "summary": "13 passed in 0.54s",
+      "counts": {
+        "passed": 13
+      },
+      "file": "tests/unit/infrastructure/test_milvus_index_stats.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_monitoring_cleanup.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.098,
+      "summary": "3 passed in 0.33s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/infrastructure/test_monitoring_cleanup.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_monitoring_stats.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.905,
+      "summary": "2 passed in 0.25s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/infrastructure/test_monitoring_stats.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_new_models.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.909,
+      "summary": "1 passed, 1 skipped in 0.20s",
+      "counts": {
+        "passed": 1,
+        "skipped": 1
+      },
+      "file": "tests/unit/infrastructure/test_new_models.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_openai_embedder.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.073,
+      "summary": "7 passed in 0.31s",
+      "counts": {
+        "passed": 7
+      },
+      "file": "tests/unit/infrastructure/test_openai_embedder.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_openai_llm_client.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.598,
+      "summary": "6 passed in 0.04s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/infrastructure/test_openai_llm_client.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_openai_reranker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.737,
+      "summary": "24 passed in 0.13s",
+      "counts": {
+        "passed": 24
+      },
+      "file": "tests/unit/infrastructure/test_openai_reranker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_path_content_store.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.889,
+      "summary": "1 passed in 0.20s",
+      "counts": {
+        "passed": 1
+      },
+      "file": "tests/unit/infrastructure/test_path_content_store.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_path_index_storage.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.078,
+      "summary": "4 passed in 2.04s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/infrastructure/test_path_index_storage.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_path_lookup_store.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.141,
+      "summary": "4 passed in 0.35s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/infrastructure/test_path_lookup_store.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_query_cache.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.738,
+      "summary": "11 passed in 0.08s",
+      "counts": {
+        "passed": 11
+      },
+      "file": "tests/unit/infrastructure/test_query_cache.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_react_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.712,
+      "summary": "6 passed in 0.11s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/infrastructure/test_react_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_redis_queue.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.758,
+      "summary": "12 passed in 0.05s",
+      "counts": {
+        "passed": 12
+      },
+      "file": "tests/unit/infrastructure/test_redis_queue.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_regex_symbol_provider.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.796,
+      "summary": "3 passed in 0.03s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/infrastructure/test_regex_symbol_provider.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_resource_sampler.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.863,
+      "summary": "6 passed in 0.13s",
+      "counts": {
+        "passed": 6
+      },
+      "file": "tests/unit/infrastructure/test_resource_sampler.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_retrieval_regression.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 7.198,
+      "summary": "25 passed in 6.14s",
+      "counts": {
+        "passed": 25
+      },
+      "file": "tests/unit/infrastructure/test_retrieval_regression.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_scope_resolution.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.371,
+      "summary": "2 passed in 0.44s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/infrastructure/test_scope_resolution.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_sql_repositories.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.712,
+      "summary": "13 passed in 0.98s",
+      "counts": {
+        "passed": 13
+      },
+      "file": "tests/unit/infrastructure/test_sql_repositories.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_sql_retrieval_e2e.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.638,
+      "summary": "4 passed in 0.76s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/infrastructure/test_sql_retrieval_e2e.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_sqlite_integrity.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.808,
+      "summary": "8 passed in 0.89s",
+      "counts": {
+        "passed": 8
+      },
+      "file": "tests/unit/infrastructure/test_sqlite_integrity.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_symbol_search_store.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.515,
+      "summary": "28 passed in 1.60s",
+      "counts": {
+        "passed": 28
+      },
+      "file": "tests/unit/infrastructure/test_symbol_search_store.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.946,
+      "summary": "42 passed in 0.23s",
+      "counts": {
+        "passed": 42
+      },
+      "file": "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/infrastructure/test_vue_chunker.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.739,
+      "summary": "16 passed in 0.09s",
+      "counts": {
+        "passed": 16
+      },
+      "file": "tests/unit/infrastructure/test_vue_chunker.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/shared/test_aio.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.738,
+      "summary": "2 passed in 0.03s",
+      "counts": {
+        "passed": 2
+      },
+      "file": "tests/unit/shared/test_aio.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/shared/test_database_session.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.99,
+      "summary": "1 passed in 0.17s",
+      "counts": {
+        "passed": 1
+      },
+      "file": "tests/unit/shared/test_database_session.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/shared/test_logging.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.775,
+      "summary": "4 passed in 0.08s",
+      "counts": {
+        "passed": 4
+      },
+      "file": "tests/unit/shared/test_logging.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/shared/test_settings.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.69,
+      "summary": "3 passed in 0.05s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/shared/test_settings.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/test_cli.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.751,
+      "summary": "12 passed in 0.07s",
+      "counts": {
+        "passed": 12
+      },
+      "file": "tests/unit/test_cli.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/test_db_fixtures.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.894,
+      "summary": "3 passed in 0.16s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/test_db_fixtures.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/test_generate_changelog.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.57,
+      "summary": "3 passed in 0.03s",
+      "counts": {
+        "passed": 3
+      },
+      "file": "tests/unit/test_generate_changelog.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/test_main_lifecycle.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.543,
+      "summary": "11 passed in 1.17s",
+      "counts": {
+        "passed": 11
+      },
+      "file": "tests/unit/test_main_lifecycle.py"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/unit/test_smoke_personal_mode.py",
+        "-q"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 16.591,
+      "summary": "5 passed in 14.60s",
+      "counts": {
+        "passed": 5
+      },
+      "file": "tests/unit/test_smoke_personal_mode.py"
+    }
+  ],
+  "integration": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "pytest",
+        "tests/integration/infrastructure/test_milvus3_integration.py",
+        "-q",
+        "-m",
+        "integration"
+      ],
+      "exit_code": 0,
+      "summary": "6 passed in 3.39s",
+      "counts": {
+        "passed": 6
+      }
+    }
+  ],
+  "compatibility": {
+    "py311": {
+      "versions": "3.11.14 (main, Oct 31 2025, 23:04:14) [Clang 21.1.4 ]\ntree-sitter=0.25.2\ntree-sitter-language-pack=1.14.3\n",
+      "results": [
+        {
+          "file": "tests/unit/domain/test_structural_retrieval.py",
+          "exit_code": 0,
+          "elapsed_seconds": 1.985,
+          "summary": "11 passed in 0.26s"
+        },
+        {
+          "file": "tests/unit/domain/test_retrieval_strategy.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.576,
+          "summary": "15 passed in 0.06s"
+        },
+        {
+          "file": "tests/unit/domain/test_coverage_selector.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.479,
+          "summary": "8 passed in 0.03s"
+        },
+        {
+          "file": "tests/unit/domain/test_selector_budget.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.516,
+          "summary": "20 passed in 0.04s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.955,
+          "summary": "42 passed in 0.43s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_astchunk.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.65,
+          "summary": "10 passed in 0.13s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_symbol_search_store.py",
+          "exit_code": 0,
+          "elapsed_seconds": 2.609,
+          "summary": "28 passed in 1.88s"
+        },
+        {
+          "file": "tests/unit/application/test_index_lifecycle.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.631,
+          "summary": "16 passed in 0.14s"
+        }
+      ]
+    },
+    "py314": {
+      "versions": "3.14.7 (main, Sep 13 2026, 08:30:29) [GCC 16.2.0]\ntree-sitter=0.25.2\ntree-sitter-language-pack=1.14.3\n",
+      "results": [
+        {
+          "file": "tests/unit/domain/test_structural_retrieval.py",
+          "exit_code": 0,
+          "elapsed_seconds": 2.232,
+          "summary": "11 passed in 0.22s"
+        },
+        {
+          "file": "tests/unit/domain/test_retrieval_strategy.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.987,
+          "summary": "15 passed in 0.08s"
+        },
+        {
+          "file": "tests/unit/domain/test_coverage_selector.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.802,
+          "summary": "8 passed in 0.04s"
+        },
+        {
+          "file": "tests/unit/domain/test_selector_budget.py",
+          "exit_code": 0,
+          "elapsed_seconds": 0.829,
+          "summary": "20 passed in 0.05s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py",
+          "exit_code": 0,
+          "elapsed_seconds": 1.308,
+          "summary": "42 passed in 0.42s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_astchunk.py",
+          "exit_code": 0,
+          "elapsed_seconds": 1.104,
+          "summary": "10 passed in 0.18s"
+        },
+        {
+          "file": "tests/unit/infrastructure/test_symbol_search_store.py",
+          "exit_code": 0,
+          "elapsed_seconds": 3.435,
+          "summary": "28 passed in 2.32s"
+        },
+        {
+          "file": "tests/unit/application/test_index_lifecycle.py",
+          "exit_code": 0,
+          "elapsed_seconds": 1.023,
+          "summary": "16 passed in 0.18s"
+        }
+      ]
+    }
+  },
+  "packaging": {
+    "build": "passed",
+    "wheel_module_source_equivalence": true,
+    "python_module_count": 183,
+    "artifacts": {
+      "opencontextengine-0.3.0-py3-none-any.whl": "472941f33cdd6fd561d8b7f38e03a47fe3b012fe7de37b49c93750ab4dd7aab2",
+      "opencontextengine-0.3.0.tar.gz": "8da29436b9d293c2476ad999af14a51f6ad1547a1468b82b2745fc30ce5e59c9"
+    },
+    "extracted_wheel_ast_alias_smoke": "passed"
+  },
+  "annotation_only_followup": {
+    "product_source_unchanged": true,
+    "assertions_unchanged": true,
+    "passed": 86,
+    "files": [
+      "tests/unit/application/test_index_lifecycle.py",
+      "tests/unit/infrastructure/test_symbol_search_store.py",
+      "tests/unit/infrastructure/test_tree_sitter_symbol_provider.py"
+    ],
+    "counts_note": "Repeated cases already counted in full 1027; not added to unique total."
+  }
+}

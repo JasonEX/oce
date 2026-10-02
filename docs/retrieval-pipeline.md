@@ -33,10 +33,10 @@ SQL 车道共用 `persistence/scope_filter.py`：优先用 checkpoint 关系和�
 | 阶段 | 模块 | 写入 | 职责 |
 | --- | --- | --- | --- |
 | route | `route.py` | `QueryRoute`（冻结） | 提取标识符、限定名、traceback、短语、文件与词元；确定意图、策略、标题标识符及问测试/问实现标记 |
-| plan | `plan.py` | `QueryPlan`（冻结）、embedding task | 可选改写；保留完整请求并增加句子级 facet；启动 query embedding |
+| plan | `plan.py` | `QueryPlan`（冻结）、embedding task | 可选改写；保留完整请求并增加句子级 facet；准备 embedding 输入，按 SQL 能力决定立即启动或延后 |
 | recall | `recall.py`、`recall_*.py` | `RecallEvidence`（冻结） | 汇总 exact、lexical、路径、锚点与 dense 结果 |
 | fuse | `fuse.py` | `candidates` | 语义名次融合、按意图合并 exact、补入端点/锚点、路径 boost 与回填 |
-| prior → rerank | `rank.py` | `candidates`、`decision` | 源码/工作集先验、有界头部、模型重排、头部复位 |
+| prior → rerank | `rank.py` | `candidates`、`decision`、`structural_heads` | 源码/工作集先验、有界头部、模型重排、头部复位；交出受保护头部 key |
 | select | `pipeline.py`、`selector/` | `selected` | focused/coverage 或 Top-K 选择，遵守代码字符预算 |
 | expand | `expand.py`、`chain.py` | `selected`、`related` | 相邻合并、关系小节和调用链，必要时裁去主结果尾部 |
 
@@ -78,9 +78,15 @@ call 行、按名称和 SQL 上限保存的 definition 行。头部排序和关�
 
 ### recall 的门控
 
-SQL 任务在 plan 启动 embedding 之前创建，允许 SQL 与模型往返重叠。当前 recall 先汇总
-exact、path lookup、按意图开放的 lexical 和 compound anchors，再判断结构证据是否足够；
-判定通过后不等待 embedding 完成，并停止尚未完成的向量车道编排。
+SQL 任务在 plan 之前创建。启用决定性跳过、scope 非空且对应 SQL operator 可用时，symbol
+和带显式路径证据的 path 请求先等 SQL；plan 准备冻结的查询变体，只有 SQL 未能回答时才
+启动 embedding。path 还要求可回填正文的 content store。这个取舍让结构命中不产生模型
+调用，但未命中会先支付 SQL 延迟；不使用等待时间阈值或相似度猜测。reference 和语义请求
+保留 SQL 与模型往返重叠，关闭决定性跳过也保留并行路径。
+
+recall 先汇总 exact、path lookup、按意图开放的 lexical 和 compound anchors，再判断结构
+证据是否足够；判定通过后停止尚未完成的向量车道编排。已经发出的 embedding 只释放等待，
+SQL-first 命中则从未创建 embedding task。两者沿用同一 `dense_route=skip:<reason>` 审计。
 
 默认 `RETRIEVAL_DECISIVE_SKIPS_DENSE=true`，决定性证据是二元事实：
 
@@ -130,8 +136,9 @@ anchors 与 call_chain 端点按 key 补入，之后由头部规则排序。路�
 小规模 added delta 可以获得工作集 boost，首次全量同步超过增量上限时不会被当成编辑线索。
 先验只准备模型之前的候选顺序。
 
-结构头部按被问对象保留有限槽位：symbol 最多 3 个（也受最终主结果数限制），每个声明文件
-先占一槽再补重载；path 每个 SQL 匹配文件一槽；compound 最多 3 个锚点，按帧再标题的顺序；
+结构头部按被问对象保留有限槽位：主要请求符号定义命中时，symbol 最多 3 个（也受最终
+主结果数限制），每个声明文件先占一槽再补重载；仅命中参数类型不占用保护槽位。path 每个
+SQL 匹配文件一槽；compound 最多 3 个锚点，按帧再标题的顺序；
 call_chain 保护已解析的一到两个端点。语义与 reference 默认另外优先放 3 个源码片段，
 import-only 头部优先让位给实现，根 README 不消耗源码槽位。
 
@@ -151,11 +158,11 @@ reference 头部须有 exact/lexical 发生证据，声明 chunk 通常让位给
 专用 reranker 先执行，chat LLM 后执行；两者只重排，不删除其输入候选。
 `RERANK_PROVIDER=api` 和 chat LLM 会外发请求/候选源码，`local` 在进程内运行。
 
-两者共用 `plan_rerank`，当前只读 intent、候选数、exact 命中、SQL path 命中、dense 是否
-已被结构证据跳过，以及授权和 policy。候选少于 2 条时不重排。默认 `adaptive` 对有任何
-exact 命中的 symbol、SQL path 命中的 path 和已跳过 dense 的结构答案跳过模型；无对应命中
-的 symbol/path 允许两者。这里的 symbol exact 条件比 dense 的决定性条件宽：可能只命中参数
-类型，不能把 `skip:exact_definition` 解读为首个请求符号已经找到。reference 保留专用重排、
+两者共用 `plan_rerank`，当前只读 intent、候选数、主要请求符号的定义是否命中、SQL path
+命中、dense 是否已被结构证据跳过，以及授权和 policy。候选少于 2 条时不重排。默认
+`adaptive` 对主要符号定义命中的 symbol、SQL path 命中的 path 和已跳过 dense 的结构答案
+跳过模型；无对应命中的 symbol/path 允许两者。symbol 与 dense 门控读取同一
+`primary_definition_found`，仅命中参数类型不算请求目标已找到。reference 保留专用重排、
 跳过 chat LLM 以保留发生点覆盖；其他意图允许两者。`always` 在候选足够时运行对应已授权
 模型，但仍恢复结构头部。
 
@@ -164,10 +171,14 @@ exact 命中的 symbol、SQL path 命中的 path 和已跳过 dense 的结构答
 
 ## 选择、扩展与字符预算
 
-symbol/path 使用 focused，保留相关性顺序、默认每文件最多 4 个主片段、代码预算 12,000 字符。
-其他意图使用 coverage，先覆盖不同文件再填第二个片段、默认每文件最多 2 个、预算 32,000 字符。
-两者去重并抑制高度重叠的源码区间，默认选择最多 10 个主片段；关系小节另计条数。
-关闭 coverage selector 时使用 Top-K，也遵守当前意图的代码预算。
+rank 交出的有界 `structural_heads` 先按候选顺序选择，让同文件内的两个调用链端点或多个
+issue 锚点不因文件多样性被推到尾部。保护不绕过条数、每文件、区间重叠或字符上限；源码
+偏好不自动成为保护槽位。
+
+其余候选中，symbol/path 使用 focused，保留相关性顺序、默认每文件最多 4 个主片段、代码
+预算 12,000 字符。其他意图使用 coverage，先覆盖不同文件再填第二个片段、默认每文件最多
+2 个、预算 32,000 字符。两者去重并抑制高度重叠的源码区间，默认选择最多 10 个主片段；
+关系小节另计条数。关闭 coverage selector 时使用 Top-K，仍保留保护槽位并遵守代码预算。
 
 硬上限按 `sum(len(hit.content))` 计算，含 primary 和 relation 的正文及合并后正文中的换行。
 它不是 token、UTF-8 字节或整个 `formatted_retrieval` 的长度：formatter 添加的标题、Path、
@@ -218,6 +229,13 @@ usage 采集失败独立跳过，不算重排失败。
 `definition_counts` 车道失败，保留已经取得的 exact 答案。当前 symbol projection 会合并
 同 chunk、同 enclosing、同名的记录，所以指标描述的是已记录位点，不能宣称完整源码声明数。
 旧版本两个字段统计召回 chunk 数，不能与修复后的记录混合做歧义校准。
+
+符号抽取版本 6 对 Python 的模块级具名导入别名保留两个 call 名称：调用处的原拼写，以及
+导入的源名称。只有唯一导入、导入在调用之前且文件内没有遮蔽/重绑定时才补源名称；通配
+导入或不完整语法会放弃推断。参数、类型参数、类型别名和赋值等绑定也参与排除。成员调用
+不继承裸名称别名。常见内置名称的额外调用记录仅在 Python 的同文件声明及保守绑定检查
+通过时接纳。新增记录仍是使用点证据，沿用 scope、同名歧义与关系预算限制，不代表解析出
+唯一声明身份或运行时派发目标。抽取语义变化需要新数据目录和完整客户端重同步。
 
 ## 实验管理与保留的决策
 

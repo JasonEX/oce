@@ -1,8 +1,8 @@
 """The plan stage: rewrite, facet decomposition and the query embedding task.
 
-The embedding round trip is started here and never awaited here. Recall
-decides whether the answer needs it; ``release_embedding`` lets an unneeded
-request finish on its own instead of cancelling it.
+The plan prepares all embedding inputs. Semantic requests start the round
+trip immediately; structural requests defer it until recall needs vectors.
+``release_embedding`` lets an unneeded request finish without cancelling it.
 """
 
 from __future__ import annotations
@@ -66,7 +66,9 @@ class Planner:
         self.query_planner = query_planner
         self.query_rewriter = query_rewriter
 
-    async def plan(self, state: RetrievalState) -> None:
+    async def plan(
+        self, state: RetrievalState, *, defer_embedding: bool = False
+    ) -> None:
         # The rewriter is fault tolerant: on failure it returns the original
         # query rather than raising.
         queries: tuple[str, ...] = (state.query,)
@@ -91,9 +93,16 @@ class Planner:
         state.plan = QueryPlan(
             queries=queries, facets=facets, path_queries=path_queries
         )
-        # Started, not awaited: recall decides whether the answer needs it.
+        if not defer_embedding:
+            self.start_embedding(state)
+
+    def start_embedding(self, state: RetrievalState) -> None:
+        """Start the prepared query vectors when recall needs model-backed lanes."""
+        plan = state.plan
         state.embedding = asyncio.create_task(
-            self._embed_query_vectors([*path_queries, *(item[0] for item in facets)])
+            self._embed_query_vectors(
+                [*plan.path_queries, *(item[0] for item in plan.facets)]
+            )
         )
 
     def _plan_queries(self, queries: Sequence[str]) -> tuple[tuple[str, int], ...]:

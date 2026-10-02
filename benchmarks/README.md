@@ -145,7 +145,10 @@ There is not yet a downstream agent task-success suite or an ACE head-to-head
 evaluation, so retrieval scores must not be presented as either result.
 
 Dated measurements, rejected variants and source-selection decisions are indexed
-in the [evaluation archive](results/README.md). The latest [reliability study](results/reliability-simplification-2026-10-01.md)
+in the [evaluation archive](results/README.md). The [algorithm and architecture study](results/algorithm-architecture-2026-10-02.md)
+records code gates, repeated fresh-index comparisons and a compatible same-index query-flow control;
+it keeps the observed quality tradeoffs separate from causal conclusions.
+The [reliability study](results/reliability-simplification-2026-10-01.md)
 and [retrieval experiments](results/principled-refactor-2026-10-01.md) state their
 measured source/index identities and limitations. Archived reports retain their
 original status and scores; they do not describe the current checkout by default.

@@ -11,7 +11,7 @@ from oce.domain.services.retrieval_strategy import RerankDecision, plan_rerank
     [
         (
             QueryIntent.SYMBOL,
-            {"has_exact_hits": True},
+            {"primary_definition_found": True},
             (False, False, "exact_definition"),
         ),
         (QueryIntent.SYMBOL, {}, (True, True, "no_structural_evidence")),
@@ -21,7 +21,11 @@ from oce.domain.services.retrieval_strategy import RerankDecision, plan_rerank
         (QueryIntent.CALL_CHAIN, {}, (True, True, "semantic")),
         (QueryIntent.FEATURE, {}, (True, True, "semantic")),
         (QueryIntent.OVERVIEW, {}, (True, True, "semantic")),
-        (QueryIntent.COMPOUND, {"has_exact_hits": True}, (True, True, "semantic")),
+        (
+            QueryIntent.COMPOUND,
+            {"primary_definition_found": True},
+            (True, True, "semantic"),
+        ),
     ],
 )
 def test_adaptive_decision_table(intent, evidence, expected):
@@ -43,7 +47,7 @@ def test_always_policy_overrides_structural_skips_per_model():
     decision = plan_rerank(
         QueryIntent.SYMBOL,
         5,
-        has_exact_hits=True,
+        primary_definition_found=True,
         dedicated_policy="always",
     )
 

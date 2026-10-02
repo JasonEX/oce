@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, search_hit_key
 from oce.domain.services.selector.coverage_selector import CoverageSelector
 from oce.domain.services.selector.protocols import SelectionMode
 
@@ -96,3 +96,51 @@ async def test_enforces_character_budget_but_keeps_best_hit():
     selected = await selector.select(hits, 2)
 
     assert [hit.path for hit in selected] == ["src/a.py"]
+
+
+async def test_same_file_structural_heads_precede_new_file_coverage() -> None:
+    selector = CoverageSelector()
+    hits = [
+        _hit("src/flow.py", 1, 10, 0.9),
+        _hit("src/flow.py", 20, 30, 0.8),
+        _hit("src/other.py", 1, 10, 0.7),
+    ]
+
+    selected = await selector.select(
+        hits, 2, protected=tuple(search_hit_key(hit) for hit in hits[:2])
+    )
+
+    assert selected == hits[:2]
+
+
+async def test_remaining_slots_still_prefer_new_files_after_structural_heads() -> None:
+    selector = CoverageSelector(max_per_path=3)
+    hits = [
+        _hit("src/flow.py", 1, 10, 0.9),
+        _hit("src/flow.py", 20, 30, 0.8),
+        _hit("src/flow.py", 40, 50, 0.7),
+        _hit("src/other.py", 1, 10, 0.6),
+    ]
+
+    selected = await selector.select(
+        hits, 3, protected=tuple(search_hit_key(hit) for hit in hits[:2])
+    )
+
+    assert selected == [hits[0], hits[1], hits[3]]
+
+
+async def test_protected_heads_obey_overlap_and_per_file_limits() -> None:
+    selector = CoverageSelector(max_per_path=2, overlap_threshold=0.5)
+    hits = [
+        _hit("src/flow.py", 1, 10, 0.9),
+        _hit("src/flow.py", 5, 12, 0.8),
+        _hit("src/flow.py", 20, 30, 0.7),
+        _hit("src/flow.py", 40, 50, 0.6),
+        _hit("src/other.py", 1, 10, 0.5),
+    ]
+
+    selected = await selector.select(
+        hits, 4, protected=tuple(search_hit_key(hit) for hit in hits[:4])
+    )
+
+    assert selected == [hits[0], hits[2], hits[4]]

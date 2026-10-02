@@ -1,0 +1,734 @@
+{
+  "source_files": 182,
+  "source_tree_sha256": "2d35242eceba04f057d5ed6f2116f8af848950daf9f9dbeb207d887919224b76",
+  "files": [
+    {
+      "path": "src/oce/__init__.py",
+      "sha256": "7d98a72301b075fa170854df14b93af2244c6d2e4637106e1d0305d28b2231ed"
+    },
+    {
+      "path": "src/oce/alembic/__init__.py",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "src/oce/alembic/env.py",
+      "sha256": "12f9a82bdac7efeeb8bbf23947b05dad7927cbe0bb439349a784718e48ba1fc2"
+    },
+    {
+      "path": "src/oce/alembic/versions/2eebb4028c7f_add_symbol_occurrences_table.py",
+      "sha256": "7b88681040979d7b4f3197b7dfc477bc1a6f76eb823aac437441c84c74532a1b"
+    },
+    {
+      "path": "src/oce/alembic/versions/__init__.py",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "src/oce/alembic/versions/a1b2c3d4e5f6_drop_unused_credential_columns.py",
+      "sha256": "9491fc3a3d01501a14b1a416b0490de60e5492fcbcccc4b27cc8b149fec9ec88"
+    },
+    {
+      "path": "src/oce/alembic/versions/a2d4f6b8c1e3_add_retrieval_metrics_table.py",
+      "sha256": "c7112e2affce4e207244b9cb1b405797d82c3ba30e8e83eac8767a8baeda0bc3"
+    },
+    {
+      "path": "src/oce/alembic/versions/a7b8c9d0e1f2_bound_pending_replay_scan.py",
+      "sha256": "8f2460d6940e4a5f94e82c9c317dd5dcce621395de46560faabd4a15e71c5d02"
+    },
+    {
+      "path": "src/oce/alembic/versions/b2c3d4e5f6a7_add_retrieval_rerank_route.py",
+      "sha256": "66ba4fd8c5d766d961d4ca22c21bfca99aec44bd1ed74146a4df372e34e7afbc"
+    },
+    {
+      "path": "src/oce/alembic/versions/b7c9e1f2a3d4_redesign_model_credentials.py",
+      "sha256": "e890a36ec85aba87f007d84de6792c8d71e1d19b5a08dda4e9a2bcb5b7b72694"
+    },
+    {
+      "path": "src/oce/alembic/versions/b8c9d0e1f2a3_cleanup_orphan_metadata.py",
+      "sha256": "d7dd3423d5fbd1a0c957f7ac9a80adfa1654be16603055b05b1dc93e78c8a976"
+    },
+    {
+      "path": "src/oce/alembic/versions/c3d4e5f6a7b8_add_retrieval_embed_path_ms.py",
+      "sha256": "b03aaf7e51ff58931ad06e7116b8103bb04077a32d2be894be0423a55ea9c5ca"
+    },
+    {
+      "path": "src/oce/alembic/versions/c4d5e6f7a8b9_add_retrieval_dense_route.py",
+      "sha256": "39b43124665647ced0850e584fe2fd9fb0879f0658fe2eff95b7304e13b0c7d8"
+    },
+    {
+      "path": "src/oce/alembic/versions/c7f1a2b3d4e5_add_monitoring_tables.py",
+      "sha256": "4f0edaba9dc413a72795ffa2e6667933bf8a7b239558ce86620dd20cd48e65f9"
+    },
+    {
+      "path": "src/oce/alembic/versions/d48cee59fb24_initial_schema.py",
+      "sha256": "6dc2eee06b23274ee09ee6c15f480cce581a817b9233ad7fffb507a3c31aefad"
+    },
+    {
+      "path": "src/oce/alembic/versions/d4e5f6a7b8c9_add_chunk_context_and_lexical_index.py",
+      "sha256": "4b39272763acef13ada938eee23501c3dc53e7cf6cc9bb2bb33ae73e6046e1d0"
+    },
+    {
+      "path": "src/oce/alembic/versions/d5e6f7a8b9c0_add_retrieval_lane_failures.py",
+      "sha256": "ee85a38e7cdc5d68c7c09fbcf8af0820acf551f95d46c402bac4371fcb9417f8"
+    },
+    {
+      "path": "src/oce/alembic/versions/e2f4a6c8d0b1_relax_model_credentials_unique.py",
+      "sha256": "2d790896f842141f73a2016c74f53656cbfeece1a80b1314e78d9414a1d9d6e0"
+    },
+    {
+      "path": "src/oce/alembic/versions/e5f6a7b8c9d0_add_symbol_occurrence_enclosing.py",
+      "sha256": "a7e84e420ab453ae97a475048e2226af0bd9abb174a2fc35b09ee5ca2d17b6bb"
+    },
+    {
+      "path": "src/oce/alembic/versions/f3a5c7d9e1b2_add_index_profiles.py",
+      "sha256": "618d04600efb8248dce5dd8997b29d0ccf9388b7b056576a9769c1c1ca3a4c7d"
+    },
+    {
+      "path": "src/oce/alembic/versions/f6a7b8c9d0e1_add_retrieval_evidence_columns.py",
+      "sha256": "96268d844a3f105ac34d79ce24446cbae2e1184f339ca8f8f3b1a1f71dc09694"
+    },
+    {
+      "path": "src/oce/api/__init__.py",
+      "sha256": "4bc43a59812d0e6d94cb12d36618d70c3a9df75491ed49c603f580cadf024442"
+    },
+    {
+      "path": "src/oce/api/admin_router.py",
+      "sha256": "1bfb3e85464b1f47c5634993ccbb350acc8d847edff827036d39e894b6f64a90"
+    },
+    {
+      "path": "src/oce/api/errors.py",
+      "sha256": "2ac3ceb5e361b9bf977523dccc88cf1831cc68c1c1a24a83deacc97dce45b2d7"
+    },
+    {
+      "path": "src/oce/api/middleware.py",
+      "sha256": "f65821f4cd7506d14582690f936d6791210bbfe82fb50d9f0b7b567647090a8d"
+    },
+    {
+      "path": "src/oce/api/router.py",
+      "sha256": "fff254c4116c476998a14d708bff2d577dbd1ddbcc1b33c8e6be22e7dd8336a5"
+    },
+    {
+      "path": "src/oce/api/schemas.py",
+      "sha256": "c2bbb48567e5fe3a40ba8f397eb97365326b43e76d5577d47c143abd0a6f75c6"
+    },
+    {
+      "path": "src/oce/application/__init__.py",
+      "sha256": "2fdae7512286ac8da76a9bf9c48da8dc6794798cb510b4e4da05ba66e604c285"
+    },
+    {
+      "path": "src/oce/application/commands/__init__.py",
+      "sha256": "56ba776dfeb43bab64422e18db0f5b8d3c9c3c501b6f7dabb55d64259ebf64ef"
+    },
+    {
+      "path": "src/oce/application/commands/checkpoint.py",
+      "sha256": "0360d346f36811e23c8b97ab82b03b034b507cc488a1f7347f65f1809d09d59b"
+    },
+    {
+      "path": "src/oce/application/commands/credentials.py",
+      "sha256": "66f2da17693d2558e73861b24be2f53608a52819911f61ef435222d29468b6c1"
+    },
+    {
+      "path": "src/oce/application/commands/gc.py",
+      "sha256": "f8a2b6b43d87b0ce573beccad589d7c8a646c7fd7ae72e292424dc5752c4e715"
+    },
+    {
+      "path": "src/oce/application/commands/ingest.py",
+      "sha256": "9538f7b707d1bffc6a07f466ac46085a456b104d81ae21cb8e418cb25fb2cadd"
+    },
+    {
+      "path": "src/oce/application/commands/queue_admin.py",
+      "sha256": "c1934273d71a696334216ac7f94868a9cabf5b2ce254f564bb455e8930375b6e"
+    },
+    {
+      "path": "src/oce/application/commands/requeue.py",
+      "sha256": "4472cd98573e4534d8577a4c150b410bb16d5bce43857ffa50b44809fa795c59"
+    },
+    {
+      "path": "src/oce/application/container.py",
+      "sha256": "3b842ada732de63efce675215279bab4a107150adbf8eee584aa0a8357338ba4"
+    },
+    {
+      "path": "src/oce/application/index_lifecycle.py",
+      "sha256": "ceace454db33b2645ebb7199fb17107010a7d6300ebe3d7c5bc135f422fae4eb"
+    },
+    {
+      "path": "src/oce/application/queries/__init__.py",
+      "sha256": "8e84d7693706eeb251d39ad8a6ad709c5248b6926ae3fdb1c7ff9ab8d1fef458"
+    },
+    {
+      "path": "src/oce/application/queries/index_stats.py",
+      "sha256": "da6fee4bd2356191a76bc3745027ca5415d800ff52642c670c0272d9b6219be5"
+    },
+    {
+      "path": "src/oce/application/queries/queue.py",
+      "sha256": "01b0d08f2eaf3af0db0a04e35fe64b4dcde342ac7403c12db5ad833badcdb6ac"
+    },
+    {
+      "path": "src/oce/application/queries/search.py",
+      "sha256": "9c54684cbf354c6044754a257d2137bd7dc5e2726ddb8285381278114541c88a"
+    },
+    {
+      "path": "src/oce/application/queries/stats.py",
+      "sha256": "73f8085f28883af2edb8ea4396bc1f72e8fe5e4c8b23cb96ffc8e4c92d633c7d"
+    },
+    {
+      "path": "src/oce/application/queries/status.py",
+      "sha256": "0d9d8034a28748dbeb964ac39b4b36b21bbefb41d88bfee6aa66828281bf8e08"
+    },
+    {
+      "path": "src/oce/application/queue.py",
+      "sha256": "67d58cf817686924e2764ce7d42e7fc7726e4df8f56cef89b17b3ca1b623167c"
+    },
+    {
+      "path": "src/oce/application/service.py",
+      "sha256": "b30fd35f4a7c24f18d146c3d95b862f5eaa8eb7891d565fd54c628d74ed33ae7"
+    },
+    {
+      "path": "src/oce/application/uow.py",
+      "sha256": "0852a37ca5141f5c212f0fa01e74a3958f0a7236ecfbe80026ac6538f9a5d8b3"
+    },
+    {
+      "path": "src/oce/application/use_cases.py",
+      "sha256": "9a604723ee95e1a95a0246869e8d18fd7811bf436908fb5933d7d3eabe09ef8c"
+    },
+    {
+      "path": "src/oce/application/warmup.py",
+      "sha256": "90650d2c0463982bc09a88e823d178e5d3860e3c749a5c03e56e7bd9fc6d8ae0"
+    },
+    {
+      "path": "src/oce/application/worker.py",
+      "sha256": "59eab09b5c0d804fa82011aa57de6653a14f73462ddfbfb6544b5ee72c577a62"
+    },
+    {
+      "path": "src/oce/auth.py",
+      "sha256": "6e7f33ecab3e626eb937ab7d4fca6d1c5deea9caaf0e55783d98f599b897db97"
+    },
+    {
+      "path": "src/oce/cli.py",
+      "sha256": "a6078c177be60da093e59cbab944e44ce26b4639dde400edbeeefdf081eac0b5"
+    },
+    {
+      "path": "src/oce/domain/blob/blob.py",
+      "sha256": "756f357276b99472968adc7443856702bddffc004b3dc5f51c90aa10ed157bfc"
+    },
+    {
+      "path": "src/oce/domain/chain/chain.py",
+      "sha256": "4a520a64a5e0e006576254583108d3f3cfd9fd02a236c5e15988ba7d0f9cb80f"
+    },
+    {
+      "path": "src/oce/domain/chunk/__init__.py",
+      "sha256": "1bbde3c7059a4ced8ce6bdba1503fa68cebfea1524f684eda1d4ee9d7a1b4f58"
+    },
+    {
+      "path": "src/oce/domain/chunk/lang.py",
+      "sha256": "9e8d6e5154fbaf5d50755a3c318c34b6d9cf53f2b14bc35f19e63bb5f0d54ecc"
+    },
+    {
+      "path": "src/oce/domain/chunk/protocols.py",
+      "sha256": "c7f26ae602fd76d5313b20e769f8793c7905c0c39477ef233ebd53392e1a99f1"
+    },
+    {
+      "path": "src/oce/domain/chunk/recursive_chunker.py",
+      "sha256": "aeb99e84d0bf9fe4d93a06f80ab4247f2dd94947a3c904a4b7801f6355aa3d42"
+    },
+    {
+      "path": "src/oce/domain/chunk/router.py",
+      "sha256": "9ca3b4bee20c0dc4ad319e815e14983e1d8d4ff21d2d6454d7ee4b1695c0b687"
+    },
+    {
+      "path": "src/oce/domain/chunk/spans.py",
+      "sha256": "fe568c5a756c5c4cda94763bdf2cfc7f45d2db9a23cc090c2e9c787a1ea4d86d"
+    },
+    {
+      "path": "src/oce/domain/chunk/types.py",
+      "sha256": "5633de20a826f9c58cd49d91c52964a0f54014c607bf25aa9a40d7ff39a82f21"
+    },
+    {
+      "path": "src/oce/domain/repositories.py",
+      "sha256": "230b3024f3f102fdd7a1af22888965b9c1ce92cecbf871b06e1d78d7cfacd65b"
+    },
+    {
+      "path": "src/oce/domain/services/__init__.py",
+      "sha256": "6599341b223f4fb7d072decd5a0b6c0c8ae60cdb3b103da178e7f476706a1e05"
+    },
+    {
+      "path": "src/oce/domain/services/embedder.py",
+      "sha256": "59370455365d060b91a181c4fb8bba17945249495c4af901f5108ab6d24ebabe"
+    },
+    {
+      "path": "src/oce/domain/services/evidence_pack.py",
+      "sha256": "657a0c6ded54a128b6e42ddfb71cd0d8c07bbfd8a5e2bd3ea989c7f1b3766001"
+    },
+    {
+      "path": "src/oce/domain/services/formatter.py",
+      "sha256": "9d6a8bc9ad1392fedf7de597098102d40c6797c70d968509e561c718c07370d5"
+    },
+    {
+      "path": "src/oce/domain/services/indexing.py",
+      "sha256": "47a3248940e6d0f5c614b8b8fc3bfee653ef17e50e04c728b12d607549d56f98"
+    },
+    {
+      "path": "src/oce/domain/services/lexical.py",
+      "sha256": "bf9dbfb5bd810aba82f1d8c11c4e065fcd41aae0b679a7e4b8341d1fd6c3e043"
+    },
+    {
+      "path": "src/oce/domain/services/llm/__init__.py",
+      "sha256": "a65197cfd8cc61fafb4b67e72bdd04436b353f76758ab889306f0c19f5c7f8fe"
+    },
+    {
+      "path": "src/oce/domain/services/llm/client.py",
+      "sha256": "0b509c0c3ac1d9460611c23514a22a8812adc6dc1e47ba7ea435e5c26c0577c5"
+    },
+    {
+      "path": "src/oce/domain/services/llm/prompts.py",
+      "sha256": "a29f4e154d2ea72ba321257787c87972a19c05341edb51b32d0c66f41f834ba4"
+    },
+    {
+      "path": "src/oce/domain/services/llm/reranker.py",
+      "sha256": "7fdf736b5ca4e5b4dc6fc9ce33162972e3ed9540085fb9f2fb39b4ab4ebf8bd7"
+    },
+    {
+      "path": "src/oce/domain/services/llm/rewriter.py",
+      "sha256": "453fe77d6f82acdddab89a46d237c3cc1bb577210e1964b40f9adb253485d158"
+    },
+    {
+      "path": "src/oce/domain/services/path_document_builder.py",
+      "sha256": "4bf9b24a5abf9a44006943b7984a55eb9f3e45871003c92dc0d1a922f889d01a"
+    },
+    {
+      "path": "src/oce/domain/services/path_search.py",
+      "sha256": "420b06c385b088650da8a2de817e2207d237b86fd89b7c2690efdb97605f5e41"
+    },
+    {
+      "path": "src/oce/domain/services/query_classifier.py",
+      "sha256": "afb7cdb168925720cbaf72d670e10e3fb6dc05d88fe63a4da7e37fff7ad803bf"
+    },
+    {
+      "path": "src/oce/domain/services/query_evidence.py",
+      "sha256": "dea13b2505239b3714ac6a8b9c5eda580621fe33c2b8ea194456980808bb3829"
+    },
+    {
+      "path": "src/oce/domain/services/query_planner.py",
+      "sha256": "4d15e95eea84c2f3e426737f8e40e3b4aed9d7d2368023db7f4e222edefc83e3"
+    },
+    {
+      "path": "src/oce/domain/services/query_tokens.py",
+      "sha256": "5fb67d9e877c8892bf8337ceaf1bc442869767d352bd4b9fc3ea42028d430825"
+    },
+    {
+      "path": "src/oce/domain/services/relations.py",
+      "sha256": "1e38e96565728d467bf28ef7d8203e2363cee8b900c68f36aaff8786c69445d6"
+    },
+    {
+      "path": "src/oce/domain/services/reranker.py",
+      "sha256": "09e00f4169a7eb46299199188da5be41307c95052416919de2a6c1f0a50bb679"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/__init__.py",
+      "sha256": "d5697033a265235ad87436e65f26c69c74e38504a1f471936c64f630f10069db"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/budgets.py",
+      "sha256": "781b94b38ddc4ed860aad71537a8fbbb00ab96401185edc3c51a831460cc4cd7"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/chain.py",
+      "sha256": "71b3f228a27eee6c158599f5da8215d1b282b9e9582b556922a38cde3b788c4b"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/excerpts.py",
+      "sha256": "92d411f8052a07ad0ee4b91eeb77d7fb2719c28bc71aad5392527df968f19eec"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/expand.py",
+      "sha256": "2b0fdb30330ee252ead9c5ab4693e9685483972f3d62520e4fc3cd89de623cce"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/fuse.py",
+      "sha256": "7a44e17a6372c489879af5fdb3974b8b20f55c72b8e2061a1a2f35317b19b80d"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/names.py",
+      "sha256": "8e95d77dd218a8c943259a50e9decc73220b7e288c001e750cb0870a334bbeec"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/pipeline.py",
+      "sha256": "413762441dd37ceeab0c4f48a7ed72a0f9f25c294b7f02ccb11771ee5ae20155"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/plan.py",
+      "sha256": "863ab3bc13a1567a00352bac619794b0b7a774dd2fb7fbe396e43ff39b8a0b52"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/priors.py",
+      "sha256": "d10b290c88abb6068a03724f6a5e8246571e816da29fcaddb998abbb28e8b3de"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/rank.py",
+      "sha256": "5d75b59794a92db349abb2c84d924f2a9861e45e3cfcd4ee7ad7ff287c55ba0f"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/recall.py",
+      "sha256": "403dcf8061b3cf1ad0ed5db14570fd8d421473f53b6b3f9f1daa94587d9b459d"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/recall_exact.py",
+      "sha256": "86f0cac4541a8823a0e092cfed89ef8ec9e0fa86639a075f78bdd871f98487e1"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/recall_text.py",
+      "sha256": "716f77509d5a374ddc1743e99f1ce70fbef43907e6afd5d87eeb8988d3da63f2"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/recall_vector.py",
+      "sha256": "8c8cdef4814c273cbf0c0c176867083594551ccded2dd8038ea4a6b910b1c559"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/route.py",
+      "sha256": "a14136eb5e845790488e5124d8556af87c266ce827aab6eb5c5efd9308199454"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval/state.py",
+      "sha256": "a5a1128134b50b2634b260c4c407a2942d765d96b4735bb07b66228f4240f210"
+    },
+    {
+      "path": "src/oce/domain/services/retrieval_strategy.py",
+      "sha256": "37535c86e35c59ba0508c96ac5cb1e7065b4c98ed0592157f6550e112deed698"
+    },
+    {
+      "path": "src/oce/domain/services/search.py",
+      "sha256": "085e852c0b520a307a77baf876e7727e771fba16259822daa46182878f18ff26"
+    },
+    {
+      "path": "src/oce/domain/services/selector/__init__.py",
+      "sha256": "e43662906d6c62fa793600ec9aac8731390892e19683c3fbb0dfac98dd6dae0b"
+    },
+    {
+      "path": "src/oce/domain/services/selector/budget.py",
+      "sha256": "1e9af89bc075853ca929fead709c1c0c8057296c459d96332287bcd8dd6182f3"
+    },
+    {
+      "path": "src/oce/domain/services/selector/coverage_selector.py",
+      "sha256": "487628d4c89bb8ab0a90a99ffb351208ba539edc1edf3b03b9a5e70489a6e92b"
+    },
+    {
+      "path": "src/oce/domain/services/selector/protocols.py",
+      "sha256": "33a7555462cbc948903a9ccded371ec030fa8998f45794b1fd2256401454e449"
+    },
+    {
+      "path": "src/oce/domain/services/selector/topk_selector.py",
+      "sha256": "90eb913fc536519bce18c278c53ada94ffa75d4e8bda7acebd84e416a0dd51cb"
+    },
+    {
+      "path": "src/oce/domain/services/source_filter.py",
+      "sha256": "e3715a4a2e1c2b0ed1da5459347ab000a0293bdf8b993df95f5b459967517361"
+    },
+    {
+      "path": "src/oce/domain/services/symbols.py",
+      "sha256": "77b39cb6b2cfb7ae36e4316e8c51f9e8175bd04c098d11712e1a62dfdb073ffe"
+    },
+    {
+      "path": "src/oce/domain/services/test_paths.py",
+      "sha256": "beee1a0d6694db353618a5d733d46bed0a2755e8eefa35925cfa256a25cd1c33"
+    },
+    {
+      "path": "src/oce/infrastructure/__init__.py",
+      "sha256": "7f1cca7024f9293fbc3504d987ffb3ed9b30581d5abea23c8c476ce4362fc8d1"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/__init__.py",
+      "sha256": "6742a37b9ca7b55acf6c706eb87e1c1286d81d8fef7b10ede222656769b3002d"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/astchunk_builder.py",
+      "sha256": "3c2d5b0fe0ece538f43ddb37eeb5ff86b951ce96ba38ccf97b16c83347c080ee"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/astnode.py",
+      "sha256": "03bb50063ba79f333b2dfdebd463f12b2389eb62b35e5ec053cf5c305b430142"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/cast_chunker.py",
+      "sha256": "07e11d137b64d9deba86ebc2bc74b7273118dc1da9015f083784b032e6ea2c8e"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/compat.py",
+      "sha256": "58515b9b2723f3320dcef608dc68c4f570241e8b2fcfc962064006d5e0b8187e"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/declarations.py",
+      "sha256": "0e61cf7c9b1540c4de0d3e64ba134da621085fb2d78320b84415e804eea45e70"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/preprocessing.py",
+      "sha256": "51e3bed93a03792e597931ce0a131b2d978576442878db3b0506712e7f98189c"
+    },
+    {
+      "path": "src/oce/infrastructure/astchunk/symbol_provider.py",
+      "sha256": "26b6710569a3a1ff990873db9f2e904f62376b55d71fee91d649836776eceff8"
+    },
+    {
+      "path": "src/oce/infrastructure/chunkers/__init__.py",
+      "sha256": "48d01203cc21dcd55dd0b1e1db1d0d99f7bd0afc55109a701f59f3ef757de519"
+    },
+    {
+      "path": "src/oce/infrastructure/chunkers/factory.py",
+      "sha256": "6ae042171dbb891031040a9f4681bfcc0ec0da5cdc8e9a823887a795d2e7e452"
+    },
+    {
+      "path": "src/oce/infrastructure/chunkers/jsp_chunker.py",
+      "sha256": "e216bb10e46141859e79641297ef0c229b6ea9d61f139761c6888cf290ec75a7"
+    },
+    {
+      "path": "src/oce/infrastructure/chunkers/markdown_chunker.py",
+      "sha256": "21bd20f4dc28c0187211f44591478a28af9899deb5fae55ddfe6efcaf412a37b"
+    },
+    {
+      "path": "src/oce/infrastructure/chunkers/vue_chunker.py",
+      "sha256": "d955b5bd6eea5c5e9412d02aa8d5ddcbbfbadcbaba7ef64dbd7ba158a0c45974"
+    },
+    {
+      "path": "src/oce/infrastructure/delegate_runtime.py",
+      "sha256": "2029ddc754f723e62280c6b1f7f086e072d43c4bdf9b702195b21e698a6764e6"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/__init__.py",
+      "sha256": "5cfbbd6bc59611d119ffab7afafa627481d1d7e75258782efa231e764ebdcf9c"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/credential_embedder.py",
+      "sha256": "9ec7a70d92a6b5b3ac0cdfb14f7658a83d2318fc8345c6e77da9afe123d83ce6"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/credential_reranker.py",
+      "sha256": "bcec38a41b4d8fbc2185c03094bef877d9931b009a4e49fc6f75a2150861a3e5"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/local_onnx_reranker.py",
+      "sha256": "e4adf9b86b1e23d6e4423b54556e3538ad5c51b5b76dddc2a33cb38149c053ff"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/openai_embedder.py",
+      "sha256": "ad4907b799d51c3f053a3d4a6a79a74d8181eb6e68dcf09eccb701e9d372b573"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/openai_reranker.py",
+      "sha256": "c47a18af51c0dc11f4a46fe376e518ba67059c0ce20e54e1919aeb7a2bce22e0"
+    },
+    {
+      "path": "src/oce/infrastructure/embed/query_cache.py",
+      "sha256": "e9f4a3b6d7f8c3bd6b2f32c4a7d44e13d4319867384dd785e248a07371298da6"
+    },
+    {
+      "path": "src/oce/infrastructure/llm/__init__.py",
+      "sha256": "0e4588c4f58d193cfeb312f67ee3f2ffa2502b4ffffd1253dc171ce7d54a984f"
+    },
+    {
+      "path": "src/oce/infrastructure/llm/credential_llm_client.py",
+      "sha256": "6916df7ffdd63fcb6f6b22a7f6072bf783d6ec893a8cfca74d8950b3ba802849"
+    },
+    {
+      "path": "src/oce/infrastructure/llm/openai_compatible_client.py",
+      "sha256": "aa9b90bd4495b2d193861f9c2b2d2e0a8a865635c6ef451fc8ce59ea5970954e"
+    },
+    {
+      "path": "src/oce/infrastructure/llm/rate_limiter.py",
+      "sha256": "6f75443372c874a0b297ee36057c58d580362da894e6bc6798ba1d492e5d7e68"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/__init__.py",
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/cleanup.py",
+      "sha256": "a61949cb2ba65260b4b0a677badf7b20c75bfa75b28cd06705a8930fa0c378fb"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/periodic.py",
+      "sha256": "5ace5c1e8dc743f99f2644f4a935b865c6e3e7c7fca2c84751b81f879513532d"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/resource_sampler.py",
+      "sha256": "d006715fad1158dfd9f1fc9d8263f92b162f47775bfaf1bc9288a137012a5c13"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/sql_metrics_sink.py",
+      "sha256": "8076f44de110a823c084612a328d1ebd0941f97de7995c9c4a7506ee99ba1f9c"
+    },
+    {
+      "path": "src/oce/infrastructure/metrics/stats_store.py",
+      "sha256": "878508abf1231926d6c51c358f447506162eb34593e45b640da31868c2337586"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/__init__.py",
+      "sha256": "895038d7d1b74a8b828fac53937e2bfa6443ec85d40ef0a0f39f1020b2c21134"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/base.py",
+      "sha256": "6f2745adcd83949c61c332a79cfcb9b3cb5bc91c110590372b2430bfcbadc6d6"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/client.py",
+      "sha256": "783e3d2f178752d3f17b753a9aaddfbb603ed6534feed46d62f952985b44c6d8"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/path_index.py",
+      "sha256": "86bfe8192bceba7c58f2bbb27feba1b884a0444d2544645795deec195d420f49"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/schema.py",
+      "sha256": "8f6fa12dfa77d182310f2cdb6b4c90a4d3a507b83c0ee40a8f49c094fa0c81e1"
+    },
+    {
+      "path": "src/oce/infrastructure/milvus3/search_store.py",
+      "sha256": "1b6a1ad176cfc9038412f8b6923e27dd41095ebf5480b444157956255197e5ce"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/__init__.py",
+      "sha256": "4c98b8f50a2736e2f22298226af23a367474712e45b7a7e4c42510c224fbeaef"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/active_credential.py",
+      "sha256": "f26cf9593e19df356c3fdec083f07edcdc675f09d068f03b2bb2cd2a0cf56cd6"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/credential_admin_store.py",
+      "sha256": "668f8af1de82ed49790774d778af05b6efad6e90cf80a0afe4072ebc3947622e"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/dialect.py",
+      "sha256": "124d9e25eb01bef1ed819fa388c1413dd74dcdd38a33365ec72a0745a25f388e"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/index_profile_store.py",
+      "sha256": "5af2c26fcd679982ffd93e9759d32c3573950dcc80b1fdd57c8929d4bef54b9f"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/index_stats_reader.py",
+      "sha256": "bd12961e12e070dac1810954d6813d072a933cc0bfec7fd3957fc10fd328b373"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/lexical_index.py",
+      "sha256": "631e8433570afa213d7445e53922865abdeb571a2fdc0d3720acac0074d6de92"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/migrations.py",
+      "sha256": "77d8aac29fc74cf86574174f044d352c01e3c5bdae3dcf4434e56a68b192db2a"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/models.py",
+      "sha256": "830b8d7560f20635df73841ac976494f5b0c876bebefd88887ce803716e64135"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/path_content_store.py",
+      "sha256": "283c9efa8dda8f05ac3e6201e442129bf3015a4f4eaa2e97fe63cbe52da7daf1"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/path_lookup_store.py",
+      "sha256": "bd345ca4d16c3834e41919e516429c2600e46d5f7949e140eafa4c3df4ba6f89"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/scope_filter.py",
+      "sha256": "1ecd33127850b03d1e46728e702de6fb86e09a15b18532d4f5486827c3ea4795"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/sql_blob_repo.py",
+      "sha256": "527dd13c2a438b24cbce4400d2401eba411056010f6634490386a36a4e679215"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/sql_chain_repo.py",
+      "sha256": "1f2f013829457f9e9456f85b8251569c0f26e3ab8b190460c7381c58d5bb8277"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/sql_chunk_repo.py",
+      "sha256": "2c3023ab6934561363fd94a2a106afdaf70accf4f9cca76afefaf53bb98259ef"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/sql_symbol_projection.py",
+      "sha256": "b34272fb6d9b7a57e3d1fb1827bdbbf995f98bb738f155b0c7149ba07047fd63"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/symbol_search_store.py",
+      "sha256": "beeac27760c20b01f72c9cd5d72a59578315e16c1bdd0d97d792ecb719608b0f"
+    },
+    {
+      "path": "src/oce/infrastructure/persistence/uow.py",
+      "sha256": "098848bf6eed38c525cb8bdaea1d71fe8cda19e5601a03309f574a20c8429ec4"
+    },
+    {
+      "path": "src/oce/infrastructure/queue/__init__.py",
+      "sha256": "a217dd1544ff2ff39725913b616db469c1daaf2b76e410a925431026e4b7b15e"
+    },
+    {
+      "path": "src/oce/infrastructure/queue/redis_queue.py",
+      "sha256": "74245fb0286dbf085cd152f06948dd85a86f690c805f0f6c85e7d0cb3c3bb20a"
+    },
+    {
+      "path": "src/oce/infrastructure/regex_symbol_provider.py",
+      "sha256": "fead32794e6289a6ac3cb9011e28e8da86e7774b87462bf06aa97b73c135307c"
+    },
+    {
+      "path": "src/oce/main.py",
+      "sha256": "c22ac53b97987578de4981f42a35467477ea99157c2b122829ca01f2597968f3"
+    },
+    {
+      "path": "src/oce/shared/__init__.py",
+      "sha256": "b6aacba14abd31d7498605d3e5c959eaee7b4447b9d0702c07018c7af976d2c4"
+    },
+    {
+      "path": "src/oce/shared/aio.py",
+      "sha256": "219c1dcc9489bedd74875fbafa4e1c6599747adfd5a59d0a9d5f4f4da8ad2548"
+    },
+    {
+      "path": "src/oce/shared/config/__init__.py",
+      "sha256": "ecdb4aa5bdf9146120484f251e188e22e624c2f1f7986730b3ed01a296880508"
+    },
+    {
+      "path": "src/oce/shared/config/settings.py",
+      "sha256": "81042e432f677eec92f404bb36fadf8ec5974ecda7dbd4dfdac6bed832ea9cf7"
+    },
+    {
+      "path": "src/oce/shared/database/__init__.py",
+      "sha256": "b5353d29b13b8e8da6ee5c036141fbf07817f565bb25983a3028ed79794bc150"
+    },
+    {
+      "path": "src/oce/shared/database/session.py",
+      "sha256": "c9b915ee835764afad1507e8790f7a93229819fc10e2c94471c4ef3eb5d7ee43"
+    },
+    {
+      "path": "src/oce/shared/errors/__init__.py",
+      "sha256": "195e4a03110a077a991d67f8b2522362e07c257612cda807c8be703b681f6204"
+    },
+    {
+      "path": "src/oce/shared/hashes.py",
+      "sha256": "1adb5dce260ab1b2720cb3c9536c3bbd8f1488b33740ac42f9af578e4414a98f"
+    },
+    {
+      "path": "src/oce/shared/index_profile.py",
+      "sha256": "843503982d386f47a0af5cf4272dd1ef9c37f89ed10934db88ca6c62c370f5c1"
+    },
+    {
+      "path": "src/oce/shared/index_stats.py",
+      "sha256": "99286df38050fac82b0408fd0d470ddc521239d5bac0c4ab2b3162b72744da0b"
+    },
+    {
+      "path": "src/oce/shared/logging.py",
+      "sha256": "943c4d64cde5bb30ff534f7bb7870df5bac1c1ed414b9a81156f14914c876750"
+    },
+    {
+      "path": "src/oce/shared/metrics.py",
+      "sha256": "e136c72e8429eb75165390a3bcae88023abee72c9eb1b0a16c7ab79fadd14af6"
+    },
+    {
+      "path": "src/oce/shared/metrics_read.py",
+      "sha256": "680ad5cf85cd2436f07f4f9d71fd92d029633e4f90d941932d092f4bef654b1d"
+    },
+    {
+      "path": "src/oce/shared/model_credentials.py",
+      "sha256": "0851c61cee2f5840ab0102475a68d6c1deaa0ef88ab3ecfbc30696b31806d75f"
+    },
+    {
+      "path": "src/oce/shared/path_limits.py",
+      "sha256": "0fe40d840f6a589183c72a2f1107a96f581726421afa3a34f4682923f25ecc33"
+    }
+  ]
+}

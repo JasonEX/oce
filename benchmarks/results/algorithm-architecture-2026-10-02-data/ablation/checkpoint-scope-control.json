@@ -1,0 +1,480 @@
+{
+  "schema_version": 1,
+  "scope": "Independent read-only client input and source review. No server database, full client state, config or credentials are included.",
+  "scored_client_inventories": 49,
+  "suite_inventory_counts": {
+    "short_queries": 13,
+    "semantic_queries": 13,
+    "project_cases": 10,
+    "swe_explore": 13
+  },
+  "all_ordered_inventories_equal": true,
+  "all_committed_checkpoints_without_delta": true,
+  "minimum_inventory_files": 86,
+  "working_set_boost_max_blobs_default": 50,
+  "retrieval_added_blobs": [],
+  "retrieval_deleted_blobs": [],
+  "request_delta_evidence": "Inferred from matching retained post-sync inputs plus released-client retrieve_current implementation; not a recorded HTTP wire capture. Empty added deltas exclude the working-set prior independently of its configured limit.",
+  "inventory_hash_recipe": "SHA256 of JSON dumps(separators=(comma,colon)) of ordered SELECT path,blob_name,committed_blob_name,status FROM files ORDER BY path.",
+  "states": [
+    {
+      "client_state": "retrieval/short-query-client-state/axum-v0.7.9.sqlite3",
+      "candidate_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ablation_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ordered_inventory_equal": true,
+      "present_files": 466,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/bats-core-v1.11.1.sqlite3",
+      "candidate_inventory_sha256": "0e0352d2bbb05c5da8a69b437121e26be3e55f678b75882a4c960ee68b2e8ccc",
+      "ablation_inventory_sha256": "0e0352d2bbb05c5da8a69b437121e26be3e55f678b75882a4c960ee68b2e8ccc",
+      "ordered_inventory_equal": true,
+      "present_files": 348,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/express-4.21.2.sqlite3",
+      "candidate_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ablation_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ordered_inventory_equal": true,
+      "present_files": 233,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/gin-v1.10.0.sqlite3",
+      "candidate_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ablation_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ordered_inventory_equal": true,
+      "present_files": 118,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/gson-2.11.0.sqlite3",
+      "candidate_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ablation_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ordered_inventory_equal": true,
+      "present_files": 301,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/jq-1.7.1.sqlite3",
+      "candidate_inventory_sha256": "31118ef80d4aa77afa9c6148235275fab1b622943d667a868ca0b9ebc804307f",
+      "ablation_inventory_sha256": "31118ef80d4aa77afa9c6148235275fab1b622943d667a868ca0b9ebc804307f",
+      "ordered_inventory_equal": true,
+      "present_files": 302,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/mediatr-v12.4.1.sqlite3",
+      "candidate_inventory_sha256": "4fc2ff79aa019cfc8bc76cce2c268be20cade795d82c9f6a0c00b0257d89ef4a",
+      "ablation_inventory_sha256": "4fc2ff79aa019cfc8bc76cce2c268be20cade795d82c9f6a0c00b0257d89ef4a",
+      "ordered_inventory_equal": true,
+      "present_files": 143,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/pallets__flask-5014.sqlite3",
+      "candidate_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ablation_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ordered_inventory_equal": true,
+      "present_files": 240,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/psf__requests-5414.sqlite3",
+      "candidate_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ablation_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ordered_inventory_equal": true,
+      "present_files": 86,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/pydata__xarray-7233.sqlite3",
+      "candidate_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ablation_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ordered_inventory_equal": true,
+      "present_files": 300,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/pylint-dev__pylint-7080.sqlite3",
+      "candidate_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ablation_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ordered_inventory_equal": true,
+      "present_files": 3309,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/pytest-dev__pytest-10356.sqlite3",
+      "candidate_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ablation_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ordered_inventory_equal": true,
+      "present_files": 569,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/short-query-client-state/redux-toolkit-v2.2.7.sqlite3",
+      "candidate_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ablation_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ordered_inventory_equal": true,
+      "present_files": 985,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/axum-v0.7.9.sqlite3",
+      "candidate_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ablation_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ordered_inventory_equal": true,
+      "present_files": 466,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/bats-core-v1.11.1.sqlite3",
+      "candidate_inventory_sha256": "0e0352d2bbb05c5da8a69b437121e26be3e55f678b75882a4c960ee68b2e8ccc",
+      "ablation_inventory_sha256": "0e0352d2bbb05c5da8a69b437121e26be3e55f678b75882a4c960ee68b2e8ccc",
+      "ordered_inventory_equal": true,
+      "present_files": 348,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/express-4.21.2.sqlite3",
+      "candidate_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ablation_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ordered_inventory_equal": true,
+      "present_files": 233,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/gin-v1.10.0.sqlite3",
+      "candidate_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ablation_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ordered_inventory_equal": true,
+      "present_files": 118,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/gson-2.11.0.sqlite3",
+      "candidate_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ablation_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ordered_inventory_equal": true,
+      "present_files": 301,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/jq-1.7.1.sqlite3",
+      "candidate_inventory_sha256": "31118ef80d4aa77afa9c6148235275fab1b622943d667a868ca0b9ebc804307f",
+      "ablation_inventory_sha256": "31118ef80d4aa77afa9c6148235275fab1b622943d667a868ca0b9ebc804307f",
+      "ordered_inventory_equal": true,
+      "present_files": 302,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/mediatr-v12.4.1.sqlite3",
+      "candidate_inventory_sha256": "4fc2ff79aa019cfc8bc76cce2c268be20cade795d82c9f6a0c00b0257d89ef4a",
+      "ablation_inventory_sha256": "4fc2ff79aa019cfc8bc76cce2c268be20cade795d82c9f6a0c00b0257d89ef4a",
+      "ordered_inventory_equal": true,
+      "present_files": 143,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/pallets__flask-5014.sqlite3",
+      "candidate_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ablation_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ordered_inventory_equal": true,
+      "present_files": 240,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/psf__requests-5414.sqlite3",
+      "candidate_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ablation_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ordered_inventory_equal": true,
+      "present_files": 86,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/pydata__xarray-7233.sqlite3",
+      "candidate_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ablation_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ordered_inventory_equal": true,
+      "present_files": 300,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/pylint-dev__pylint-7080.sqlite3",
+      "candidate_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ablation_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ordered_inventory_equal": true,
+      "present_files": 3309,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/pytest-dev__pytest-10356.sqlite3",
+      "candidate_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ablation_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ordered_inventory_equal": true,
+      "present_files": 569,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/semantic-client-state/redux-toolkit-v2.2.7.sqlite3",
+      "candidate_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ablation_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ordered_inventory_equal": true,
+      "present_files": 985,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/axum-v0.7.9.sqlite3",
+      "candidate_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ablation_inventory_sha256": "dd9de4ca3768804e0946b2d8aa43c648ae4baa9ce1335f7e65fee2fcd237b360",
+      "ordered_inventory_equal": true,
+      "present_files": 466,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/express-4.21.2.sqlite3",
+      "candidate_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ablation_inventory_sha256": "6a3331849ae627657b5f982e6de5123d68d91388f8ce6261eba47e4e7749302f",
+      "ordered_inventory_equal": true,
+      "present_files": 233,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/gin-v1.10.0.sqlite3",
+      "candidate_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ablation_inventory_sha256": "b48fa2b33796041daaf7f27df18da3aa1f4fa3e2e8a8fb44aca320d1f269bb0f",
+      "ordered_inventory_equal": true,
+      "present_files": 118,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/gson-2.11.0.sqlite3",
+      "candidate_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ablation_inventory_sha256": "2a1f256594eefcc0940772dc2d850d0e05956f52ff08521d8192d1e4eaac3199",
+      "ordered_inventory_equal": true,
+      "present_files": 301,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/pallets__flask-5014.sqlite3",
+      "candidate_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ablation_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ordered_inventory_equal": true,
+      "present_files": 240,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/psf__requests-5414.sqlite3",
+      "candidate_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ablation_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ordered_inventory_equal": true,
+      "present_files": 86,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/pydata__xarray-7233.sqlite3",
+      "candidate_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ablation_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ordered_inventory_equal": true,
+      "present_files": 300,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/pylint-dev__pylint-7080.sqlite3",
+      "candidate_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ablation_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ordered_inventory_equal": true,
+      "present_files": 3309,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/pytest-dev__pytest-10356.sqlite3",
+      "candidate_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ablation_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ordered_inventory_equal": true,
+      "present_files": 569,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "retrieval/project-client-state/redux-toolkit-v2.2.7.sqlite3",
+      "candidate_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ablation_inventory_sha256": "4c7f54c200a6d33bc34dd25865970f0c9f45c1bd903b5f58bf92d3c2a50236fa",
+      "ordered_inventory_equal": true,
+      "present_files": 985,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pallets__flask-5014.sqlite3",
+      "candidate_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ablation_inventory_sha256": "d81ad119bacd9f3aed598a99eda4268ce5369c8088c721231121dabe78945705",
+      "ordered_inventory_equal": true,
+      "present_files": 240,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/psf__requests-1724.sqlite3",
+      "candidate_inventory_sha256": "b350b9cfcd68af4d6fa257a9e441178acb444ba96b14908efa883e10d92de5ae",
+      "ablation_inventory_sha256": "b350b9cfcd68af4d6fa257a9e441178acb444ba96b14908efa883e10d92de5ae",
+      "ordered_inventory_equal": true,
+      "present_files": 114,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/psf__requests-2931.sqlite3",
+      "candidate_inventory_sha256": "4ad5e9a0f474b65ecf76f16afae5630468665ded5b2007f3ca720c4b30f4d470",
+      "ablation_inventory_sha256": "4ad5e9a0f474b65ecf76f16afae5630468665ded5b2007f3ca720c4b30f4d470",
+      "ordered_inventory_equal": true,
+      "present_files": 132,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/psf__requests-5414.sqlite3",
+      "candidate_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ablation_inventory_sha256": "b0748f8a4cdd5d7b1f42d0c8d259538864a4afc3190e016154fe63a0aa317739",
+      "ordered_inventory_equal": true,
+      "present_files": 86,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pydata__xarray-6721.sqlite3",
+      "candidate_inventory_sha256": "09361ed2ad5d3cfd6b7d53cd84f544c7ccacbd66c907d3b879a36d2bd38cd97b",
+      "ablation_inventory_sha256": "09361ed2ad5d3cfd6b7d53cd84f544c7ccacbd66c907d3b879a36d2bd38cd97b",
+      "ordered_inventory_equal": true,
+      "present_files": 291,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pydata__xarray-6992.sqlite3",
+      "candidate_inventory_sha256": "c46b08454f035acc6a0d3f668994f725170e544db96479def9229cefcbdba6af",
+      "ablation_inventory_sha256": "c46b08454f035acc6a0d3f668994f725170e544db96479def9229cefcbdba6af",
+      "ordered_inventory_equal": true,
+      "present_files": 299,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pydata__xarray-7233.sqlite3",
+      "candidate_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ablation_inventory_sha256": "58025cd948b7e8fd3a6af3b98232cdae2c57577102c63230cf3a1f65a81df069",
+      "ordered_inventory_equal": true,
+      "present_files": 300,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pylint-dev__pylint-4604.sqlite3",
+      "candidate_inventory_sha256": "9da9485f07aca9e2f8513f8242d391a4d357e7a2909137652847ad81643461e3",
+      "ablation_inventory_sha256": "9da9485f07aca9e2f8513f8242d391a4d357e7a2909137652847ad81643461e3",
+      "ordered_inventory_equal": true,
+      "present_files": 1518,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pylint-dev__pylint-6528.sqlite3",
+      "candidate_inventory_sha256": "3cb05ba0fd33644560cfd9cdd786cfc4ebe6acd0d9eba6d5e0b2dc9768bd7872",
+      "ablation_inventory_sha256": "3cb05ba0fd33644560cfd9cdd786cfc4ebe6acd0d9eba6d5e0b2dc9768bd7872",
+      "ordered_inventory_equal": true,
+      "present_files": 2566,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pylint-dev__pylint-7080.sqlite3",
+      "candidate_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ablation_inventory_sha256": "d0a4519e3ba0ec931b1299db2f81eae64cbf5d5f9157db5053a4956b6b477c6b",
+      "ordered_inventory_equal": true,
+      "present_files": 3309,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pytest-dev__pytest-10081.sqlite3",
+      "candidate_inventory_sha256": "5f7122ad991b89d9e1f39ac800e72608d4c3bf8ea83219c8c64dfbea29d8d4a8",
+      "ablation_inventory_sha256": "5f7122ad991b89d9e1f39ac800e72608d4c3bf8ea83219c8c64dfbea29d8d4a8",
+      "ordered_inventory_equal": true,
+      "present_files": 562,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pytest-dev__pytest-10356.sqlite3",
+      "candidate_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ablation_inventory_sha256": "b8bd7a13371cc737028d014358240096e830c30c6b2ada62d6aa994cb767523f",
+      "ordered_inventory_equal": true,
+      "present_files": 569,
+      "both_committed_checkpoints_without_delta": true
+    },
+    {
+      "client_state": "swe/client-state/pytest-dev__pytest-5787.sqlite3",
+      "candidate_inventory_sha256": "b9b069c229328fae6fc919437e943109dc0cb2f4923ece1d95ad6bc48d00b982",
+      "ablation_inventory_sha256": "b9b069c229328fae6fc919437e943109dc0cb2f4923ece1d95ad6bc48d00b982",
+      "ordered_inventory_equal": true,
+      "present_files": 434,
+      "both_committed_checkpoints_without_delta": true
+    }
+  ],
+  "client_source": {
+    "tag": "v0.2.0",
+    "revision": "10568d1f00d99ede7b162937061d1828806e9acc",
+    "checkout_dirty": false,
+    "binary_sha256": "ec7983848c3515e30774517f94c629289504cca43f974113a18b6b247545eb61",
+    "trace": [
+      {
+        "file": "rust/src/context.rs",
+        "line_start": 343,
+        "line_end": 385,
+        "contract": "Sync computes inventory delta; a missing checkpoint receives the full current inventory."
+      },
+      {
+        "file": "rust/src/context.rs",
+        "line_start": 428,
+        "line_end": 465,
+        "contract": "Successful sync waits ready and commits checkpoint/inventory before returning."
+      },
+      {
+        "file": "rust/src/context.rs",
+        "line_start": 534,
+        "line_end": 569,
+        "contract": "Retrieve ensures synchronized generation; with checkpoint sends empty added/deleted blobs."
+      }
+    ]
+  },
+  "server_source": {
+    "tree_sha256": "cbcf1763cde9177e65e0574c2cd63491c7fdae8bc3015ba40efeb1b679bab046",
+    "trace": [
+      {
+        "file": "src/oce/application/queries/status.py",
+        "line_start": 118,
+        "line_end": 151,
+        "contract": "Materializes this checkpoint members plus request delta and freezes ready exclusions."
+      },
+      {
+        "file": "src/oce/infrastructure/persistence/scope_filter.py",
+        "line_start": 42,
+        "line_end": 54,
+        "contract": "SQL membership matches this request chain_id and chain_version only."
+      },
+      {
+        "file": "src/oce/domain/services/retrieval/rank.py",
+        "line_start": 117,
+        "line_end": 123,
+        "contract": "Empty added set returns no working-set boost; oversized delta also skips it."
+      },
+      {
+        "file": "src/oce/shared/config/settings.py",
+        "line_start": 514,
+        "line_end": 524,
+        "contract": "Default working-set delta cap is50."
+      }
+    ]
+  },
+  "checkpoint_metadata_change": {
+    "chains_before_ablation_pass1": 49,
+    "chains_after_ablation_pass1": 98,
+    "chain_members_before_ablation_pass1": 31827,
+    "chain_members_after_ablation_pass1": 63654,
+    "interpretation": "Normal HTTP sync in49 fresh scored client-state files creates new independent checkpoints. No new vectors/source ready identities were uploaded; checkpoint IDs differ while their client inventory identities match."
+  },
+  "limitations": [
+    "This establishes input and implementation comparability, not captured request-body equality.",
+    "Causal wording must say same physical vectors/ready corpus/profile, not literally unchanged all metadata.",
+    "Separate fresh baseline HNSW comparison still cannot isolate symbol extraction from independent build/query-vector variation."
+  ]
+}

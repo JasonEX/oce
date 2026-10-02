@@ -27,6 +27,11 @@ from oce.infrastructure.astchunk.declarations import (
     is_function_like,
     require_alias_names,
 )
+from oce.infrastructure.astchunk.import_aliases import (
+    PythonCallBindings,
+    bare_callee,
+    python_call_bindings,
+)
 from oce.infrastructure.regex_symbol_provider import LineIndex, find_endpoints
 
 if TYPE_CHECKING:
@@ -46,8 +51,8 @@ _IMPORT_NOISE = frozenset({"as", "from", "import", "use", "using", "self", "supe
 # Python ``assignment`` and JavaScript/TypeScript ``assignment_expression``
 # both declare module-level names; see ``declared_name``.
 _ASSIGNMENT_TYPES = frozenset({"assignment", "assignment_expression"})
-# Callee names too common to locate anything: language builtins and the verbs
-# every codebase repeats. Kept short on purpose; rarity is scored at query time.
+# Common callees without local declaration or import-origin evidence are
+# suppressed. A Python declaration may deliberately reuse a builtin's name.
 _CALL_NOISE = frozenset(
     """
     print len str int float bool list dict set tuple range enumerate zip map filter
@@ -129,6 +134,12 @@ class TreeSitterSymbolProvider:
         endpoints = find_endpoints(content, LineIndex(content))
         occurrences: dict[tuple[str, str, int, str], SymbolOccurrence] = {}
         calls = 0
+        deferred_calls: list[tuple[CompatNode, str, str]] = []
+        bindings = (
+            python_call_bindings(root)
+            if language is not None and language.lower() == "python"
+            else None
+        )
         barrel = is_barrel_path(path)
         package = _package_name(path) if barrel else None
 
@@ -143,25 +154,49 @@ class TreeSitterSymbolProvider:
                     identifier, kind, start, end, enclosing
                 )
 
-        def add_call(node: CompatNode, enclosing: str) -> None:
+        def add_call(node: CompatNode, enclosing: str, owner: str) -> None:
             nonlocal calls
             if calls >= _MAX_CALLS_PER_FILE:
                 return
             name = callee_name(node)
-            if name is None or len(name) < 3 or name.lower() in _CALL_NOISE:
+            if name is None or len(name) < 2:
                 return
+            imported = (
+                bindings.import_origins.get(bare_callee(node) or "")
+                if bindings is not None
+                else None
+            )
+            origin = (
+                imported[0]
+                if imported is not None and node.start_byte >= imported[1]
+                else None
+            )
+            if len(name) < 3 or name.lower() in _CALL_NOISE:
+                if origin is None:
+                    if (
+                        bindings is not None
+                        and len(deferred_calls) < _MAX_CALLS_PER_FILE
+                    ):
+                        deferred_calls.append((node, enclosing, owner))
+                    return
             line = node.start_point.row + 1
-            key = (name, "call", line, enclosing)
-            if key not in occurrences:
-                occurrences[key] = SymbolOccurrence(name, "call", line, line, enclosing)
-                calls += 1
+            for identifier in dict.fromkeys((name, origin) if origin else (name,)):
+                key = (identifier, "call", line, enclosing)
+                if key not in occurrences:
+                    occurrences[key] = SymbolOccurrence(
+                        identifier, "call", line, line, enclosing
+                    )
+                    calls += 1
+                    if calls >= _MAX_CALLS_PER_FILE:
+                        break
 
-        # (node, inside_function, enclosing): locals declared inside a function
+        # Locals declared inside a function
         # body are not project symbols, but nested functions and classes still
-        # are. ``enclosing`` is the innermost named definition above the node.
-        stack: list[tuple[CompatNode, bool, str]] = [(root, False, "")]
+        # are. Keep the enclosing definition and class receiver scope
+        # separately so a custom method is not mistaken for builtin noise.
+        stack: list[tuple[CompatNode, bool, str, str]] = [(root, False, "", "")]
         while stack:
-            node, inside_function, enclosing = stack.pop()
+            node, inside_function, enclosing, owner = stack.pop()
             for child in reversed(node.named_children):
                 child_type = child.type
                 start = child.start_point.row + 1
@@ -190,13 +225,14 @@ class TreeSitterSymbolProvider:
                 # Call sites provide direct-use evidence to reference and
                 # call-chain lookups; structural answer heads never use them.
                 if is_call_type(child_type):
-                    add_call(child, enclosing)
+                    add_call(child, enclosing, owner)
                 # Anything function-shaped (declaration, arrow, lambda, closure)
                 # turns the declarators below it into locals.
                 descend_inside_function = inside_function or is_function_like(
                     child_type
                 )
                 child_enclosing = enclosing
+                child_owner = owner
                 if is_definition_type(child_type) or child_type in _ASSIGNMENT_TYPES:
                     declared = declared_name(child)
                     is_local = inside_function and (
@@ -210,6 +246,8 @@ class TreeSitterSymbolProvider:
                         )
                         add(declared, kind, start, end, enclosing)
                         child_enclosing = declared
+                        if "class" in child_type:
+                            child_owner = declared
                         for base in heritage_names(child):
                             add(base, "inherit", start, end, declared)
                 if child_type == "impl_item":
@@ -227,7 +265,39 @@ class TreeSitterSymbolProvider:
                 # else may (one-line classes, impl blocks, nested closures).
                 if child_type in _OPAQUE_TYPES or not child.named_children:
                     continue
-                stack.append((child, descend_inside_function, child_enclosing))
+                stack.append(
+                    (child, descend_inside_function, child_enclosing, child_owner)
+                )
+
+        definitions = [
+            occurrence
+            for occurrence in occurrences.values()
+            if occurrence.kind in ("definition", "endpoint")
+        ]
+        module_names = {
+            definition.identifier
+            for definition in definitions
+            if not definition.enclosing
+        }
+        members = {
+            (definition.enclosing, definition.identifier)
+            for definition in definitions
+            if definition.enclosing
+        }
+        for node, enclosing, owner in deferred_calls:
+            if bindings is None or calls >= _MAX_CALLS_PER_FILE:
+                break
+            deferred_name = callee_name(node)
+            if deferred_name is not None and _locally_declared_call(
+                node, deferred_name, owner, module_names, members, bindings
+            ):
+                line = node.start_point.row + 1
+                key = (deferred_name, "call", line, enclosing)
+                if key not in occurrences:
+                    occurrences[key] = SymbolOccurrence(
+                        deferred_name, "call", line, line, enclosing
+                    )
+                    calls += 1
 
         # Endpoints the tree walk did not attribute (decorator on a shape the
         # generic rules miss) keep their regex evidence.
@@ -260,6 +330,38 @@ class TreeSitterSymbolProvider:
             return None
         self._parsers[key] = parser
         return parser
+
+
+def _locally_declared_call(
+    node: CompatNode,
+    name: str,
+    owner: str,
+    module_names: set[str],
+    members: set[tuple[str, str]],
+    bindings: PythonCallBindings,
+) -> bool:
+    """Preserve common names only when direct syntax names a local declaration.
+
+    ``self.get`` may name the containing class's own method, while a call
+    through an unrelated receiver stays unresolved even if another class
+    happens to define ``get``. This controls noise admission, not dispatch.
+    """
+    target = node.child_by_field_name("function")
+    if target is None:
+        return False
+    if bare_callee(node) is not None:
+        return name in module_names and name not in bindings.shadowed_names
+    receiver = target.child_by_field_name("object")
+    if receiver is None or receiver.type != "identifier":
+        return False
+    spelling = receiver.text.decode("utf-8", errors="replace")
+    if spelling in ("self", "cls"):
+        if not bindings.permits_receiver(spelling, node.start_byte):
+            return False
+    elif spelling in bindings.rebound_receivers:
+        return False
+    scope = owner if spelling in ("self", "cls") else spelling
+    return scope in module_names and (scope, name) in members
 
 
 def _import_names(node: CompatNode) -> list[str]:

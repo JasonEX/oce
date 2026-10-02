@@ -5,7 +5,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Protocol
 
-from oce.domain.services.search import SearchHit
+from oce.domain.services.search import SearchHit, SearchHitKey
 
 
 class SelectionMode(StrEnum):
@@ -21,6 +21,11 @@ class Selector(Protocol):
         *,
         mode: SelectionMode = SelectionMode.COVERAGE,
         max_chars: int | None = None,
+        protected: tuple[SearchHitKey, ...] = (),
     ) -> list[SearchHit]:
-        """``max_chars`` lowers the mode's character budget for this call only."""
+        """Select protected candidates first, retaining their input rank order.
+
+        Protection never overrides count, overlap or character limits.
+        ``max_chars`` lowers the mode's character budget for this call only.
+        """
         ...

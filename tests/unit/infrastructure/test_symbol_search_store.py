@@ -765,3 +765,83 @@ async def test_qualified_endpoints_survive_scope_wide_homonyms(sessions):
         ("enter_request", [("src/gate.py", "Gate")]),
         ("handle_request", [("src/sink.py", "Sink")]),
     ]
+
+
+async def test_import_alias_origin_reaches_reference_and_call_relation_lanes(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    files = {
+        "src/billing.py": "def charge():\n    return 1\n",
+        "src/entry.py": (
+            "from billing import charge as debit\n"
+            "def entry():\n"
+            "    return debit()\n"
+            "\n"
+            "def unrelated():\n"
+            "    return remote.debit()\n"
+        ),
+        "src/shadowed.py": (
+            "from billing import charge as debit\n"
+            "def shadowed(debit):\n"
+            "    return debit()\n"
+        ),
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    scope = SearchScope(frozenset(names.values()))
+    store = SymbolSearchStore(sessions)
+
+    callers = await store.find_callers(identifiers=["charge"], scope=scope)
+    assert [(item.hit.path, item.line, item.enclosing) for item in callers] == [
+        ("src/entry.py", 3, "entry")
+    ]
+    calls = await store.calls_within(
+        blob_name=names["src/entry.py"], start_line=2, end_line=3, scope=scope
+    )
+    assert set(calls) == {("debit", 3, "entry"), ("charge", 3, "entry")}
+    definitions = await store.find_definitions(
+        identifiers=[name for name, _line, _enclosing in calls], scope=scope
+    )
+    assert [(item.identifier, item.hit.path) for item in definitions] == [
+        ("charge", "src/billing.py")
+    ]
+
+    audit = RetrievalAudit()
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(),
+        exact_store=store,
+        relation_store=store,
+        settings=RetrievalSettings(related_definitions_enabled=False),
+    )
+    hits = await pipeline.search("Where is `charge` used?", scope, audit=audit)
+    assert any(
+        hit.path == "src/entry.py" and "return debit()" in hit.content for hit in hits
+    )
+    assert hits[0].path == "src/entry.py"
+    assert audit.dense_route == "skip:use_sites"
+
+
+async def test_custom_common_method_calls_are_projected_without_unrelated_noise(
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    files = {
+        "src/registry.py": (
+            "class Registry:\n"
+            "    def get(self):\n"
+            "        return 1\n"
+            "    def fetch(self):\n"
+            "        return self.get()\n"
+            "def unrelated():\n"
+            "    return mapping.get('key')\n"
+        )
+    }
+    async with sessions() as session:
+        names = await _index_files(session, files)
+    scope = SearchScope(frozenset(names.values()))
+    callers = await SymbolSearchStore(sessions).find_callers(
+        identifiers=["get"], scope=scope
+    )
+    assert [(item.hit.path, item.line, item.enclosing) for item in callers] == [
+        ("src/registry.py", 5, "fetch")
+    ]

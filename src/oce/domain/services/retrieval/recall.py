@@ -1,16 +1,16 @@
-"""The recall stage: every lane in parallel, the vector lanes only when needed.
+"""The recall stage: SQL first for structural requests, parallel semantic lanes.
 
-The SQL lanes depend only on routing, so they start before the embedding
-round trip and usually finish first. A definition, a matched path or a call
-site is the whole answer to a symbol, path or reference request, and every
-one of them comes from SQL; the vector lanes are dropped the moment the SQL
-lanes prove the request decisive and awaited exactly as before otherwise.
-The stage ends by writing one ``RecallEvidence`` record.
+SQL lanes depend only on routing. Symbol/path requests start vectors only
+after their structural lookup misses; semantic/reference requests overlap
+SQL and model work. Decisive evidence releases any vector waiter while a
+sent embedding finishes independently. The stage ends by writing one
+``RecallEvidence`` record.
 """
 
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 
 from oce.domain.services.path_search import PathContentStore
 from oce.domain.services.query_classifier import QueryIntent
@@ -68,18 +68,52 @@ class Recall:
             asyncio.create_task(self.exact.recall_anchors(state)),
         )
 
-    async def recall(self, state: RetrievalState, sql_lanes: SqlLanes) -> None:
+    def defer_embedding(self, state: RetrievalState) -> bool:
+        """Whether an enabled SQL operator can answer without query vectors.
+
+        A miss pays the SQL latency before starting embedding; only symbol
+        and explicit-path lookups take that tradeoff. Reference and semantic
+        requests retain overlapping SQL/model work.
+        """
+        if (
+            not self.settings.decisive_skips_dense
+            or state.scope is None
+            or not state.scope.blob_names
+        ):
+            return False
+        if state.route.intent == QueryIntent.SYMBOL:
+            return self.exact.available(state)
+        return (
+            state.route.intent == QueryIntent.PATH
+            and self.settings.path_lookup_enabled
+            and self.path_lookup.store is not None
+            and self.path_content_store is not None
+            and state.route.evidence.has_path_evidence
+        )
+
+    async def recall(
+        self,
+        state: RetrievalState,
+        sql_lanes: SqlLanes,
+        *,
+        start_embedding: Callable[[RetrievalState], None],
+    ) -> None:
         exact_task, lookup_task, lexical_task, anchor_task = sql_lanes
-        vector_lanes = asyncio.create_task(
-            self.vector.recall(state, has_fallback=self.has_fallback_recall(state))
+        vector_lanes = (
+            asyncio.create_task(
+                self.vector.recall(state, has_fallback=self.has_fallback_recall(state))
+            )
+            if state.embedding is not None
+            else None
         )
         try:
             exact, lookup_scores, lexical, anchors = await asyncio.gather(
                 exact_task, lookup_task, lexical_task, anchor_task
             )
         except BaseException:
-            vector_lanes.cancel()
-            await asyncio.gather(vector_lanes, return_exceptions=True)
+            if vector_lanes is not None:
+                vector_lanes.cancel()
+                await asyncio.gather(vector_lanes, return_exceptions=True)
             raise
         if state.audit is not None:
             counts = [count for _name, count in exact.definition_counts]
@@ -90,14 +124,22 @@ class Recall:
         )
         reason = self.decisive_reason(state, evidence)
         if reason is not None:
-            vector_lanes.cancel()
-            await asyncio.gather(vector_lanes, return_exceptions=True)
+            if vector_lanes is not None:
+                vector_lanes.cancel()
+                await asyncio.gather(vector_lanes, return_exceptions=True)
             release_embedding(state)
             dense_route = f"skip:{reason}"
             dense: tuple[SearchHit, ...] = ()
             dense_error: Exception | None = None
             path_scores: dict[str, float] = {}
         else:
+            if vector_lanes is None:
+                start_embedding(state)
+                vector_lanes = asyncio.create_task(
+                    self.vector.recall(
+                        state, has_fallback=self.has_fallback_recall(state)
+                    )
+                )
             vector = await vector_lanes
             dense, dense_error = tuple(vector.dense), vector.dense_error
             path_scores = vector.path_scores
@@ -137,7 +179,7 @@ class Recall:
         code the extractor could not attribute, which lexical and dense recall
         still reach.
         """
-        if not self.settings.decisive_skips_dense or state.embedding is None:
+        if not self.settings.decisive_skips_dense:
             return None
         intent = state.route.intent
         exact = evidence.exact

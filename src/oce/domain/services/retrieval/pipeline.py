@@ -1,7 +1,7 @@
 """``RetrievalPipeline``: the fixed sequence of stages one request goes through.
 
     route   query -> QueryRoute (evidence, intent, strategy), parsed once
-    plan    optional LLM rewrite + facet decomposition + query vectors (started)
+    plan    optional LLM rewrite + facets + query vectors (started or deferred)
     recall  dense | exact | intent-routed lexical | path lanes -> RecallEvidence
     fuse    RRF over dense/lexical -> exact merge -> path boost/backfill
     prior   source and working-set priors -> bounded structural heads
@@ -172,12 +172,16 @@ class RetrievalPipeline:
             audit.intent = route.intent.value
             audit.path_boosted = route.use_path_index
         state = RetrievalState(query=query, scope=scope, route=route, audit=audit)
-        # SQL lanes need only routing, so they overlap the remote query
-        # embedding instead of waiting behind it.
+        # SQL lanes need only routing. Semantic requests overlap them with
+        # embedding; symbol/path requests may finish without a model call.
         sql_lanes = self.recall.start_sql_lanes(state)
         try:
-            await self.planner.plan(state)
-            await self.recall.recall(state, sql_lanes)
+            await self.planner.plan(
+                state, defer_embedding=self.recall.defer_embedding(state)
+            )
+            await self.recall.recall(
+                state, sql_lanes, start_embedding=self.planner.start_embedding
+            )
         except BaseException:
             for task in sql_lanes:
                 task.cancel()
@@ -205,4 +209,5 @@ class RetrievalPipeline:
                 self.settings.final_select_k,
                 mode=state.route.strategy.selection_mode,
                 max_chars=context_budget(self.settings, state),
+                protected=state.structural_heads,
             )

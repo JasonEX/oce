@@ -1,5 +1,10 @@
 """tree-sitter definitions and imports across grammars, with regex fallback."""
 
+from typing import NoReturn
+
+import pytest
+from tree_sitter import Parser
+
 from oce.domain.services.symbols import SymbolOccurrence
 from oce.infrastructure.astchunk.symbol_provider import (
     MAX_TREE_SITTER_BYTES,
@@ -324,3 +329,191 @@ def test_macro_token_text_does_not_create_call_edges():
         if o.kind == "call"
     }
     assert calls == {("actual_call", "entry")}
+
+
+def test_python_named_import_alias_preserves_both_use_site_names() -> None:
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    source = (
+        "from billing import charge as debit\n"
+        "def entry():\n"
+        "    debit()\n"
+        "    remote.debit()\n"
+    )
+    calls = {
+        (o.identifier, o.start_line, o.enclosing)
+        for o in provider.extract(content=source, language="python")
+        if o.kind == "call"
+    }
+    assert calls == {
+        ("debit", 3, "entry"),
+        ("charge", 3, "entry"),
+        ("debit", 4, "entry"),
+    }
+
+
+@pytest.mark.parametrize(
+    "conflict",
+    [
+        "debit = replacement\n",
+        "def other(debit): pass\n",
+        "def other():\n    debit = replacement\n",
+        "def debit(): pass\n",
+        "from other import replacement as debit\n",
+        "from other import *\n",
+        "def other():\n    global debit\n",
+        "for debit in callbacks: pass\n",
+        "with transaction() as debit: pass\n",
+        "try: pass\nexcept Exception as debit: pass\n",
+        "[debit for debit in callbacks]\n",
+        "(debit := replacement)\n",
+        "del debit\n",
+        "type debit = int\n",
+        "def other[debit](): pass\n",
+    ],
+)
+def test_python_alias_origin_abstains_on_conflicting_bindings(conflict: str) -> None:
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    source = (
+        "from billing import charge as debit\n"
+        + conflict
+        + "def entry():\n    return debit()\n"
+    )
+    calls = [
+        o
+        for o in provider.extract(content=source, language="python")
+        if o.kind == "call"
+    ]
+    assert not any(o.identifier == "charge" for o in calls)
+
+
+def test_conditional_imports_and_incomplete_syntax_add_no_alias_origin() -> None:
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    for source in (
+        "if enabled:\n    from billing import charge as debit\n"
+        "def entry():\n    return debit()\n",
+        "from billing import charge as debit\ndef entry():\n    other(\n    debit()\n",
+        "from billing import (charge as debit, @)\ndef entry():\n    return debit()\n",
+        "from billing import charge as debit,, other\n"
+        "def entry():\n    return debit()\n",
+        "debit()\nfrom billing import charge as debit\n",
+    ):
+        calls = [
+            o
+            for o in provider.extract(content=source, language="python")
+            if o.kind == "call"
+        ]
+        assert not any(o.identifier == "charge" for o in calls)
+
+
+def test_custom_common_named_methods_do_not_enable_unrelated_receiver_calls() -> None:
+    provider = TreeSitterSymbolProvider(RegexSymbolProvider())
+    source = (
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "    def fetch(self):\n"
+        "        self.get()\n"
+        "        remote.get()\n"
+        "        mapping.get('key')\n"
+        "def entry():\n"
+        "    Registry.get(registry)\n"
+        "    registry.get()\n"
+        "    get()\n"
+        "    len([])\n"
+    )
+    calls = {
+        (o.identifier, o.start_line)
+        for o in provider.extract(content=source, language="python")
+        if o.kind == "call"
+    }
+    assert calls == {("get", 4), ("get", 8)}
+
+
+def test_custom_bare_builtin_name_and_import_alias_are_retained() -> None:
+    found = _extract(
+        "python",
+        "from reader import fetch_document as open\n"
+        "def len(value): return 3\n"
+        "def entry():\n"
+        "    open()\n"
+        "    len([])\n"
+        "    mapping.get('key')\n",
+    )
+    assert {item for item in found if item[1] == "call"} == {
+        ("open", "call", 4, 4),
+        ("fetch_document", "call", 4, 4),
+        ("len", "call", 5, 5),
+    }
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "def get(): pass\ndef entry(get):\n    get()\n",
+        "def get(): pass\ndef entry():\n    get = remote\n    get()\n",
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "    def entry(self):\n"
+        "        self = remote\n"
+        "        self.get()\n",
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "    @staticmethod\n"
+        "    def entry(self):\n"
+        "        self.get()\n",
+        "class Registry:\n    def get(self): pass\nRegistry = remote\nRegistry.get()\n",
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "def entry(Registry):\n"
+        "    Registry.get()\n",
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "    def entry(other):\n"
+        "        self.get()\n",
+    ],
+)
+def test_common_named_call_admission_abstains_on_shadowing(source: str) -> None:
+    found = _extract("python", source)
+    assert not any(item[0] == "get" and item[1] == "call" for item in found)
+
+
+def test_receiver_attribute_stores_and_annotations_do_not_rebind_the_receiver() -> None:
+    found = _extract(
+        "python",
+        "class Registry:\n"
+        "    def get(self): pass\n"
+        "    def entry(self: Registry):\n"
+        "        self.values = {}\n"
+        "        self.values['key'] = 1\n"
+        "        self.get()\n",
+    )
+    assert ("get", "call", 6, 6) in found
+
+
+@pytest.mark.parametrize("language", ["javascript", "typescript"])
+def test_common_name_admission_requires_supported_binding_analysis(
+    language: str,
+) -> None:
+    found = _extract(
+        language,
+        "function get() { return 1; }\n"
+        "function entry(get) { return get(); }\n"
+        "class Registry { get() { return 1; } }\n"
+        "function run(Registry) { return Registry.get(); }\n",
+    )
+    assert not any(item[0] == "get" and item[1] == "call" for item in found)
+
+
+def test_parse_exception_fallback_does_not_create_alias_call_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import oce.infrastructure.astchunk.symbol_provider as module
+
+    def fail_parse(parser: Parser, source: str) -> NoReturn:
+        raise ValueError("invalid parser")
+
+    monkeypatch.setattr(module, "compat_parse", fail_parse)
+    found = _extract(
+        "python",
+        "from billing import charge as debit\ndef entry():\n    return debit()\n",
+    )
+    assert not any(item[1] == "call" for item in found)

@@ -1,0 +1,37 @@
+{
+  "pairs": 215,
+  "identical": true,
+  "corpus": {
+    "digest": "0b604aa0581844aa2e170f4721fb66b5027f5d6d91f37901b4b4e5030c7f680c",
+    "files": 183
+  },
+  "profiles": {
+    "default": {},
+    "focused_small": {
+      "call_chain_max_hops": 2,
+      "focused_max_context_chars": 3000,
+      "max_context_chars": 6000,
+      "relation_reserve_chars": 1500
+    },
+    "no_decisive": {
+      "decisive_skips_dense": false
+    },
+    "reranker": {
+      "rerank_policy": "adaptive",
+      "reranker": true
+    },
+    "reranker_always": {
+      "rerank_policy": "always",
+      "reranker": true
+    }
+  },
+  "original_dump_sha256": {
+    "before": "2b8e3e3ec29fb0ff8f630c161e3b0ff4ab78f4a48aa36860fa232ce58d3bbcbd",
+    "after": "2b8e3e3ec29fb0ff8f630c161e3b0ff4ab78f4a48aa36860fa232ce58d3bbcbd"
+  },
+  "archive_note": "Corpus root paths normalized identically; source corpus digest and all result records unchanged.",
+  "archived_dump_sha256": {
+    "frozen-before.json": "5032c502df6e61afe6cee38e3dcbc5985a1d0ba1c8c3578651a23df6c1988c31",
+    "frozen-after.json": "5032c502df6e61afe6cee38e3dcbc5985a1d0ba1c8c3578651a23df6c1988c31"
+  }
+}

@@ -12,6 +12,7 @@ sets today.
 
 | Date | Report | What it establishes |
 | --- | --- | --- |
+| 2026-10-02 | [Algorithm and architecture changes](algorithm-architecture-2026-10-02.md) | SQL-first model scheduling, shared primary-symbol gates, bounded structural selection and conservative Python call evidence; complete code gates, repeated fresh-index comparisons and a compatible same-index query-flow control. Fresh-index quality tradeoffs remain visible. |
 | 2026-10-01 | [Reliability fixes and simplification](reliability-simplification-2026-10-01.md) | Persistence/runtime fixes, bounded excerpts, 951 unit passes and 6 integration passes; 327 black-box cases preserve measured quality and returned regions. The report distinguishes the scored source from final CLI/path compatibility edits. |
 | 2026-10-01 | [Structural refactor and routing decisions](principled-refactor-2026-10-01.md) | Frozen refactor equivalence and paired retrieval experiments. Chinese flow constructions were adopted; uniform exact RRF and removal of tie rules were rejected. |
 | 2026-09-30 | [Runtime ownership](runtime-ownership-2026-09-30.md) | Lifecycle and concurrency changes, frozen retrieval preservation, and the limits of that evidence. |
