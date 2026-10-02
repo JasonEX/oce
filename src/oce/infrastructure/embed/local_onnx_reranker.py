@@ -118,28 +118,25 @@ class LocalOnnxReranker:
         if self._session is not None:
             return
         async with self._load_lock:
+            if self._load_failed:
+                raise RuntimeError(
+                    "Local reranker unavailable; fix deployment and restart"
+                )
             if self._session is None:
-                await asyncio.to_thread(self._load)
+                try:
+                    await asyncio.to_thread(self._load)
+                except Exception:
+                    self._load_failed = True
+                    raise
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
         if not hits:
             return []
-        if self._load_failed:
-            return hits
-        try:
-            await self.ensure_loaded()
-        except Exception as exc:
-            self._load_failed = True
-            logger.warning("Local reranker unavailable; using retrieval order: {}", exc)
-            return hits
+        await self.ensure_loaded()
         window = hits[: self._candidates]
         query_text = query[: self._max_query_chars]
         documents = [self._document_text(hit) for hit in window]
-        try:
-            scores = await asyncio.to_thread(self._score, query_text, documents)
-        except Exception as exc:
-            logger.warning("Local reranker failed; using retrieval order: {}", exc)
-            return hits
+        scores = await asyncio.to_thread(self._score, query_text, documents)
         order = sorted(range(len(window)), key=lambda index: -scores[index])
         promoted = [replace(window[index], score=scores[index]) for index in order]
         return [*promoted, *hits[len(window) :]]

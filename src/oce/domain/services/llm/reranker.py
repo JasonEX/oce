@@ -27,7 +27,7 @@ class LLMReranker:
         output_top_k: int = 10,
         snippet_chars: int = 1600,
         timeout_seconds: float = 15.0,
-    ):
+    ) -> None:
         """
         Args:
             client: chat client
@@ -37,7 +37,7 @@ class LLMReranker:
             snippet_chars: code characters per candidate. Paths alone reduce
                 reranking to file-name matching; symbol and call-chain
                 requests cannot be judged without the body.
-            timeout_seconds: end-to-end limit; a timeout keeps the input order
+            timeout_seconds: end-to-end limit; the rank stage handles timeouts
         """
         if max_candidates < 1:
             raise ValueError("max_candidates must be positive")
@@ -75,42 +75,28 @@ class LLMReranker:
             promotion_count,
         )
 
-        try:
-            # The order comes back by index, not by path: one file may
-            # contribute several chunks, and keying by path would fold them
-            # into one exactly when a symbol request needs them apart.
-            async with asyncio.timeout(self.timeout_seconds):
-                order = await self._llm_rerank(
-                    query,
-                    candidates_subset,
-                    promotion_count,
-                )
-            reranked_results = [candidates_subset[i] for i in order]
+        # The order comes back by index, not by path: one file may
+        # contribute several chunks, and keying by path would fold them
+        # into one exactly when a symbol request needs them apart.
+        async with asyncio.timeout(self.timeout_seconds):
+            order = await self._llm_rerank(
+                query,
+                candidates_subset,
+                promotion_count,
+            )
+        reranked_results = [candidates_subset[i] for i in order]
 
-            # The reranker reorders but never prunes: unpicked candidates
-            # inside the window and everything outside it follow in input
-            # order, and the selector decides coverage and budget.
-            chosen = set(order)
-            reranked_results.extend(
-                candidate
-                for index, candidate in enumerate(candidates_subset)
-                if index not in chosen
-            )
-            reranked_results.extend(candidates[len(candidates_subset) :])
-            return reranked_results
-
-        except TimeoutError:
-            logger.warning(
-                "LLM rerank exceeded {:.1f}s; preserving retrieval order",
-                self.timeout_seconds,
-            )
-            return candidates
-        except Exception as e:
-            logger.warning(
-                "LLM rerank failed: {}; falling back to original order",
-                type(e).__name__,
-            )
-            return candidates
+        # The reranker reorders but never prunes: unpicked candidates
+        # inside the window and everything outside it follow in input
+        # order, and the selector decides coverage and budget.
+        chosen = set(order)
+        reranked_results.extend(
+            candidate
+            for index, candidate in enumerate(candidates_subset)
+            if index not in chosen
+        )
+        reranked_results.extend(candidates[len(candidates_subset) :])
+        return reranked_results
 
     def _format_candidate(self, index: int, candidate: SearchHit) -> str:
         """Render one candidate as a ``<candidate>`` element with path, lines and code.
@@ -184,7 +170,6 @@ class LLMReranker:
         order = order[:top_k]
 
         if not order:
-            logger.warning("LLM returned no valid rerank indices")
-            return list(range(min(top_k, len(candidates))))
+            raise ValueError("LLM returned no valid rerank indices")
 
         return order

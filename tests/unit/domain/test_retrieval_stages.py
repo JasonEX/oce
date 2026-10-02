@@ -13,6 +13,7 @@ from oce.domain.services.retrieval import (
     definition_excerpt,
     merge_adjacent_hits,
 )
+from oce.domain.services.retrieval.state import RecallEvidence
 from oce.domain.services.search import DefinitionHit, SearchHit, SearchScope
 from oce.shared.config.settings import RetrievalSettings
 from oce.shared.metrics import RetrievalAudit
@@ -30,6 +31,18 @@ from tests.fakes.retrieval import (
 BLOB_A = "a" * 64
 BLOB_B = "b" * 64
 BLOB_C = "c" * 64
+
+
+@pytest.mark.parametrize("field", ["lookup_scores", "path_scores"])
+def test_recall_scores_are_copied_and_read_only(field):
+    scores = {BLOB_A: 0.9}
+    evidence = RecallEvidence(**{field: scores})
+    scores[BLOB_A] = 0.1
+    frozen = getattr(evidence, field)
+
+    assert frozen[BLOB_A] == 0.9
+    with pytest.raises(TypeError):
+        frozen[BLOB_A] = 0.2
 
 
 def _hit(path, score, *, blob=BLOB_A, content="code", start=1, end=1, hash_=""):

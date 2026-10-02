@@ -13,6 +13,8 @@
 关闭先停止 worker，再停止资源采样、指标清理与 metrics，随后关闭 dense/path store、
 模型客户端和 Redis 连接池。ASGI lifespan 调用这两个方法，最后清除容器缓存并释放共享
 SQL engine，不另行编排 worker 或模型资源。
+每次释放都会尝试剩余资源；单个异常原样向上传递，多个异常用 Python 异常组保留。
+一个 store 或模型关闭失败不会跳过其他客户端和 Redis 的释放。
 
 `index_profiles` 保存不含密钥的 embedding、切块与 schema fingerprint。
 `IndexLifecycleManager.current` 是进程内已验证 profile 的依据；它尚未建立时，上传与
@@ -23,11 +25,13 @@ checkpoint 返回 `SERVICE_NOT_READY` / HTTP 503，不先写入无 fingerprint �
 | embedding 已启用，但没有可解析凭据或维度不匹配 | 暂缓校验；运维接口仍可服务，worker 保持停止，不消耗 PENDING 重试次数 |
 | profile 校验通过 | 启动已装配的 worker；index-stats 的 profile 为 `compatible` |
 | 已有数据没有 fingerprint，或持久 profile 不兼容 | 启动中止；已有数据保持原样，需新数据目录或清理 SQL/向量存储后完整重同步 |
-| `EMBED_ENABLED=false` | 校验 disabled profile，不解析 embedding 凭据；仍可切块，文本保留 PENDING 与 staging，不写 dense/path 向量 |
+| `EMBED_ENABLED=false` | 校验 disabled profile，不解析 embedding 凭据；请求内切块，文本保留 PENDING 与 staging，不写 dense/path 向量，不装配 Redis 或 worker |
 
 profile 校验不探测远程密钥或端点是否可用；`/health` 也只表示进程存活。embedding 开关
 同样进入 fingerprint，不能切换开关后直接复用另一模式的旧索引。worker 仅在
-`WORKER_ENABLED=true` 时装配；无 worker 时，上传和检索的 `added_blobs` 用例同步索引。
+`WORKER_ENABLED=true` 且 embedding 开启时装配；无 worker 时，上传和检索的 `added_blobs`
+用例同步索引。只切块模式没有待执行的向量任务，不周期投递 PENDING，也不通过后台处理
+刷新 `last_seen`；过期且未引用的数据仍可由 GC 回收。
 
 ## 凭据热重载
 
@@ -39,6 +43,8 @@ profile 校验不探测远程密钥或端点是否可用；`/health` 也只表�
 profile，通过后激活 embedding 并清空 query cache，再激活 reranker，最后更新已启用的
 LLM 客户端并尝试启动尚未运行的 worker。准备或 profile 校验失败时丢弃候选；不兼容
 embedding 不替换旧 runtime。
+已启用的 API reranker 缺少可用凭据时，准备失败并返回 `reloaded=false`，不以空操作客户端
+宣称重载成功。
 `EMBED_ENABLED=false` 只校验 disabled profile，跳过 embedding 的准备、激活与 cache 清理，
 其他已启用客户端仍可更新。旧 delegate 在其活动调用结束后关闭。
 

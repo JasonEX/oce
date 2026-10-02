@@ -7,12 +7,13 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from oce.domain.services.reranker import NoopReranker, Reranker
+from oce.domain.services.reranker import Reranker
 from oce.domain.services.search import SearchHit
 from oce.infrastructure.delegate_runtime import SwappableDelegate
 from oce.infrastructure.embed.openai_reranker import OpenAIReranker
 from oce.infrastructure.persistence.active_credential import resolve_active_credential
 from oce.shared.config.settings import RerankSettings
+from oce.shared.errors import ServiceNotReadyError
 from oce.shared.metrics import UsageCallback
 
 
@@ -28,7 +29,7 @@ class RerankRuntimeConfig:
 
 
 class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
-    """Resolve the active rerank credential; without a usable key it stays a no-op.
+    """Resolve the active rerank credential or report an unavailable stage.
 
     Only constructed when ``RERANK_ENABLED`` authorizes the egress, so the
     ``enabled`` flag is not re-checked here.
@@ -58,7 +59,7 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
     async def _create_delegate(self) -> Reranker:
         return self._build_delegate(await self._resolve_config())
 
-    async def _resolve_config(self) -> RerankRuntimeConfig | None:
+    async def _resolve_config(self) -> RerankRuntimeConfig:
         credential = await resolve_active_credential(
             self._session_factory,
             "rerank",
@@ -91,7 +92,9 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
             else self._fallback_embedding_key
         )
         if not key:
-            return None
+            raise ServiceNotReadyError(
+                "No active rerank credential or RERANK_API_KEY / EMBED_API_KEY is configured"
+            )
         return RerankRuntimeConfig(
             endpoint=self._fallback.endpoint,
             api_key=key,
@@ -101,9 +104,7 @@ class CredentialConfiguredReranker(SwappableDelegate[Reranker]):
             timeout_seconds=self._fallback.timeout_seconds,
         )
 
-    def _build_delegate(self, config: RerankRuntimeConfig | None) -> Reranker:
-        if config is None:
-            return NoopReranker()
+    def _build_delegate(self, config: RerankRuntimeConfig) -> Reranker:
         return OpenAIReranker(
             endpoint=config.endpoint,
             api_key=config.api_key,

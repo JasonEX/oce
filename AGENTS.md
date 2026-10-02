@@ -30,6 +30,7 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务，使用 FastAPI +
 - SQL 车道在 embedding 往返前启动；SQL 结果具备决定性证据时不等 embedding 完成。embedding 请求只释放不取消（`shared/aio.wait_released`，不用 `asyncio.shield`）
 - 任何车道失败通过 `lane_failed` 记入 `retrieval_metrics.lane_failures`，不得静默吞掉；存储层不吞超时，空结果只表示无匹配
 - 新召回证据只能作为独立车道进入（固定槽位、必要条件门控或按意图开关），不得把不同标尺的分数直接混排；reference 词法召回以标识符整体代理 token 为必要条件
+- 现有 exact 按意图窗口优先与 path 有界 boost 的合并策略见检索文档；`SearchHit.score` 是阶段内排序值，不是跨车道校准分数或置信度，不能用它为新车道增加阈值
 - scope 只接纳已物化的 ready 身份，并冻结当前非 ready 身份的排除集合；词法、精确、路径查找共用 `persistence/scope_filter.py`，不得自行展开 `IN (...)` 全集。symbol 在已连接的 ready blob 上提前应用 scope；词法 deadline 由调用方持有
 - `RERANK_ENABLED` / `LLM_RERANK_ENABLED` 授权对应阶段，policy 只做逐查询路由。两者共用 `retrieval_strategy.plan_rerank`（intent、候选数、exact/path 命中、dense 是否被结构证据跳过），禁止以原始召回分数估置信度或新增 LLM 分类器
 - 同名声明数与头部槽位仅用于审计，不参与当前路由。`exact_definitions` 是 ready scope 内请求叶子名的已记录声明数之和，`definition_sites` 是最大单名计数，均在 chunk 去重/截断前计数，不宣称抽取了全部源码声明。路由、槽位和关系字符等写入 `retrieval_metrics`，用于离线校准
@@ -43,6 +44,7 @@ OpenContextEngine (`oce`) 是 ACE 兼容的代码检索服务，使用 FastAPI +
 
 - `Container(settings, session_factory)` 装配同一张生产依赖图并拥有资源；`build_*` 按子系统构建，`start()` / `close()` 是唯一启动与释放入口，ASGI lifespan 只调用二者。worker 是显式 `WorkerState` 状态机，新增状态或转移须同步生命周期文档
 - worker 关闭时上传/检索在请求内同步索引，不创建 Redis 队列；两种路径共享应用层短事务编排，embedding 往返不占元数据事务
+- `EMBED_ENABLED=false` 收敛为请求内切块，不装配 Redis/worker；PENDING 与 staging 保留，不反复投递或通过后台处理延长 TTL
 - 模型凭据集中在 `model_credentials`，按 kind（embed/rerank/llm_rerank/query_rewrite）+ active + 最小 priority 解析（`persistence/active_credential.py`），取不到回落各自环境变量。一次热重载持有 runtime 锁；LLM 部分失败沿用 `reloaded=false`/`reason`，不能宣称跨模型全局原子更新
 - 所有配置组统一读 `.env` 与 `.env.local`，后者覆盖前者。CLI 默认保留进程变量优先级，显式 `--env-file` 保留其覆盖语义
 - embedding 发送源码到配置的模型端点；重排仅 `RERANK_PROVIDER=api` 与 chat LLM 外发，`local` 为进程内 ONNX。`uv sync --extra local-rerank` 安装运行依赖，模型由部署者提供并单独核对许可证

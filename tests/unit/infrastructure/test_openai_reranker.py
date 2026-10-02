@@ -7,8 +7,12 @@ from unittest.mock import AsyncMock, MagicMock
 import httpx
 import pytest
 
+from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit
 from oce.infrastructure.embed.openai_reranker import OpenAIReranker
+from oce.shared.config.settings import RetrievalSettings
+from oce.shared.metrics import RetrievalAudit
+from tests.fakes.retrieval import FakeEmbedder, FakeSearchStore
 
 
 def _Hit(content: str, score: float = 0.0) -> SearchHit:
@@ -47,7 +51,9 @@ def _make_reranker(
         fake_client.post = AsyncMock(side_effect=raise_exc)
     else:
         fake_client.post = AsyncMock(
-            return_value=_fake_response(response_payload or {})
+            return_value=_fake_response(
+                response_payload if response_payload is not None else {"results": []}
+            )
         )
 
     reranker = OpenAIReranker(
@@ -214,18 +220,30 @@ async def test_rerank_top_n_in_body_caps_at_documents_size():
 
 @pytest.mark.asyncio
 async def test_rerank_http_failure_returns_original_order():
-    """An HTTP error keeps the input order and raises nothing."""
+    """The rank stage keeps the input order and audits a provider failure."""
     reranker, _ = _make_reranker(
         top_n=2,
         raise_exc=httpx.ConnectError("network down"),
     )
-    hits = [_Hit(content="a"), _Hit(content="b"), _Hit(content="c")]
-    result = await reranker.rerank("q", hits)
+    hits = [
+        SearchHit(name * 64, f"src/{name}.py", name, score=0.9)
+        for name in ("a", "b", "c")
+    ]
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits),
+        reranker=reranker,
+        settings=RetrievalSettings(_env_file=None, rerank_policy="always"),
+    )
+    audit = RetrievalAudit()
+    result = await pipeline.search("find the implementation", audit=audit)
     assert [h.content for h in result] == ["a", "b", "c"]
+    assert audit.rerank_route == "dedicated"
+    assert audit.lane_failures == {"rerank": "ConnectError"}
 
 
 @pytest.mark.asyncio
-async def test_rerank_malformed_results_preserve_original_order():
+async def test_rerank_malformed_results_propagate_to_rank():
     reranker, _ = _make_reranker(
         response_payload={
             "results": [
@@ -237,9 +255,8 @@ async def test_rerank_malformed_results_preserve_original_order():
     )
     hits = [_Hit(content="a"), _Hit(content="b")]
 
-    result = await reranker.rerank("q", hits)
-
-    assert result == hits
+    with pytest.raises(ValueError, match="no valid scores"):
+        await reranker.rerank("q", hits)
 
 
 # ── usage reporting ──────────────────────────────────────────────────────
@@ -282,7 +299,7 @@ async def test_rerank_on_usage_callback_invoked_on_success():
 
 @pytest.mark.asyncio
 async def test_rerank_on_usage_not_invoked_on_http_failure():
-    """An HTTP failure keeps the candidates and reports no usage."""
+    """An HTTP failure propagates to rank and reports no usage."""
     captured: list[tuple] = []
 
     async def _on_usage(cid, kind, model, prompt, completion):
@@ -298,7 +315,8 @@ async def test_rerank_on_usage_not_invoked_on_http_failure():
         credential_id=7,
         on_usage=_on_usage,
     )
-    await rk.rerank("q", [_Hit(content="d1")])
+    with pytest.raises(httpx.ConnectError):
+        await rk.rerank("q", [_Hit(content="d1")])
     assert captured == [], "a failure must not report usage"
 
 
@@ -328,3 +346,63 @@ async def test_rerank_usage_failure_does_not_fail_retrieval():
     result = await reranker.rerank("q", hits)
 
     assert [hit.content for hit in result] == ["b", "a"]
+
+
+@pytest.mark.parametrize(
+    ("status", "payload", "error"),
+    [
+        (200, [], "ValueError"),
+        (200, {}, "ValueError"),
+        (200, {"results": "invalid"}, "ValueError"),
+        (200, {"results": [{"index": 0, "relevance_score": "invalid"}]}, "ValueError"),
+        (200, {"results": [{"index": 0}]}, "ValueError"),
+        (200, {"results": [{"index": 0, "relevance_score": 0.0}]}, None),
+        (200, {"results": []}, None),
+        (503, {"error": "unavailable"}, "HTTPStatusError"),
+    ],
+)
+async def test_provider_response_preserves_candidates_and_audits_failures(
+    status: int, payload: object, error: str | None
+) -> None:
+    client = httpx.AsyncClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(status, json=payload)
+        )
+    )
+    reranker = OpenAIReranker(
+        endpoint="https://example.test/rerank",
+        api_key="test",
+        model="test",
+        client=client,
+    )
+    hits = [
+        SearchHit(name * 64, f"src/{name}.py", name, score=0.9) for name in ("a", "b")
+    ]
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits),
+        reranker=reranker,
+        settings=RetrievalSettings(_env_file=None, rerank_policy="always"),
+    )
+    audit = RetrievalAudit()
+    try:
+        assert await pipeline.search("find the implementation", audit=audit) == hits
+        assert audit.lane_failures == ({"rerank": error} if error else {})
+    finally:
+        await client.aclose()
+
+
+async def test_malformed_usage_does_not_undo_a_valid_rerank() -> None:
+    callback = AsyncMock()
+    reranker, _ = _make_reranker(
+        response_payload={
+            "results": [{"index": 1, "relevance_score": 0.9}],
+            "meta": {"tokens": "malformed"},
+        }
+    )
+    reranker._on_usage = callback
+
+    result = await reranker.rerank("q", [_Hit("a"), _Hit("b")])
+
+    assert [hit.content for hit in result] == ["b", "a"]
+    callback.assert_not_awaited()

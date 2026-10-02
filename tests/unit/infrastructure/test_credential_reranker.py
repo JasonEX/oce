@@ -1,14 +1,20 @@
 """Database-backed rerank credential resolution tests."""
 
+import pytest
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+from oce.domain.services.retrieval import RetrievalPipeline
+from oce.domain.services.search import SearchHit
 from oce.infrastructure.embed.credential_reranker import (
     CredentialConfiguredReranker,
     RerankRuntimeConfig,
 )
 from oce.infrastructure.persistence.models import ModelCredentialModel
-from oce.shared.config.settings import RerankSettings
+from oce.shared.config.settings import RerankSettings, RetrievalSettings
 from oce.shared.database.session import Base
+from oce.shared.errors import ServiceNotReadyError
+from oce.shared.metrics import RetrievalAudit
+from tests.fakes.retrieval import FakeEmbedder, FakeSearchStore
 
 
 async def _runtime():
@@ -51,18 +57,32 @@ async def test_active_credential_configures_reranker():
     await engine.dispose()
 
 
-async def test_missing_rerank_key_uses_noop_delegate():
+async def test_missing_rerank_key_preserves_candidates_and_is_audited():
     engine, sessions = await _runtime()
     reranker = CredentialConfiguredReranker(
         sessions,
-        RerankSettings(api_key=None, enabled=True),
+        RerankSettings(_env_file=None, api_key=None, enabled=True),
         fallback_embedding_key=None,
     )
 
-    assert await reranker._resolve_config() is None
-    assert await reranker.rerank("query", ["hit"]) == ["hit"]
-    await reranker.close()
-    await engine.dispose()
+    hits = [
+        SearchHit(name * 64, f"src/{name}.py", name, score=0.9) for name in ("a", "b")
+    ]
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits),
+        reranker=reranker,
+        settings=RetrievalSettings(_env_file=None, rerank_policy="always"),
+    )
+    audit = RetrievalAudit()
+    try:
+        assert await pipeline.search("find the implementation", audit=audit) == hits
+        assert audit.lane_failures == {"rerank": "ServiceNotReadyError"}
+        with pytest.raises(ServiceNotReadyError, match="No active rerank credential"):
+            await reranker.prepare_reload()
+    finally:
+        await reranker.close()
+        await engine.dispose()
 
 
 async def test_credential_id_and_usage_callback_wired_through():

@@ -210,12 +210,18 @@ class Ranker:
         state.decision = decision
         if state.audit is not None:
             state.audit.rerank_route = decision.route
-        if decision.dedicated and self.reranker is not None:
-            with state.stage("rerank"):
-                hits = await self.reranker.rerank(state.query, hits)
-        if decision.llm and self.llm_reranker is not None:
-            with state.stage("llm_rerank"):
-                hits = await self.llm_reranker.rerank(state.query, hits)
+        for stage, enabled, reranker in (
+            ("rerank", decision.dedicated, self.reranker),
+            ("llm_rerank", decision.llm, self.llm_reranker),
+        ):
+            if enabled and reranker is not None:
+                with state.stage(stage):
+                    try:
+                        hits = await reranker.rerank(state.query, hits)
+                    except Exception as exc:
+                        # Each stage keeps its input order on failure, including
+                        # a successful dedicated pass before a failed LLM pass.
+                        lane_failed(state, stage, exc)
         # ``always`` is an evaluation/quality policy, not permission to erase a
         # deterministic answer. Rerank the full candidate set, then restore the
         # bounded structural slots while preserving the model's tail order.

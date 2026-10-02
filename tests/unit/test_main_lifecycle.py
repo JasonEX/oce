@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock
 import pytest
 
 from oce import main
-from oce.application.container import Container
+from oce.application.container import Container, ModelRuntime
 
 
 class _ContainerProvider:
@@ -111,3 +111,84 @@ async def test_deferred_index_readiness_does_not_consume_pending_work(monkeypatc
         container.monitoring.metrics.start.assert_awaited_once_with()
 
     container.close.assert_awaited_once_with()
+
+
+@pytest.mark.parametrize("failure", [None, "worker", "metrics", "dense", "models"])
+async def test_container_close_finishes_all_cleanup_in_order(
+    failure: str | None,
+) -> None:
+    calls: list[str] = []
+
+    def cleanup(name: str) -> AsyncMock:
+        async def run() -> None:
+            calls.append(name)
+            if name == failure:
+                raise RuntimeError(name)
+
+        return AsyncMock(side_effect=run)
+
+    container = SimpleNamespace(
+        worker=SimpleNamespace(stop=cleanup("worker")),
+        monitoring=SimpleNamespace(
+            resource_sampler=SimpleNamespace(stop=cleanup("sampler")),
+            cleaner=SimpleNamespace(stop=cleanup("cleaner")),
+            metrics=SimpleNamespace(stop=cleanup("metrics")),
+        ),
+        stores=SimpleNamespace(
+            search_store=SimpleNamespace(close=cleanup("dense")),
+            path_index=SimpleNamespace(close=cleanup("path")),
+        ),
+        models=SimpleNamespace(close=cleanup("models")),
+        queue=SimpleNamespace(close=cleanup("queue")),
+    )
+
+    if failure is None:
+        await Container.close(container)
+    else:
+        with pytest.raises(RuntimeError, match=failure):
+            await Container.close(container)
+
+    assert calls == [
+        "worker",
+        "sampler",
+        "cleaner",
+        "metrics",
+        "dense",
+        "path",
+        "models",
+        "queue",
+    ]
+
+
+async def test_model_close_finishes_clients_and_reports_all_failures() -> None:
+    embed_error, rerank_error = RuntimeError("embedding"), RuntimeError("rerank")
+    runtime = SimpleNamespace(
+        embedder=SimpleNamespace(close=AsyncMock(side_effect=embed_error)),
+        reranker=SimpleNamespace(close=AsyncMock(side_effect=rerank_error)),
+        llm_clients=(
+            SimpleNamespace(close=AsyncMock()),
+            SimpleNamespace(close=AsyncMock()),
+        ),
+    )
+
+    with pytest.raises(ExceptionGroup, match="Resource cleanup failed") as raised:
+        await ModelRuntime.close(runtime)
+
+    assert raised.value.exceptions == (embed_error, rerank_error)
+    runtime.embedder.close.assert_awaited_once_with()
+    runtime.reranker.close.assert_awaited_once_with()
+    for client in runtime.llm_clients:
+        client.close.assert_awaited_once_with()
+
+
+async def test_lifespan_disposes_engine_when_close_fails(monkeypatch) -> None:
+    container = _container()
+    container.close.side_effect = RuntimeError("cleanup failed")
+    provider, dispose = _patch_lifespan_dependencies(monkeypatch, container)
+
+    with pytest.raises(RuntimeError, match="cleanup failed"):
+        async with main.lifespan(main.app):
+            pass
+
+    provider.cache_clear.assert_called_once_with()
+    dispose.assert_awaited_once_with()

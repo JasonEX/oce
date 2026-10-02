@@ -1,7 +1,7 @@
 """Candidate-preserving reranking.
 
-A reranker compares recalled chunks against each other and reorders them;
-``NoopReranker`` keeps the recall order.
+A reranker compares recalled chunks against each other and reorders them.
+The rank stage preserves the recall order when a provider fails.
 """
 
 from __future__ import annotations
@@ -16,21 +16,12 @@ class Reranker(Protocol):
 
     An implementation may change the order or the scores but must return
     exactly the input candidates; deduplication, coverage and the context
-    budget belong to the selector. Runtime resources (HTTP clients, ONNX
-    sessions) are owned and closed by the composition root, not by this
-    protocol.
+    budget belong to the selector. Failures propagate to the rank stage, which
+    preserves the input and records the degradation. Runtime resources (HTTP
+    clients, ONNX sessions) are owned and closed by the composition root, not
+    by this protocol.
     """
 
     async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
         """The same candidates in a new order."""
         ...
-
-
-class NoopReranker:
-    """Keeps the recall order."""
-
-    async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
-        return hits
-
-    async def close(self) -> None:
-        return None

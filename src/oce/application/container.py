@@ -107,6 +107,20 @@ from oce.shared.metrics import (
 SessionFactory = async_sessionmaker[AsyncSession]
 
 
+async def _close_in_order(callbacks: Sequence[Callable[[], Awaitable[None]]]) -> None:
+    """Finish every cleanup in dependency order and retain all failures."""
+    errors: list[BaseException] = []
+    for close in callbacks:
+        try:
+            await close()
+        except BaseException as exc:
+            errors.append(exc)
+    if len(errors) == 1:
+        raise errors[0]
+    if errors:
+        raise BaseExceptionGroup("Resource cleanup failed", errors)
+
+
 async def record_token_usage(
     metrics: ManagedMetricsSink,
     credential_id: int,
@@ -298,18 +312,17 @@ class ModelRuntime:
     # whether data leaves the process. None means the stage is not authorized,
     # which the pipeline audit tells apart from a policy skip.
     reranker: LocalOnnxReranker | CredentialConfiguredReranker | None
-    credential_reranker: CredentialConfiguredReranker | None
     llm_clients: tuple[CredentialConfiguredLLMClient, ...]
     llm_reranker: LLMReranker | None
     query_rewriter: QueryRewriter | None
     credentials: _CredentialRuntime
 
     async def close(self) -> None:
-        await self.embedder.close()
+        callbacks = [self.embedder.close]
         if self.reranker is not None:
-            await self.reranker.close()
-        for client in self.llm_clients:
-            await client.close()
+            callbacks.append(self.reranker.close)
+        callbacks.extend(client.close for client in self.llm_clients)
+        await _close_in_order(callbacks)
 
 
 def build_model_runtime(
@@ -400,7 +413,6 @@ def build_model_runtime(
         embedding_runtime=embedding_runtime,
         embedder=embedder,
         reranker=reranker,
-        credential_reranker=credential_reranker,
         llm_clients=tuple(llm_clients),
         llm_reranker=llm_reranker,
         query_rewriter=query_rewriter,
@@ -610,11 +622,11 @@ class Container:
             settings, sessions, models=self.models, stores=self.stores
         )
 
-        # The queue and its consumer exist together: Redis delivery without a
-        # worker would only accumulate messages nobody processes.
+        # Chunk-only uploads finish their available work in the request. They
+        # stay PENDING, so replaying them would do no work and renew their TTL.
         self.queue: RedisQueue | None = None
         self.worker: EmbedWorker | None = None
-        if settings.worker.enabled:
+        if settings.worker.enabled and settings.embedding.enabled:
             self.queue = _build_redis_queue(settings)
             self.worker = EmbedWorker(
                 queue=self.queue,
@@ -765,19 +777,20 @@ class Container:
 
     async def close(self) -> None:
         """Release everything ``start`` and the builders acquired, consumers first."""
+        callbacks = []
         if self.worker is not None:
-            await self.worker.stop()
+            callbacks.append(self.worker.stop)
         if self.monitoring.resource_sampler is not None:
-            await self.monitoring.resource_sampler.stop()
+            callbacks.append(self.monitoring.resource_sampler.stop)
         if self.monitoring.cleaner is not None:
-            await self.monitoring.cleaner.stop()
-        await self.monitoring.metrics.stop()
-        await self.stores.search_store.close()
+            callbacks.append(self.monitoring.cleaner.stop)
+        callbacks.extend((self.monitoring.metrics.stop, self.stores.search_store.close))
         if self.stores.path_index is not None:
-            await self.stores.path_index.close()
-        await self.models.close()
+            callbacks.append(self.stores.path_index.close)
+        callbacks.append(self.models.close)
         if self.queue is not None:
-            await self.queue.close()
+            callbacks.append(self.queue.close)
+        await _close_in_order(callbacks)
 
 
 @lru_cache

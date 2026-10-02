@@ -55,33 +55,31 @@ class OpenAIReranker:
         }
         if self._instruct:
             body["instruction"] = self._instruct
-        try:
-            response = await self._client.post(
-                self._endpoint,
-                json=body,
-                headers={
-                    "Authorization": f"Bearer {self._api_key}",
-                    "Content-Type": "application/json",
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
-        except (httpx.HTTPError, ValueError) as exc:
-            logger.warning("Rerank request failed; using retrieval order: {}", exc)
-            return hits
+        response = await self._client.post(
+            self._endpoint,
+            json=body,
+            headers={
+                "Authorization": f"Bearer {self._api_key}",
+                "Content-Type": "application/json",
+            },
+        )
+        response.raise_for_status()
+        payload = response.json()
+        if not isinstance(payload, dict):
+            raise ValueError("Rerank response is not an object")
 
-        raw_results = payload.get("results", [])
+        raw_results = payload.get("results")
         if not isinstance(raw_results, list):
-            logger.warning("Rerank response has no result list; using retrieval order")
-            return hits
+            raise ValueError("Rerank response has no result list")
 
         ranked: list[tuple[int, float]] = []
         seen: set[int] = set()
+        valid_result = False
         for item in raw_results:
             if not isinstance(item, dict):
                 continue
             index = item.get("index")
-            raw_score = item.get("relevance_score", item.get("score", 0.0))
+            raw_score = item.get("relevance_score", item.get("score"))
             if raw_score is None:
                 continue
             try:
@@ -91,26 +89,28 @@ class OpenAIReranker:
             if (
                 isinstance(index, int)
                 and 0 <= index < len(hits)
-                and index not in seen
                 and math.isfinite(score)
-                and score >= self._min_score
             ):
-                seen.add(index)
-                ranked.append((index, score))
+                valid_result = True
+                if index not in seen and score >= self._min_score:
+                    seen.add(index)
+                    ranked.append((index, score))
+        if raw_results and not valid_result:
+            raise ValueError("Rerank response has no valid scores")
         ranked.sort(key=lambda pair: pair[1], reverse=True)
 
         promoted = ranked[: self._top_n]
         output = [replace(hits[index], score=score) for index, score in promoted]
 
         if self._on_usage is not None:
-            meta = payload.get("meta") or {}
-            token_meta = meta.get("tokens") or {}
-            tokens = sum(
-                coerce_token_count(token_meta.get(key, 0))
-                for key in ("input_tokens", "output_tokens", "image_tokens")
-            )
-            # Reranking has no prompt/completion split: the total is prompt.
             try:
+                meta = payload.get("meta") or {}
+                token_meta = meta.get("tokens") or {}
+                tokens = sum(
+                    coerce_token_count(token_meta.get(key, 0))
+                    for key in ("input_tokens", "output_tokens", "image_tokens")
+                )
+                # Reranking has no prompt/completion split: the total is prompt.
                 await self._on_usage(
                     self._credential_id,
                     "rerank",

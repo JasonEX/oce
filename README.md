@@ -282,6 +282,10 @@ carries deliveries. `GET /admin/queue` reports `main_size`, `inflight`, `db_pend
 and processing entries. With the worker disabled, the endpoint reports `enabled=false`
 and zero queue counts; use `/admin/index-stats` for metadata counts.
 
+With `EMBED_ENABLED=false`, uploads are chunked within the request. No worker or Redis
+connection is created, even if `WORKER_ENABLED=true`. Blobs remain pending with staged
+source, and ordinary TTL-based garbage collection can reclaim them.
+
 `POST /admin/queue/reset` accepts `{"mode":"sync","requeue":true}` by default. `sync`
 removes stale queue entries and restores pending delivery; `purge` clears the queue before
 restoring pending work. `requeue=false` suppresses that immediate restoration, but worker

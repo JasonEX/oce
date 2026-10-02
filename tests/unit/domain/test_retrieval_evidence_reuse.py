@@ -8,7 +8,6 @@ import pytest
 
 from oce.domain.services.query_classifier import QueryIntent
 from oce.domain.services.relations import RelatedOccurrence
-from oce.domain.services.reranker import NoopReranker
 from oce.domain.services.retrieval.chain import CallChainTracer
 from oce.domain.services.retrieval.expand import Expander
 from oce.domain.services.retrieval.priors import source_priority_factor
@@ -24,6 +23,7 @@ from oce.shared.metrics import RetrievalAudit
 from tests.fakes.retrieval import (
     FakeEvidenceStore,
     FakeRelationStore,
+    FakeReranker,
     retrieval_state,
 )
 
@@ -73,7 +73,7 @@ async def test_restored_reference_head_reuses_implementation_facts(
         priority_factor=source_priority_factor,
         exact_store=None,
         relation_store=store,
-        reranker=NoopReranker() if rerank else None,
+        reranker=FakeReranker() if rerank else None,
         llm_reranker=None,
     )
     scope = SearchScope(frozenset({implementation.blob_name, other.blob_name}))

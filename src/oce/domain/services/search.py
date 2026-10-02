@@ -22,7 +22,7 @@ HitRole = Literal[
 
 @dataclass(frozen=True)
 class SearchHit:
-    """One retrieved chunk."""
+    """One retrieved chunk; its score is a stage-local ranking value, not confidence."""
 
     blob_name: str
     path: str

@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from oce.domain.services.retrieval import RetrievalPipeline
 from oce.domain.services.search import SearchHit
 from oce.infrastructure.embed.local_onnx_reranker import LocalOnnxReranker, _sigmoid
+from oce.shared.config.settings import RetrievalSettings
+from oce.shared.metrics import RetrievalAudit
+from tests.fakes.retrieval import FakeEmbedder, FakeSearchStore
 
 
 def _hit(path: str, score: float, content: str = "code") -> SearchHit:
@@ -93,13 +98,55 @@ async def test_document_text_carries_path_context_and_is_capped():
     )
 
 
-async def test_missing_runtime_keeps_retrieval_order():
+async def test_missing_runtime_propagates_without_retrying_the_load(monkeypatch):
     reranker = LocalOnnxReranker(model_dir="/definitely/missing")
+    loads = 0
+
+    def fail_load():
+        nonlocal loads
+        loads += 1
+        raise RuntimeError("model missing")
+
+    monkeypatch.setattr(reranker, "_load", fail_load)
     hits = [_hit("a.py", 0.9), _hit("b.py", 0.8)]
-    assert await reranker.rerank("q", hits) == hits
+    with pytest.raises(RuntimeError, match="model missing"):
+        await reranker.rerank("q", hits)
     assert reranker._load_failed is True
-    # A static configuration error is not retried and logged for every query.
-    assert await reranker.rerank("q", hits) == hits
+    with pytest.raises(RuntimeError, match="unavailable"):
+        await reranker.rerank("q", hits)
+    assert loads == 1
+
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits),
+        reranker=reranker,
+        settings=RetrievalSettings(_env_file=None, rerank_policy="always"),
+    )
+    audit = RetrievalAudit()
+    assert await pipeline.search("find the implementation", audit=audit) == hits
+    assert audit.lane_failures == {"rerank": "RuntimeError"}
+    assert loads == 1
+
+
+async def test_scoring_failure_preserves_candidates_and_is_audited(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    reranker, _ = _loaded()
+
+    def fail_score(query: str, documents: list[str]) -> list[float]:
+        raise RuntimeError("scoring failed")
+
+    monkeypatch.setattr(reranker, "_score", fail_score)
+    hits = [_hit("a.py", 0.9), _hit("b.py", 0.8)]
+    pipeline = RetrievalPipeline(
+        embedder=FakeEmbedder(),
+        store=FakeSearchStore(hits),
+        reranker=reranker,
+        settings=RetrievalSettings(_env_file=None, rerank_policy="always"),
+    )
+    audit = RetrievalAudit()
+    assert await pipeline.search("find the implementation", audit=audit) == hits
+    assert audit.lane_failures == {"rerank": "RuntimeError"}
 
 
 def test_sigmoid_handles_extreme_logits_without_overflow():

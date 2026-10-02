@@ -22,8 +22,10 @@ see it.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
 from loguru import logger
 
@@ -88,13 +90,23 @@ class RecallEvidence:
     # Compound requests: declarations a traceback frame or the title names.
     anchors: tuple[SearchHit, ...] = ()
     # Exact SQL path matches and semantic path-index scores, per blob.
-    lookup_scores: dict[str, float] = field(default_factory=dict)
-    path_scores: dict[str, float] = field(default_factory=dict)
+    lookup_scores: Mapping[str, float] = field(default_factory=dict)
+    path_scores: Mapping[str, float] = field(default_factory=dict)
     dense: tuple[SearchHit, ...] = ()
     dense_error: Exception | None = None
     # ``dense``, ``skip:<reason>`` when the SQL lanes answered first, or
     # ``error:<type>`` when the vector lanes failed and another lane answered.
     dense_route: str | None = None
+
+    def __post_init__(self) -> None:
+        # Copy before freezing so a lane retaining its input cannot change
+        # the evidence later stages read.
+        object.__setattr__(
+            self, "lookup_scores", MappingProxyType(dict(self.lookup_scores))
+        )
+        object.__setattr__(
+            self, "path_scores", MappingProxyType(dict(self.path_scores))
+        )
 
     @property
     def dense_skipped(self) -> bool:

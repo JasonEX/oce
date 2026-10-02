@@ -258,6 +258,9 @@ collection，再由客户端完整重同步。不兼容的启动或重载会 fai
 `inflight` 统计尚未确认的投递身份，包括排队中与处理中的项。worker 关闭时返回
 `enabled=false` 和零队列计数；元数据数量请看 `/admin/index-stats`。
 
+`EMBED_ENABLED=false` 时，上传在请求内完成切块，即使 `WORKER_ENABLED=true` 也不装配
+worker 或连接 Redis。blob 保留 pending 与 staging 源码，仍可按正常 TTL 规则回收。
+
 `POST /admin/queue/reset` 默认接受 `{"mode":"sync","requeue":true}`。`sync` 清掉过期
 队列记录并补齐 pending 投递；`purge` 先清空队列再恢复 pending。`requeue=false` 只抑制本次
 立即补队，worker 的周期 replay 仍可能恢复持久 pending 任务。reset 修改前会等待活动批次

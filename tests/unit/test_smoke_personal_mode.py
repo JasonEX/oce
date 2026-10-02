@@ -14,14 +14,15 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
 import pytest
 import uvicorn
 from fastapi import FastAPI, Request
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 import oce.application.container as container_module
 from oce.api.router import get_application
@@ -34,6 +35,7 @@ from oce.infrastructure.persistence.models import (
 )
 from oce.main import app
 from oce.shared.config.settings import (
+    DatabaseSettings,
     EmbeddingSettings,
     MilvusSettings,
     MonitoringSettings,
@@ -42,6 +44,7 @@ from oce.shared.config.settings import (
     WorkerSettings,
     get_settings,
 )
+from oce.shared.database.session import create_engine
 from oce.shared.errors import ServiceNotReadyError
 from oce.shared.model_credentials import CredentialCreate
 from tests.fakes.embedding import term_vector
@@ -149,7 +152,7 @@ async def container(
     from oce.infrastructure.persistence.migrations import run_migrations
 
     await asyncio.to_thread(run_migrations)
-    engine = create_async_engine(db_url)
+    engine = create_engine(DatabaseSettings(_env_file=None, url=db_url))
     sessions = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     mode = getattr(request, "param", None)
     has_worker = mode in ("deferred-worker", "disabled-embedding-worker")
@@ -166,7 +169,7 @@ async def container(
             dense_index_type="FLAT",
         ),
         embedding=EmbeddingSettings(
-            enabled=mode != "disabled-embedding-worker",
+            enabled=mode not in ("disabled-embedding", "disabled-embedding-worker"),
             endpoint=embedding_server.url,
             api_key=None if mode == "deferred-worker" else EMBED_API_KEY,
             model="test-embedding",
@@ -262,30 +265,42 @@ async def test_credentials_reload_starts_deferred_worker_and_allows_queue_reset(
     assert worker.is_running
 
 
-@pytest.mark.parametrize("container", ["disabled-embedding-worker"], indirect=True)
+@pytest.mark.parametrize(
+    "container", ["disabled-embedding", "disabled-embedding-worker"], indirect=True
+)
 async def test_disabled_embedding_still_chunks_service_mode_uploads(
     container: Container, embedding_server: EmbeddingServer
 ) -> None:
     assert (await container.application.reload_embedding_credentials()).reloaded
     await container.start_worker()
-    assert container.worker is not None and container.worker.is_running
+    assert container.worker is None and container.queue is None
     uploaded = await container.application.batch_upload(
         [BlobUpload("src/config.py", "def configure(): return 42\n")]
     )
-    queue = container.queue
-    assert isinstance(queue, FakeQueue)
-
-    async def wait_ack() -> None:
-        while uploaded.blob_names[0] not in queue.acked:
-            await asyncio.sleep(0.01)
-
-    await asyncio.wait_for(wait_ack(), timeout=5)
     async with container.indexing.uow_factory() as uow:
         blob = await uow.blobs.get(uploaded.blob_names[0])
         assert blob is not None and blob.chunks
         assert blob.status.value == "pending"
         assert await uow.blobs.get_staging(blob.blob_name) is not None
     assert not embedding_server.requests
+
+    expired = datetime.now(timezone.utc) - timedelta(days=2)
+    async with container.session_factory() as session:
+        await session.execute(
+            update(BlobModel)
+            .where(BlobModel.blob_name == uploaded.blob_names[0])
+            .values(last_seen=expired)
+        )
+        await session.commit()
+    assert (await container.application.reload_embedding_credentials()).reloaded
+    assert container.worker is None and container.queue is None
+    status = await container.application.queue_status()
+    assert not status.enabled and status.worker_state == "disabled"
+    collected = await container.application.run_gc(ttl_days=1, dry_run=False)
+    assert collected.deleted_blobs == 1
+    async with container.indexing.uow_factory() as uow:
+        assert await uow.blobs.get(uploaded.blob_names[0]) is None
+        assert await uow.blobs.get_staging(uploaded.blob_names[0]) is None
 
 
 async def test_upload_checkpoint_and_retrieve_through_http(

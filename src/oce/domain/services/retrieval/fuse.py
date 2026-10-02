@@ -1,9 +1,10 @@
 """The fuse stage: one candidate list from every lane's ranked list.
 
-Raw scores never mix. Dense cosine, BM25/ts_rank, exact-lane scores and RRF
-do not share a scale, so lists contribute by rank; the structural lanes
-(exact, anchors) are merged by key, and path evidence is a bounded
-boost with a backfill for files the content index never mentions.
+Dense and lexical lists contribute by rank when fused. Exact evidence uses
+intent-specific window priority, including legacy score comparisons, while
+anchors are promoted by key and path evidence adds a bounded boost. These
+ranking values are not calibrated across lanes and never express confidence;
+the retained merge policies are documented in docs/retrieval-pipeline.md.
 """
 
 from __future__ import annotations

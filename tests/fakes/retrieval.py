@@ -29,6 +29,13 @@ from oce.shared.metrics import RetrievalAudit
 _TEXT_BY_VECTOR: dict[tuple[float, ...], str] = {}
 
 
+class FakeReranker:
+    """Exercise the authorized rerank stage without changing its input order."""
+
+    async def rerank(self, query: str, hits: list[SearchHit]) -> list[SearchHit]:
+        return hits
+
+
 class FakeEmbedder:
     """Deterministic query embedder that remembers the texts it was given."""
 
